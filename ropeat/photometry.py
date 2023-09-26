@@ -108,6 +108,17 @@ class scienceimg():
 
         self.ap_r = 3.0
 
+    def plot_truth(self):
+        zscale=ZScaleInterval()
+        z1,z2 = zscale.get_limits(self.data)
+        plt.figure(figsize=(8,8))
+        plt.imshow(self.data,vmin=z1,vmax=z2,cmap='Greys',origin='lower')
+        plt.plot(self.coords_in[0],self.coords_in[1],linestyle='',marker='o',
+                fillstyle='none',markeredgecolor='red',alpha=0.5)
+        plt.xlabel('x [px]')
+        plt.ylabel('y [px]')
+        plt.colorbar()
+        plt.show()
 
     def set_bkgstat(self,new_stat):
         """If you don't want to use MMMBackground for the background
@@ -235,4 +246,14 @@ class scienceimg():
                                 finder=daofind, aperture_radius=self.ap_r)
         psf_results = psfphot(self.data, init_params=ap_results)
     
+        # This will only return one table of values. So, we will probably want to
+        # run this a bunch of times, save the outputs to csv files, and then run the
+        # coordinate-matching stuff on the saved files. We really don't want a list
+        # of tables stored in temporary memory. That's not great. 
         return psf_results
+
+def crossmatch_truth(truth_filepath,sci_filepaths):
+    tr = truth(truth_filepath)
+    tr_tab = tr.table()
+    for i, file in enumerate(sci_filepaths):
+        check = Table.read(file, format='csv')
