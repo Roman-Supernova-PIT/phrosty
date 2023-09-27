@@ -31,4 +31,7 @@ psf = sci.psf_phot('epsf',ap,plot_epsf=True) # Construct a PSF from field
                                              # Also, plot the PSF. This 
                                              # returns a table as well. 
 sci.save_results(savepath,truth_table=tt,truth_zpt=True)
+
+# Now, crossmatch the science image results to the truth catalog.
+cm = rp.crossmatch_truth(truth_filepath,[savepath])
 ```

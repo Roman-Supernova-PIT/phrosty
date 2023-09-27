@@ -1,6 +1,5 @@
 import numpy as np
 from scipy import stats
-from glob import glob
 from copy import deepcopy
 import matplotlib.pyplot as plt
 from astropy.io import fits
@@ -14,7 +13,7 @@ import astropy.units as u
 from photutils.aperture import CircularAperture, aperture_photometry, ApertureStats
 from photutils.background import LocalBackground, MMMBackground
 from photutils.detection import DAOStarFinder
-from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry, IterativePSFPhotometry, IntegratedGaussianPRF
+from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry, IntegratedGaussianPRF
 
 roman_bands = ['Y106', 'J129', 'H158', 'F184']
 
@@ -298,25 +297,25 @@ class scienceimg():
         ra_dec = self.wcs.pixel_to_world(self.ap_phot_results['x_init'], self.ap_phot_results['y_init'])
         results_table['ra'], results_table['dec'] = ra_dec.ra.value, ra_dec.dec.value
         
-        results_table['ap_flux'] = self.ap_phot_results['aperture_sum']
-        results_table['ap_mag'] = -2.5*np.log10(self.ap_phot_results['aperture_sum'])
+        results_table[f'{self.band}_ap_flux'] = self.ap_phot_results['aperture_sum']
+        results_table[f'{self.band}_ap_mag'] = -2.5*np.log10(self.ap_phot_results['aperture_sum'])
 
         if self.psf_phot_results is not None:
-            results_table['psf_flux'] = self.psf_phot_results['flux_fit']
-            results_table['psf_flux_err'] = self.psf_phot_results['flux_err']
-            results_table['psf_mag'] = -2.5*np.log10(results_table['psf_flux'])
-            results_table['psf_mag_err'] = np.sqrt((1.09/results_table['psf_flux'])**2*results_table['psf_flux_err']**2)
+            results_table[f'{self.band}_psf_flux'] = self.psf_phot_results['flux_fit']
+            results_table[f'{self.band}_psf_flux_err'] = self.psf_phot_results['flux_err']
+            results_table[f'{self.band}_psf_mag'] = -2.5*np.log10(results_table[f'{self.band}_psf_flux'])
+            results_table[f'{self.band}_psf_mag_err'] = np.sqrt((1.09/results_table[f'{self.band}_psf_flux'])**2*results_table[f'{self.band}_psf_flux_err']**2)
 
         if truth_zpt == True:
-            ap_zpt_mask = np.logical_and(results_table['ap_mag']>-11, results_table['ap_mag']<-9)
-            psf_zpt_mask = np.logical_and(results_table['psf_mag']>-11, results_table['psf_mag']<-9)
+            ap_zpt_mask = np.logical_and(results_table[f'{self.band}_ap_mag']>-11, results_table[f'{self.band}_ap_mag']<-9)
+            psf_zpt_mask = np.logical_and(results_table[f'{self.band}_psf_mag']>-11, results_table[f'{self.band}_psf_mag']<-9)
 
             truthmag = truth_table[self.band][self.footprint_mask]
-            ap_zpt = np.median(results_table['ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
-            psf_zpt = np.median(results_table['psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
+            ap_zpt = np.median(results_table[f'{self.band}_ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
+            psf_zpt = np.median(results_table[f'{self.band}_psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
 
-            results_table['ap_mag'] -= ap_zpt
-            results_table['psf_mag'] -= psf_zpt
+            results_table[f'{self.band}_ap_mag'] -= ap_zpt
+            results_table[f'{self.band}_psf_mag'] -= psf_zpt
 
         results_table['band'] = self.band
         results_table['pointing'] = self.pointing
@@ -324,14 +323,74 @@ class scienceimg():
 
         results_table.write(savepath, format='csv', overwrite=overwrite)
 
-# def crossmatch_truth(truth_filepath,sci_filepaths,seplimit=0.1):
-#     tr = truth(truth_filepath)
-#     collect = deepcopy(tr.table())
-#     for i, file in enumerate(sci_filepaths):
-#         check = Table.read(file, format='csv')
-#         check_coords = SkyCoord(ra=check['ra']*u.degree, dec=check['dec']*u.degree)
-#         tr_coords = SkyCoord(ra=tr_tab['ra']*u.degree, dec=tr_tab['dec']*u.degree)
-#         check_idx, tr_idx, angsep, dist3d = search_around_sky(check_coords,tr_coords,seplimit=seplimit*u.arcsec)
+def crossmatch_truth(truth_filepath,results_filepaths,seplimit=0.1,psf=True):
+    """
+    This will handle a list of science files with mixed bands! Hopefully!
 
-#         tr_mask = np.empty(len(collect))*np.nan
-#         for val   
+    :param truth_filepath: Filepath to truth file.
+    :type truth_filepath: str
+    :param results_filepaths: List of filepaths to csv files from scienceimg.save_results().
+    :type results_filepaths: list
+    :param seplimit: Angular separation limit to find matches, defaults to 0.1
+    :type seplimit: float, optional
+    :param psf: Include PSF photometry results in the matching table, defaults to True
+    :type psf: bool, optional
+    :return: _description_
+    :rtype: _type_
+    """    
+    prefixes = ['ap']
+    if psf:
+        prefixes.append('psf')
+        
+    suffixes = ['_flux', '_flux_err', '_mag', '_mag_err']
+    match_vals = []
+    for b in roman_bands:
+        for p in prefixes:
+            for s in suffixes:
+                if p != 'ap' and s != '_flux_err':
+                    match_vals.append(b+'_'+p+s)
+                else:
+                    pass
+
+    tr = truth(truth_filepath)
+    tr_tab = deepcopy(tr.table())
+    for i, file in enumerate(results_filepaths):
+        check = Table.read(file, format='csv')
+        band = check['band'][0]
+        check_coords = SkyCoord(ra=check['ra']*u.degree, dec=check['dec']*u.degree)
+        tr_coords = SkyCoord(ra=tr_tab['ra'], dec=tr_tab['dec']) # Already in degrees
+        check_idx, tr_idx, angsep, dist3d = search_around_sky(check_coords,tr_coords,seplimit=seplimit*u.arcsec)
+
+        # Create a mask so values go in correct rows.
+        tr_mask = np.empty(len(tr_tab))*np.nan
+        for val in match_vals:
+            if band in val:
+                tr_mask[tr_idx] = check[val]
+                tr_tab[f'{val}_{i}'] = np.empty(len(tr_tab))*np.nan
+                tr_tab[f'{val}_{i}'] = tr_mask
+    
+    # Put all the matching data in the same column. 
+    n_tables = len(results_filepaths)
+    matchescol = {x: [] for x in match_vals}
+
+    # There absolutely must be a way to merge those columns with
+    # array operations instead of loops, but I can't make it behave.
+    # Also, for some reason it puts an empty list in the cells where
+    # I input band data, but leaves cells blank if I don't put in the 
+    # band data. Which I understand sounds correct, but it's not; empty
+    # cells should be empty in the same way, uniformly. I guess TBD
+    # on if this is a problem. 
+    for key in matchescol:
+        for row in tr_tab:
+            vals = []
+            for n in range(n_tables):
+                try:
+                    if not np.isnan(row[f'{key}_{n}']):
+                        vals.append(row[f'{key}_{n}'])
+                except:
+                    pass
+            matchescol[key].append(vals)
+
+    tr_tab |= matchescol
+
+    return tr_tab
