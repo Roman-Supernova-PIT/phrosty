@@ -1,6 +1,5 @@
-numpy
-scipy
-pandas
-matplotlib
-astropy
-photutils
+numpy < 2, >= 1.21
+scipy >= 1.11.1
+matplotlib 
+astropy == 5.3.3
+photutils == 1.9.0

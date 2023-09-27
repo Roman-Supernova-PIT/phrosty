@@ -114,6 +114,9 @@ class scienceimg():
 
         self.ap_r = 3.0
 
+        self.ap_phot_results = None
+        self.psf_phot_results = None
+
     def plot_truth(self):
         zscale=ZScaleInterval()
         z1,z2 = zscale.get_limits(self.data)
@@ -167,6 +170,9 @@ class scienceimg():
         ap_results['max'] = apstats.max
         ap_results['x_init'], ap_results['y_init'] = ap_results['xcenter'].value, ap_results['ycenter'].value
         ap_results[self.band] = -2.5*np.log10(ap_results['aperture_sum'].value)
+        
+        self.ap_phot_results = ap_results
+
         return ap_results
     
     def psf_phot(self, psf, ap_results=None, saturation=8e4, noise=10**4.2,
@@ -256,10 +262,76 @@ class scienceimg():
         # run this a bunch of times, save the outputs to csv files, and then run the
         # coordinate-matching stuff on the saved files. We really don't want a list
         # of tables stored in temporary memory. That's not great. 
-        return psf_results
 
-def crossmatch_truth(truth_filepath,sci_filepaths):
-    tr = truth(truth_filepath)
-    tr_tab = tr.table()
-    for i, file in enumerate(sci_filepaths):
-        check = Table.read(file, format='csv')
+        self.psf_phot_results = psf_results
+
+        return psf_results
+    
+    def save_results(self,savepath,overwrite=False,truth_zpt=True,
+                     truth_table=None):
+        """_summary_
+
+        :param savepath: path to save file. Include filename.
+        :type savepath: str
+        :param overwrite: Set True if you want to overwrite previously saved files, defaults to False
+        :type overwrite: bool, optional
+        :param truth_zpt: Zero point photometry to truth table, defaults to True
+        :type truth_zpt: bool, optional
+        :param truth_table: _description_, defaults to None
+        :type truth_table: _type_, optional
+        :raises Exception: _description_
+        :raises ValueError: _description_
+        """                     
+        if self.ap_phot_results is None or self.psf_phot_results is None:
+            raise Exception('You need to run either self.ap_phot() or self.psf_phot() to have results to save!')
+            # If you ran self.psf_phot(), then self.ap_phot() was run. :)
+
+        if truth_zpt == True and truth_table is None:
+            raise ValueError('If truth_zpt==True, then you must provide a table from truth.table() in argument truth_table.')
+
+        results_table = Table()
+        index = [i for i in range(len(self.ap_phot_results))]
+        results_table['index'] = index
+        results_table['source_ID'] = [f'{self.band}_{self.pointing}_{self.chip}_{i}' for i in range(len(self.ap_phot_results))]
+        results_table['x_init'], results_table['y_init'] = self.ap_phot_results['x_init'], self.ap_phot_results['y_init']
+        
+        ra_dec = self.wcs.pixel_to_world(self.ap_phot_results['x_init'], self.ap_phot_results['y_init'])
+        results_table['ra'], results_table['dec'] = ra_dec.ra.value, ra_dec.dec.value
+        
+        results_table['ap_flux'] = self.ap_phot_results['aperture_sum']
+        results_table['ap_mag'] = -2.5*np.log10(self.ap_phot_results['aperture_sum'])
+
+        if self.psf_phot_results is not None:
+            results_table['psf_flux'] = self.psf_phot_results['flux_fit']
+            results_table['psf_flux_err'] = self.psf_phot_results['flux_err']
+            results_table['psf_mag'] = -2.5*np.log10(results_table['psf_flux'])
+            results_table['psf_mag_err'] = np.sqrt((1.09/results_table['psf_flux'])**2*results_table['psf_flux_err']**2)
+
+        if truth_zpt == True:
+            ap_zpt_mask = np.logical_and(results_table['ap_mag']>-11, results_table['ap_mag']<-9)
+            psf_zpt_mask = np.logical_and(results_table['psf_mag']>-11, results_table['psf_mag']<-9)
+
+            truthmag = truth_table[self.band][self.footprint_mask]
+            ap_zpt = np.median(results_table['ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
+            psf_zpt = np.median(results_table['psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
+
+            results_table['ap_mag'] -= ap_zpt
+            results_table['psf_mag'] -= psf_zpt
+
+        results_table['band'] = self.band
+        results_table['pointing'] = self.pointing
+        results_table['chip'] = self.chip
+
+        results_table.write(savepath, format='csv', overwrite=overwrite)
+
+# def crossmatch_truth(truth_filepath,sci_filepaths,seplimit=0.1):
+#     tr = truth(truth_filepath)
+#     collect = deepcopy(tr.table())
+#     for i, file in enumerate(sci_filepaths):
+#         check = Table.read(file, format='csv')
+#         check_coords = SkyCoord(ra=check['ra']*u.degree, dec=check['dec']*u.degree)
+#         tr_coords = SkyCoord(ra=tr_tab['ra']*u.degree, dec=tr_tab['dec']*u.degree)
+#         check_idx, tr_idx, angsep, dist3d = search_around_sky(check_coords,tr_coords,seplimit=seplimit*u.arcsec)
+
+#         tr_mask = np.empty(len(collect))*np.nan
+#         for val   
