@@ -21,6 +21,12 @@ roman_bands = ['Y106', 'J129', 'H158', 'F184']
 class truth():
     # https://roman.ipac.caltech.edu/data/sims/sn_image_sims/galaxia_akari.fits.gz
     def __init__(self,filepath):
+        """filepath should be to a truth file that only contains stars.
+        No galaxies! 
+
+        :param filepath: Path to fits file. 
+        :type filepath: str
+        """
         self.filepath = filepath
         self.truthhdu = fits.open(self.filepath)
 
