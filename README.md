@@ -26,8 +26,7 @@ tt = tr.table()
 # Define a science image object.
 for file in science_filepath:
     sci = rp.scienceimg(file,tc,band='Y106',pointing='141',chip='1')
-    # sci.plot_truth()
-    ap = sci.ap_phot(3.0)
+    sci.plot_truth() # Plot the locations of the truth coordinates on your image.
     ap = sci.ap_phot(3.0) # Do aperture photometry on the object.
     psf = sci.psf_phot('epsf',ap,plot_epsf=True) # Construct a
                                                  # PSF from field   
@@ -39,6 +38,6 @@ for file in science_filepath:
 
 # Now, crossmatch the science image results to the truth catalog.
 # This returns a table where all measurements for one star are in a list
-# all in the same cell. e.g. 
+# all in the same cell. THIS DOES NOT WORK YET. 
 cm = rp.crossmatch_truth(truth_filepath,[savepath])
 ```
