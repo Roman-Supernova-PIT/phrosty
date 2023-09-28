@@ -38,7 +38,7 @@ for file in science_filepath:
 
 # Now, crossmatch the science image results to the truth catalog.
 # This returns a table where all measurements for one star are in a list
-# all in the same cell. THIS DOES NOT WORK YET. 
+# all in the same cell.
 results_filepath = glob('tables/test/*)
 cm = rp.crossmatch_truth(truth_filepath,results_filepath)
 ```
