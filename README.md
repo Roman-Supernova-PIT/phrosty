@@ -40,5 +40,5 @@ for file in science_filepath:
 # This returns a table where all measurements for one star are in a list
 # all in the same cell. THIS DOES NOT WORK YET. 
 results_filepath = glob('tables/test/*)
-cm = rp.crossmatch_truth(truth_filepath,[results_filepath])
+cm = rp.crossmatch_truth(truth_filepath,results_filepath)
 ```

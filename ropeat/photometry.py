@@ -347,16 +347,15 @@ def crossmatch_truth(truth_filepath,results_filepaths,seplimit=0.1,psf=True):
     for b in roman_bands:
         for p in prefixes:
             for s in suffixes:
-                if p != 'ap' and s != '_flux_err':
-                    match_vals.append(b+'_'+p+s)
-                else:
+                if p == 'ap' and 'err' in s:
                     pass
+                else:
+                    match_vals.append(b+'_'+p+s)
 
     tr = truth(truth_filepath)
     tr_tab = deepcopy(tr.table())
     for i, file in enumerate(results_filepaths):
         check = Table.read(file, format='csv')
-        band = check['band'][0]
         check_coords = SkyCoord(ra=check['ra']*u.degree, dec=check['dec']*u.degree)
         tr_coords = SkyCoord(ra=tr_tab['ra'], dec=tr_tab['dec']) # Already in degrees
         check_idx, tr_idx, angsep, dist3d = search_around_sky(check_coords,tr_coords,seplimit=seplimit*u.arcsec)
@@ -364,11 +363,13 @@ def crossmatch_truth(truth_filepath,results_filepaths,seplimit=0.1,psf=True):
         # Create a mask so values go in correct rows.
         tr_mask = np.empty(len(tr_tab))*np.nan
         for val in match_vals:
-            if band in val:
+            try:
                 tr_mask[tr_idx] = check[val]
                 tr_tab[f'{val}_{i}'] = np.empty(len(tr_tab))*np.nan
                 tr_tab[f'{val}_{i}'] = tr_mask
-    
+            except:
+                pass
+            
     # Put all the matching data in the same column. 
     n_tables = len(results_filepaths)
     matchescol = {x: [] for x in match_vals}
