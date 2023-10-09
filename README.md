@@ -7,6 +7,7 @@ To-do:
 - Implement star/galaxy separation
 - Ensure accurate source detection
 - Zero point for real
+- Replace current DAOStarFinder ePSF stamp exclusion method with one based on nearness to other coordinates. 
 
 Usage example:
 ```
@@ -14,6 +15,8 @@ import ropeat.photometry as rp
 from glob import glob 
 
 # Note: truth file from https://roman.ipac.caltech.edu/data/sims/sn_image_sims/galaxia_akari.fits.gz
+# But it'll work as long as you have a fits file with columns 'ra', 'dec', 'Y106', 'J129', 'H158', and 'F184' in radians and magnitudes. 
+# But don't attach an astropy unit to them. It converts the radians to degrees.  
 truth_filepath = 'imgs/truth/galaxia_akari.fits'
 science_filepath = glob('imgs/rotate_update_Y106_*_1.fits')
 

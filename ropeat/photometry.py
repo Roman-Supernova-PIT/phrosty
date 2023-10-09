@@ -176,7 +176,7 @@ class scienceimg():
     
     def psf_phot(self, psf, ap_results=None, saturation=8e4, noise=10**4.2,
                 fwhm=3.0, fit_shape=(5,5), method='subpixel', subpixels=5,
-                oversampling=3, maxiters=10,plot_epsf=False):
+                oversampling=3, maxiters=10, exclude_duplicates=False, plot_epsf=False):
         """Do PSF photometry. This is essentially a wrapper for photutils.psf.PSFPhotometry.
         Right now, because we're using the truth coordinates, we use PSFPhotometry, not
         IterativePSFPhotometry. 
@@ -224,23 +224,24 @@ class scienceimg():
             nddata = NDData(data=median_subtracted_data,wcs=self.wcs)
             extracted_stars = extract_stars(nddata, psfstars, size=stampsize)
 
-            # Get rid of stamps with more than one source.
-            exclude_coords = []
-            for i in range(len(extracted_stars)):
-                try:
-                    stampsources = daofind(extracted_stars[i] - self.median)
-                    if len(stampsources) > 1 or len(stampsources) < 1:
-                        exclude_coords.append(extracted_stars.center_flat[i])
-                except:
-                    pass
+            if exclude_duplicates:
+                # Get rid of stamps with more than one source.
+                exclude_coords = []
+                for i in range(len(extracted_stars)):
+                    try:
+                        stampsources = daofind(extracted_stars[i] - self.median)
+                        if len(stampsources) > 1 or len(stampsources) < 1:
+                            exclude_coords.append(extracted_stars.center_flat[i])
+                    except:
+                        pass
 
-            exclude_rows = []
-            for c in exclude_coords:
-                exclude_rows.append(psfstars[psfstars['x'] == c[0]])
+                exclude_rows = []
+                for c in exclude_coords:
+                    exclude_rows.append(psfstars[psfstars['x'] == c[0]])
 
-            new_psfstars_rows = [x for x in psfstars if x not in exclude_rows]
-            new_psfstars = Table(rows=new_psfstars_rows, names=psfstars.colnames)
-            extracted_stars = extract_stars(nddata, new_psfstars, size=stampsize)
+                new_psfstars_rows = [x for x in psfstars if x not in exclude_rows]
+                new_psfstars = Table(rows=new_psfstars_rows, names=psfstars.colnames)
+                extracted_stars = extract_stars(nddata, new_psfstars, size=stampsize)
 
             # Build ePSF.
             epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=maxiters)
@@ -323,7 +324,7 @@ class scienceimg():
 
         results_table.write(savepath, format='csv', overwrite=overwrite)
 
-def crossmatch_truth(truth_filepath,results_filepaths,seplimit=0.1,psf=True):
+def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,seplimit=0.1,psf=True,verbose=True):
     """
     This will handle a list of science files with mixed bands! Hopefully!
 
@@ -353,23 +354,46 @@ def crossmatch_truth(truth_filepath,results_filepaths,seplimit=0.1,psf=True):
                     match_vals.append(b+'_'+p+s)
 
     tr = truth(truth_filepath)
-    tr_tab = deepcopy(tr.table())
-    for i, file in enumerate(results_filepaths):
-        check = Table.read(file, format='csv')
-        check_coords = SkyCoord(ra=check['ra']*u.degree, dec=check['dec']*u.degree)
-        tr_coords = SkyCoord(ra=tr_tab['ra'], dec=tr_tab['dec']) # Already in degrees
-        check_idx, tr_idx, angsep, dist3d = search_around_sky(check_coords,tr_coords,seplimit=seplimit*u.arcsec)
+    tr_tab = tr.table()
+    temp_file_name = 'tempfile_DELETEME.fits'
+    tr_tab.write(temp_file_name, format='fits', overwrite=True)
 
-        # Create a mask so values go in correct rows.
-        tr_mask = np.empty(len(tr_tab))*np.nan
-        for val in match_vals:
-            try:
-                tr_mask[tr_idx] = check[val]
-                tr_tab[f'{val}_{i}'] = np.empty(len(tr_tab))*np.nan
-                tr_tab[f'{val}_{i}'] = tr_mask
-            except:
-                pass
-            
+    if verbose:
+        print(f'We need to get through matching {len(results_filepaths)} files.')
+        nfiles = 0
+    for i, file in enumerate(results_filepaths):
+        if verbose:
+            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            print(file)
+        with fits.open(temp_file_name) as f:
+            tr_tab = Table(f[1].data)
+            check = Table.read(file, format='csv')
+            if verbose:
+                print('Succesfully opened file. Next, crossmatch and merge tables.')
+            check_coords = SkyCoord(ra=check['ra']*u.degree, dec=check['dec']*u.degree)
+            tr_coords = SkyCoord(ra=tr_tab['ra']*u.degree, dec=tr_tab['dec']*u.degree) 
+            check_idx, tr_idx, angsep, dist3d = search_around_sky(check_coords,tr_coords,seplimit=seplimit*u.arcsec)
+
+            # Create a mask so values go in correct rows.
+            tr_mask = np.empty(len(tr_tab))*np.nan
+            for val in match_vals:
+                try:
+                    tr_mask[tr_idx] = check[val]
+                    tr_tab[f'{val}_{i}'] = np.empty(len(tr_tab))*np.nan
+                    tr_tab[f'{val}_{i}'] = tr_mask
+                except:
+                    pass
+
+            tr_tab.write(temp_file_name, format='fits', overwrite=True)
+            if verbose:
+                print(f'Wrote the crossmatched data to the main catalog in a temporary file, {temp_file_name}.')
+                nfiles += 1
+                print(f'Made it through crossmatching {nfiles}/{len(results_filepaths)} files.')
+            f.close()
+    
+    if verbose:
+        print('Cross-matching complete. Collapsing columns.')
+
     # Put all the matching data in the same column. 
     n_tables = len(results_filepaths)
     matchescol = {x: [] for x in match_vals}
@@ -381,7 +405,13 @@ def crossmatch_truth(truth_filepath,results_filepaths,seplimit=0.1,psf=True):
     # band data. Which I understand sounds correct, but it's not; empty
     # cells should be empty in the same way, uniformly. I guess TBD
     # on if this is a problem. 
+
+    tr_tab_fits = fits.open(temp_file_name)[1].data
+    tr_tab = Table(tr_tab_fits)
     for key in matchescol:
+        if verbose:
+            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            print(key)
         for row in tr_tab:
             vals = []
             for n in range(n_tables):
@@ -390,8 +420,24 @@ def crossmatch_truth(truth_filepath,results_filepaths,seplimit=0.1,psf=True):
                         vals.append(row[f'{key}_{n}'])
                 except:
                     pass
-            matchescol[key].append(vals)
+            matchescol[key].append(','.join([str(v) for v in vals]))
 
+    if verbose:
+        print('Got through the loop, appending the collapsed column to the table.')
     tr_tab |= matchescol
 
-    return tr_tab
+    if verbose:
+        print('Dropping excess columns.')
+    for n in range(n_tables):
+        for key in matchescol:
+            try:
+                tr_tab.remove_column(f'{key}_{n}')
+            except:
+                print(f'Could not drop column {key}_{n}.')
+
+    if verbose:
+        print(f'Column appended, now saving it to your chosen savepath, {savename}.')
+
+    tr_tab.write(savename, format='csv', overwrite=overwrite)
+    if verbose:
+        print('Crossmatching file with collapsed column written.')
