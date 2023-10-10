@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from scipy import stats
 from copy import deepcopy
 import matplotlib.pyplot as plt
@@ -324,7 +325,7 @@ class scienceimg():
 
         results_table.write(savepath, format='csv', overwrite=overwrite)
 
-def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,seplimit=0.1,psf=True,verbose=True):
+def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,seplimit=0.1,psf=True,verbose=True,temp_file_path=None):
     """
     This will handle a list of science files with mixed bands! Hopefully!
 
@@ -355,7 +356,14 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
 
     tr = truth(truth_filepath)
     tr_tab = tr.table()
-    temp_file_name = 'tempfile_DELETEME.fits'
+    if temp_file_path is None:
+        temp_file_name = 'tempfile_DELETEME.fits'
+    elif isinstance(temp_file_path, str) and '.fits' in temp_file_path:
+        temp_file_name = temp_file_path
+    else:
+        print('Something is wrong with your temporary file path.')
+        print('Maybe it doesnt end in .fits? Or is not a string?')
+
     tr_tab.write(temp_file_name, format='fits', overwrite=True)
 
     if verbose:
@@ -418,12 +426,19 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                 try:
                     if not np.isnan(row[f'{key}_{n}']):
                         vals.append(row[f'{key}_{n}'])
+                        if verbose:
+                            print(f'Values found in {key}_{n}.')
                 except:
-                    pass
+                    if verbose:
+                        print(f'No values found in {key}_{n}.')
+                    else:
+                        pass
             matchescol[key].append(','.join([str(v) for v in vals]))
 
     if verbose:
-        print('Got through the loop, appending the collapsed column to the table.')
+        print('Here is the column we are appending:')
+        print(matchescol)
+        print('Now appending the collapsed column to the table.')
     tr_tab |= matchescol
 
     if verbose:
@@ -441,3 +456,5 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
     tr_tab.write(savename, format='csv', overwrite=overwrite)
     if verbose:
         print('Crossmatching file with collapsed column written.')
+        print('Finally, deleting the temporary file.')
+    os.remove(temp_file_name)
