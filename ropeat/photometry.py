@@ -346,9 +346,15 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
         
     suffixes = ['_flux', '_flux_err', '_mag', '_mag_err']
     match_vals = []
-    for b in roman_bands:
-        for p in prefixes:
-            for s in suffixes:
+    all_suffixes = []
+    
+    for p in prefixes:
+        for s in suffixes:
+            if p == 'ap' and 'err' in s:
+                pass
+            else:
+                all_suffixes.append('_'+p+s)
+            for b in roman_bands:
                 if p == 'ap' and 'err' in s:
                     pass
                 else:
@@ -364,97 +370,56 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
         print('Something is wrong with your temporary file path.')
         print('Maybe it doesnt end in .fits? Or is not a string?')
 
+    for col in match_vals:
+        tr_tab[col] = str('')
+    
     tr_tab.write(temp_file_name, format='fits', overwrite=True)
 
     if verbose:
         print(f'We need to get through matching {len(results_filepaths)} files.')
         nfiles = 0
+        nfail = 0
     for i, file in enumerate(results_filepaths):
-        if verbose:
-            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-            print(file)
-        with fits.open(temp_file_name) as f:
-            tr_tab = Table(f[1].data)
-            check = Table.read(file, format='csv')
+        if os.path.exists(file):
             if verbose:
-                print('Succesfully opened file. Next, crossmatch and merge tables.')
-            check_coords = SkyCoord(ra=check['ra']*u.degree, dec=check['dec']*u.degree)
-            tr_coords = SkyCoord(ra=tr_tab['ra']*u.degree, dec=tr_tab['dec']*u.degree) 
-            check_idx, tr_idx, angsep, dist3d = search_around_sky(check_coords,tr_coords,seplimit=seplimit*u.arcsec)
+                print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+                print(file)
+            with fits.open(temp_file_name) as f:
+                tr_tab = Table(f[1].data)
+                check = Table.read(file, format='csv')
+                band = check['band'][0]
+                if verbose:
+                    print('Succesfully opened file. Next, crossmatch and merge tables.')
+                check_coords = SkyCoord(ra=check['ra']*u.degree, dec=check['dec']*u.degree)
+                tr_coords = SkyCoord(ra=tr_tab['ra']*u.degree, dec=tr_tab['dec']*u.degree) 
+                check_idx, tr_idx, angsep, dist3d = search_around_sky(check_coords,tr_coords,seplimit=seplimit*u.arcsec)
 
-            # Create a mask so values go in correct rows.
-            tr_mask = np.empty(len(tr_tab))*np.nan
-            for val in match_vals:
-                try:
-                    tr_mask[tr_idx] = check[val]
-                    tr_tab[f'{val}_{i}'] = np.empty(len(tr_tab))*np.nan
-                    tr_tab[f'{val}_{i}'] = tr_mask
-                except:
-                    pass
+                tr_tab = tr_tab.to_pandas()
+                appendvals = lambda x,y : str(x) + ',' + str(y)
+                for s in all_suffixes:
+                    tlist = list(tr_tab[f'{band}{s}'])
+                    tlist_reduced = list(np.array(tlist)[tr_idx])
+                    clist = list(check[f'{band}{s}'])
+                    clist_reduced = list(np.array(clist)[check_idx])
+                    strcol = list(map(appendvals,tlist_reduced,clist_reduced))
+                    strcol = [strcol[i][1:] if strcol[i][0] == ',' else strcol[i] for i in range(len(strcol))]
+                    tr_tab.loc[tr_idx, f'{band}{s}'] = strcol
 
+            tr_tab = Table.from_pandas(tr_tab)
             tr_tab.write(temp_file_name, format='fits', overwrite=True)
             if verbose:
                 print(f'Wrote the crossmatched data to the main catalog in a temporary file, {temp_file_name}.')
                 nfiles += 1
                 print(f'Made it through crossmatching {nfiles}/{len(results_filepaths)} files.')
-            f.close()
-    
-    if verbose:
-        print('Cross-matching complete. Collapsing columns.')
 
-    # Put all the matching data in the same column. 
-    n_tables = len(results_filepaths)
-    matchescol = {x: [] for x in match_vals}
-
-    # There absolutely must be a way to merge those columns with
-    # array operations instead of loops, but I can't make it behave.
-    # Also, for some reason it puts an empty list in the cells where
-    # I input band data, but leaves cells blank if I don't put in the 
-    # band data. Which I understand sounds correct, but it's not; empty
-    # cells should be empty in the same way, uniformly. I guess TBD
-    # on if this is a problem. 
-
-    tr_tab_fits = fits.open(temp_file_name)[1].data
-    tr_tab = Table(tr_tab_fits)
-    for key in matchescol:
-        if verbose:
-            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-            print(key)
-        for row in tr_tab:
-            vals = []
-            for n in range(n_tables):
-                try:
-                    if not np.isnan(row[f'{key}_{n}']):
-                        vals.append(row[f'{key}_{n}'])
-                        if verbose:
-                            print(f'Values found in {key}_{n}.')
-                except:
-                    if verbose:
-                        print(f'No values found in {key}_{n}.')
-                    else:
-                        pass
-            matchescol[key].append(','.join([str(v) for v in vals]))
-
-    if verbose:
-        print('Here is the column we are appending:')
-        print(matchescol)
-        print('Now appending the collapsed column to the table.')
-    tr_tab |= matchescol
-
-    if verbose:
-        print('Dropping excess columns.')
-    for n in range(n_tables):
-        for key in matchescol:
-            try:
-                tr_tab.remove_column(f'{key}_{n}')
-            except:
-                print(f'Could not drop column {key}_{n}.')
-
-    if verbose:
-        print(f'Column appended, now saving it to your chosen savepath, {savename}.')
-
+        else:
+            if verbose:
+                print(f'Oops! {file} does not seem to exist.')
+                nfail += 1
+                print(f'In total, {nfail}/{len(results_filepaths)} filepaths have failed.')
+  
     tr_tab.write(savename, format='csv', overwrite=overwrite)
     if verbose:
-        print('Crossmatching file with collapsed column written.')
+        print('Final crossmatched file is written.')
         print('Finally, deleting the temporary file.')
     os.remove(temp_file_name)
