@@ -22,7 +22,7 @@ class truth():
     # https://roman.ipac.caltech.edu/data/sims/sn_image_sims/galaxia_akari.fits.gz
     def __init__(self,filepath):
         """filepath should be to a truth file that only contains stars.
-        No galaxies! 
+        No galaxies! The fits file should have columns ['ra', 'dec', 'Y106', 'J129', 'H158', 'F184'].
 
         :param filepath: Path to fits file. 
         :type filepath: str
@@ -32,9 +32,7 @@ class truth():
 
     def table(self):
         """Returns an astropy table with truth data. 
-        :param filepath: Path to truth file. File must be in fits format. 
-        :type filepath: str
-        :return: astropy table with columns ['index', 'ra', 'dec].
+        :return: astropy table with columns ['index', 'ra', 'dec', 'Y106', 'J129', 'H158', 'F184'].
         :rtype: astropy table
         """
 
@@ -71,6 +69,22 @@ class scienceimg():
     :type bkgstat: photutils.background object, optional
     :param band: WFI bandpass. Valid inputs: ['Y106', 'J129', 'H158', 'F184']
     :type band: str
+    :param pointing: Pointing number. Used for assigning a source ID in the output table.
+    :type pointing: str, float, int
+    :param chip: Chip/SCA number. Used for assigning a source ID in the output table.
+    :type chip: str, float, int
+    :param bkgstat: Background estimator from photutils. If you don't want to use MMMBackground for the background
+        statistics, you can set a different background estimator from
+        photutils. Accepted background classes are:
+        photutils.background.MeanBackground
+        photutils.background.MedianBackground
+        photutils.background.ModeEstimatorBackground
+        photutils.background.MMMBackground
+        photutils.background.SExtractorBackground
+        photutils.background.BiweightLocationBackground
+    :type bkgstat: photutils background object
+    :param bkg_annulus: Define annulus for computing local background with (inner radius, outer radius) in pixels. 
+    :type bkg_annulus: tuple
     """
     def __init__(self,filepath,
                  truthcoords,
@@ -118,6 +132,9 @@ class scienceimg():
         self.psf_phot_results = None
 
     def plot_truth(self):
+        """"
+        Plot the locations of the truth coordinates over the science image. 
+        """
         zscale=ZScaleInterval()
         z1,z2 = zscale.get_limits(self.data)
         plt.figure(figsize=(8,8))
@@ -129,27 +146,6 @@ class scienceimg():
         plt.colorbar()
         plt.show()
 
-    def set_bkgstat(self,new_stat):
-        """If you don't want to use MMMBackground for the background
-        statistics, you can set a different background estimator from
-        photutils. Accepted background classes are:
-        photutils.background.MeanBackground
-        photutils.background.MedianBackground
-        photutils.background.ModeEstimatorBackground
-        photutils.background.MMMBackground
-        photutils.background.SExtractorBackground
-        photutils.background.BiweightLocationBackground
-
-        But I only tested MMMBackground. 
-        
-        :param new_stat: background estimator from photutils.
-        :type new_stat: photutils background object
-        """
-        self.bkgstat = new_stat
-        self._localbkg = LocalBackground(min(self.bkg_annulus),max(self.bkg_annulus),self.bkgstat)
-        self.localbkg = self._localbkg(data=self.data,x=self.coords_in[0],
-                                                      y=self.coords_in[1])
-        
     def ap_phot(self,ap_r,method='subpixel',subpixels=5):
         """Do basic aperture photometry. 
 
@@ -270,7 +266,7 @@ class scienceimg():
     
     def save_results(self,savepath,overwrite=False,truth_zpt=True,
                      truth_table=None):
-        """_summary_
+        """Save photometry results to a csv. 
 
         :param savepath: path to save file. Include filename.
         :type savepath: str
@@ -298,6 +294,8 @@ class scienceimg():
         
         ra_dec = self.wcs.pixel_to_world(self.ap_phot_results['x_init'], self.ap_phot_results['y_init'])
         results_table['ra'], results_table['dec'] = ra_dec.ra.value, ra_dec.dec.value
+        
+        results_table[f'{self.band}_ap_max'] = self.ap_phot_results['max']
         
         results_table[f'{self.band}_ap_flux'] = self.ap_phot_results['aperture_sum']
         results_table[f'{self.band}_ap_mag'] = -2.5*np.log10(self.ap_phot_results['aperture_sum'])
