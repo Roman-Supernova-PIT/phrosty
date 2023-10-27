@@ -1,22 +1,25 @@
 import numpy as np
 import os
+from collections import defaultdict
 from scipy import stats
 from copy import deepcopy
 import matplotlib.pyplot as plt
 from astropy.io import fits
+from astropy.convolution import convolve
 from astropy.coordinates import SkyCoord, search_around_sky
 from astropy.nddata import NDData
 from astropy.stats import sigma_clipped_stats
-from astropy.table import Table
+from astropy.table import Table, hstack
 from astropy.visualization import ZScaleInterval, simple_norm
 from astropy.wcs import WCS
 import astropy.units as u
 from photutils.aperture import CircularAperture, aperture_photometry, ApertureStats
-from photutils.background import LocalBackground, MMMBackground
+from photutils.background import LocalBackground, MMMBackground, Background2D
 from photutils.detection import DAOStarFinder
 from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry, IntegratedGaussianPRF
+from photutils.segmentation import make_2dgaussian_kernel, detect_sources, deblend_sources, SourceCatalog
 
-roman_bands = ['Y106', 'J129', 'H158', 'F184']
+roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'W146', 'K213']
 
 class truth():
     # https://roman.ipac.caltech.edu/data/sims/sn_image_sims/galaxia_akari.fits.gz
@@ -42,7 +45,10 @@ class truth():
         truth_dec = (truth['dec']*u.radian).to(u.deg)
         truth_mags = {}
         for band in roman_bands:
-            truth_mags[band] = truth[band]
+            try:
+                truth_mags[band] = truth[band]
+            except:
+                pass
         truth_tab = Table([np.arange(0,len(truth),1),truth_ra,truth_dec], names=('index','ra','dec'))
         truth_tab |= truth_mags
         return truth_tab
@@ -92,7 +98,9 @@ class scienceimg():
                  pointing='unspecified',
                  chip='unspecified',
                  bkgstat=MMMBackground(),
-                 bkg_annulus=(50.0,80.0)
+                 bkg_annulus=(50.0,80.0),
+                 box_size=(50,50),
+                 filter_size=(3,3)
                  ):
         
         if band not in roman_bands:
@@ -111,16 +119,23 @@ class scienceimg():
         self.mean, self.median, self.std = sigma_clipped_stats(self.data, sigma=3.0)
 
         self.truthcoords = truthcoords
+        self.initcoords = None
         self.footprint_mask = self.wcs.footprint_contains(self.truthcoords)
         self.pixel_coords = self.wcs.world_to_pixel(self.truthcoords)
         self.coords_in = (self.pixel_coords[0][self.footprint_mask],
                           self.pixel_coords[1][self.footprint_mask])
 
         self.bkgstat = bkgstat
+        self.bkg = Background2D(self.data, box_size, filter_size=filter_size, bkg_estimator=self.bkgstat)
+        self.bkgimg = self.bkg.background
         self.bkg_annulus = bkg_annulus
         self._localbkg = LocalBackground(min(self.bkg_annulus),max(self.bkg_annulus),self.bkgstat)
         self.localbkg = self._localbkg(data=self.data,x=self.coords_in[0],
                                                       y=self.coords_in[1])
+        self.bkg_sub_data = self.data - self.bkgimg
+        
+        self.convolution_kernel = make_2dgaussian_kernel(fwhm=3.0, size=5)
+        self.convolved_data = None   
 
         self.band = band
         self.pointing = pointing
@@ -146,8 +161,8 @@ class scienceimg():
         plt.colorbar()
         plt.show()
 
-    def ap_phot(self,ap_r,method='subpixel',subpixels=5):
-        """Do basic aperture photometry. 
+    def ap_phot(self,ap_r,method='subpixel',subpixels=5,truthcoordsonly=False):
+        """Do basic aperture photometry and get morphological properties of the data. 
 
         :param ap_r: Circular aperture radius.
         :type ap_r: float
@@ -158,18 +173,45 @@ class scienceimg():
         :return: Table with results from aperture photometry.
         :rtype: astropy Table object
         """        
+        
+        # First, detect sources and get morphology info. 
+        convolved_data = convolve(self.bkg_sub_data, self.convolution_kernel) 
+        threshold = 1.5*self.bkg.background_rms
+        segment_map = detect_sources(convolved_data, threshold, npixels=10)
+        cat = SourceCatalog(self.bkg_sub_data, segment_map, convolved_data=convolved_data, wcs=self.wcs)
+        cattab = cat.to_table()
+        cattab['cxx'] = cat.cxx
+        cattab['cxy'] = cat.cxy
+        cattab['cyy'] = cat.cyy
+        cattab['ellipticity'] = cat.ellipticity
+        cattab['fwhm'] = cat.fwhm
+
+        splitcoordsfunc = lambda x: x.to_string().split(' ')
+        splitcoords = np.array(list(map(splitcoordsfunc, cattab['sky_centroid'])), dtype=float).T
+        cattab['ra'] = splitcoords[0]
+        cattab['dec'] = splitcoords[1]
+
+        dropcols = ['kron_flux', 'kron_fluxerr', 'min_value', 'max_value', 'segment_flux', 'segment_fluxerr','local_background']
+        cattab.remove_columns(dropcols)
+        
+        # Now, aperture photometry. 
         self.ap_r = ap_r
-        bkgval = self.bkgstat.calc_background(self.data)
-        apertures = CircularAperture(np.transpose(self.coords_in), r=ap_r)
-        ap_results = aperture_photometry(self.data-bkgval,apertures,method=method,subpixels=subpixels)
+        if truthcoordsonly:
+            self.initcoords = np.transpose(self.coords_in)
+        elif not truthcoordsonly:
+            x = np.array(cattab['xcentroid'])
+            y = np.array(cattab['ycentroid'])
+            self.initcoords = np.transpose(np.vstack([x,y]))
+            
+        apertures = CircularAperture(self.initcoords, r=ap_r)   
+        ap_results = aperture_photometry(self.bkg_sub_data,apertures,method=method,subpixels=subpixels)
         apstats = ApertureStats(self.data, apertures)
         ap_results['max'] = apstats.max
-        ap_results['x_init'], ap_results['y_init'] = ap_results['xcenter'].value, ap_results['ycenter'].value
-        ap_results[self.band] = -2.5*np.log10(ap_results['aperture_sum'].value)
-        
-        self.ap_phot_results = ap_results
 
-        return ap_results
+        ap_results[self.band] = -2.5*np.log10(ap_results['aperture_sum'].value)
+        self.ap_phot_results = hstack([ap_results, cattab])
+        
+        return self.ap_phot_results
     
     def psf_phot(self, psf, ap_results=None, saturation=8e4, noise=10**4.2,
                 fwhm=3.0, fit_shape=(5,5), method='subpixel', subpixels=5,
@@ -211,7 +253,7 @@ class scienceimg():
         elif psf == 'gaussian':
             psf_func = IntegratedGaussianPRF(sigma=fwhm)
         elif psf == 'epsf':
-            psfstars = Table({'x': self.coords_in[0], 'y': self.coords_in[1],
+            psfstars = Table({'x': self.initcoords.T[0], 'y': self.initcoords.T[1],
                                 'flux': ap_results['aperture_sum'], 'max': ap_results['max']})
             psfstars = psfstars[psfstars['max'] < saturation]
             psfstars = psfstars[psfstars['flux'] > noise]
@@ -264,7 +306,7 @@ class scienceimg():
 
         return psf_results
     
-    def save_results(self,savepath,overwrite=False,truth_zpt=True,
+    def save_results(self,savepath,overwrite=False,zpt='galsim',
                      truth_table=None):
         """Save photometry results to a csv. 
 
@@ -272,8 +314,8 @@ class scienceimg():
         :type savepath: str
         :param overwrite: Set True if you want to overwrite previously saved files, defaults to False
         :type overwrite: bool, optional
-        :param truth_zpt: Zero point photometry to truth table, defaults to True
-        :type truth_zpt: bool, optional
+        :param zpt: Zero point ['galsim','truth']
+        :type zpt: str, optional
         :param truth_table: _description_, defaults to None
         :type truth_table: _type_, optional
         :raises Exception: _description_
@@ -283,16 +325,18 @@ class scienceimg():
             raise Exception('You need to run either self.ap_phot() or self.psf_phot() to have results to save!')
             # If you ran self.psf_phot(), then self.ap_phot() was run. :)
 
-        if truth_zpt == True and truth_table is None:
-            raise ValueError('If truth_zpt==True, then you must provide a table from truth.table() in argument truth_table.')
+        if zpt == 'truth' and truth_table is None:
+            raise ValueError('If zpt == "truth", then you must provide a table from truth.table() in argument truth_table.')
 
         results_table = Table()
         index = [i for i in range(len(self.ap_phot_results))]
         results_table['index'] = index
         results_table['source_ID'] = [f'{self.band}_{self.pointing}_{self.chip}_{i}' for i in range(len(self.ap_phot_results))]
-        results_table['x_init'], results_table['y_init'] = self.ap_phot_results['x_init'], self.ap_phot_results['y_init']
         
-        ra_dec = self.wcs.pixel_to_world(self.ap_phot_results['x_init'], self.ap_phot_results['y_init'])
+        for col in self.ap_phot_results.colnames:
+            results_table[col] = self.ap_phot_results[col]
+        
+        ra_dec = self.wcs.pixel_to_world(self.psf_phot_results['x_fit'], self.psf_phot_results['y_fit'])
         results_table['ra'], results_table['dec'] = ra_dec.ra.value, ra_dec.dec.value
         
         results_table[f'{self.band}_ap_max'] = self.ap_phot_results['max']
@@ -306,7 +350,7 @@ class scienceimg():
             results_table[f'{self.band}_psf_mag'] = -2.5*np.log10(results_table[f'{self.band}_psf_flux'])
             results_table[f'{self.band}_psf_mag_err'] = np.sqrt((1.09/results_table[f'{self.band}_psf_flux'])**2*results_table[f'{self.band}_psf_flux_err']**2)
 
-        if truth_zpt == True:
+        if zpt == 'truth':
             ap_zpt_mask = np.logical_and(results_table[f'{self.band}_ap_mag']>-11, results_table[f'{self.band}_ap_mag']<-9)
             psf_zpt_mask = np.logical_and(results_table[f'{self.band}_psf_mag']>-11, results_table[f'{self.band}_psf_mag']<-9)
 
@@ -316,10 +360,19 @@ class scienceimg():
 
             results_table[f'{self.band}_ap_mag'] -= ap_zpt
             results_table[f'{self.band}_psf_mag'] -= psf_zpt
-
+        elif zpt == 'galsim':
+            from galsim import roman
+            zp = roman.getBandpasses()[self.band].zeropoint
+            
+            results_table[f'{self.band}_ap_mag'] += zp
+            results_table[f'{self.band}_psf_mag'] += zp
+            
         results_table['band'] = self.band
         results_table['pointing'] = self.pointing
         results_table['chip'] = self.chip
+        
+        dropcols = ['id','label','xcenter','ycenter']
+        results_table.remove_columns(dropcols)
 
         results_table.write(savepath, format='csv', overwrite=overwrite)
 
