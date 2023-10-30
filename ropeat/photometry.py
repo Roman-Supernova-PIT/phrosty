@@ -411,6 +411,8 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                 else:
                     match_vals.append(b+'_'+p+s)
 
+    match_vals.append('ra_all')
+    match_vals.append('dec_all')
     tr = truth(truth_filepath)
     tr_tab = tr.table()
     if temp_file_path is None:
@@ -447,6 +449,8 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
 
                 tr_tab = tr_tab.to_pandas()
                 appendvals = lambda x,y : str(x) + ',' + str(y)
+                
+                # Collect all magnitudes into a string into one column. 
                 for s in all_suffixes:
                     tlist = list(tr_tab[f'{band}{s}'])
                     tlist_reduced = list(np.array(tlist)[tr_idx])
@@ -455,6 +459,16 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                     strcol = list(map(appendvals,tlist_reduced,clist_reduced))
                     strcol = [strcol[i][1:] if strcol[i][0] == ',' else strcol[i] for i in range(len(strcol))]
                     tr_tab.loc[tr_idx, f'{band}{s}'] = strcol
+                    
+                # Collect RA/dec into a string into one column. 
+                for c in ['ra','dec']:
+                    tlist = list(tr_tab[c])
+                    tlist_reduced = list(np.array(tlist)[tr_idx])
+                    clist = list(check[c])
+                    clist_reduced = list(np.array(clist)[check_idx])
+                    strcol = list(map(appendvals,tlist_reduced,clist_reduced))
+                    strcol = [strcol[i][1:] if strcol[i][0] == ',' else strcol[i] for i in range(len(strcol))]
+                    tr_tab.loc[tr_idx, f'{c}_all'] = strcol
 
             tr_tab = Table.from_pandas(tr_tab)
             tr_tab.write(temp_file_name, format='fits', overwrite=True)
