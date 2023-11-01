@@ -33,24 +33,23 @@ class truth():
         self.filepath = filepath
         self.truthhdu = fits.open(self.filepath)
 
-    def table(self):
+    def table(self,units='degrees'):
         """Returns an astropy table with truth data. 
-        :return: astropy table with columns ['index', 'ra', 'dec', 'Y106', 'J129', 'H158', 'F184'].
+        :param units: Input units of ra and dec. Currently accepts ['degrees','radians'].
+        :type units: str        
+        :return: astropy table
         :rtype: astropy table
         """
 
-        truthhead = self.truthhdu[1].header
-        truth = self.truthhdu[1].data
-        truth_ra = (truth['ra']*u.radian).to(u.deg)
-        truth_dec = (truth['dec']*u.radian).to(u.deg)
-        truth_mags = {}
-        for band in roman_bands:
-            try:
-                truth_mags[band] = truth[band]
-            except:
-                pass
-        truth_tab = Table([np.arange(0,len(truth),1),truth_ra,truth_dec], names=('index','ra','dec'))
-        truth_tab |= truth_mags
+        truth_tab = Table(self.truthhdu[1].data)
+        
+        if units=='degrees':
+            truth_ra = truth_tab['ra']*u.deg
+            truth_dec = truth_tab['dec']*u.deg
+        elif units=='radians':
+            truth_ra = (truth_tab['ra']*u.radian).to(u.deg)
+            truth_dec = (truth_tab['dec']*u.radian).to(u.deg)
+
         return truth_tab
 
     def truthcoords(self):
@@ -145,7 +144,22 @@ class scienceimg():
 
         self.ap_phot_results = None
         self.psf_phot_results = None
+        
+    def plot_img(self):
+        """
+        Plot the science image. 
+        
+        """
 
+        zscale=ZScaleInterval()
+        z1,z2 = zscale.get_limits(self.data)
+        plt.figure(figsize=(8,8))
+        plt.imshow(self.data,vmin=z1,vmax=z2,cmap='Greys',origin='lower')
+        plt.xlabel('x [px]')
+        plt.ylabel('y [px]')
+        plt.colorbar()
+        plt.show()
+        
     def plot_truth(self):
         """"
         Plot the locations of the truth coordinates over the science image. 
@@ -173,26 +187,26 @@ class scienceimg():
         :return: Table with results from aperture photometry.
         :rtype: astropy Table object
         """        
-        
-        # First, detect sources and get morphology info. 
-        convolved_data = convolve(self.bkg_sub_data, self.convolution_kernel) 
-        threshold = 1.5*self.bkg.background_rms
-        segment_map = detect_sources(convolved_data, threshold, npixels=10)
-        cat = SourceCatalog(self.bkg_sub_data, segment_map, convolved_data=convolved_data, wcs=self.wcs)
-        cattab = cat.to_table()
-        cattab['cxx'] = cat.cxx
-        cattab['cxy'] = cat.cxy
-        cattab['cyy'] = cat.cyy
-        cattab['ellipticity'] = cat.ellipticity
-        cattab['fwhm'] = cat.fwhm
+        if not truthcoordsonly:
+            # First, detect sources and get morphology info. 
+            convolved_data = convolve(self.bkg_sub_data, self.convolution_kernel) 
+            threshold = 1.5*self.bkg.background_rms
+            segment_map = detect_sources(convolved_data, threshold, npixels=10)
+            cat = SourceCatalog(self.bkg_sub_data, segment_map, convolved_data=convolved_data, wcs=self.wcs)
+            cattab = cat.to_table()
+            cattab['cxx'] = cat.cxx
+            cattab['cxy'] = cat.cxy
+            cattab['cyy'] = cat.cyy
+            cattab['ellipticity'] = cat.ellipticity
+            cattab['fwhm'] = cat.fwhm
 
-        splitcoordsfunc = lambda x: x.to_string().split(' ')
-        splitcoords = np.array(list(map(splitcoordsfunc, cattab['sky_centroid'])), dtype=float).T
-        cattab['ra'] = splitcoords[0]
-        cattab['dec'] = splitcoords[1]
+            splitcoordsfunc = lambda x: x.to_string().split(' ')
+            splitcoords = np.array(list(map(splitcoordsfunc, cattab['sky_centroid'])), dtype=float).T
+            cattab['ra'] = splitcoords[0]
+            cattab['dec'] = splitcoords[1]
 
-        dropcols = ['kron_flux', 'kron_fluxerr', 'min_value', 'max_value', 'segment_flux', 'segment_fluxerr','local_background']
-        cattab.remove_columns(dropcols)
+            dropcols = ['kron_flux', 'kron_fluxerr', 'min_value', 'max_value', 'segment_flux', 'segment_fluxerr','local_background']
+            cattab.remove_columns(dropcols)
         
         # Now, aperture photometry. 
         self.ap_r = ap_r
@@ -209,7 +223,16 @@ class scienceimg():
         ap_results['max'] = apstats.max
 
         ap_results[self.band] = -2.5*np.log10(ap_results['aperture_sum'].value)
-        self.ap_phot_results = hstack([ap_results, cattab])
+        if not truthcoordsonly:
+            self.ap_phot_results = hstack([ap_results, cattab])
+        elif truthcoordsonly:
+            ap_results.rename_column('xcenter','xcentroid')
+            ap_results.rename_column('ycenter','ycentroid')
+            
+            for col in ap_results.colnames:
+                ap_results[col] = ap_results[col].value
+                
+            self.ap_phot_results = ap_results
         
         return self.ap_phot_results
     
@@ -306,7 +329,7 @@ class scienceimg():
 
         return psf_results
     
-    def save_results(self,savepath,overwrite=False,zpt='galsim',
+    def save_results(self,savepath,zpt,overwrite=False,
                      truth_table=None):
         """Save photometry results to a csv. 
 
@@ -314,8 +337,8 @@ class scienceimg():
         :type savepath: str
         :param overwrite: Set True if you want to overwrite previously saved files, defaults to False
         :type overwrite: bool, optional
-        :param zpt: Zero point ['galsim','truth']
-        :type zpt: str, optional
+        :param zpt: Zero point ['galsim','truth',None]
+        :type zpt: str or NoneType, optional
         :param truth_table: _description_, defaults to None
         :type truth_table: _type_, optional
         :raises Exception: _description_
@@ -357,9 +380,10 @@ class scienceimg():
             truthmag = truth_table[self.band][self.footprint_mask]
             ap_zpt = np.median(results_table[f'{self.band}_ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
             psf_zpt = np.median(results_table[f'{self.band}_psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
-
+            
             results_table[f'{self.band}_ap_mag'] -= ap_zpt
             results_table[f'{self.band}_psf_mag'] -= psf_zpt
+            
         elif zpt == 'galsim':
             from galsim import roman
             zp = roman.getBandpasses()[self.band].zeropoint
@@ -367,12 +391,20 @@ class scienceimg():
             results_table[f'{self.band}_ap_mag'] += zp
             results_table[f'{self.band}_psf_mag'] += zp
             
+        elif zpt is None:
+            pass
+            
         results_table['band'] = self.band
         results_table['pointing'] = self.pointing
         results_table['chip'] = self.chip
         
         dropcols = ['id','label','xcenter','ycenter']
-        results_table.remove_columns(dropcols)
+        try:
+            results_table.remove_columns(dropcols)
+        except:
+            print('dropcols do not exist. maybe need to clean this up later but for now just... except')
+            
+        results_table['psfphot_flags'] = self.psf_phot_results['flags']
 
         results_table.write(savepath, format='csv', overwrite=overwrite)
 
@@ -460,6 +492,11 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                     strcol = [strcol[i][1:] if strcol[i][0] == ',' else strcol[i] for i in range(len(strcol))]
                     tr_tab.loc[tr_idx, f'{band}{s}'] = strcol
                     
+                    print(f'strcol, {band}{s}')
+                    print(strcol)
+                    print("tr_tab.loc[tr_idx, f'{band}{s}']")
+                    print(tr_tab.loc[tr_idx, f'{band}{s}'])
+                    
                 # Collect RA/dec into a string into one column. 
                 for c in ['ra','dec']:
                     tlist = list(tr_tab[c])
@@ -469,6 +506,11 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                     strcol = list(map(appendvals,tlist_reduced,clist_reduced))
                     strcol = [strcol[i][1:] if strcol[i][0] == ',' else strcol[i] for i in range(len(strcol))]
                     tr_tab.loc[tr_idx, f'{c}_all'] = strcol
+                    
+                    print(f'strcol, {c}')
+                    print(strcol)
+                    print("tr_tab.loc[tr_idx, f'{c}_all']")
+                    print(tr_tab.loc[tr_idx, f'{c}_all'])
 
             tr_tab = Table.from_pandas(tr_tab)
             tr_tab.write(temp_file_name, format='fits', overwrite=True)
