@@ -21,7 +21,7 @@ def photometric_repeatability(crossmatch_catalogs, savepath, stdev_endpoints=(20
             raise ValueError:
                 print('All dictionary values must be type astropy.table.table.Table.')
     
-    fig,ax = plt.subplots(len(crossmatch_catalogs),1, sharex=True, sharey=True, figsize=figsize)
+    fig,ax = plt.subplots(len(crossmatch_catalogs),1, sharex=True, sharey=True, dpi=300, figsize=figsize)
     fig.subplots_adjust(hspace=0)
     
     for b in crossmatch_catalogs.keys():
@@ -56,13 +56,13 @@ def photometric_repeatability(crossmatch_catalogs, savepath, stdev_endpoints=(20
         binmeans = [np.mean(flattened_resids_div_mean[digitized==j]) for j in range(len(bins))]
         binstdevs = [np.std(flattened_resids_div_mean[digitized==j]) for j in range(len(bins))]
 
-        bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        bbox = ax[i].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         width, height = bbox.width*fig.dpi, bbox.height*fig.dpi
         
         ax[i].annotate(r'$\sigma = $' + f'{scatter:.2E}', 
-                    xy=(50,height-50), xycoords='axes pixels', ha='left', fontsize=22)
+                    xy=(100,height-100), xycoords='axes pixels', ha='left', fontsize=22)
         ax[i].annotate(b, 
-                    xy=(width-50,height-50), xycoords='axes pixels', ha='right', fontsize=22)
+                    xy=(width-100,height-100), xycoords='axes pixels', ha='right', fontsize=22)
         ax[i].errorbar(bins,binmeans,yerr=binstdevs, color='red',
                   marker='o',markersize=5,capsize=5,linestyle='')
         ax[i].set_ylabel(rf'$\frac{{m_{{{b}, ij}} - \langle m_{{{b}, i}} \rangle}}{{\langle m_{{{b}, i}} \rangle}}$')

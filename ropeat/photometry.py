@@ -9,7 +9,7 @@ from astropy.convolution import convolve
 from astropy.coordinates import SkyCoord, search_around_sky
 from astropy.nddata import NDData
 from astropy.stats import sigma_clipped_stats
-from astropy.table import Table, hstack
+from astropy.table import Table, hstack, MaskedColumn
 from astropy.visualization import ZScaleInterval, simple_norm
 from astropy.wcs import WCS
 import astropy.units as u
@@ -18,6 +18,7 @@ from photutils.background import LocalBackground, MMMBackground, Background2D
 from photutils.detection import DAOStarFinder
 from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry, IntegratedGaussianPRF
 from photutils.segmentation import make_2dgaussian_kernel, detect_sources, deblend_sources, SourceCatalog
+from galsim import roman
 
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'W146', 'K213']
 
@@ -40,7 +41,11 @@ class truth():
         :return: astropy table
         :rtype: astropy table
         """
-
+        
+        acceptable_units = ['degrees','radians']
+        if units not in acceptable_units:
+            raise ValueError(f'Argument units must be in {acceptable_units}.')
+            
         truth_tab = Table(self.truthhdu[1].data)
         
         if units=='degrees':
@@ -222,7 +227,7 @@ class scienceimg():
         apstats = ApertureStats(self.data, apertures)
         ap_results['max'] = apstats.max
 
-        ap_results[self.band] = -2.5*np.log10(ap_results['aperture_sum'].value)
+        ap_results[f'{self.band}_ap_mag'] = -2.5*np.log10(ap_results['aperture_sum'].value)
         if not truthcoordsonly:
             self.ap_phot_results = hstack([ap_results, cattab])
         elif truthcoordsonly:
@@ -348,13 +353,14 @@ class scienceimg():
             raise Exception('You need to run either self.ap_phot() or self.psf_phot() to have results to save!')
             # If you ran self.psf_phot(), then self.ap_phot() was run. :)
 
-        if zpt == 'truth' and truth_table is None:
+        if zpt == 'truth' or zpt == 'galsim' and truth_table is None:
             raise ValueError('If zpt == "truth", then you must provide a table from truth.table() in argument truth_table.')
 
         results_table = Table()
         index = [i for i in range(len(self.ap_phot_results))]
         results_table['index'] = index
         results_table['source_ID'] = [f'{self.band}_{self.pointing}_{self.chip}_{i}' for i in range(len(self.ap_phot_results))]
+        
         
         for col in self.ap_phot_results.colnames:
             results_table[col] = self.ap_phot_results[col]
@@ -365,7 +371,6 @@ class scienceimg():
         results_table[f'{self.band}_ap_max'] = self.ap_phot_results['max']
         
         results_table[f'{self.band}_ap_flux'] = self.ap_phot_results['aperture_sum']
-        results_table[f'{self.band}_ap_mag'] = -2.5*np.log10(self.ap_phot_results['aperture_sum'])
 
         if self.psf_phot_results is not None:
             results_table[f'{self.band}_psf_flux'] = self.psf_phot_results['flux_fit']
@@ -378,32 +383,44 @@ class scienceimg():
             psf_zpt_mask = np.logical_and(results_table[f'{self.band}_psf_mag']>-11, results_table[f'{self.band}_psf_mag']<-9)
 
             truthmag = truth_table[self.band][self.footprint_mask]
+            results_table[f'{self.band}_truth'] = truthmag
             ap_zpt = np.median(results_table[f'{self.band}_ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
             psf_zpt = np.median(results_table[f'{self.band}_psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
             
             results_table[f'{self.band}_ap_mag'] -= ap_zpt
             results_table[f'{self.band}_psf_mag'] -= psf_zpt
             
-        elif zpt == 'galsim':
-            from galsim import roman
-            zp = roman.getBandpasses()[self.band].zeropoint
+        elif zpt == 'galsim':            
+            maglims = [-5,-7.5] # This is the median of the un-zeropointed data +/- 1 standard deviation, roughly. 
+            truthmag = truth_table[self.band][self.footprint_mask]
+            results_table[f'{self.band}_truth'] = truthmag
             
-            results_table[f'{self.band}_ap_mag'] += zp
-            results_table[f'{self.band}_psf_mag'] += zp
+            ap_zpt_mask = np.logical_and(results_table[f'{self.band}_ap_mag'] > maglims[1],
+                                          results_table[f'{self.band}_ap_mag'] < maglims[0])
+            psf_zpt_mask = np.logical_and(results_table[f'{self.band}_psf_mag'] > maglims[1],
+                                          results_table[f'{self.band}_psf_mag'] < maglims[0])
+            
+            ap_zpt = np.median(results_table[f'{self.band}_ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
+            psf_zpt = np.median(results_table[f'{self.band}_psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
+            
+            results_table[f'{self.band}_ap_mag'] -= ap_zpt
+            results_table[f'{self.band}_psf_mag'] -= psf_zpt
             
         elif zpt is None:
-            pass
+            truthmag = truth_table[self.band][self.footprint_mask]
+            results_table[f'{self.band}_truth'] = truthmag
             
         results_table['band'] = self.band
         results_table['pointing'] = self.pointing
         results_table['chip'] = self.chip
         
         dropcols = ['id','label','xcenter','ycenter']
-        try:
-            results_table.remove_columns(dropcols)
-        except:
-            print('dropcols do not exist. maybe need to clean this up later but for now just... except')
-            
+        for col in dropcols:
+            try:
+                results_table.remove_column(col)
+            except:
+                pass
+
         results_table['psfphot_flags'] = self.psf_phot_results['flags']
 
         results_table.write(savepath, format='csv', overwrite=overwrite)
@@ -457,6 +474,10 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
 
     for col in match_vals:
         tr_tab[col] = str('')
+        
+    for col in tr_tab.colnames:
+        if col in roman_bands:
+            tr_tab.rename_column(col, f'{col}_truth')
     
     tr_tab.write(temp_file_name, format='fits', overwrite=True)
 
@@ -492,11 +513,6 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                     strcol = [strcol[i][1:] if strcol[i][0] == ',' else strcol[i] for i in range(len(strcol))]
                     tr_tab.loc[tr_idx, f'{band}{s}'] = strcol
                     
-                    print(f'strcol, {band}{s}')
-                    print(strcol)
-                    print("tr_tab.loc[tr_idx, f'{band}{s}']")
-                    print(tr_tab.loc[tr_idx, f'{band}{s}'])
-                    
                 # Collect RA/dec into a string into one column. 
                 for c in ['ra','dec']:
                     tlist = list(tr_tab[c])
@@ -506,11 +522,6 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                     strcol = list(map(appendvals,tlist_reduced,clist_reduced))
                     strcol = [strcol[i][1:] if strcol[i][0] == ',' else strcol[i] for i in range(len(strcol))]
                     tr_tab.loc[tr_idx, f'{c}_all'] = strcol
-                    
-                    print(f'strcol, {c}')
-                    print(strcol)
-                    print("tr_tab.loc[tr_idx, f'{c}_all']")
-                    print(tr_tab.loc[tr_idx, f'{c}_all'])
 
             tr_tab = Table.from_pandas(tr_tab)
             tr_tab.write(temp_file_name, format='fits', overwrite=True)
@@ -525,6 +536,20 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                 nfail += 1
                 print(f'In total, {nfail}/{len(results_filepaths)} filepaths have failed.')
   
+    # Drop empty columns. 
+    for col in tr_tab.colnames:
+        tr_tab[col] = MaskedColumn(data=tr_tab[col].value)
+        try:
+            if tr_tab[col].dtype == np.float64:
+                tr_tab[col].mask = np.isinf(tr_tab[col].value)
+                
+            if all(tr_tab[col].mask):
+                tr_tab.remove_column(col)
+                
+        except:
+            pass
+            
+    # Write table to file. 
     tr_tab.write(savename, format='csv', overwrite=overwrite)
     if verbose:
         print('Final crossmatched file is written.')
