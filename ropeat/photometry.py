@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from operator import methodcaller
 from collections import defaultdict
 from scipy import stats
 from copy import deepcopy
@@ -473,11 +474,14 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
         print('Maybe it doesnt end in .fits? Or is not a string?')
 
     for col in match_vals:
-        tr_tab[col] = str('')
+        tr_tab.add_column('empty', name=col)
         
     for col in tr_tab.colnames:
         if col in roman_bands:
             tr_tab.rename_column(col, f'{col}_truth')
+            
+    tr_tab.rename_column('ra','ra_truth')
+    tr_tab.rename_column('dec','dec_truth')
     
     tr_tab.write(temp_file_name, format='fits', overwrite=True)
 
@@ -497,7 +501,7 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                 if verbose:
                     print('Succesfully opened file. Next, crossmatch and merge tables.')
                 check_coords = SkyCoord(ra=check['ra']*u.degree, dec=check['dec']*u.degree)
-                tr_coords = SkyCoord(ra=tr_tab['ra']*u.degree, dec=tr_tab['dec']*u.degree) 
+                tr_coords = SkyCoord(ra=tr_tab['ra_truth']*u.degree, dec=tr_tab['dec_truth']*u.degree) 
                 check_idx, tr_idx, angsep, dist3d = search_around_sky(check_coords,tr_coords,seplimit=seplimit*u.arcsec)
 
                 tr_tab = tr_tab.to_pandas()
@@ -510,17 +514,17 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                     clist = list(check[f'{band}{s}'])
                     clist_reduced = list(np.array(clist)[check_idx])
                     strcol = list(map(appendvals,tlist_reduced,clist_reduced))
-                    strcol = [strcol[i][1:] if strcol[i][0] == ',' else strcol[i] for i in range(len(strcol))]
+                    strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
                     tr_tab.loc[tr_idx, f'{band}{s}'] = strcol
                     
                 # Collect RA/dec into a string into one column. 
                 for c in ['ra','dec']:
-                    tlist = list(tr_tab[c])
+                    tlist = list(tr_tab[f'{c}_all'])
                     tlist_reduced = list(np.array(tlist)[tr_idx])
                     clist = list(check[c])
                     clist_reduced = list(np.array(clist)[check_idx])
                     strcol = list(map(appendvals,tlist_reduced,clist_reduced))
-                    strcol = [strcol[i][1:] if strcol[i][0] == ',' else strcol[i] for i in range(len(strcol))]
+                    strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
                     tr_tab.loc[tr_idx, f'{c}_all'] = strcol
 
             tr_tab = Table.from_pandas(tr_tab)
@@ -535,19 +539,18 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                 print(f'Oops! {file} does not seem to exist.')
                 nfail += 1
                 print(f'In total, {nfail}/{len(results_filepaths)} filepaths have failed.')
-  
+        
     # Drop empty columns. 
-    for col in tr_tab.colnames:
-        tr_tab[col] = MaskedColumn(data=tr_tab[col].value)
+    for col in [c for c in tr_tab.colnames if c not in ['object_id','config']]:
         try:
-            if tr_tab[col].dtype == np.float64:
-                tr_tab[col].mask = np.isinf(tr_tab[col].value)
-                
+            tr_tab[col] = MaskedColumn(data=tr_tab[col].value, dtype=np.float64)
+            tr_tab[col].mask = np.isinf(tr_tab[col].value)
             if all(tr_tab[col].mask):
                 tr_tab.remove_column(col)
-                
+
         except:
-            pass
+            if all(tr_tab[col] == 'empty'):
+                tr_tab.remove_column(col)
             
     # Write table to file. 
     tr_tab.write(savename, format='csv', overwrite=overwrite)
