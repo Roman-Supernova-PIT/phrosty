@@ -1,4 +1,9 @@
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
+import matplotlib.gridspec as gridspec
+from matplotlib import rcParams
+import matplotlib as mpl
+from matplotlib.colors import Normalize
 import numpy as np
 from astropy.Table import Table
 
@@ -9,6 +14,9 @@ def photometric_repeatability(crossmatch_catalogs, savepath, stdev_endpoints=(20
     Argument crossmatch_catalogs should be a dictionary such that
     dict = {filter name: corresponding crossmatched catalog from ropeat.photometry.crossmatch_truth,
                     imported as an astropy table}
+                    
+    ********THIS FUNCTION IS UNTESTED.**********
+    
     """
     if not isinstance(crossmatch_catalogs, dict):
         raise ValueError: 
@@ -71,3 +79,74 @@ def photometric_repeatability(crossmatch_catalogs, savepath, stdev_endpoints=(20
     if title is not None:
         ax[0].set_title(title)
     plt.savefig(savepath, bbox_inches='tight', dpi=300)
+    
+    
+class MidpointNormalize(mpl.colors.Normalize):
+    """Normalise the colorbar."""
+    def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
+        self.midpoint = midpoint
+        mpl.colors.Normalize.__init__(self, vmin, vmax, clip)
+
+    def __call__(self, value, clip=None):
+        x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
+        return np.ma.masked_array(np.interp(value, x, y), np.isnan(value))
+
+def roman_sca_plot(data_array,sca_order,residual_plot=True,clabel=None,title=None,
+                   savefig=False,savepath='roman_scas.png'):
+    def update_rcParams(key, val):
+        if key in rcParams:
+            rcParams[key] = val
+        
+    update_rcParams('font.family', 'serif')
+    
+    detector = plt.figure(figsize=(10,6),dpi=300)
+    nrows, ncols = 55,91
+    grid = detector.add_gridspec(nrows=nrows,ncols=ncols,figure=detector, 
+                                 width_ratios=[1]*ncols, height_ratios=[1]*nrows,
+                                 hspace=0,wspace=0.1)
+    row_begins = np.array([10,3,0,0,3,10])
+    row_ends = np.array([x+14 for x in row_begins])
+    col_begins = np.arange(0,ncols,14)
+    col_ends = np.array([x+14 for x in col_begins])
+    add_distance = [15,16,16]
+
+    axs = []
+    for row in add_distance:
+        for i in range(len(row_begins)):
+            ax = detector.add_subplot(grid[row_begins[i]:row_ends[i],col_begins[i]+1:col_ends[i]])
+            ax.tick_params(bottom=False, labelbottom=False, left=False, labelleft=False)
+            axs.append(ax)
+
+        row_begins += row
+        row_ends += row
+
+    cbar_ax = detector.add_subplot(grid[:,-4:-1])
+
+    # Argument data_array should be an array of len(N SCAs) containing arrays:
+    # fake_data = np.array([np.random.rand(14,14)]*len(axs))
+    vmin = min(data_array.ravel())
+    vmax = max(data_array.ravel())
+
+    sortidx = sca_order.argsort()
+    sca_order = sca_order[sortidx]
+    data_array = data_array[sortidx]
+    imsim_sca_order = np.array([16,13,10,1,4,7,17,14,11,2,5,8,18,15,12,3,6,9])
+
+    for sca in imsim_sca_order:
+        if residual_plot:
+            ends = max(abs(vmin),abs(vmax))
+            im = axs[sca-1].imshow(data_array[sca-1], cmap='seismic',
+                                   norm=MidpointNormalize(midpoint=0,vmin=-ends,vmax=ends))
+        else:
+            im = axs[sca-1].imshow(data_array[sca-1], cmap='plasma', vmin=vmin,vmax=vmax)
+        # axs[sca-1].annotate(imsim_sca_order[sca-1], xy=(0,0))
+
+    cbar = plt.colorbar(im, cax=cbar_ax)
+    if clabel is not None:
+        cbar.set_label(clabel, labelpad=20, fontsize=18, rotation=270)
+    if title is not None:
+        plt.suptitle(title, y=0.93, fontsize=18)
+    if savefig:
+        plt.savefig(savepath, dpi=300, bbox_inches='tight')
+
+    plt.show()

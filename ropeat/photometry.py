@@ -366,6 +366,10 @@ class scienceimg():
         for col in self.ap_phot_results.colnames:
             results_table[col] = self.ap_phot_results[col]
         
+        x_truth, y_truth = self.coords_in[0], self.coords_in[1]
+        results_table['x_truth'], results_table['y_truth'] = x_truth, y_truth
+        results_table['x_fit'], results_table['y_fit'] = self.psf_phot_results['x_fit'], self.psf_phot_results['y_fit']
+        
         ra_dec = self.wcs.pixel_to_world(self.psf_phot_results['x_fit'], self.psf_phot_results['y_fit'])
         results_table['ra'], results_table['dec'] = ra_dec.ra.value, ra_dec.dec.value
         
@@ -415,7 +419,7 @@ class scienceimg():
         results_table['pointing'] = self.pointing
         results_table['chip'] = self.chip
         
-        dropcols = ['id','label','xcenter','ycenter']
+        dropcols = ['id','label','xcenter','ycenter','xcentroid','ycentroid']
         for col in dropcols:
             try:
                 results_table.remove_column(col)
@@ -460,9 +464,20 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                     pass
                 else:
                     match_vals.append(b+'_'+p+s)
+                    
+                if f'{b}_max' not in match_vals:
+                    match_vals.append(f'{b}_max')
 
     match_vals.append('ra_all')
     match_vals.append('dec_all')
+    match_vals.append('x_truth')
+    match_vals.append('y_truth')
+    match_vals.append('x_fit')
+    match_vals.append('y_fit')
+    match_vals.append('pointing_all')
+    match_vals.append('sca_all')
+    match_vals.append('psfphot_flags_all')
+    
     tr = truth(truth_filepath)
     tr_tab = tr.table()
     if temp_file_path is None:
@@ -526,6 +541,53 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                     strcol = list(map(appendvals,tlist_reduced,clist_reduced))
                     strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
                     tr_tab.loc[tr_idx, f'{c}_all'] = strcol
+                    
+                # Collect all x/y positions into a string into one column.
+                for c in ['x','y']:
+                    for a in ['fit','truth']:
+                        tlist = list(tr_tab[f'{c}_{a}'])
+                        tlist_reduced = list(np.array(tlist)[tr_idx])
+                        clist = list(check[f'{c}_{a}'])
+                        clist_reduced = list(np.array(clist)[check_idx])
+                        strcol = list(map(appendvals,tlist_reduced,clist_reduced))
+                        strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
+                        tr_tab.loc[tr_idx, f'{c}_{a}'] = strcol
+                    
+                # Collect the max. flux pixel value in an aperture into one column. 
+                tlist = list(tr_tab[f'{band}_max'])
+                tlist_reduced = list(np.array(tlist)[tr_idx])
+                clist = list(check['max'])
+                clist_reduced = list(np.array(clist)[check_idx])
+                strcol = list(map(appendvals,tlist_reduced,clist_reduced))
+                strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
+                tr_tab.loc[tr_idx, f'{band}_max'] = strcol
+                    
+                # Collect all SCA IDs into a string in one column.
+                tlist = list(tr_tab['sca_all'])
+                tlist_reduced = list(np.array(tlist)[tr_idx])
+                clist = list(check['chip'])
+                clist_reduced = list(np.array(clist)[check_idx])
+                strcol = list(map(appendvals,tlist_reduced,clist_reduced))
+                strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
+                tr_tab.loc[tr_idx, 'sca_all'] = strcol
+                
+                # Collect all pointings into a string in one column.
+                tlist = list(tr_tab['pointing_all'])
+                tlist_reduced = list(np.array(tlist)[tr_idx])
+                clist = list(check['pointing'])
+                clist_reduced = list(np.array(clist)[check_idx])
+                strcol = list(map(appendvals,tlist_reduced,clist_reduced))
+                strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
+                tr_tab.loc[tr_idx, 'pointing_all'] = strcol
+                
+                # Collect all psfphot flags into a string in one column.
+                tlist = list(tr_tab['psfphot_flags_all'])
+                tlist_reduced = list(np.array(tlist)[tr_idx])
+                clist = list(check['psfphot_flags'])
+                clist_reduced = list(np.array(clist)[check_idx])
+                strcol = list(map(appendvals,tlist_reduced,clist_reduced))
+                strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
+                tr_tab.loc[tr_idx, 'psfphot_flags_all'] = strcol
 
             tr_tab = Table.from_pandas(tr_tab)
             tr_tab.write(temp_file_name, format='fits', overwrite=True)
