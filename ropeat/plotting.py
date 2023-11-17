@@ -93,8 +93,8 @@ class MidpointNormalize(mpl.colors.Normalize):
         return np.ma.masked_array(np.interp(value, x, y), np.isnan(value))
 
 def roman_sca_plot(data_array,sca_order,residual_plot=True,clabel=None,title=None,
-                   savefig=False,savepath='roman_scas.png'):
-
+                   savefig=False,show_sca_id=False,savepath='roman_scas.png'):
+    
     detector = plt.figure(figsize=(10,6),dpi=300)
     nrows, ncols = 55,91
     grid = detector.add_gridspec(nrows=nrows,ncols=ncols,figure=detector, 
@@ -122,23 +122,21 @@ def roman_sca_plot(data_array,sca_order,residual_plot=True,clabel=None,title=Non
     # fake_data = np.array([np.random.rand(14,14)]*len(axs))
     vmin = np.nanmin(data_array.ravel())
     vmax = np.nanmax(data_array.ravel())
-    
-    print('vmin, vmax')
-    print(vmin,vmax)
 
     sortidx = sca_order.argsort()
     sca_order = sca_order[sortidx]
     data_array = data_array[sortidx]
-    imsim_sca_order = np.array([16,13,10,1,4,7,17,14,11,2,5,8,18,15,12,3,6,9])
+    imsim_sca_order = np.array([9,6,3,12,15,18,8,5,2,11,14,17,7,4,1,10,13,16])-1
 
-    for sca in imsim_sca_order:
+    for i, sca in enumerate(imsim_sca_order):
         if residual_plot:
             ends = np.nanmax(np.array([abs(vmin),abs(vmax)]))
-            im = axs[sca-1].imshow(data_array[sca-1], cmap='seismic',
+            im = axs[i].imshow(data_array[sca], cmap='seismic',
                                    norm=MidpointNormalize(midpoint=0,vmin=-ends,vmax=ends))
         else:
-            im = axs[sca-1].imshow(data_array[sca-1], cmap='plasma', vmin=vmin,vmax=vmax)
-        # axs[sca-1].annotate(imsim_sca_order[sca-1], xy=(0,0))
+            im = axs[i].imshow(data_array[sca], cmap='plasma', vmin=vmin,vmax=vmax)
+        if show_sca_id:
+            axs[i].annotate(sca+1, xy=(0,2), fontsize=12)
 
     cbar = plt.colorbar(im, cax=cbar_ax)
     if clabel is not None:
