@@ -373,6 +373,8 @@ class scienceimg():
         ra_dec = self.wcs.pixel_to_world(self.psf_phot_results['x_fit'], self.psf_phot_results['y_fit'])
         results_table['ra'], results_table['dec'] = ra_dec.ra.value, ra_dec.dec.value
         
+        results_table['localbkg'] = self.localbkg
+        
         results_table[f'{self.band}_ap_max'] = self.ap_phot_results['max']
         
         results_table[f'{self.band}_ap_flux'] = self.ap_phot_results['aperture_sum']
@@ -396,17 +398,15 @@ class scienceimg():
             results_table[f'{self.band}_psf_mag'] -= psf_zpt
             
         elif zpt == 'galsim':            
-            maglims = [-5,-7.5] # This is the median of the un-zeropointed data +/- 1 standard deviation, roughly. 
+            maglims = [20,22.5] # This is the median of the un-zeropointed data +/- 1 standard deviation, roughly. 
             truthmag = truth_table[self.band][self.footprint_mask]
             results_table[f'{self.band}_truth'] = truthmag
             
-            ap_zpt_mask = np.logical_and(results_table[f'{self.band}_ap_mag'] > maglims[1],
-                                          results_table[f'{self.band}_ap_mag'] < maglims[0])
-            psf_zpt_mask = np.logical_and(results_table[f'{self.band}_psf_mag'] > maglims[1],
-                                          results_table[f'{self.band}_psf_mag'] < maglims[0])
+            zpt_mask = np.logical_and(truthmag > maglims[0],
+                                      truthmag < maglims[1])
             
-            ap_zpt = np.median(results_table[f'{self.band}_ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
-            psf_zpt = np.median(results_table[f'{self.band}_psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
+            ap_zpt = np.median(results_table[f'{self.band}_ap_mag'][zpt_mask] - truthmag[zpt_mask])
+            psf_zpt = np.median(results_table[f'{self.band}_psf_mag'][zpt_mask] - truthmag[zpt_mask])
             
             results_table[f'{self.band}_ap_mag'] -= ap_zpt
             results_table[f'{self.band}_psf_mag'] -= psf_zpt
@@ -474,6 +474,7 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
     match_vals.append('y_truth')
     match_vals.append('x_fit')
     match_vals.append('y_fit')
+    match_vals.append('localbkg_all')
     match_vals.append('pointing_all')
     match_vals.append('sca_all')
     match_vals.append('psfphot_flags_all')
@@ -588,6 +589,15 @@ def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,se
                 strcol = list(map(appendvals,tlist_reduced,clist_reduced))
                 strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
                 tr_tab.loc[tr_idx, 'psfphot_flags_all'] = strcol
+                
+                # Collect all localbkg values into a string in one column.
+                tlist = list(tr_tab['localbkg_all'])
+                tlist_reduced = list(np.array(tlist)[tr_idx])
+                clist = list(check['localbkg'])
+                clist_reduced = list(np.array(clist)[check_idx])
+                strcol = list(map(appendvals,tlist_reduced,clist_reduced))
+                strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
+                tr_tab.loc[tr_idx, 'localbkg_all'] = strcol
 
             tr_tab = Table.from_pandas(tr_tab)
             tr_tab.write(temp_file_name, format='fits', overwrite=True)

@@ -1,2 +1,2 @@
 from .photometry import *
-from .plotaesthetics import *
+from .plotting import *
