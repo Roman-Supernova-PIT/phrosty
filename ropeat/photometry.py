@@ -109,6 +109,9 @@ class scienceimg():
                  ):
         
         if band not in roman_bands:
+            if band == 'unspecified':
+                raise ValueError('You need to specify a bandpass.')
+        else:
             raise ValueError(f'Argument "band" must be in {roman_bands}.')
 
         if pointing == 'unspecified':

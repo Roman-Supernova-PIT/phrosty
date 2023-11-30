@@ -92,7 +92,7 @@ class MidpointNormalize(mpl.colors.Normalize):
         x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
         return np.ma.masked_array(np.interp(value, x, y), np.isnan(value))
 
-def roman_sca_plot(data_array,sca_order,residual_plot=True,clabel=None,title=None,
+def roman_sca_plot(data_array,sca_order,ptype='image',residual_plot=True,clabel=None,title=None,
                    savefig=False,show_sca_id=False,savepath='roman_scas.png'):
     
     detector = plt.figure(figsize=(10,6),dpi=300)
@@ -116,12 +116,11 @@ def roman_sca_plot(data_array,sca_order,residual_plot=True,clabel=None,title=Non
         row_begins += row
         row_ends += row
 
-    cbar_ax = detector.add_subplot(grid[:,-4:-1])
-
     # Argument data_array should be an array of len(N SCAs) containing arrays:
     # fake_data = np.array([np.random.rand(14,14)]*len(axs))
-    vmin = np.nanmin(data_array.ravel())
-    vmax = np.nanmax(data_array.ravel())
+    if ptype=='image':
+        vmin = np.nanmin(data_array.ravel())
+        vmax = np.nanmax(data_array.ravel())
 
     sortidx = sca_order.argsort()
     sca_order = sca_order[sortidx]
@@ -129,18 +128,26 @@ def roman_sca_plot(data_array,sca_order,residual_plot=True,clabel=None,title=Non
     imsim_sca_order = np.array([9,6,3,12,15,18,8,5,2,11,14,17,7,4,1,10,13,16])-1
 
     for i, sca in enumerate(imsim_sca_order):
-        if residual_plot:
-            ends = np.nanmax(np.array([abs(vmin),abs(vmax)]))
-            im = axs[i].imshow(data_array[sca], cmap='seismic',
-                                   norm=MidpointNormalize(midpoint=0,vmin=-ends,vmax=ends))
-        else:
-            im = axs[i].imshow(data_array[sca], cmap='plasma', vmin=vmin,vmax=vmax)
+        if ptype=='image':
+            if residual_plot:
+                ends = np.nanmax(np.array([abs(vmin),abs(vmax)]))
+                im = axs[i].imshow(data_array[sca], cmap='seismic',
+                                       norm=MidpointNormalize(midpoint=0,vmin=-ends,vmax=ends))
+            else:
+                im = axs[i].imshow(data_array[sca], cmap='plasma', vmin=vmin,vmax=vmax)
+        elif ptype=='scatter':
+            axs[i].plot(data_array[sca][0],data_array[sca][1],marker='.',linestyle='',color='k',markersize=2)
+            if residual_plot:
+                axs[i].axhline(0,color='k',linestyle='--')
+            
         if show_sca_id:
             axs[i].annotate(sca+1, xy=(0,2), fontsize=12)
-
-    cbar = plt.colorbar(im, cax=cbar_ax)
-    if clabel is not None:
-        cbar.set_label(clabel, labelpad=20, fontsize=18, rotation=270)
+    
+    if ptype=='image':
+        cbar_ax = detector.add_subplot(grid[:,-4:-1])
+        cbar = plt.colorbar(im, cax=cbar_ax)
+        if clabel is not None:
+            cbar.set_label(clabel, labelpad=20, fontsize=18, rotation=270)
     if title is not None:
         plt.suptitle(title, y=0.93, fontsize=18)
     if savefig:
