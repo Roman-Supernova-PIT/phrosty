@@ -27,7 +27,8 @@ class truth():
     # https://roman.ipac.caltech.edu/data/sims/sn_image_sims/galaxia_akari.fits.gz
     def __init__(self,filepath):
         """filepath should be to a truth file that only contains stars.
-        No galaxies! The fits file should have columns ['ra', 'dec', 'Y106', 'J129', 'H158', 'F184'].
+        No galaxies! The fits file should have columns:
+        ['ra', 'dec', 'R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'W146', 'K213'].
 
         :param filepath: Path to fits file. 
         :type filepath: str
