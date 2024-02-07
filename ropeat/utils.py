@@ -73,6 +73,10 @@ def make_truth_config_table(list_of_paths,n_jobs=20,verbose=False):
 
     jobid = 1
     for i, uid in enumerate(uids):
+        if verbose:
+            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            print(uid, jobid)
+            print(f'Unique ID number {i+1}/{len(uids)}.')
         idx = list(oid_config.index[oid_config['object_id'] == uid])
         config_array[idx] = int(jobid)
         if i % n_divisions == 0:
