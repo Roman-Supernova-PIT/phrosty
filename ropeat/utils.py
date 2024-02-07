@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from numba import njit
 
 def get_obj_type_from_ID(ID):
     if ID > 9921000000000 and ID < 10779202101973:
@@ -32,35 +31,56 @@ def predict_config(objtype):
     else:
         return 'other'
 
-def make_truth_config_table(list_of_paths):
-    for path in list_of_paths:
-        f = open(path, 'r')
-        
-
-@njit(cache=True)
-def collate_truth(truthfile,fulltab):
-    """
-    This should be used in a loop, like this:
+def make_truth_config_table(list_of_paths,n_jobs=20,verbose=False):
     colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
-    fulltab = pd.DataFrame(columns=colnames).to_numpy()
-    pointings = ['11776']
-    for p in pointings:
-        for sca in np.arange(1,19,1):
-            filepath = f'/hpc/group/cosmology/RomanDESC_sims_2024/truth/H158/{p}/Roman_TDS_index_H158_{p}_{sca}.txt'
-            truthfile = pd.read_csv(filepath, comment='#', skipinitialspace=True, sep=' ', names=colnames).to_numpy()
-            fulltab = collate_truth(truthfile,fulltab)
-    """
+    config_dict = {'object_id': [],
+                   'band':      [],
+                   'pointing':  [],
+                   'sca':       []}
+    if verbose:
+        print('We need to get through', len(list_of_paths), 'images.')
+        counter = 1
+    for path in list_of_paths:
+        band = path.split('_')[-3]
+        pointing = path.split('_')[-2]
+        sca = path.split('_')[-1].split('.')[0]
+        if verbose:
+            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            print(f'This is image {counter}/{len(list_of_paths)}.')
+            print(band, pointing, sca)
+            f = open(path,'r')
+            lines = f.readlines()
+            for l in lines[1:]:
+                oid = l.split()[0]
+                config_dict['object_id'].append(oid)
+                config_dict['band'].append(band)
+                config_dict['pointing'].append(pointing)
+                config_dict['sca'].append(sca)
 
-    fulltab = np.vstack((fulltab,truthfile))
-    fulltab = fulltab[fulltab[:,0].argsort()]
-    unique_ids = np.unique(fulltab[:,0])
+            if verbose:
+                counter += 1
+                print(f'There are {len(config_dict["object_id"])} rows in the table.')
+    if verbose:
+        print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+        print('Done pulling OIDs from files.')
+        print('Now, add the config values.')
 
-    for uid in unique_ids:
-        idx = np.where(fulltab[:,0] == uid)[0]
-        subtab = fulltab[idx]
+    oid_config = pd.DataFrame(config_dict).sort_values('object_id',ignore_index=True)
+    uids = np.unique(oid_config['object_id'])
+    n_objs = len(uids)
+    n_divisions = int(n_objs/n_jobs)
+    config_array = np.empty(len(oid_config))
 
-        for colidx in np.arange(3,8,1):
-            vallist = subtab[:,colidx]
-            fulltab[idx,colidx] = vallist
+    jobid = 1
+    for i, uid in enumerate(uids):
+        idx = list(oid_config.index[oid_config['object_id'] == uid])
+        config_array[idx] = int(jobid)
+        if i % n_divisions == 0:
+            jobid += 1
 
-    return fulltab
+    oid_config['config'] = config_array
+
+    if verbose:
+        print('Added the config column!')
+    
+    return oid_config
