@@ -65,23 +65,11 @@ def make_truth_config_table(list_of_paths,n_jobs=20,verbose=False):
         print('Done pulling OIDs from files.')
         print('Now, add the config values.')
 
+    # Update this to do something that makes sense about the object IDs and the number of jobs. 
     oid_config = pd.DataFrame(config_dict).sort_values('object_id',ignore_index=True)
-    uids = np.unique(oid_config['object_id'])
-    n_objs = len(uids)
-    n_divisions = int(n_objs/n_jobs)
-    config_array = np.empty(len(oid_config))
-
-    jobid = 1
-    for i, uid in enumerate(uids):
-        if verbose:
-            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-            print(uid, jobid)
-            print(f'Unique ID number {i+1}/{len(uids)}.')
-        idx = list(oid_config.index[oid_config['object_id'] == uid])
-        config_array[idx] = int(jobid)
-        if i % n_divisions == 0:
-            jobid += 1
-
+    uids = np.unique(oid_config['object_id'].astype(int))
+    bins = sorted(list(np.linspace(50000033,90000075,10)) + list(np.linspace(110000220,41024145656,20)) + list(np.linspace(10306202193601,10179000000497,30)))
+    config_array = np.digitize(oid_config['object_id'].astype(int),bins)
     oid_config['config'] = config_array
 
     if verbose:
