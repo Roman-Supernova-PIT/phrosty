@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import re
 
 def get_obj_type_from_ID(ID):
     if ID > 9921000000000 and ID < 10779202101973:
@@ -67,8 +68,7 @@ def make_truth_config_table(list_of_paths,n_jobs=20,verbose=False):
 
     # Update this to do something that makes sense about the object IDs and the number of jobs. 
     oid_config = pd.DataFrame(config_dict).sort_values('object_id',ignore_index=True)
-    uids = np.unique(oid_config['object_id'].astype(int))
-    bins = sorted(list(np.linspace(50000033,90000075,10)) + list(np.linspace(110000220,41024145656,20)) + list(np.linspace(10306202193601,10179000000497,30)))
+    bins = sorted(list(np.linspace(10**6,10**8,10)) + list(np.linspace(10**8,10**12,20)) + list(np.linspace(10**12,10**13,30)))
     config_array = np.digitize(oid_config['object_id'].astype(int),bins)
     oid_config['config'] = config_array
 
@@ -76,3 +76,26 @@ def make_truth_config_table(list_of_paths,n_jobs=20,verbose=False):
         print('Added the config column!')
     
     return oid_config
+
+def make_toid(oid,oid_config,ti_path,savepath):
+
+    truth_colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
+
+    oid_lines_list = []
+    oid_lines_list.append(','.join(truth_colnames)+','+'band'+','+'pointing'+','+'sca'+'\n')
+    oid_tab = oid_config[oid_config['object_id'] == oid]
+    for i, row in oid_tab.iterrows():
+        band = row['band']
+        pointing = row['pointing']
+        sca = row['sca']
+        with open(ti_path,'r') as f:
+            lines = f.readlines()
+            for li in lines[1:]:
+                oid_tr = int(li.split()[0])
+                if oid_tr == oid:                    
+                    fline = re.sub("\s+", ",", li.strip())
+                    oid_lines_list.append(fline+','+band+','+str(pointing)+','+str(sca)+'\n')
+                    
+    with open(savepath,'w') as oidf:
+        for line in oid_lines_list:
+            oidf.write(f'{line}')

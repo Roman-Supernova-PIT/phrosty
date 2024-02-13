@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from astropy.coordinates import SkyCoord, search_around_sky
 from astropy.nddata import NDData
 from astropy.stats import sigma_clipped_stats
-from astropy.table import Table, hstack, MaskedColumn
+from astropy.table import Table, hstack, MaskedColumn, join
 from astropy.visualization import ZScaleInterval, simple_norm
 import astropy.units as u
 from photutils.aperture import CircularAperture, aperture_photometry, ApertureStats
@@ -170,22 +170,32 @@ def convert_flux_to_mag(fluxtab, zpt=False, truth=None):
 
     return fluxtab
 
-def crossmatch_truth(science,truth,seplimit=0.1):
+def crossmatch(pi,ti,seplimit=0.1):
+    """ Cross-match the truth files from each image (TI) to the corresponding photometry
+    file from that image (PI).
+
+    :param ti: Astropy table from a truth file ('Roman_TDS_index_{band}_{pointing}_{sca}.txt')
+    :type ti: Astropy table
+    :param pi: Astropy table from a photometry file generated from the image with the same band,
+                pointing, and sca as ti. 
+    :type pi: Astropy table
+
+    Returns:
+        _type_: _description_ 
     """
-    truth should be the truth catalog (astropy table) for the image corresponding to science, which is an astropy table. 
-    (the output of psf_phot)
-    """
 
-    truthcoords = SkyCoord(ra=truth['ra_truth']*u.degree, dec=truth['dec']*u.degree)
-    scicoords = SkyCoord(ra=science['ra']*u.degree, dec=science['dec']*u.degree)
-    truth_idx, sci_idx, angsep, dist3d = search_around_sky(truthcoords,scicoords,seplimit=seplimit(u.arcsec))
+    tc = SkyCoord(ra=ti['ra_truth']*u.degree, dec=ti['dec']*u.degree)
+    pc = SkyCoord(ra=pi['ra']*u.degree, dec=pi['dec']*u.degree)
+    ti_idx, pi_idx, angsep, dist3d = search_around_sky(tc,pc,seplimit=seplimit(u.arcsec))
 
-    truth_reduced = truth[truth_idx]
-    sci_reduced = science[sci_idx]
+    # ti_reduced = ti[ti_idx]
+    pi_reduced = pi[pi_idx]
 
-    truth[[sci_reduced.colnames]][truth_idx] = sci_reduced
+    ti[[pi_reduced.colnames]][ti_idx] = pi_reduced
 
-    return truth
+    tixpi = join(ti,pi,join_type='outer')
+    return ti
+
 
 # def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,seplimit=0.1,psf=True,verbose=True,temp_file_path=None):
 #     """
