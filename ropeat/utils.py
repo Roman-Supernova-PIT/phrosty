@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-import re
+from astropy.io import fits
+from astropy.wcs import WCS
 
 def get_obj_type_from_ID(ID):
     if ID > 9921000000000 and ID < 10779202101973:
@@ -77,25 +78,15 @@ def make_truth_config_table(list_of_paths,n_jobs=20,verbose=False):
     
     return oid_config
 
-def make_toid(oid,oid_config,ti_path,savepath):
+def corners(band,pointing,sca):
+    imgpath = f'/hpc/group/cosmology/RomanDESC_sims_2024/RomanTDS/images/simple_model/{band}/{pointing}/Roman_TDS_simple_model_{band}_{pointing}_{sca}.fits.gz'
+    hdu = fits.open(imgpath)
+    wcs = WCS(hdu[1].header)
+    corners = [[0,0],[0,4088],[4088,0],[4088,4088]]
+    wcs_corners = wcs.pixel_to_world_values(corners)
+    ra1 = wcs_corners[0][0]
+    dec1 = wcs_corners [0][1]
+    ra2 = wcs_corners[-1][0]
+    dec2 = wcs_corners[-1][1]
 
-    truth_colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
-
-    oid_lines_list = []
-    oid_lines_list.append(','.join(truth_colnames)+','+'band'+','+'pointing'+','+'sca'+'\n')
-    oid_tab = oid_config[oid_config['object_id'] == oid]
-    for i, row in oid_tab.iterrows():
-        band = row['band']
-        pointing = row['pointing']
-        sca = row['sca']
-        with open(ti_path,'r') as f:
-            lines = f.readlines()
-            for li in lines[1:]:
-                oid_tr = int(li.split()[0])
-                if oid_tr == oid:                    
-                    fline = re.sub("\s+", ",", li.strip())
-                    oid_lines_list.append(fline+','+band+','+str(pointing)+','+str(sca)+'\n')
-                    
-    with open(savepath,'w') as oidf:
-        for line in oid_lines_list:
-            oidf.write(f'{line}')
+    return {'ra': [ra1,ra2], 'dec': [dec1,dec2]}
