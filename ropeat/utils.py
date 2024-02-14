@@ -34,6 +34,13 @@ def predict_config(objtype):
     else:
         return 'other'
 
+def read_truth(truth_path):
+    truth_colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
+    truth_pd = pd.read_csv(truth_path, comment='#', skipinitialspace=True, sep=' ', names=truth_colnames)
+    truth = Table.from_pandas(truth_pd)
+
+    return truth
+
 def get_corners(band,pointing,sca):
     imgpath = f'/hpc/group/cosmology/RomanDESC_sims_2024/RomanTDS/images/simple_model/{band}/{pointing}/Roman_TDS_simple_model_{band}_{pointing}_{sca}.fits.gz'
     hdu = fits.open(imgpath)

@@ -1,16 +1,16 @@
 import numpy as np
-import os
 import matplotlib.pyplot as plt
 from astropy.coordinates import SkyCoord, search_around_sky
 from astropy.nddata import NDData
 from astropy.stats import sigma_clipped_stats
-from astropy.table import Table, hstack, MaskedColumn, join
-from astropy.visualization import ZScaleInterval, simple_norm
+from astropy.table import Table, hstack, join
+from astropy.visualization import simple_norm
 import astropy.units as u
 from photutils.aperture import CircularAperture, aperture_photometry, ApertureStats
 from photutils.background import LocalBackground, MMMBackground, Background2D
 from photutils.detection import DAOStarFinder
 from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
+from galsim import roman
 
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'W146', 'K213']
 
@@ -139,37 +139,6 @@ def psf_phot(scienceimage,coords,wcs,
 
     return psf_results
 
-def convert_flux_to_mag(fluxtab, zpt=False, truth=None):
-    """
-    Input the astropy table from psf_results.
-
-    """
-
-    fluxtab['mag_fit'] = -2.5*np.log10(fluxtab['flux_fit'])
-    fluxtab['mag_err'] = np.sqrt((1.09/fluxtab['flux_fit'])**2*fluxtab['flux_err']**2)
-
-    if zpt:
-        if truth is None:
-            raise ValueError('You need to provide a truth catalog if you want to zero point the magnitudes.')
-
-        else:
-            print('YOU HAVE TO CROSSMATCH BEFORE YOU ZERO POINT')
-    return fluxtab
-
-        #     if zpt == 'truth':
-#         ap_zpt_mask = np.logical_and(results_table[f'{self.band}_ap_mag']>-11, results_table[f'{self.band}_ap_mag']<-9)
-#         psf_zpt_mask = np.logical_and(results_table[f'{self.band}_psf_mag']>-11, results_table[f'{self.band}_psf_mag']<-9)
-
-#         truthmag = truth_table[self.band][self.footprint_mask]
-#         results_table[f'{self.band}_truth'] = truthmag
-#         ap_zpt = np.median(results_table[f'{self.band}_ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
-#         psf_zpt = np.median(results_table[f'{self.band}_psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
-        
-#         results_table[f'{self.band}_ap_mag'] -= ap_zpt
-#         results_table[f'{self.band}_psf_mag'] -= psf_zpt
-
-    return fluxtab
-
 def crossmatch(pi,ti,seplimit=0.1):
     """ Cross-match the truth files from each image (TI) to the corresponding photometry
     file from that image (PI).
@@ -184,216 +153,66 @@ def crossmatch(pi,ti,seplimit=0.1):
         _type_: _description_ 
     """
 
-    tc = SkyCoord(ra=ti['ra_truth']*u.degree, dec=ti['dec']*u.degree)
-    pc = SkyCoord(ra=pi['ra']*u.degree, dec=pi['dec']*u.degree)
-    ti_idx, pi_idx, angsep, dist3d = search_around_sky(tc,pc,seplimit=seplimit(u.arcsec))
+    if 'ra_truth' not in ti.colnames:
+        ti['ra'].name = 'ra_truth'
+    
+    if 'dec_truth' not in ti.colnames:
+        ti['dec'].name = 'dec_truth'
 
-    # ti_reduced = ti[ti_idx]
+    if 'flux_truth' not in ti.colnames:
+        ti['flux'].name = 'flux_truth'
+
+    if 'mag_truth' not in ti.colnames:
+        ti['mag'].name = 'mag_truth'
+
+    tc = SkyCoord(ra=ti['ra_truth']*u.degree, dec=ti['dec_truth']*u.degree)
+    pc = SkyCoord(ra=pi['ra']*u.degree, dec=pi['dec']*u.degree)
+    ti_idx, pi_idx, angsep, dist3d = search_around_sky(tc,pc,seplimit=seplimit*(u.arcsec))
+
+    ti_reduced = ti[ti_idx]
     pi_reduced = pi[pi_idx]
 
-    ti[[pi_reduced.colnames]][ti_idx] = pi_reduced
-
-    tixpi = join(ti,pi,join_type='outer')
-    return ti
-
-
-# def crossmatch_truth(truth_filepath,results_filepaths,savename,overwrite=True,seplimit=0.1,psf=True,verbose=True,temp_file_path=None):
-#     """
-#     This will handle a list of science files with mixed bands! Hopefully!
-
-#     :param truth_filepath: Filepath to truth file.
-#     :type truth_filepath: str
-#     :param results_filepaths: List of filepaths to csv files from scienceimg.save_results().
-#     :type results_filepaths: list
-#     :param seplimit: Angular separation limit to find matches, defaults to 0.1
-#     :type seplimit: float, optional
-#     :param psf: Include PSF photometry results in the matching table, defaults to True
-#     :type psf: bool, optional
-#     :return: _description_
-#     :rtype: _type_
-#     """    
-#     prefixes = ['ap']
-#     if psf:
-#         prefixes.append('psf')
-        
-#     suffixes = ['_flux', '_flux_err', '_mag', '_mag_err']
-#     match_vals = []
-#     all_suffixes = []
+    ti_pi_reduced = hstack([ti_reduced,pi_reduced], join_type='exact')
+    ti_x_pi = join(ti,ti_pi_reduced,join_type='outer')
     
-#     for p in prefixes:
-#         for s in suffixes:
-#             if p == 'ap' and 'err' in s:
-#                 pass
-#             else:
-#                 all_suffixes.append('_'+p+s)
-#             for b in roman_bands:
-#                 if p == 'ap' and 'err' in s:
-#                     pass
-#                 else:
-#                     match_vals.append(b+'_'+p+s)
-                    
-#                 if f'{b}_max' not in match_vals:
-#                     match_vals.append(f'{b}_max')
+    return ti_x_pi
 
-#     match_vals.append('ra_all')
-#     match_vals.append('dec_all')
-#     match_vals.append('x_truth')
-#     match_vals.append('y_truth')
-#     match_vals.append('x_fit')
-#     match_vals.append('y_fit')
-#     match_vals.append('localbkg_all')
-#     match_vals.append('pointing_all')
-#     match_vals.append('sca_all')
-#     match_vals.append('psfphot_flags_all')
-    
-#     tr = truth(truth_filepath)
-#     tr_tab = tr.table()
-#     if temp_file_path is None:
-#         temp_file_name = 'tempfile_DELETEME.fits'
-#     elif isinstance(temp_file_path, str) and '.fits' in temp_file_path:
-#         temp_file_name = temp_file_path
-#     else:
-#         print('Something is wrong with your temporary file path.')
-#         print('Maybe it doesnt end in .fits? Or is not a string?')
+def convert_flux_to_mag(ti_x_pi, zpt=False, truth=None):
+    """
+    Input the astropy table from crossmatch.
 
-#     for col in match_vals:
-#         tr_tab.add_column('empty', name=col)
+    """
+
+    ti_x_pi['mag_fit'] = -2.5*np.log10(ti_x_pi['flux_fit'])
+    ti_x_pi['mag_err'] = np.sqrt((1.09/ti_x_pi['flux_fit'])**2*ti_x_pi['flux_err']**2)
+
+    if zpt:
+        if truth is None:
+            raise ValueError('You need to provide a truth catalog if you want to zero point the magnitudes.')
+
+        else:
+            band = np.unique(ti_x_pi['filter'])
+            area_eff = roman.collecting_area
+            galsim_zp = roman.getBandpasses()[band].zeropoint
+
+            truth_mag = -2.5*np.log10(ti_x_pi['flux_truth']/area_eff/302.275) + galsim_zp
+
+            ############UNFINISHED--MAKE IT LOOK THRU FILES FOR OBJECT IDS
+            #OR ADD ZPT TO CONFIG FILE
+            #IDK
+            print('YOU HAVE TO CROSSMATCH BEFORE YOU ZERO POINT')
+
+
+    return ti_x_pi
+
+        #     if zpt == 'truth':
+#         ap_zpt_mask = np.logical_and(results_table[f'{self.band}_ap_mag']>-11, results_table[f'{self.band}_ap_mag']<-9)
+#         psf_zpt_mask = np.logical_and(results_table[f'{self.band}_psf_mag']>-11, results_table[f'{self.band}_psf_mag']<-9)
+
+#         truthmag = truth_table[self.band][self.footprint_mask]
+#         results_table[f'{self.band}_truth'] = truthmag
+#         ap_zpt = np.median(results_table[f'{self.band}_ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
+#         psf_zpt = np.median(results_table[f'{self.band}_psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
         
-#     for col in tr_tab.colnames:
-#         if col in roman_bands:
-#             tr_tab.rename_column(col, f'{col}_truth')
-            
-#     tr_tab.rename_column('ra','ra_truth')
-#     tr_tab.rename_column('dec','dec_truth')
-    
-#     tr_tab.write(temp_file_name, format='fits', overwrite=True)
-
-#     if verbose:
-#         print(f'We need to get through matching {len(results_filepaths)} files.')
-#         nfiles = 0
-#         nfail = 0
-#     for i, file in enumerate(results_filepaths):
-#         if os.path.exists(file):
-#             if verbose:
-#                 print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-#                 print(file)
-#             with fits.open(temp_file_name) as f:
-#                 tr_tab = Table(f[1].data)
-#                 check = Table.read(file, format='csv')
-#                 band = check['band'][0]
-#                 if verbose:
-#                     print('Succesfully opened file. Next, crossmatch and merge tables.')
-#                 check_coords = SkyCoord(ra=check['ra']*u.degree, dec=check['dec']*u.degree)
-#                 tr_coords = SkyCoord(ra=tr_tab['ra_truth']*u.degree, dec=tr_tab['dec_truth']*u.degree) 
-#                 check_idx, tr_idx, angsep, dist3d = search_around_sky(check_coords,tr_coords,seplimit=seplimit*u.arcsec)
-
-#                 tr_tab = tr_tab.to_pandas()
-#                 appendvals = lambda x,y : str(x) + ',' + str(y)
-                
-#                 # Collect all magnitudes into a string into one column. 
-#                 for s in all_suffixes:
-#                     tlist = list(tr_tab[f'{band}{s}'])
-#                     tlist_reduced = list(np.array(tlist)[tr_idx])
-#                     clist = list(check[f'{band}{s}'])
-#                     clist_reduced = list(np.array(clist)[check_idx])
-#                     strcol = list(map(appendvals,tlist_reduced,clist_reduced))
-#                     strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
-#                     tr_tab.loc[tr_idx, f'{band}{s}'] = strcol
-                    
-#                 # Collect RA/dec into a string into one column. 
-#                 for c in ['ra','dec']:
-#                     tlist = list(tr_tab[f'{c}_all'])rm 
-#                     tlist_reduced = list(np.array(tlist)[tr_idx])
-#                     clist = list(check[c])
-#                     clist_reduced = list(np.array(clist)[check_idx])
-#                     strcol = list(map(appendvals,tlist_reduced,clist_reduced))
-#                     strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
-#                     tr_tab.loc[tr_idx, f'{c}_all'] = strcol
-                    
-#                 # Collect all x/y positions into a string into one column.
-#                 for c in ['x','y']:
-#                     for a in ['fit','truth']:
-#                         tlist = list(tr_tab[f'{c}_{a}'])
-#                         tlist_reduced = list(np.array(tlist)[tr_idx])
-#                         clist = list(check[f'{c}_{a}'])
-#                         clist_reduced = list(np.array(clist)[check_idx])
-#                         strcol = list(map(appendvals,tlist_reduced,clist_reduced))
-#                         strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
-#                         tr_tab.loc[tr_idx, f'{c}_{a}'] = strcol
-                    
-#                 # Collect the max. flux pixel value in an aperture into one column. 
-#                 tlist = list(tr_tab[f'{band}_max'])
-#                 tlist_reduced = list(np.array(tlist)[tr_idx])
-#                 clist = list(check['max'])
-#                 clist_reduced = list(np.array(clist)[check_idx])
-#                 strcol = list(map(appendvals,tlist_reduced,clist_reduced))
-#                 strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
-#                 tr_tab.loc[tr_idx, f'{band}_max'] = strcol
-                    
-#                 # Collect all SCA IDs into a string in one column.
-#                 tlist = list(tr_tab['sca_all'])
-#                 tlist_reduced = list(np.array(tlist)[tr_idx])
-#                 clist = list(check['chip'])
-#                 clist_reduced = list(np.array(clist)[check_idx])
-#                 strcol = list(map(appendvals,tlist_reduced,clist_reduced))
-#                 strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
-#                 tr_tab.loc[tr_idx, 'sca_all'] = strcol
-                
-#                 # Collect all pointings into a string in one column.
-#                 tlist = list(tr_tab['pointing_all'])
-#                 tlist_reduced = list(np.array(tlist)[tr_idx])
-#                 clist = list(check['pointing'])
-#                 clist_reduced = list(np.array(clist)[check_idx])
-#                 strcol = list(map(appendvals,tlist_reduced,clist_reduced))
-#                 strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
-#                 tr_tab.loc[tr_idx, 'pointing_all'] = strcol
-                
-#                 # Collect all psfphot flags into a string in one column.
-#                 tlist = list(tr_tab['psfphot_flags_all'])
-#                 tlist_reduced = list(np.array(tlist)[tr_idx])
-#                 clist = list(check['psfphot_flags'])
-#                 clist_reduced = list(np.array(clist)[check_idx])
-#                 strcol = list(map(appendvals,tlist_reduced,clist_reduced))
-#                 strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
-#                 tr_tab.loc[tr_idx, 'psfphot_flags_all'] = strcol
-                
-#                 # Collect all localbkg values into a string in one column.
-#                 tlist = list(tr_tab['localbkg_all'])
-#                 tlist_reduced = list(np.array(tlist)[tr_idx])
-#                 clist = list(check['localbkg'])
-#                 clist_reduced = list(np.array(clist)[check_idx])
-#                 strcol = list(map(appendvals,tlist_reduced,clist_reduced))
-#                 strcol = [strcol[i][6:] if strcol[i][0] == 'e' else strcol[i] for i in range(len(strcol))]
-#                 tr_tab.loc[tr_idx, 'localbkg_all'] = strcol
-
-#             tr_tab = Table.from_pandas(tr_tab)
-#             tr_tab.write(temp_file_name, format='fits', overwrite=True)
-#             if verbose:
-#                 print(f'Wrote the crossmatched data to the main catalog in a temporary file, {temp_file_name}.')
-#                 nfiles += 1
-#                 print(f'Made it through crossmatching {nfiles}/{len(results_filepaths)} files.')
-
-#         else:
-#             if verbose:
-#                 print(f'Oops! {file} does not seem to exist.')
-#                 nfail += 1
-#                 print(f'In total, {nfail}/{len(results_filepaths)} filepaths have failed.')
-        
-#     # Drop empty columns. 
-#     for col in [c for c in tr_tab.colnames if c not in ['object_id','config']]:
-#         try:
-#             tr_tab[col] = MaskedColumn(data=tr_tab[col].value, dtype=np.float64)
-#             tr_tab[col].mask = np.isinf(tr_tab[col].value)
-#             if all(tr_tab[col].mask):
-#                 tr_tab.remove_column(col)
-
-#         except:
-#             if all(tr_tab[col] == 'empty'):
-#                 tr_tab.remove_column(col)
-            
-#     # Write table to file. 
-#     tr_tab.write(savename, format='csv', overwrite=overwrite)
-#     if verbose:
-#         print('Final crossmatched file is written.')
-#         print('Finally, deleting the temporary file.')
-#     os.remove(temp_file_name)
+#         results_table[f'{self.band}_ap_mag'] -= ap_zpt
+#         results_table[f'{self.band}_psf_mag'] -= psf_zpt
