@@ -177,30 +177,35 @@ def crossmatch(pi,ti,seplimit=0.1):
     
     return ti_x_pi
 
-def convert_flux_to_mag(ti_x_pi, zpt=False, truth=None):
+def convert_flux_to_mag(ti_x_pi, zpt=False):
     """
     Input the astropy table from crossmatch.
 
     """
 
+    exptime = {'F184': 901.175,
+               'J129': 302.275,
+               'H158': 302.275,
+               'K213': 901.175,
+               'R062': 161.025,
+               'Y106': 302.275,
+               'Z087': 101.7}
+
     ti_x_pi['mag_fit'] = -2.5*np.log10(ti_x_pi['flux_fit'])
     ti_x_pi['mag_err'] = np.sqrt((1.09/ti_x_pi['flux_fit'])**2*ti_x_pi['flux_err']**2)
 
     if zpt:
-        if truth is None:
-            raise ValueError('You need to provide a truth catalog if you want to zero point the magnitudes.')
+        band = np.unique(ti_x_pi['filter'])
+        area_eff = roman.collecting_area
+        galsim_zp = roman.getBandpasses()[band].zeropoint
 
-        else:
-            band = np.unique(ti_x_pi['filter'])
-            area_eff = roman.collecting_area
-            galsim_zp = roman.getBandpasses()[band].zeropoint
+        ti_x_pi['truth_mag'] = -2.5*np.log10(ti_x_pi['flux_truth']) + 2.5*np.log10(exptime[band]*area_eff) + galsim_zp
+        ti_x_pi['truth_mag_err'] = np.sqrt((1.09/ti_x_pi['flux_fit'])**2*ti_x_pi['flux_err']**2)
 
-            truth_mag = -2.5*np.log10(ti_x_pi['flux_truth']/area_eff/302.275) + galsim_zp
-
-            ############UNFINISHED--MAKE IT LOOK THRU FILES FOR OBJECT IDS
-            #OR ADD ZPT TO CONFIG FILE
-            #IDK
-            print('YOU HAVE TO CROSSMATCH BEFORE YOU ZERO POINT')
+        ############UNFINISHED--MAKE IT LOOK THRU FILES FOR OBJECT IDS
+        #OR ADD ZPT TO CONFIG FILE
+        #IDK
+        print('YOU HAVE TO CROSSMATCH BEFORE YOU ZERO POINT')
 
 
     return ti_x_pi

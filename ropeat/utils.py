@@ -2,17 +2,18 @@ import numpy as np
 import pandas as pd
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy.table import Table
+from astropy.table import Table, vstack
 
-def get_obj_type_from_ID(ID):
-    if ID > 9921000000000 and ID < 10779202101973:
-        return 'galaxy'
-    elif ID > 30328699913 and ID < 50963307358:
-        return 'star'
-    elif ID > 20000001 and ID < 120026449:
-        return 'transient'
-    else:
-        return 'unknown'
+# def get_obj_type_from_ID(ID):
+# THIS IS NO LONGER TRUE. CHANGE ID BOUNDS.
+#     if ID > 9921000000000 and ID < 10779202101973:
+#         return 'galaxy'
+#     elif ID > 30328699913 and ID < 50963307358:
+#         return 'star'
+#     elif ID > 20000001 and ID < 120026449:
+#         return 'transient'
+#     else:
+#         return 'unknown'
 
 def train_config(objtype):
     if objtype == 'galaxy':
@@ -34,12 +35,32 @@ def predict_config(objtype):
     else:
         return 'other'
 
-def read_truth(truth_path):
+def read_truth_txt(truth_path):
     truth_colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
     truth_pd = pd.read_csv(truth_path, comment='#', skipinitialspace=True, sep=' ', names=truth_colnames)
     truth = Table.from_pandas(truth_pd)
 
     return truth
+
+def get_object(oid,config,colnames=[['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']]):
+    """
+    Retrieves all information for a particular object ID.
+
+    """
+    subconfig = config[config['object_id'] == oid]
+    object_tab = Table(names=colnames)
+
+    for row in subconfig:
+        band = row['filter']
+        p = row['pointing']
+        sca = row['sca']
+        filepath = f'/hpc/group/cosmology/lna18/roman_sim_imgs/Roman_Rubin_Sims_2024/preview/crossmatched_truth/{band}/{p}/Roman_TDS_xmatch_{band}_{p}_{sca}.txt'
+        phot = Table.read(filepath, format='csv')
+        object_row = phot[phot['object_id'] == int(oid)]
+        object_row_reduced = object_row[colnames]
+        object_tab = vstack([object_tab,object_row_reduced], join_type='exact')
+
+    return object_tab
 
 def get_corners(band,pointing,sca):
     imgpath = f'/hpc/group/cosmology/RomanDESC_sims_2024/RomanTDS/images/simple_model/{band}/{pointing}/Roman_TDS_simple_model_{band}_{pointing}_{sca}.fits.gz'
