@@ -1,5 +1,6 @@
 # ropeat
-Basic package for Roman photometry, associated with Aldoroty et al. 2024 in prep. 
+Basic package for working with the Roman-DESC simulations, associated with Aldoroty et al. 2024 in prep. 
+
 
 Install by cloning this directory, navigating to that directory in your local terminal, and then using
 ```
@@ -12,6 +13,9 @@ easily, but you do not need to use all the modules. It contains:
 sourcedetection.py
 objectidentification.py
 photometry.py
+utils.py
+plotaesthetics.py
+plotting.py
 ```
 
 You'll need:
