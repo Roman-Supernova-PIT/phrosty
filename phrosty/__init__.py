@@ -1,3 +1,5 @@
 from .photometry import *
 from .plotting import *
-from .sourcedetection import *
+from .utils import *
+# This is broken: 
+# from .sourcedetection import *

@@ -11,7 +11,8 @@ from astropy.visualization import ZScaleInterval
 import sep
 
 # IMPORTS Internal:
-from .utils import get_obj_type_from_ID
+# This is broken: 
+#from .utils import get_obj_type_from_ID
 
 ###########################################################################
 

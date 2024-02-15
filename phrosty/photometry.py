@@ -1,5 +1,8 @@
+# IMPORTS Standard:
 import numpy as np
 import matplotlib.pyplot as plt
+
+# IMPORTS Astro:
 from astropy.coordinates import SkyCoord, search_around_sky
 from astropy.nddata import NDData
 from astropy.stats import sigma_clipped_stats
@@ -12,7 +15,10 @@ from photutils.detection import DAOStarFinder
 from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from galsim import roman
 
-roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'W146', 'K213']
+# IMPORTS Internal:
+from .utils import get_object
+
+roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213']
 
 def ap_phot(scienceimage,coords,wcs,
             ap_r=3, bkg_estimator=MMMBackground(), box_size=(50,50),
@@ -177,7 +183,7 @@ def crossmatch(pi,ti,seplimit=0.1):
     
     return ti_x_pi
 
-def convert_flux_to_mag(ti_x_pi, zpt=False):
+def convert_flux_to_mag(ti_x_pi, band, config, zpt=False):
     """
     Input the astropy table from crossmatch.
 
@@ -195,18 +201,21 @@ def convert_flux_to_mag(ti_x_pi, zpt=False):
     ti_x_pi['mag_err'] = np.sqrt((1.09/ti_x_pi['flux_fit'])**2*ti_x_pi['flux_err']**2)
 
     if zpt:
-        band = np.unique(ti_x_pi['filter'])
+        ti_x_pi['zpt'] = np.zeros(len(ti_x_pi))
         area_eff = roman.collecting_area
         galsim_zp = roman.getBandpasses()[band].zeropoint
 
         ti_x_pi['truth_mag'] = -2.5*np.log10(ti_x_pi['flux_truth']) + 2.5*np.log10(exptime[band]*area_eff) + galsim_zp
         ti_x_pi['truth_mag_err'] = np.sqrt((1.09/ti_x_pi['flux_fit'])**2*ti_x_pi['flux_err']**2)
-
-        ############UNFINISHED--MAKE IT LOOK THRU FILES FOR OBJECT IDS
-        #OR ADD ZPT TO CONFIG FILE
-        #IDK
-        print('YOU HAVE TO CROSSMATCH BEFORE YOU ZERO POINT')
-
+        
+        for i, row in enumerate(ti_x_pi):
+            objtab = get_object(row['object_id'], config)
+            mean_mag = np.nanmean(objtab['mag_fit'])
+            print('mean mag')
+            print(mean_mag)
+            zpt = np.unique(objtab['truth_mag'] - mean_mag)
+            ti_x_pi['zpt'][i] = zpt
+            ti_x_pi['mag_fit'] += zpt 
 
     return ti_x_pi
 

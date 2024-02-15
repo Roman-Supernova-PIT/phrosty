@@ -1,4 +1,4 @@
-# Standard imports
+# IMPORTS Standard:
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, confusion_matrix, ConfusionMatrixDisplay, recall_score
 from sklearn.inspection import DecisionBoundaryDisplay
@@ -9,10 +9,10 @@ import numpy as np
 import os
 from operator import methodcaller
 
-# Astro imports
+# IMPORTS Astro: 
 from astropy.table import Table
 
-# Internal imports
+# IMPORTS Internal: 
 from .utils import train_config, predict_config
 from .plotting import classification_contours
 
