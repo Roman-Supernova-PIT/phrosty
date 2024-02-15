@@ -1,4 +1,7 @@
-# ropeat
+# phrosty
+
+"phrosty": PHotometry for ROman Simulations. Help me figure out what the "ty" is from, or help me rename this package. 
+
 Basic package for working with the Roman-DESC simulations, associated with Aldoroty et al. 2024 in prep. 
 
 
