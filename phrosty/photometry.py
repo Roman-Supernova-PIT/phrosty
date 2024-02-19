@@ -16,7 +16,7 @@ from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from galsim import roman
 
 # IMPORTS Internal:
-from .utils import get_object
+# from .utils import get_object # This function is currently commented out of utils for improvement
 
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213']
 

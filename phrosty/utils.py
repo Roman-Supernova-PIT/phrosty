@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
+from numba import vectorize, float64
 from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.table import Table, vstack
+from astropy import units as u
 
 def read_truth_txt(truth_path):
     truth_colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
@@ -10,28 +12,6 @@ def read_truth_txt(truth_path):
     truth = Table.from_pandas(truth_pd)
 
     return truth
-
-def get_object(oid,config,colnames=[['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']]):
-    """
-    Retrieves all information for a particular object ID after you've crossmatched photometry with the corresponding
-    truth file. 
-
-    """
-    subconfig = config[config['object_id'] == oid]
-    print(subconfig)
-    object_tab = Table(names=colnames)
-
-    for row in subconfig:
-        band = row['filter']
-        p = row['pointing']
-        sca = row['sca']
-        filepath = f'/hpc/group/cosmology/lna18/roman_sim_imgs/Roman_Rubin_Sims_2024/preview/crossmatched_truth/{band}/{p}/Roman_TDS_xmatch_{band}_{p}_{sca}.txt'
-        phot = Table.read(filepath, format='csv')
-        object_row = phot[phot['object_id'] == int(oid)]
-        object_row_reduced = object_row[colnames]
-        object_tab = vstack([object_tab,object_row_reduced], join_type='exact')
-
-    return object_tab
 
 def get_corners(band,pointing,sca):
     imgpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/images/simple_model/{band}/{pointing}/Roman_TDS_simple_model_{band}_{pointing}_{sca}.fits.gz'
@@ -49,6 +29,94 @@ def get_mjd(pointing):
     mjd = obseq['date'][pointing]
 
     return mjd
+
+def get_object_instances(oid,ra,dec,colnames=[['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']]):
+
+    """
+    Retrieves all images that a unique object is in. There are three steps to this, because
+    I think it will make the code run faster:
+    1. First cut (coarse): Check object's proximity to boresight coordinates for all pointings.
+    2. Second cut (fine): Of the pointings that passed the first cut, check the proximity of the center
+       of each individual SCA to the object's coordinates.
+    3. Of the SCAs that passed the second cut, open each truth file and check if the object ID is in it. 
+
+
+    RA/dec arguments should be in degrees, as they are in the obseq file. 
+
+    """
+    
+    obseq_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'
+    with fits.open(obseq_path) as osp:
+        obseq = Table(osp[1].data)
+
+    obseq_radec_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23_radec.fits'
+    with fits.open(obseq_radec_path) as osradecp:
+        obseq_radec = Table(osradecp[1].data)
+
+    ra_oid = (ra * u.deg).to(u.rad)
+    dec_oid = (dec * u.deg).to(u.rad)
+
+    x_oid = np.cos(dec_oid)*np.cos(ra_oid)
+    y_oid = np.cos(dec_oid)*np.sin(ra_oid)
+    z_oid = np.sin(dec_oid)
+
+    ra_obseq = (obseq['ra'] * u.deg).to(u.rad)
+    dec_obseq = (obseq['dec'] * u.deg).to(u.rad)
+
+    x = np.cos(np.array(dec_obseq))*np.cos(np.array(ra_obseq))
+    y = np.cos(np.array(dec_obseq))*np.sin(np.array(ra_obseq))
+    z = np.sin(np.array(dec_obseq))
+
+    d_actual = np.sqrt((x - x_oid)**2 + (y - y_oid)**2 + (z - z_oid)**2)
+    d_req = np.sin(0.009/2.) # Why? Because in roman_imsim.telescope.near_pointing(), 
+                             # this is the required distance. See where it says
+                             # self.sbore2 = np.sin(max_rad_from_boresight/2.), and
+                             # earlier, defines max_rad_from_boresight = 0.009 by default.
+                             # This part of my code is also basically a copy of near_pointing. 
+    
+    idx_firstcut = np.where(d_actual/2. <= d_req)[0]
+
+    sca_coords = obseq_radec[idx_firstcut]
+
+
+    return idx_firstcut 
+
+def sca_check(sca_ra, sca_dec, oid_ra, oid_dec):
+    # Each SCA is 0.11 arcsec/px and 4088 x 4088 px. 
+    # So, at most, the object will be the distance between the
+    # center coordinate and the corner of the SCA away from the 
+    # center. 
+
+    sca_ra_as = (sca_ra * u.deg).to(u.arcsec)
+    sca_dec_as = (sca_dec * u.deg).to(u.arcsec)
+
+    sca_halfsize = 0.11 * 4088 / 2
+
+    d_req = (np.sqrt(2)*sca_halfsize * u.arcsec).to(u.rad)
+
+
+
+# def get_object(oid,config,colnames=[['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']]):
+#     """
+#     Retrieves all information for a particular object ID after you've crossmatched photometry with the corresponding
+#     truth file. 
+
+#     """
+#     subconfig = config[config['object_id'] == oid]
+#     print(subconfig)
+#     object_tab = Table(names=colnames)
+
+    # for row in subconfig:
+    #     band = row['filter']
+    #     p = row['pointing']
+    #     sca = row['sca']
+    #     filepath = f'/hpc/group/cosmology/lna18/roman_sim_imgs/Roman_Rubin_Sims_2024/preview/crossmatched_truth/{band}/{p}/Roman_TDS_xmatch_{band}_{p}_{sca}.txt'
+    #     phot = Table.read(filepath, format='csv')
+    #     object_row = phot[phot['object_id'] == int(oid)]
+    #     object_row_reduced = object_row[colnames]
+    #     object_tab = vstack([object_tab,object_row_reduced], join_type='exact')
+
+    # return object_tab
 
 
 # def get_obj_type_from_ID(ID):
