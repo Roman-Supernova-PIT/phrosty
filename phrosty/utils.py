@@ -1,22 +1,26 @@
 import numpy as np
 import pandas as pd
-from numba import vectorize, float64
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy.table import Table, vstack
+from astropy.table import Table
 from astropy import units as u
 
-def read_truth_txt(truth_path):
+def read_truth_txt(band,pointing,sca):
+    """
+    Reads in the txt versions of the truth files as convenient astropy tables. 
+
+    """
+    truthpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/truth/{band}/{pointing}/Roman_TDS_index_{band}_{pointing}_{sca}.txt'
     truth_colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
-    truth_pd = pd.read_csv(truth_path, comment='#', skipinitialspace=True, sep=' ', names=truth_colnames)
+    truth_pd = pd.read_csv(truthpath, comment='#', skipinitialspace=True, sep=' ', names=truth_colnames)
     truth = Table.from_pandas(truth_pd)
 
     return truth
 
 def get_corners(band,pointing,sca):
     imgpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/images/simple_model/{band}/{pointing}/Roman_TDS_simple_model_{band}_{pointing}_{sca}.fits.gz'
-    hdu = fits.open(imgpath)
-    wcs = WCS(hdu[1].header)
+    with fits.open(imgpath) as hdu:
+        wcs = WCS(hdu[1].header)
     corners = [[0,0],[0,4088],[4088,0],[4088,4088]]
     wcs_corners = wcs.pixel_to_world_values(corners)
 
@@ -24,13 +28,63 @@ def get_corners(band,pointing,sca):
 
 def get_mjd(pointing):
     obseq_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'
-    obseq_hdu = fits.open(obseq_path)
-    obseq = Table(obseq_hdu[1].data)
+    with fits.open(obseq_path) as obs:
+        obseq = Table(obs[1].data)
     mjd = obseq['date'][pointing]
 
     return mjd
 
-def get_object_instances(oid,ra,dec,colnames=[['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']]):
+def _coord_transf(ra,dec):
+    """
+    Helper function for sca_check and get_object_instances.
+    Inputs must be in radians. 
+
+    """
+    x = np.cos(dec) * np.cos(ra)
+    y = np.cos(dec) * np.sin(ra)
+    z = np.sin(dec)
+
+    return x,y,z
+
+def _distance(x0,x1,y0,y1,z0,z1):
+    return np.sqrt((x0 - x1)**2 + (y0 - y1)**2 + (z0 - z1)**2)
+
+def _sca_check(sca_ra, sca_dec, oid_x, oid_y, oid_z):
+
+    """
+    This is a helper function for get_object_instances and is not meant to be called 
+    directly. 
+    
+    """
+    # Each SCA is 0.11 arcsec/px and 4088 x 4088 px. 
+    # So, at most, the object will be the distance between the
+    # center coordinate and the corner of the SCA away from the 
+    # center. 
+
+    sca_ra = (sca_ra * u.deg).to(u.rad).value
+    sca_dec = (sca_dec * u.deg).to(u.rad).value
+
+    sca_halfsize = ((0.11 * 4088 / 2.) * u.arcsec).to(u.rad).value
+    d_req = np.sqrt(2)*sca_halfsize
+
+    sca_x, sca_y, sca_z = _coord_transf(sca_ra, sca_dec)
+
+    d_actual = _distance(sca_x, oid_x, sca_y, oid_y, sca_z, oid_z)
+
+    idx = np.stack(np.where(d_actual < d_req)).T
+    # Note: returns indices in columns, where the first column is the
+    # sca-1 and the second is pointing
+    return idx
+
+def _obj_in(oid,df):
+    if int(oid) in df['object_id'].astype(int):
+        return True
+    else:
+        return False
+
+def get_object_instances(oid,ra,dec,
+                        mjd_start=None,mjd_end=None,
+                        colnames=[['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']]):
 
     """
     Retrieves all images that a unique object is in. There are three steps to this, because
@@ -53,71 +107,58 @@ def get_object_instances(oid,ra,dec,colnames=[['object_id','ra','dec','mag_truth
     with fits.open(obseq_radec_path) as osradecp:
         obseq_radec = Table(osradecp[1].data)
 
-    ra_oid = (ra * u.deg).to(u.rad)
-    dec_oid = (dec * u.deg).to(u.rad)
+    if mjd_start is not None and mjd_end is not None:
+        mjd_idx = np.where((obseq['date'] > mjd_start) & (obseq['date'] < mjd_end))[0]
+    elif mjd_start is not None and mjd_end is None:
+        mjd_idx = np.where(obseq['date'] > mjd_start)[0]
+    elif mjd_end is not None and mjd_start is None:
+        mjd_idx = np.where(obseq['date'] < mjd_end)[0]
+    elif mjd_start is None and mjd_end is None:
+        mjd_idx = np.arange(0,len(obseq),1)
 
-    x_oid = np.cos(dec_oid)*np.cos(ra_oid)
-    y_oid = np.cos(dec_oid)*np.sin(ra_oid)
-    z_oid = np.sin(dec_oid)
+    obseq = obseq[mjd_idx]
+    obseq_radec = obseq_radec[mjd_idx]
 
-    ra_obseq = (obseq['ra'] * u.deg).to(u.rad)
-    dec_obseq = (obseq['dec'] * u.deg).to(u.rad)
+    ra_oid = (ra * u.deg).to(u.rad).value
+    dec_oid = (dec * u.deg).to(u.rad).value
 
-    x = np.cos(np.array(dec_obseq))*np.cos(np.array(ra_obseq))
-    y = np.cos(np.array(dec_obseq))*np.sin(np.array(ra_obseq))
-    z = np.sin(np.array(dec_obseq))
+    x_oid, y_oid, z_oid = _coord_transf(ra_oid, dec_oid)
 
-    d_actual = np.sqrt((x - x_oid)**2 + (y - y_oid)**2 + (z - z_oid)**2)
+    ra_obseq = (obseq['ra'] * u.deg).to(u.rad).value 
+    dec_obseq = (obseq['dec'] * u.deg).to(u.rad).value
+
+    x, y, z = _coord_transf(np.array(ra_obseq), np.array(dec_obseq))
+
+    d_actual = _distance(x, x_oid, y, y_oid, z, z_oid)
     d_req = np.sin(0.009/2.) # Why? Because in roman_imsim.telescope.near_pointing(), 
                              # this is the required distance. See where it says
                              # self.sbore2 = np.sin(max_rad_from_boresight/2.), and
                              # earlier, defines max_rad_from_boresight = 0.009 by default.
                              # This part of my code is also basically a copy of near_pointing. 
     
-    idx_firstcut = np.where(d_actual/2. <= d_req)[0]
+    idx_pointing = np.where(d_actual/2. <= d_req)[0]
+    idx_firstcut = mjd_idx[idx_pointing]
 
-    sca_coords = obseq_radec[idx_firstcut]
+    sca_tab = obseq_radec[idx_firstcut]
+    sca_tab_ra = np.array(sca_tab['ra'])
+    sca_tab_dec = np.array(sca_tab['dec'])
+    sca_tab_filter = np.array(sca_tab['filter'])
 
+    sca_rd = np.array([sca_tab_ra,sca_tab_dec]).reshape((2,len(sca_tab),18)).T
+    sca_check = _sca_check(sca_rd[:,:,0], sca_rd[:,:,1],x_oid,y_oid,z_oid)
+    pointing_idx = sca_check[:,1]
+    sca_idx = sca_check[:,0]
 
-    return idx_firstcut 
+    secondcut_tab = Table([sca_tab_filter[pointing_idx], idx_firstcut[pointing_idx], sca_idx+1], names=('filter','pointing','sca'))
 
-def sca_check(sca_ra, sca_dec, oid_ra, oid_dec):
-    # Each SCA is 0.11 arcsec/px and 4088 x 4088 px. 
-    # So, at most, the object will be the distance between the
-    # center coordinate and the corner of the SCA away from the 
-    # center. 
+    final_idx = []
+    for i, row in enumerate(secondcut_tab):
+        df = read_truth_txt(row['filter'],row['pointing'],row['sca'])
+        if _obj_in(oid, df):
+            final_idx.append(i)
+        del df
 
-    sca_ra_as = (sca_ra * u.deg).to(u.arcsec)
-    sca_dec_as = (sca_dec * u.deg).to(u.arcsec)
-
-    sca_halfsize = 0.11 * 4088 / 2
-
-    d_req = (np.sqrt(2)*sca_halfsize * u.arcsec).to(u.rad)
-
-
-
-# def get_object(oid,config,colnames=[['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']]):
-#     """
-#     Retrieves all information for a particular object ID after you've crossmatched photometry with the corresponding
-#     truth file. 
-
-#     """
-#     subconfig = config[config['object_id'] == oid]
-#     print(subconfig)
-#     object_tab = Table(names=colnames)
-
-    # for row in subconfig:
-    #     band = row['filter']
-    #     p = row['pointing']
-    #     sca = row['sca']
-    #     filepath = f'/hpc/group/cosmology/lna18/roman_sim_imgs/Roman_Rubin_Sims_2024/preview/crossmatched_truth/{band}/{p}/Roman_TDS_xmatch_{band}_{p}_{sca}.txt'
-    #     phot = Table.read(filepath, format='csv')
-    #     object_row = phot[phot['object_id'] == int(oid)]
-    #     object_row_reduced = object_row[colnames]
-    #     object_tab = vstack([object_tab,object_row_reduced], join_type='exact')
-
-    # return object_tab
-
+    return secondcut_tab[final_idx]
 
 # def get_obj_type_from_ID(ID):
 # THIS IS NO LONGER TRUE. CHANGE ID BOUNDS.
@@ -149,48 +190,3 @@ def predict_config(objtype):
         return 'transient'
     else:
         return 'other'
-
-# def make_truth_config_table(list_of_paths,n_jobs=20,verbose=False):
-#     colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
-#     config_dict = {'object_id': [],
-#                    'band':      [],
-#                    'pointing':  [],
-#                    'sca':       []}
-#     if verbose:
-#         print('We need to get through', len(list_of_paths), 'images.')
-#         counter = 1
-#     for path in list_of_paths:
-#         band = path.split('_')[-3]
-#         pointing = path.split('_')[-2]
-#         sca = path.split('_')[-1].split('.')[0]
-#         if verbose:
-#             print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-#             print(f'This is image {counter}/{len(list_of_paths)}.')
-#             print(band, pointing, sca)
-#             f = open(path,'r')
-#             lines = f.readlines()
-#             for l in lines[1:]:
-#                 oid = l.split()[0]
-#                 config_dict['object_id'].append(oid)
-#                 config_dict['band'].append(band)
-#                 config_dict['pointing'].append(pointing)
-#                 config_dict['sca'].append(sca)
-
-#             if verbose:
-#                 counter += 1
-#                 print(f'There are {len(config_dict["object_id"])} rows in the table.')
-#     if verbose:
-#         print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-#         print('Done pulling OIDs from files.')
-#         print('Now, add the config values.')
-
-#     # Update this to do something that makes sense about the object IDs and the number of jobs. 
-#     oid_config = pd.DataFrame(config_dict).sort_values('object_id',ignore_index=True)
-#     bins = sorted(list(np.linspace(10**6,10**8,10)) + list(np.linspace(10**8,10**12,20)) + list(np.linspace(10**12,10**13,30)))
-#     config_array = np.digitize(oid_config['object_id'].astype(int),bins)
-#     oid_config['config'] = config_array
-
-#     if verbose:
-#         print('Added the config column!')
-    
-#     return oid_config
