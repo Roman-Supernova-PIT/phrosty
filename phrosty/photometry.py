@@ -16,7 +16,7 @@ from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from galsim import roman
 
 # IMPORTS Internal:
-# from .utils import get_object # This function is currently commented out of utils for improvement
+from .utils import get_object_instances 
 
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213']
 
@@ -183,10 +183,17 @@ def crossmatch(pi,ti,seplimit=0.1):
     
     return ti_x_pi
 
+def zpt_object_to_truth(object_data,ra,dec,
+                        colnames=[['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']]):
+
+# Truth mag -2.5*np.log10(object_tab['flux_truth']) + 2.5*np.log10(exptime[band]*area_eff) + galsim_zp
+    object_data['mag_truth'] = -2.5*np.log10(object_data['flux_truth']) + 2.5*np.log10()
+
+
 def convert_flux_to_mag(ti_x_pi, band, config, zpt=False):
     """
     Input the astropy table from crossmatch.
-
+    decide if you want to use this function or the one above!!!!!!!!!!!!
     """
 
     exptime = {'F184': 901.175,

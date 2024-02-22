@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy.table import Table
+from astropy.table import Table, vstack
 from astropy import units as u
 
 def read_truth_txt(band,pointing,sca):
@@ -83,8 +83,7 @@ def _obj_in(oid,df):
         return False
 
 def get_object_instances(oid,ra,dec,
-                        mjd_start=None,mjd_end=None,
-                        colnames=[['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']]):
+                        mjd_start=None,mjd_end=None):
 
     """
     Retrieves all images that a unique object is in. There are three steps to this, because
@@ -151,6 +150,8 @@ def get_object_instances(oid,ra,dec,
 
     secondcut_tab = Table([sca_tab_filter[pointing_idx], idx_firstcut[pointing_idx], sca_idx+1], names=('filter','pointing','sca'))
 
+    # This part of the code is really slow because I'm opening files. 
+    # Want to parallelize in future to speed up. 
     final_idx = []
     for i, row in enumerate(secondcut_tab):
         df = read_truth_txt(row['filter'],row['pointing'],row['sca'])
@@ -160,16 +161,26 @@ def get_object_instances(oid,ra,dec,
 
     return secondcut_tab[final_idx]
 
-# def get_obj_type_from_ID(ID):
-# THIS IS NO LONGER TRUE. CHANGE ID BOUNDS.
-#     if ID > 9921000000000 and ID < 10779202101973:
-#         return 'galaxy'
-#     elif ID > 30328699913 and ID < 50963307358:
-#         return 'star'
-#     elif ID > 20000001 and ID < 120026449:
-#         return 'transient'
-#     else:
-#         return 'unknown'
+def get_object_data(oid, metadata,
+                    colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']):
+
+    """
+    metadata is the output from get_object_instance. 
+    """
+    
+    object_tab = Table(names=colnames)
+    for row in metadata:
+        band = row['filter']
+        p = row['pointing']
+        sca = row['sca']
+
+        filepath = f'/hpc/group/cosmology/lna18/roman_sim_imgs/Roman_Rubin_Sims_2024/preview/crossmatched_truth/{band}/{p}/Roman_TDS_xmatch_{band}_{p}_{sca}.txt'
+        phot = Table.read(filepath, format='csv')
+        object_row = phot[phot['object_id'] == int(oid)]
+        object_row_reduced = object_row[colnames]
+        object_tab = vstack([object_tab, object_row_reduced], join_type='exact')
+
+    return object_tab
 
 def train_config(objtype):
     if objtype == 'galaxy':
@@ -190,3 +201,16 @@ def predict_config(objtype):
         return 'transient'
     else:
         return 'other'
+
+# def get_obj_type_from_ID(ID):
+# THIS IS NO LONGER TRUE. CHANGE ID BOUNDS.
+# But also may not be necessary because object type is now
+# a column in the truth txt files. 
+#     if ID > 9921000000000 and ID < 10779202101973:
+#         return 'galaxy'
+#     elif ID > 30328699913 and ID < 50963307358:
+#         return 'star'
+#     elif ID > 20000001 and ID < 120026449:
+#         return 'transient'
+#     else:
+#         return 'unknown'
