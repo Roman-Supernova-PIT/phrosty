@@ -24,22 +24,31 @@ def ap_phot(scienceimage,coords,wcs,
             ap_r=3, bkg_estimator=MMMBackground(), box_size=(50,50),
             filter_size=(3,3), method='subpixel',subpixels=5,
             merge_tables=True):
-    """_summary_
+    """Does aperture photometry on the input science image and 
+        specified coordinates. 
 
-    Args:
-        scienceimage (array-like): Array containing science image.
-        coords (astropy.table.Table): Table with columns 'x' and 'y' representing pixel
+    :param scienceimage: Array containing science image.
+    :type scienceimage: array-like
+    :param coords: Table with columns 'x' and 'y' representing pixel
                                     coordinates for the detected sources. Table can contain
                                     more than just 'x' and 'y', and this may be useful if you 
                                     use merge_tables=True. 
-        ap_r (int, optional): Aperture radius to use for aperture photometry. Defaults to 3.
-        bkg_estimator (_type_, optional): _description_. Defaults to MMMBackground().
-        box_size (tuple, optional): _description_. Defaults to (50,50).
-        filter_size (tuple, optional): _description_. Defaults to (3,3).
-        method (str, optional): _description_. Defaults to 'subpixel'.
-        subpixels (int, optional): _description_. Defaults to 5.
-        merge_tables (bool, optional): If true, output is merged coords and results from aperture
-                                    photometry. Defaults to True.
+    :type coords: astropy.table.Table
+    :param ap_r: Aperture radius to use for aperture photometry. Defaults to 3.
+    :type ap_r: int, optional
+    :param bkg_estimator: _description_. Defaults to MMMBackground().
+    :type bkg_estimator: _type_, optional
+    :param box_size: _description_. Defaults to (50,50).
+    :type box_size: tuple, optional
+    :param filter_size: _description_. Defaults to (3,3).
+    :type filter_size: tuple, optional
+    :param method: _description_. Defaults to 'subpixel'.
+    :type method: str, optional
+    :param subpixels: _description_. Defaults to 5.
+    :type subpixels: int, optional
+    :param merge_tables: If true, output is merged coords and results from aperture
+                        photometry. Defaults to True.
+    :type merge_tables: boolean, optional
 
     Returns:
         astropy.table.Table: Table containing results from aperture photometry. 
@@ -155,8 +164,10 @@ def crossmatch(pi,ti,seplimit=0.1):
                 pointing, and sca as ti. 
     :type pi: Astropy table
 
-    Returns:
-        _type_: _description_ 
+    :return: Joined truth catalog and measured photometry catalog, 
+            so that the measured objects are correctly crossmatched
+            to their corresponding rows in the truth catalog. 
+    :rtype: astropy.table 
     """
 
     if 'ra_truth' not in ti.colnames:
@@ -213,7 +224,6 @@ def convert_flux_to_mag(ti_x_pi, band, config, zpt=False):
         galsim_zp = roman.getBandpasses()[band].zeropoint
 
         ti_x_pi['truth_mag'] = -2.5*np.log10(ti_x_pi['flux_truth']) + 2.5*np.log10(exptime[band]*area_eff) + galsim_zp
-        ti_x_pi['truth_mag_err'] = np.sqrt((1.09/ti_x_pi['flux_fit'])**2*ti_x_pi['flux_err']**2)
         
         for i, row in enumerate(ti_x_pi):
             objtab = get_object(row['object_id'], config)

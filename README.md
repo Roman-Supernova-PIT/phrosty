@@ -1,5 +1,7 @@
 # phrosty
 
+## NOTE: The tutorial below may no longer be applicable. This will be updated soon. 
+
 "phrosty": PHotometry for ROman Simulations. Help me figure out what the "ty" is from, or help me rename this package. 
 
 Basic package for working with the Roman-DESC simulations, associated with Aldoroty et al. 2024 in prep. 
@@ -38,8 +40,8 @@ from astropy.table import Table
 from astropy.wcs import WCS
 
 # This package
-from ropeat.sourcedetection import detect_sources, plot_sources, catalog_matching
-from ropeat.photometry import ap_phot
+from phrosty.sourcedetection import detect_sources, plot_sources, catalog_matching
+from phrosty.photometry import ap_phot
 
 imgpath = '/path/to/science/image.fits.gz'
 truthpath = '/path/to/truth/file.txt'

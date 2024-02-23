@@ -5,20 +5,54 @@ from astropy.wcs import WCS
 from astropy.table import Table, vstack
 from astropy import units as u
 
-def read_truth_txt(band,pointing,sca):
+def read_truth_txt(truthpath=None,band=None,pointing=None,sca=None):
     """
     Reads in the txt versions of the truth files as convenient astropy tables. 
 
+    :param truthpath: Path to txt catalog version of truth file. If you do not 
+                        provide this, you need to specify the arguments
+                        band, pointing, and sca.
+    :type truthpath: str, optional
+    :param band: Roman filter. If you do not provide this, you need to provide truthpath.
+    :type band: str, optional
+    :param pointing: Pointing ID. If you do not provide this, you need to provide truthpath.
+    :type pointing: str, optional
+    :param sca: SCA ID. If you do not provide this, you need to provide truthpath.
+    :type sca: str, optional 
+    :return: Astropy table with contents of the specified catalog txt file. 
+    :rtype: astropy.table.Table
+
     """
-    truthpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/truth/{band}/{pointing}/Roman_TDS_index_{band}_{pointing}_{sca}.txt'
+    if truthpath is not None:
+        _truthpath = truthpath
+    else:
+        if (band is None) or (pointing is None) or (sca is None):
+            raise ValueError('You need to specify band, pointing, and sca if you do not provide a full filepath.')
+        _truthpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/truth/{band}/{str(pointing)}/Roman_TDS_index_{band}_{str(pointing)}_{str(sca)}.txt'
     truth_colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
-    truth_pd = pd.read_csv(truthpath, comment='#', skipinitialspace=True, sep=' ', names=truth_colnames)
+    truth_pd = pd.read_csv(_truthpath, comment='#', skipinitialspace=True, sep=' ', names=truth_colnames)
     truth = Table.from_pandas(truth_pd)
 
     return truth
 
-def get_corners(band,pointing,sca):
-    imgpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/images/simple_model/{band}/{pointing}/Roman_TDS_simple_model_{band}_{pointing}_{sca}.fits.gz'
+def get_corners(imgpath=None,band=None,pointing=None,sca=None):
+    """Retrieves the RA, dec of the corners of the specified SCA in degrees. 
+
+    :param band: Roman filter.
+    :type band: str
+    :param pointing: Pointing ID.
+    :type pointing: str
+    :param sca: SCA ID.
+    :type sca: str
+    :return: _description_
+    :rtype: _type_
+    """    
+    if imgpath is not None:
+        _imgpath = imgpath
+    else:
+        if (band is None) or (pointing is None) or (sca is None):
+            raise ValueError('You need to specify band, pointing, and sca if you do not provide a full filepath.')
+        imgpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/images/simple_model/{band}/{str(pointing)}/Roman_TDS_simple_model_{band}_{str(pointing)}_{str(sca)}.fits.gz'
     with fits.open(imgpath) as hdu:
         wcs = WCS(hdu[1].header)
     corners = [[0,0],[0,4088],[4088,0],[4088,4088]]
@@ -27,17 +61,27 @@ def get_corners(band,pointing,sca):
     return wcs_corners
 
 def get_mjd(pointing):
+    """Retrieve MJD of a given pointing. 
+
+    :param pointing: Pointing ID. 
+    :type pointing: int
+    :return: MJD of specified pointing. 
+    :rtype: float
+    """    
     obseq_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'
     with fits.open(obseq_path) as obs:
         obseq = Table(obs[1].data)
-    mjd = obseq['date'][pointing]
+    mjd = float(obseq['date'][int(pointing)])
 
     return mjd
 
 def _coord_transf(ra,dec):
     """
-    Helper function for sca_check and get_object_instances.
+    Helper function for _sca_check and get_object_instances.
     Inputs must be in radians. 
+
+    :return: Transformed x, y, z coordinates of given RA, dec. 
+    :rtype: tuple  
 
     """
     x = np.cos(dec) * np.cos(ra)
@@ -47,13 +91,36 @@ def _coord_transf(ra,dec):
     return x,y,z
 
 def _distance(x0,x1,y0,y1,z0,z1):
+    """Distance formula. Helper function for _sca_check and get_object_instances. 
+
+    :param x0: _description_
+    :type x0: _type_
+    :param x1: _description_
+    :type x1: _type_
+    :param y0: _description_
+    :type y0: _type_
+    :param y1: _description_
+    :type y1: _type_
+    :param z0: _description_
+    :type z0: _type_
+    :param z1: _description_
+    :type z1: _type_
+    :return: _description_
+    :rtype: _type_
+    """    
     return np.sqrt((x0 - x1)**2 + (y0 - y1)**2 + (z0 - z1)**2)
 
 def _sca_check(sca_ra, sca_dec, oid_x, oid_y, oid_z):
 
     """
-    This is a helper function for get_object_instances and is not meant to be called 
-    directly. 
+    This is a helper function for get_object_instances and is 
+    not meant to be called directly. 
+
+    :return: Indices of which specific SCAs contain a given object.
+            Returns indices in columns, where the first column is 
+            SCA-1 and the second is the pointing that these SCAs
+            belong to. 
+    :rtype: np.array
     
     """
     # Each SCA is 0.11 arcsec/px and 4088 x 4088 px. 
@@ -72,11 +139,20 @@ def _sca_check(sca_ra, sca_dec, oid_x, oid_y, oid_z):
     d_actual = _distance(sca_x, oid_x, sca_y, oid_y, sca_z, oid_z)
 
     idx = np.stack(np.where(d_actual < d_req)).T
-    # Note: returns indices in columns, where the first column is the
-    # sca-1 and the second is pointing
+
     return idx
 
 def _obj_in(oid,df):
+    """Helper function for get_object_instances. Tells you if
+        a row in a table has the specified object ID.     
+
+    :param oid: Unique object ID. 
+    :type oid: int
+    :param df: _description_
+    :type df: _type_
+    :return: _description_
+    :rtype: boolean
+    """    
     if int(oid) in df['object_id'].astype(int):
         return True
     else:
@@ -93,9 +169,21 @@ def get_object_instances(oid,ra,dec,
        of each individual SCA to the object's coordinates.
     3. Of the SCAs that passed the second cut, open each truth file and check if the object ID is in it. 
 
-
     RA/dec arguments should be in degrees, as they are in the obseq file. 
 
+    :param oid:
+    :type oid:
+    :param ra: 
+    :type ra:
+    :param dec:
+    :type dec:
+    :param mjd_start:
+    :type mjd_start: float, optional
+    :param mjd_end:
+    :type mjd_end: float, optional
+    :return: Astropy table with columns filter, pointing, SCA identifying
+            images that contain the input object id (oid). 
+    :rtype: astropy.table.Table
     """
     
     obseq_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'
@@ -165,7 +253,15 @@ def get_object_data(oid, metadata,
                     colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']):
 
     """
-    metadata is the output from get_object_instance. 
+    :param oid:
+    :type oid:
+    :param metadata: Output from get_object_instance.
+    :type metadata: astropy.table
+    :param colnames:
+    :type colnames: list, optional
+    :return: _description_
+    :rtype: astropy.table.Table
+
     """
     
     object_tab = Table(names=colnames)
