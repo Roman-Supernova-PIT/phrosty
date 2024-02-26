@@ -44,8 +44,9 @@ def get_corners(imgpath=None,band=None,pointing=None,sca=None):
     :type pointing: str
     :param sca: SCA ID.
     :type sca: str
-    :return: _description_
-    :rtype: _type_
+    :return: Tuple containing four numpy arrays, each with the RA and dec of the corner
+            of the specified image in degrees. 
+    :rtype: tuple
     """    
     if imgpath is not None:
         _imgpath = imgpath
@@ -74,6 +75,29 @@ def get_mjd(pointing):
     mjd = float(obseq['date'][int(pointing)])
 
     return mjd
+
+def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf):
+    """Get all pointings and corresponding filters between two MJDs.
+    Returns an astropy table with columns 'filter' and 'pointing'. 
+    Does not return an 'sca' column because every sca belonging to a
+    given pointing satisfies an MJD requirement. 
+
+    :param mjd_start: Start MJD, defaults to -np.inf
+    :type mjd_start: float, optional
+    :param mjd_end: End MJD, defaults to np.inf
+    :type mjd_end: float, optional
+    :return: Astropy table with pointing numbers and corresponding filters that satisfy the
+            MJD requirements. 
+    :rtype: astropy.table.Table
+    """
+    obseq_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'
+    with fits.open(obseq_path) as obs:
+        obseq = Table(obs[1].data)
+
+    mjd_idx = np.where((obseq['date'] > float(mjd_start)) & (obseq['date'] < float(mjd_end)))[0]
+    mjd_tab = Table([obseq['filter'][mjd_idx], mjd_idx], names=('filter','pointing'))
+
+    return mjd_tab
 
 def _coord_transf(ra,dec):
     """
@@ -159,7 +183,7 @@ def _obj_in(oid,df):
         return False
 
 def get_object_instances(oid,ra,dec,
-                        mjd_start=None,mjd_end=None):
+                        mjd_start=-np.inf,mjd_end=np.inf):
 
     """
     Retrieves all images that a unique object is in. There are three steps to this, because
@@ -194,14 +218,7 @@ def get_object_instances(oid,ra,dec,
     with fits.open(obseq_radec_path) as osradecp:
         obseq_radec = Table(osradecp[1].data)
 
-    if mjd_start is not None and mjd_end is not None:
-        mjd_idx = np.where((obseq['date'] > mjd_start) & (obseq['date'] < mjd_end))[0]
-    elif mjd_start is not None and mjd_end is None:
-        mjd_idx = np.where(obseq['date'] > mjd_start)[0]
-    elif mjd_end is not None and mjd_start is None:
-        mjd_idx = np.where(obseq['date'] < mjd_end)[0]
-    elif mjd_start is None and mjd_end is None:
-        mjd_idx = np.arange(0,len(obseq),1)
+    mjd_idx = np.where((obseq['date'] > mjd_start) & (obseq['date'] < mjd_end))[0]
 
     obseq = obseq[mjd_idx]
     obseq_radec = obseq_radec[mjd_idx]
@@ -252,14 +269,18 @@ def get_object_instances(oid,ra,dec,
 def get_object_data(oid, metadata,
                     colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']):
 
-    """
-    :param oid:
-    :type oid:
-    :param metadata: Output from get_object_instance.
+    """Retrieves all information from crossmatched photmetry files about a particular object, specified with its
+    unique object ID. 
+
+    :param oid: Object ID. 
+    :type oid: int
+    :param metadata: Output from get_object_instance. Table with filter, pointing, and SCA numbers for this
+                    function to search through. 
     :type metadata: astropy.table
-    :param colnames:
+    :param colnames: The columns that this function should retrieve from the crossmatched photometry files.
     :type colnames: list, optional
-    :return: _description_
+    :return: Astropy table with all instances of argument oid found in the crossmatched photometry files
+            that are present in the metadata table. 
     :rtype: astropy.table.Table
 
     """
