@@ -1,6 +1,6 @@
 # phrosty
 
-## NOTE: The tutorial below may no longer be applicable. This will be updated soon. 
+## NOTE: The tutorial below may no longer be applicable. This will be updated soon. Also, if you use this, do a git pull every day. I change this almost daily. 
 
 "phrosty": PHotometry for ROman Simulations. Help me figure out what the "ty" is from, or help me rename this package. 
 

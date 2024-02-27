@@ -194,17 +194,19 @@ def crossmatch(pi,ti,seplimit=0.1):
     
     return ti_x_pi
 
-def zpt_object_to_truth(object_data,ra,dec,
-                        colnames=[['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']]):
+def convert_flux_to_mag(ti_x_pi, band, zpt=False):
+    """Convert all fluxes to magnitudes from the crossmatched table. 
 
-# Truth mag -2.5*np.log10(object_tab['flux_truth']) + 2.5*np.log10(exptime[band]*area_eff) + galsim_zp
-    object_data['mag_truth'] = -2.5*np.log10(object_data['flux_truth']) + 2.5*np.log10()
+    :param ti_x_pi: Astropy table, directly output from photometry.crossmatch.
+    :type ti_x_pi: astropy.table.Table
+    :param band: Roman filter.
+    :type band: str
+    :param zpt: Set to True if you want to zeropoint the fit flux values from PSF photometry
+                to the truth catalog, as well as apply the galsim zeropoint to the truth magnitudes. Defaults to False.
+    :type zpt: bool, optional
+    :return: Input ti_x_pi with additional columns. 
+    :rtype: astropy.table.Table
 
-
-def convert_flux_to_mag(ti_x_pi, band, config, zpt=False):
-    """
-    Input the astropy table from crossmatch.
-    decide if you want to use this function or the one above!!!!!!!!!!!!
     """
 
     exptime = {'F184': 901.175,
@@ -225,11 +227,13 @@ def convert_flux_to_mag(ti_x_pi, band, config, zpt=False):
 
         ti_x_pi['truth_mag'] = -2.5*np.log10(ti_x_pi['flux_truth']) + 2.5*np.log10(exptime[band]*area_eff) + galsim_zp
         
+        # This is going to be slow. Should parallelize. 
+        # First of all, looping through the entire crossmatched object list is inefficient and can be
+        # parallelized. Second of all, get_object_instances has a slow part in it that should also
+        # be parallelized. 
         for i, row in enumerate(ti_x_pi):
-            objtab = get_object(row['object_id'], config)
+            objtab = get_object_instances(row['object_id'], row['ra_truth'], row['dec_truth'])
             mean_mag = np.nanmean(objtab['mag_fit'])
-            print('mean mag')
-            print(mean_mag)
             zpt = np.unique(objtab['truth_mag'] - mean_mag)
             ti_x_pi['zpt'][i] = zpt
             ti_x_pi['mag_fit'] += zpt 

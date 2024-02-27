@@ -1,5 +1,9 @@
+# IMPORTS Standard:
+import os.path as pa
 import numpy as np
 import pandas as pd
+
+# IMPORTS Astro:
 from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.table import Table, vstack
@@ -53,30 +57,32 @@ def get_corners(imgpath=None,band=None,pointing=None,sca=None):
     else:
         if (band is None) or (pointing is None) or (sca is None):
             raise ValueError('You need to specify band, pointing, and sca if you do not provide a full filepath.')
-        imgpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/images/simple_model/{band}/{str(pointing)}/Roman_TDS_simple_model_{band}_{str(pointing)}_{str(sca)}.fits.gz'
-    with fits.open(imgpath) as hdu:
+        _imgpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/images/simple_model/{band}/{str(pointing)}/Roman_TDS_simple_model_{band}_{str(pointing)}_{str(sca)}.fits.gz'
+    with fits.open(_imgpath) as hdu:
         wcs = WCS(hdu[1].header)
     corners = [[0,0],[0,4088],[4088,0],[4088,4088]]
     wcs_corners = wcs.pixel_to_world_values(corners)
 
     return wcs_corners
 
-def get_mjd(pointing):
+def get_mjd(pointing,obseq_path='/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'):
     """Retrieve MJD of a given pointing. 
 
     :param pointing: Pointing ID. 
     :type pointing: int
+    :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.
+    :type obseq_path: str, optional
     :return: MJD of specified pointing. 
     :rtype: float
     """    
-    obseq_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'
+
     with fits.open(obseq_path) as obs:
         obseq = Table(obs[1].data)
     mjd = float(obseq['date'][int(pointing)])
 
     return mjd
 
-def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf):
+def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,obseq_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'):
     """Get all pointings and corresponding filters between two MJDs.
     Returns an astropy table with columns 'filter' and 'pointing'. 
     Does not return an 'sca' column because every sca belonging to a
@@ -86,11 +92,12 @@ def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf):
     :type mjd_start: float, optional
     :param mjd_end: End MJD, defaults to np.inf
     :type mjd_end: float, optional
+    :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.
+    :type obseq_path: str, optional
     :return: Astropy table with pointing numbers and corresponding filters that satisfy the
             MJD requirements. 
     :rtype: astropy.table.Table
     """
-    obseq_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'
     with fits.open(obseq_path) as obs:
         obseq = Table(obs[1].data)
 
@@ -183,7 +190,8 @@ def _obj_in(oid,df):
         return False
 
 def get_object_instances(oid,ra,dec,
-                        mjd_start=-np.inf,mjd_end=np.inf):
+                        mjd_start=-np.inf,mjd_end=np.inf,
+                        obseq_dir='/cwork/mat90/RomanDESC_sims_2024/RomanTDS/'):
 
     """
     Retrieves all images that a unique object is in. There are three steps to this, because
@@ -210,11 +218,11 @@ def get_object_instances(oid,ra,dec,
     :rtype: astropy.table.Table
     """
     
-    obseq_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'
+    obseq_path = pa.join(obseq_dir,'Roman_TDS_obseq_11_6_23.fits')
     with fits.open(obseq_path) as osp:
         obseq = Table(osp[1].data)
 
-    obseq_radec_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23_radec.fits'
+    obseq_radec_path = pa.join(obseq_dir,'RomanTDS/Roman_TDS_obseq_11_6_23_radec.fits')
     with fits.open(obseq_radec_path) as osradecp:
         obseq_radec = Table(osradecp[1].data)
 
@@ -267,7 +275,8 @@ def get_object_instances(oid,ra,dec,
     return secondcut_tab[final_idx]
 
 def get_object_data(oid, metadata,
-                    colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err']):
+                    colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err'],
+                    crossmatch_dir='/hpc/group/cosmology/lna18/roman_sim_imgs/Roman_Rubin_Sims_2024/preview/crossmatched_truth'):
 
     """Retrieves all information from crossmatched photmetry files about a particular object, specified with its
     unique object ID. 
@@ -291,7 +300,7 @@ def get_object_data(oid, metadata,
         p = row['pointing']
         sca = row['sca']
 
-        filepath = f'/hpc/group/cosmology/lna18/roman_sim_imgs/Roman_Rubin_Sims_2024/preview/crossmatched_truth/{band}/{p}/Roman_TDS_xmatch_{band}_{p}_{sca}.txt'
+        filepath = pa.join(crossmatch_dir,f'{band}/{p}/Roman_TDS_xmatch_{band}_{p}_{sca}.txt')
         phot = Table.read(filepath, format='csv')
         object_row = phot[phot['object_id'] == int(oid)]
         object_row_reduced = object_row[colnames]
