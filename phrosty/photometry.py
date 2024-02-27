@@ -232,9 +232,11 @@ def convert_flux_to_mag(ti_x_pi, band, zpt=False):
         # parallelized. Second of all, get_object_instances has a slow part in it that should also
         # be parallelized. 
         for i, row in enumerate(ti_x_pi):
-            objtab = get_object_instances(row['object_id'], row['ra_truth'], row['dec_truth'])
+            print(row['object_id'], row['ra_truth'], row['dec_truth'])
+            objtab = get_object_instances(row['object_id'], row['ra_truth'], row['dec_truth'], bands=band)
+            objtab['mag_fit'] = -2.5*np.log10(objtab['flux_fit'])
             mean_mag = np.nanmean(objtab['mag_fit'])
-            zpt = np.unique(objtab['truth_mag'] - mean_mag)
+            zpt = np.unique(objtab['mag_truth'] - mean_mag)
             ti_x_pi['zpt'][i] = zpt
             ti_x_pi['mag_fit'] += zpt 
 

@@ -9,6 +9,13 @@ from astropy.wcs import WCS
 from astropy.table import Table, vstack
 from astropy import units as u
 
+def get_roman_bands():
+    """
+    :return: List of bands included in the Roman-DESC TDS simulations. 
+    :rtype: list
+    """    
+    return ['F184', 'H158', 'J129', 'K213', 'R062', 'Y106', 'Z087']
+
 def read_truth_txt(truthpath=None,band=None,pointing=None,sca=None):
     """
     Reads in the txt versions of the truth files as convenient astropy tables. 
@@ -189,7 +196,7 @@ def _obj_in(oid,df):
     else:
         return False
 
-def get_object_instances(oid,ra,dec,
+def get_object_instances(oid,ra,dec,bands=get_roman_bands,
                         mjd_start=-np.inf,mjd_end=np.inf,
                         obseq_dir='/cwork/mat90/RomanDESC_sims_2024/RomanTDS/'):
 
@@ -209,6 +216,8 @@ def get_object_instances(oid,ra,dec,
     :type ra:
     :param dec:
     :type dec:
+    :param band:
+    :type band: str
     :param mjd_start:
     :type mjd_start: float, optional
     :param mjd_end:
@@ -220,17 +229,21 @@ def get_object_instances(oid,ra,dec,
     
     obseq_path = pa.join(obseq_dir,'Roman_TDS_obseq_11_6_23.fits')
     with fits.open(obseq_path) as osp:
-        obseq = Table(osp[1].data)
+        obseq_orig = Table(osp[1].data)
 
-    obseq_radec_path = pa.join(obseq_dir,'RomanTDS/Roman_TDS_obseq_11_6_23_radec.fits')
+    obseq_radec_path = pa.join(obseq_dir,'Roman_TDS_obseq_11_6_23_radec.fits')
     with fits.open(obseq_radec_path) as osradecp:
-        obseq_radec = Table(osradecp[1].data)
+        obseq_radec_orig = Table(osradecp[1].data)
+
+    pointing_idx = np.where(np.in1d(obseq_orig['filter'],bands))[0]
+    obseq = obseq_orig[pointing_idx]
+    obseq_radec = obseq_radec_orig[pointing_idx]
 
     mjd_idx = np.where((obseq['date'] > mjd_start) & (obseq['date'] < mjd_end))[0]
-
     obseq = obseq[mjd_idx]
     obseq_radec = obseq_radec[mjd_idx]
-
+    pointing_idx = pointing_idx[mjd_idx]
+    
     ra_oid = (ra * u.deg).to(u.rad).value
     dec_oid = (dec * u.deg).to(u.rad).value
 
@@ -248,10 +261,10 @@ def get_object_instances(oid,ra,dec,
                              # earlier, defines max_rad_from_boresight = 0.009 by default.
                              # This part of my code is also basically a copy of near_pointing. 
     
-    idx_pointing = np.where(d_actual/2. <= d_req)[0]
-    idx_firstcut = mjd_idx[idx_pointing]
+    distance_idx = np.where(d_actual/2. <= d_req)[0]
+    idx_firstcut = pointing_idx[distance_idx]
 
-    sca_tab = obseq_radec[idx_firstcut]
+    sca_tab = obseq_radec_orig[idx_firstcut]
     sca_tab_ra = np.array(sca_tab['ra'])
     sca_tab_dec = np.array(sca_tab['dec'])
     sca_tab_filter = np.array(sca_tab['filter'])
@@ -267,7 +280,8 @@ def get_object_instances(oid,ra,dec,
     # Want to parallelize in future to speed up. 
     final_idx = []
     for i, row in enumerate(secondcut_tab):
-        df = read_truth_txt(row['filter'],row['pointing'],row['sca'])
+        # print(row['filter'],row['pointing'],row['sca'])
+        df = read_truth_txt(band=row['filter'],pointing=row['pointing'],sca=row['sca'])
         if _obj_in(oid, df):
             final_idx.append(i)
         del df
