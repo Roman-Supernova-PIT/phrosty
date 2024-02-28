@@ -16,7 +16,7 @@ from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from galsim import roman
 
 # IMPORTS Internal:
-from .utils import get_object_instances 
+from .utils import get_object_instances, get_object_data
 
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213']
 
@@ -234,9 +234,11 @@ def convert_flux_to_mag(ti_x_pi, band, zpt=False):
         for i, row in enumerate(ti_x_pi):
             print(row['object_id'], row['ra_truth'], row['dec_truth'])
             objtab = get_object_instances(row['object_id'], row['ra_truth'], row['dec_truth'], bands=band)
-            objtab['mag_fit'] = -2.5*np.log10(objtab['flux_fit'])
-            mean_mag = np.nanmean(objtab['mag_fit'])
-            zpt = np.unique(objtab['mag_truth'] - mean_mag)
+            objdata = get_object_data(row['object_id'], objtab)
+            objdata['mag_fit'] = -2.5*np.log10(objdata['flux_fit'])
+            mean_mag = np.nanmedian(objdata['mag_fit'])
+            zpt = row['mag_fit'] - mean_mag
+            # zpt = np.unique(objdata['mag_truth'] - mean_mag)
             ti_x_pi['zpt'][i] = zpt
             ti_x_pi['mag_fit'] += zpt 
 
