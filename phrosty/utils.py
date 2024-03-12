@@ -4,10 +4,63 @@ import numpy as np
 import pandas as pd
 
 # IMPORTS Astro:
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
+from astropy.nddata import Cutout2D
 from astropy.wcs import WCS
+from astropy.wcs.utils import skycoord_to_pixel
 from astropy.table import Table, vstack
 from astropy import units as u
+
+# CHANGE THIS TO FIT YOUR USE: 
+rootdir='/cwork/mat90/RomanDESC_sims_2024/RomanTDS'
+
+def _build_filepath(path,band,pointing,sca,filetype,rootdir=rootdir):
+    """_summary_
+
+    :param path: _description_
+    :type path: _type_
+    :param band: _description_
+    :type band: _type_
+    :param pointing: _description_
+    :type pointing: _type_
+    :param sca: _description_
+    :type sca: _type_
+    :param filetype: _description_
+    :type filetype: _type_
+    :raises ValueError: _description_
+    :raises ValueError: _description_
+    :raises ValueError: _description_
+    :return: _description_
+    :rtype: _type_
+    """
+
+    # First, what kind of file are we looking for? 
+    if filetype not in ['image', 'truth', 'truthtxt']:
+        raise ValueError(f'filetype must be in {filetype}.')
+    elif filetype == 'image':
+        subdir = 'images/simple_model'
+        prefix = 'simple_model'
+    elif filetype == 'truth':
+        subdir = 'images/truth'
+        prefix = 'truth'
+    elif filetype == 'truthtxt':
+        subdir = 'truth'
+        prefix = 'index'
+
+    # Did you already provide a path? 
+    if path is not None:
+        return path
+    elif (band is None) or (pointing is None) or (sca is None):
+        raise ValueError('You need to specify band, pointing, and sca if you do not provide a full filepath.')
+    elif (band is not None) and (pointing is not None) and (sca is not None):
+        print('rootdir', rootdir)
+        path = pa.join(rootdir,subdir,band,str(pointing),f'Roman_TDS_{prefix}_{band}_{str(pointing)}_{str(sca)}.fits.gz')
+        print('path', path)
+        return path 
+
+    elif (path is None) and (band is None) and (pointing is None) and (sca is None):
+        raise ValueError('You need to provide either the full image path, or the band, pointing, and SCA.')
 
 def get_roman_bands():
     """
@@ -34,19 +87,47 @@ def read_truth_txt(truthpath=None,band=None,pointing=None,sca=None):
     :rtype: astropy.table.Table
 
     """
-    if truthpath is not None:
-        _truthpath = truthpath
-    else:
-        if (band is None) or (pointing is None) or (sca is None):
-            raise ValueError('You need to specify band, pointing, and sca if you do not provide a full filepath.')
-        _truthpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/truth/{band}/{str(pointing)}/Roman_TDS_index_{band}_{str(pointing)}_{str(sca)}.txt'
+
+    _truthpath = _build_filepath(truthpath,band,pointing,sca,'truthtxt')
     truth_colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
     truth_pd = pd.read_csv(_truthpath, comment='#', skipinitialspace=True, sep=' ', names=truth_colnames)
     truth = Table.from_pandas(truth_pd)
 
     return truth
 
-def get_corners(imgpath=None,band=None,pointing=None,sca=None):
+def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,size=100.):
+    """Retrieve a stamp around a particular provided RA, dec. 
+
+    :param ra: _description_
+    :type ra: _type_
+    :param dec: _description_
+    :type dec: _type_
+    :param path: _description_, defaults to None
+    :type path: str, optional
+    :param band: _description_, defaults to None
+    :type band: str, optional
+    :param pointing: _description_, defaults to None
+    :type pointing: str, optional
+    :param sca: _description_, defaults to None
+    :type sca: str, optional
+    :param size: _description_, defaults to 100.
+    :type size: float, optional
+    :return: _description_
+    :rtype: numpy.ndarray
+    """    
+    _imgpath = _build_filepath(path,band,pointing,sca,'image')
+    with fits.open(_imgpath) as hdu:
+        img = hdu[1].data
+        wcs = WCS(hdu[1].header)
+    
+    worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+    center = skycoord_to_pixel(worldcoords,wcs)
+    stamp = Cutout2D(img,center,size).data
+
+    return stamp
+
+
+def get_corners(path=None,band=None,pointing=None,sca=None):
     """Retrieves the RA, dec of the corners of the specified SCA in degrees. 
 
     :param band: Roman filter.
@@ -59,12 +140,7 @@ def get_corners(imgpath=None,band=None,pointing=None,sca=None):
             of the specified image in degrees. 
     :rtype: tuple
     """    
-    if imgpath is not None:
-        _imgpath = imgpath
-    else:
-        if (band is None) or (pointing is None) or (sca is None):
-            raise ValueError('You need to specify band, pointing, and sca if you do not provide a full filepath.')
-        _imgpath = f'/cwork/mat90/RomanDESC_sims_2024/RomanTDS/images/simple_model/{band}/{str(pointing)}/Roman_TDS_simple_model_{band}_{str(pointing)}_{str(sca)}.fits.gz'
+    _imgpath = _build_filepath(path,band,pointing,sca,'image')
     with fits.open(_imgpath) as hdu:
         wcs = WCS(hdu[1].header)
     corners = [[0,0],[0,4088],[4088,0],[4088,4088]]
@@ -72,7 +148,7 @@ def get_corners(imgpath=None,band=None,pointing=None,sca=None):
 
     return wcs_corners
 
-def get_mjd(pointing,obseq_path='/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'):
+def get_mjd(pointing,obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
     """Retrieve MJD of a given pointing. 
 
     :param pointing: Pointing ID. 
@@ -89,7 +165,7 @@ def get_mjd(pointing,obseq_path='/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman
 
     return mjd
 
-def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,obseq_path = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits'):
+def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,obseq_path = f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
     """Get all pointings and corresponding filters between two MJDs.
     Returns an astropy table with columns 'filter' and 'pointing'. 
     Does not return an 'sca' column because every sca belonging to a
@@ -194,44 +270,52 @@ def _obj_in(oid,df):
     if int(oid) in df['object_id'].astype(int):
         return True
     else:
-        return False
+        return False    
 
-def get_object_instances(oid,ra,dec,bands=get_roman_bands,
-                        mjd_start=-np.inf,mjd_end=np.inf,
-                        obseq_dir='/cwork/mat90/RomanDESC_sims_2024/RomanTDS/'):
+def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
+                        mjd_start=-np.inf,mjd_end=np.inf):
 
     """
-    Retrieves all images that a unique object is in. There are three steps to this, because
+    Retrieves all images that a unique object or set of coordinates is in. There are three steps to this, because
     I think it will make the code run faster:
     1. First cut (coarse): Check object's proximity to boresight coordinates for all pointings.
     2. Second cut (fine): Of the pointings that passed the first cut, check the proximity of the center
-       of each individual SCA to the object's coordinates.
+       of each individual SCA to the object's coordinates. If an object ID is not provided, this is the 
+       final step. 
     3. Of the SCAs that passed the second cut, open each truth file and check if the object ID is in it. 
 
     RA/dec arguments should be in degrees, as they are in the obseq file. 
 
-    :param oid:
-    :type oid:
     :param ra: 
-    :type ra:
+    :type ra: float
     :param dec:
-    :type dec:
-    :param band:
-    :type band: str
-    :param mjd_start:
+    :type dec: float
+    :param oid: If None, return table containing SCAs that contain the provided RA, dec. If an object ID is
+                provided in this field, this function checks each truth file associated with each image 
+                listed in the table it assembles to ensure that the particular object is present in those 
+                images. WARNING: This is slow. 
+    :type oid: int or None, optional
+    :param band: Filters to include in search. Default ['F184', 'H158', 'J129', 'K213', 'R062', 'Y106', 'Z087'].
+    :type band: list or str, optional
+    :param mjd_start: Start MJD to include in search. 
     :type mjd_start: float, optional
-    :param mjd_end:
+    :param mjd_end: End MJD to include in search. 
     :type mjd_end: float, optional
-    :return: Astropy table with columns filter, pointing, SCA identifying
-            images that contain the input object id (oid). 
+    :return: Astropy table with columns filter, pointing, SCA identifying images that contain the input RA 
+            and dec. If and object ID is provided in argument oid, this function checks each truth file associated 
+            with each image listed in the table it assembles to ensure that the particular object is present in those 
+            images. WARNING: This is slow. Note that if an object ID is not provided, the final list returned will
+            contain some images where the provided RA and dec are slightly outside its bounds. This is because for
+            speed, it takes the center of the SCA from the obseq files, and circumscribes a circle around the SCA for
+            the search zone. 
     :rtype: astropy.table.Table
     """
     
-    obseq_path = pa.join(obseq_dir,'Roman_TDS_obseq_11_6_23.fits')
+    obseq_path = pa.join(rootdir,'Roman_TDS_obseq_11_6_23.fits')
     with fits.open(obseq_path) as osp:
         obseq_orig = Table(osp[1].data)
 
-    obseq_radec_path = pa.join(obseq_dir,'Roman_TDS_obseq_11_6_23_radec.fits')
+    obseq_radec_path = pa.join(rootdir,'Roman_TDS_obseq_11_6_23_radec.fits')
     with fits.open(obseq_radec_path) as osradecp:
         obseq_radec_orig = Table(osradecp[1].data)
 
@@ -276,17 +360,20 @@ def get_object_instances(oid,ra,dec,bands=get_roman_bands,
 
     secondcut_tab = Table([sca_tab_filter[pointing_idx], idx_firstcut[pointing_idx], sca_idx+1], names=('filter','pointing','sca'))
 
-    # This part of the code is really slow because I'm opening files. 
-    # Want to parallelize in future to speed up. 
-    final_idx = []
-    for i, row in enumerate(secondcut_tab):
-        # print(row['filter'],row['pointing'],row['sca'])
-        df = read_truth_txt(band=row['filter'],pointing=row['pointing'],sca=row['sca'])
-        if _obj_in(oid, df):
-            final_idx.append(i)
-        del df
+    if oid is not None:
+        # This part of the code is really slow because I'm opening files. 
+        # Want to parallelize in future to speed up. 
+        final_idx = []
+        for i, row in enumerate(secondcut_tab):
+            # print(row['filter'],row['pointing'],row['sca'])
+            df = read_truth_txt(band=row['filter'],pointing=row['pointing'],sca=row['sca'])
+            if _obj_in(oid, df):
+                final_idx.append(i)
+            del df
 
-    return secondcut_tab[final_idx]
+        return secondcut_tab[final_idx]
+    else:
+        return secondcut_tab
 
 def get_object_data(oid, metadata,
                     colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err'],
@@ -320,7 +407,7 @@ def get_object_data(oid, metadata,
         object_row_reduced = object_row[colnames]
         object_tab = vstack([object_tab, object_row_reduced], join_type='exact')
 
-    return object_tab
+    return object_tab        
 
 def train_config(objtype):
     if objtype == 'galaxy':

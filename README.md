@@ -12,6 +12,8 @@ Install by cloning this directory, navigating to that directory in your local te
 pip install -e .
 ```
 
+You will likely need to change the "rootdir" variable in utils.py. 
+
 This package is modular. Modules are compatible with each other, and they interface
 easily, but you do not need to use all the modules. It contains:
 ```
