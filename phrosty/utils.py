@@ -2,12 +2,14 @@
 import os.path as pa
 import numpy as np
 import pandas as pd
+import warnings
 
 # IMPORTS Astro:
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.nddata import Cutout2D
-from astropy.wcs import WCS
+from astropy.nddata.utils import NoOverlapError
+from astropy.wcs import WCS, FITSFixedWarning
 from astropy.wcs.utils import skycoord_to_pixel
 from astropy.table import Table, vstack
 from astropy import units as u
@@ -15,19 +17,22 @@ from astropy import units as u
 # CHANGE THIS TO FIT YOUR USE: 
 rootdir='/cwork/mat90/RomanDESC_sims_2024/RomanTDS'
 
+# The FITSFixedWarning is consequenceless and it will get thrown every single time you deal with a WCS. 
+warnings.simplefilter('ignore',category=FITSFixedWarning)
+
 def _build_filepath(path,band,pointing,sca,filetype,rootdir=rootdir):
     """_summary_
 
     :param path: _description_
-    :type path: _type_
+    :type path: str
     :param band: _description_
-    :type band: _type_
+    :type band: str
     :param pointing: _description_
-    :type pointing: _type_
+    :type pointing: str
     :param sca: _description_
-    :type sca: _type_
+    :type sca: str
     :param filetype: _description_
-    :type filetype: _type_
+    :type filetype: str
     :raises ValueError: _description_
     :raises ValueError: _description_
     :raises ValueError: _description_
@@ -41,12 +46,15 @@ def _build_filepath(path,band,pointing,sca,filetype,rootdir=rootdir):
     elif filetype == 'image':
         subdir = 'images/simple_model'
         prefix = 'simple_model'
+        extension = 'fits.gz'
     elif filetype == 'truth':
         subdir = 'images/truth'
         prefix = 'truth'
+        extension = 'fits.gz'
     elif filetype == 'truthtxt':
         subdir = 'truth'
         prefix = 'index'
+        extension = 'txt'
 
     # Did you already provide a path? 
     if path is not None:
@@ -54,9 +62,7 @@ def _build_filepath(path,band,pointing,sca,filetype,rootdir=rootdir):
     elif (band is None) or (pointing is None) or (sca is None):
         raise ValueError('You need to specify band, pointing, and sca if you do not provide a full filepath.')
     elif (band is not None) and (pointing is not None) and (sca is not None):
-        print('rootdir', rootdir)
-        path = pa.join(rootdir,subdir,band,str(pointing),f'Roman_TDS_{prefix}_{band}_{str(pointing)}_{str(sca)}.fits.gz')
-        print('path', path)
+        path = pa.join(rootdir,subdir,band,str(pointing),f'Roman_TDS_{prefix}_{band}_{str(pointing)}_{str(sca)}.{extension}')
         return path 
 
     elif (path is None) and (band is None) and (pointing is None) and (sca is None):
@@ -95,7 +101,23 @@ def read_truth_txt(truthpath=None,band=None,pointing=None,sca=None):
 
     return truth
 
-def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,size=100.):
+def radec_isin(ra,dec,path=None,band=None,pointing=None,sca=None,boolean=False):
+    _imgpath = _build_filepath(path,band,pointing,sca,'image')
+    with fits.open(_imgpath) as hdu:
+        img = hdu[1].data
+        wcs = WCS(hdu[1].header)
+    
+    worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+    center = skycoord_to_pixel(worldcoords,wcs)
+    if any(center) < 0 or any(center) > 4088:
+        return False
+    else:
+        if boolean:
+            return True
+        else:
+            return img, center
+
+def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,size=100):
     """Retrieve a stamp around a particular provided RA, dec. 
 
     :param ra: _description_
@@ -115,17 +137,14 @@ def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,size=100.):
     :return: _description_
     :rtype: numpy.ndarray
     """    
-    _imgpath = _build_filepath(path,band,pointing,sca,'image')
-    with fits.open(_imgpath) as hdu:
-        img = hdu[1].data
-        wcs = WCS(hdu[1].header)
-    
-    worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-    center = skycoord_to_pixel(worldcoords,wcs)
-    stamp = Cutout2D(img,center,size).data
+    img, center = radec_isin(ra,dec,band=band,pointing=pointing,sca=sca)
 
-    return stamp
+    if not center: 
+        print(f'Stamp could not be retrieved for {band} {pointing} {sca}. Perhaps the input RA, dec is not contained within this image?')
 
+    else:
+        stamp = Cutout2D(img,center,size).data
+        return stamp
 
 def get_corners(path=None,band=None,pointing=None,sca=None):
     """Retrieves the RA, dec of the corners of the specified SCA in degrees. 
@@ -273,7 +292,9 @@ def _obj_in(oid,df):
         return False    
 
 def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
-                        mjd_start=-np.inf,mjd_end=np.inf):
+                        pointings=np.arange(0,57365+1,1),
+                        mjd_start=-np.inf,mjd_end=np.inf,
+                        return_stamps=False):
 
     """
     Retrieves all images that a unique object or set of coordinates is in. There are three steps to this, because
@@ -297,10 +318,14 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
     :type oid: int or None, optional
     :param band: Filters to include in search. Default ['F184', 'H158', 'J129', 'K213', 'R062', 'Y106', 'Z087'].
     :type band: list or str, optional
+    :param pointings: Limit search to particular pointings.  
+    :type pointings:
     :param mjd_start: Start MJD to include in search. 
     :type mjd_start: float, optional
     :param mjd_end: End MJD to include in search. 
     :type mjd_end: float, optional
+    :param return_stamps: Default False. 
+    :type return_stamps: bool, optional
     :return: Astropy table with columns filter, pointing, SCA identifying images that contain the input RA 
             and dec. If and object ID is provided in argument oid, this function checks each truth file associated 
             with each image listed in the table it assembles to ensure that the particular object is present in those 
@@ -319,15 +344,20 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
     with fits.open(obseq_radec_path) as osradecp:
         obseq_radec_orig = Table(osradecp[1].data)
 
-    pointing_idx = np.where(np.in1d(obseq_orig['filter'],bands))[0]
+    pointing_idx = np.array(pointings)
     obseq = obseq_orig[pointing_idx]
     obseq_radec = obseq_radec_orig[pointing_idx]
+
+    band_idx = np.where(np.in1d(obseq['filter'],bands))[0]
+    obseq = obseq[band_idx]
+    obseq_radec = obseq_radec[band_idx]
+    pointing_idx = pointing_idx[band_idx]
 
     mjd_idx = np.where((obseq['date'] > mjd_start) & (obseq['date'] < mjd_end))[0]
     obseq = obseq[mjd_idx]
     obseq_radec = obseq_radec[mjd_idx]
     pointing_idx = pointing_idx[mjd_idx]
-    
+
     ra_oid = (ra * u.deg).to(u.rad).value
     dec_oid = (dec * u.deg).to(u.rad).value
 
@@ -365,15 +395,30 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
         # Want to parallelize in future to speed up. 
         final_idx = []
         for i, row in enumerate(secondcut_tab):
-            # print(row['filter'],row['pointing'],row['sca'])
             df = read_truth_txt(band=row['filter'],pointing=row['pointing'],sca=row['sca'])
             if _obj_in(oid, df):
                 final_idx.append(i)
             del df
 
-        return secondcut_tab[final_idx]
+        tab = secondcut_tab[final_idx]
     else:
-        return secondcut_tab
+        tab = secondcut_tab
+
+    if return_stamps:
+        stampslist = []
+        stampsidx = []
+        for i, row in enumerate(tab):
+            try:
+                stamp = get_stamp(ra,dec,band=row['filter'],pointing=row['pointing'],sca=row['sca'])
+                stampslist.append(stamp)
+                stampsidx.append(i)
+            except NoOverlapError:
+                print(f'{row["filter"]} {row["pointing"]} {row["sca"]} does not contain RA, dec {ra}, {dec}.')
+        tab = tab[stampsidx]
+
+        return tab, stampslist
+    else:
+        return tab
 
 def get_object_data(oid, metadata,
                     colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err'],
