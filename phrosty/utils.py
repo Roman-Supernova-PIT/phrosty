@@ -13,6 +13,8 @@ from astropy.wcs import WCS, FITSFixedWarning
 from astropy.wcs.utils import skycoord_to_pixel
 from astropy.table import Table, vstack
 from astropy import units as u
+from reproject import reproject_interp
+from reproject.mosaicking import find_optimal_celestial_wcs
 
 # CHANGE THIS TO FIT YOUR USE: 
 rootdir='/cwork/mat90/RomanDESC_sims_2024/RomanTDS'
@@ -101,6 +103,23 @@ def read_truth_txt(truthpath=None,band=None,pointing=None,sca=None):
 
     return truth
 
+def ref_wcs():
+    imgpath = _build_filepath(path=None,filetype='image',band='H158',pointing='1394',sca='12')
+    with fits.open(imgpath) as hdu:
+        wcs = WCS(hdu[1].header)
+    return wcs
+
+def rotate_to_wcs(ra,dec,ref_wcs=ref_wcs(),path=None,band=None,pointing=None,sca=None):
+    imgpath = _build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
+    with fits.open(imgpath) as hdu:
+        wcs = WCS(hdu[1].header)
+        img = hdu[1].data
+    refcoord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+    wcs_out, shape_out = find_optimal_celestial_wcs((img,wcs), auto_rotate=True, reference=refcoord)
+    array, footprint = reproject_interp(input_data = (img,wcs), output_projection=ref_wcs, shape_out=shape_out)
+
+    return array
+
 def radec_isin(ra,dec,path=None,band=None,pointing=None,sca=None,boolean=False):
     _imgpath = _build_filepath(path,band,pointing,sca,'image')
     with fits.open(_imgpath) as hdu:
@@ -108,16 +127,16 @@ def radec_isin(ra,dec,path=None,band=None,pointing=None,sca=None,boolean=False):
         wcs = WCS(hdu[1].header)
     
     worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-    center = skycoord_to_pixel(worldcoords,wcs)
-    if any(center) < 0 or any(center) > 4088:
+    pxradec = skycoord_to_pixel(worldcoords,wcs)
+    if any(pxradec) < 0 or any(pxradec) > 4088:
         return False
     else:
         if boolean:
             return True
         else:
-            return img, center
+            return img, pxradec
 
-def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,size=100):
+def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,rotate_wcs=False,size=100):
     """Retrieve a stamp around a particular provided RA, dec. 
 
     :param ra: _description_
@@ -137,14 +156,20 @@ def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,size=100):
     :return: _description_
     :rtype: numpy.ndarray
     """    
-    img, center = radec_isin(ra,dec,band=band,pointing=pointing,sca=sca)
+    coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+    img, pxradec = radec_isin(ra,dec,band=band,pointing=pointing,sca=sca)
 
-    if not center: 
-        print(f'Stamp could not be retrieved for {band} {pointing} {sca}. Perhaps the input RA, dec is not contained within this image?')
+    # if not pxradec: 
+    #     print(f'Stamp could not be retrieved for {band} {pointing} {sca}. Perhaps the input RA, dec is not contained within this image?')
 
+    # else:
+    if rotate_wcs:
+        img = rotate_to_wcs(ra,dec,path=path,band=band,pointing=pointing,sca=sca)
+        stamp = Cutout2D(img,coord,size,wcs=ref_wcs()).data
     else:
-        stamp = Cutout2D(img,center,size).data
-        return stamp
+        stamp = Cutout2D(img,pxradec,size).data
+
+    return stamp
 
 def get_corners(path=None,band=None,pointing=None,sca=None):
     """Retrieves the RA, dec of the corners of the specified SCA in degrees. 
@@ -409,7 +434,8 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
         stampsidx = []
         for i, row in enumerate(tab):
             try:
-                stamp = get_stamp(ra,dec,band=row['filter'],pointing=row['pointing'],sca=row['sca'])
+                print('stamp for',row['pointing'],row['sca'])
+                stamp = get_stamp(ra,dec,band=row['filter'],pointing=row['pointing'],sca=row['sca'],rotate_wcs=True)
                 stampslist.append(stamp)
                 stampsidx.append(i)
             except NoOverlapError:
