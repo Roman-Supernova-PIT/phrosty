@@ -4,6 +4,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib import rcParams
 import matplotlib as mpl
 from matplotlib.colors import Normalize
+from matplotlib import animation
 import numpy as np
 from astropy.table import Table
 from . import plotaesthetics
@@ -141,6 +142,38 @@ def classification_contours(data, model,
         plt.savefig(savepath, bbox_inches='tight', dpi=300)
 
     plt.show()
+
+def animate_stamps(stamps,savepath,metadata,labels=[]):
+    """_summary_
+
+    :param stamps: Must be in chronological order. 
+    :type stamps: List of stamps from get_stamps or get_object_instances. 
+    :param savepath: _description_
+    :type savepath: _type_
+    :param metadata: _description_
+    :type metadata: _type_
+    """    
+    fig, ax = plt.subplots(figsize=(5,5))
+    plt.tight_layout()
+    ax.axis('off')
+    fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
+    plt.xticks([])   
+    plt.yticks([])  
+
+    ims = []
+    for i in range(len(stamps)):
+        if np.isnan(stamps[i]).all(): 
+            continue
+        else:
+            im = ax.imshow(stamps[i],animated=True,interpolation='none')
+            if i == 0:
+                ax.imshow(stamps[0])
+            ims.append([im])
+
+    anim = animation.ArtistAnimation(fig, ims, interval=100)
+    writer = animation.PillowWriter(metadata=metadata)
+
+    anim.save(savepath, writer=writer)
 
 # def photometric_repeatability(crossmatch_catalogs, savepath, stdev_endpoints=(20,23), bins=np.arange(10,35,0.5), title=None, figsize=figsize):
 #     """

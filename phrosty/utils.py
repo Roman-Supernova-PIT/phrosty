@@ -129,14 +129,14 @@ def radec_isin(ra,dec,path=None,band=None,pointing=None,sca=None,boolean=False):
     worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     pxradec = skycoord_to_pixel(worldcoords,wcs)
     if any(pxradec) < 0 or any(pxradec) > 4088:
-        return False
+        return False, False, False
     else:
         if boolean:
-            return True
+            return True, True, True
         else:
-            return img, pxradec
+            return img, pxradec, wcs
 
-def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,rotate_wcs=False,size=100):
+def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,rotate_wcs=False,return_wcs=False,size=100):
     """Retrieve a stamp around a particular provided RA, dec. 
 
     :param ra: _description_
@@ -157,19 +157,25 @@ def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,rotate_wcs=False
     :rtype: numpy.ndarray
     """    
     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-    img, pxradec = radec_isin(ra,dec,band=band,pointing=pointing,sca=sca)
+    img, pxradec, wcs = radec_isin(ra,dec,band=band,pointing=pointing,sca=sca)
 
-    # if not pxradec: 
-    #     print(f'Stamp could not be retrieved for {band} {pointing} {sca}. Perhaps the input RA, dec is not contained within this image?')
+    if not pxradec: 
+        print(f'Stamp could not be retrieved for {band} {pointing} {sca}. Perhaps the input RA, dec is not contained within this image?')
 
-    # else:
-    if rotate_wcs:
-        img = rotate_to_wcs(ra,dec,path=path,band=band,pointing=pointing,sca=sca)
-        stamp = Cutout2D(img,coord,size,wcs=ref_wcs()).data
     else:
-        stamp = Cutout2D(img,pxradec,size).data
+        if rotate_wcs:
+            img = rotate_to_wcs(ra,dec,path=path,band=band,pointing=pointing,sca=sca)
 
-    return stamp
+        stamp_cutout = Cutout2D(img,coord,size,wcs=ref_wcs())
+        stamp = stamp_cutout.data
+        wcs = stamp_cutout.wcs
+
+    if return_wcs:
+        return stamp, wcs 
+    else:
+        return stamp
+    
+    
 
 def get_corners(path=None,band=None,pointing=None,sca=None):
     """Retrieves the RA, dec of the corners of the specified SCA in degrees. 
@@ -317,9 +323,9 @@ def _obj_in(oid,df):
         return False    
 
 def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
-                        pointings=np.arange(0,57365+1,1),
+                        pointings=np.arange(0,57365,1),
                         mjd_start=-np.inf,mjd_end=np.inf,
-                        return_stamps=False):
+                        return_stamps=False,return_wcs=False):
 
     """
     Retrieves all images that a unique object or set of coordinates is in. There are three steps to this, because
@@ -431,18 +437,19 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
 
     if return_stamps:
         stampslist = []
+        wcslist = []
         stampsidx = []
         for i, row in enumerate(tab):
             try:
-                print('stamp for',row['pointing'],row['sca'])
-                stamp = get_stamp(ra,dec,band=row['filter'],pointing=row['pointing'],sca=row['sca'],rotate_wcs=True)
+                stamp, wcs = get_stamp(ra,dec,band=row['filter'],pointing=row['pointing'],sca=row['sca'],rotate_wcs=True,return_wcs=True)
                 stampslist.append(stamp)
+                wcslist.append(wcs)
                 stampsidx.append(i)
             except NoOverlapError:
                 print(f'{row["filter"]} {row["pointing"]} {row["sca"]} does not contain RA, dec {ra}, {dec}.')
         tab = tab[stampsidx]
 
-        return tab, stampslist
+        return tab, stampslist, wcslist
     else:
         return tab
 
