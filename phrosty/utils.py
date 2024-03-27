@@ -13,8 +13,8 @@ from astropy.wcs import WCS, FITSFixedWarning
 from astropy.wcs.utils import skycoord_to_pixel
 from astropy.table import Table, vstack
 from astropy import units as u
-from reproject import reproject_interp
-from reproject.mosaicking import find_optimal_celestial_wcs
+# from reproject import reproject_interp
+# from reproject.mosaicking import find_optimal_celestial_wcs
 
 # CHANGE THIS TO FIT YOUR USE: 
 rootdir='/cwork/mat90/RomanDESC_sims_2024/RomanTDS'
@@ -174,8 +174,6 @@ def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,rotate_wcs=False
         return stamp, wcs 
     else:
         return stamp
-    
-    
 
 def get_corners(path=None,band=None,pointing=None,sca=None):
     """Retrieves the RA, dec of the corners of the specified SCA in degrees. 
@@ -405,7 +403,7 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
                              # self.sbore2 = np.sin(max_rad_from_boresight/2.), and
                              # earlier, defines max_rad_from_boresight = 0.009 by default.
                              # This part of my code is also basically a copy of near_pointing. 
-    
+
     distance_idx = np.where(d_actual/2. <= d_req)[0]
     idx_firstcut = pointing_idx[distance_idx]
 
@@ -435,23 +433,25 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
     else:
         tab = secondcut_tab
 
-    if return_stamps:
-        stampslist = []
-        wcslist = []
-        stampsidx = []
-        for i, row in enumerate(tab):
-            try:
-                stamp, wcs = get_stamp(ra,dec,band=row['filter'],pointing=row['pointing'],sca=row['sca'],rotate_wcs=True,return_wcs=True)
-                stampslist.append(stamp)
-                wcslist.append(wcs)
-                stampsidx.append(i)
-            except NoOverlapError:
-                print(f'{row["filter"]} {row["pointing"]} {row["sca"]} does not contain RA, dec {ra}, {dec}.')
-        tab = tab[stampsidx]
+    return tab
 
-        return tab, stampslist, wcslist
-    else:
-        return tab
+    # if return_stamps:
+    #     stampslist = []
+    #     wcslist = []
+    #     stampsidx = []
+    #     for i, row in enumerate(tab):
+    #         try:
+    #             stamp, wcs = get_stamp(ra,dec,band=row['filter'],pointing=row['pointing'],sca=row['sca'],rotate_wcs=True,return_wcs=True)
+    #             stampslist.append(stamp)
+    #             wcslist.append(wcs)
+    #             stampsidx.append(i)
+    #         except NoOverlapError:
+    #             print(f'{row["filter"]} {row["pointing"]} {row["sca"]} does not contain RA, dec {ra}, {dec}.')
+    #     tab = tab[stampsidx]
+
+    #     return tab, stampslist, wcslist
+    # else:
+    #     return tab
 
 def get_object_data(oid, metadata,
                     colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err'],

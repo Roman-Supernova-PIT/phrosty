@@ -143,7 +143,7 @@ def classification_contours(data, model,
 
     plt.show()
 
-def animate_stamps(stamps,savepath,metadata,labels=[]):
+def animate_stamps(stamps,savepath,metadata=dict(),no_whitespace=True,labels=[],labelxy=(0.05,0.95),staticlabel=None,**kwargs):
     """_summary_
 
     :param stamps: Must be in chronological order. 
@@ -153,6 +153,14 @@ def animate_stamps(stamps,savepath,metadata,labels=[]):
     :param metadata: _description_
     :type metadata: _type_
     """    
+    
+    if no_whitespace:
+        with_whitespace = np.invert(np.any((np.isnan(np.array(stamps))), axis=(1,2))) # NOTE: Your first axis (first indexing value) should return one stamp. e.g. stamps[0] is the first stamp. 
+        idx_whitespace = np.where(with_whitespace)[0]
+        stamps = np.array(stamps)[idx_whitespace]
+        if len(labels) != 0:
+            labels = np.array(labels)[idx_whitespace]
+
     fig, ax = plt.subplots(figsize=(5,5))
     plt.tight_layout()
     ax.axis('off')
@@ -160,19 +168,23 @@ def animate_stamps(stamps,savepath,metadata,labels=[]):
     plt.xticks([])   
     plt.yticks([])  
 
-    ims = []
-    for i in range(len(stamps)):
-        if np.isnan(stamps[i]).all(): 
-            continue
+    im = ax.imshow(stamps[0], animated=True)
+    if staticlabel is not None:
+        stxt = ax.text(0.95,0.05,staticlabel,animated=True,color='white',transform=ax.transAxes,va='bottom',ha='right',**kwargs)
+    if len(labels) != 0:
+        txt = ax.text(labelxy[0],labelxy[1],labels[0],animated=True,color='white',transform=ax.transAxes,va='top',ha='left',**kwargs)
+
+    def animate(i):
+        im.set_array(stamps[i])
+        if len(labels) != 0:
+            txt.set_text(labels[i])
+
+            return [im] + [txt] + [stxt]
         else:
-            im = ax.imshow(stamps[i],animated=True,interpolation='none')
-            if i == 0:
-                ax.imshow(stamps[0])
-            ims.append([im])
+            return [im]
 
-    anim = animation.ArtistAnimation(fig, ims, interval=100)
     writer = animation.PillowWriter(metadata=metadata)
-
+    anim = animation.FuncAnimation(fig, animate, interval=400, frames=len(stamps))
     anim.save(savepath, writer=writer)
 
 # def photometric_repeatability(crossmatch_catalogs, savepath, stdev_endpoints=(20,23), bins=np.arange(10,35,0.5), title=None, figsize=figsize):
