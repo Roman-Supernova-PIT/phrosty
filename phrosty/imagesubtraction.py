@@ -11,25 +11,52 @@ from astropy.nddata import Cutout2D
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs import WCS
-# from sep import Background
+
+# IMPORTS SFFT:
 # from roman_imsim.utils import roman_utils
+from sfft.utils.SExSkySubtract import SEx_SkySubtract
 from sfft.utils.StampGenerator import Stamp_Generator
 from sfft.utils.pyAstroMatic.PYSWarp import PY_SWarp
 
 # IMPORTS Internal:
 from .utils import _build_filepath
 
-output_files_dir = '/hpc/home/lna18/roman_phot_repeatability/SFFT/ship2pitsn/phrosty_out/'
+output_files_rootdir = '/cwork/lna18/imsub_out/'
 
 def gz_decompress(in_path,out_path):
     with gzip.open(in_path,'rb') as f_in, open(out_path,'wb') as f_out:
         shutil.copyfileobj(f_in,f_out)
 
+def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir):
+
+    """
+    Subtracts background, found with Source Extractor. 
+    """
+    original_imgpath = _build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
+    if not os.path.exists(os.path.join(out_path, 'unzip')):
+        os.mkdir(os.path.join(out_path, 'unzip'))
+
+    decompressed_path = os.path.join(output_files_rootdir,'unzip',f'{os.path.basename(original_imgpath)[:-3]}')
+    gz_decompress(original_imgpath, decompressed_path)
+    output_path = os.path.join(out_path, 'skysub', f'skysub_{os.path.basename(original_imgpath)}.fits')
+
+    if not os.path.exists(os.path.join(out_path, 'skysub')):
+        os.mkdir(os.path.join(out_path, 'skysub'))
+
+    SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, FITS_sky=None, FITS_skyrms=None, \
+                        ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
+                        DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, FITS_DATA_EXT=1)
+
+    return output_path
+
+# def imalign(tab):
+
+
 def write_stamp(cutout,orig_header,savepath):
     hdu = fits.PrimaryHDU(cutout.data, header=orig_header)
     hdu.header.update(cutout.wcs.to_header())
     hdr = hdu.header
-    hdr['OG_XCR'], hdr['OG_YCR'] = cutout.center_original
+    hdr['OG_XCR'], hdr['OG_YCR'] = np.array(cutout.center_original) - 2044. # Because you padded the original image
     hdr['STMP_XCR'], hdr['STMP_YCR'] = cutout.center_cutout
     hdul = fits.HDUList([hdu])
     hdul.writeto(savepath, overwrite=True)
@@ -60,7 +87,7 @@ def stampmaker(ra,dec,
 
         # Also, pad borders with 0 so the output image contains all pixels and nothing is cut off. 
         Stamp_Generator.SG(FITS_obj=original_decomp_path, STAMP_IMGSIZE=[4088*2]*2,
-                                COORD=np.array([[2044.,2044.]]), FILL_VALUE=0, EXTINDEX=1, FITS_StpLst=[original_decomp_path])
+                                COORD=np.array([[2044.,2044.]]), FILL_VALUE=np.nan, EXTINDEX=1, FITS_StpLst=[original_decomp_path])
 
         # Now, we need the reference to be padded as well so that the output image contains all pixels
         # and is not cut off. 
@@ -69,7 +96,7 @@ def stampmaker(ra,dec,
         gz_decompress(refpath,ref_decomp_path)
 
         Stamp_Generator.SG(FITS_obj=ref_decomp_path, STAMP_IMGSIZE=[4088*2]*2, 
-                            COORD=np.array([[2044.,2044.]]), FILL_VALUE=0, EXTINDEX=1, FITS_StpLst=[ref_decomp_path])
+                            COORD=np.array([[2044.,2044.]]), FILL_VALUE=np.nan, EXTINDEX=1, FITS_StpLst=[ref_decomp_path])
 
         rotate_path = os.path.join(tmpdir, 'orig_rotated.fits')
         PY_SWarp.PS(FITS_obj=original_decomp_path, FITS_ref=ref_decomp_path, 
@@ -84,15 +111,6 @@ def stampmaker(ra,dec,
         cutout = Cutout2D(rotated_array, position=SkyCoord(ra=ra*u.deg, dec=dec*u.deg), size=size, wcs=rotated_wcs)
 
         write_stamp(cutout,orig_header,stamp_savedir)
-
-# def sky_subtract(data, **kwargs):
-#     """
-#     Subtracts background, found with Source Extractor. 
-#     """
-#     bkg = Background(data, **kwargs)
-#     bkgsub = data - bkg.back()
-
-#     return bkgsub
 
 # def get_psf(band,pointing,sca):
 #     """

@@ -12,7 +12,9 @@ Install by cloning this directory, navigating to that directory in your local te
 pip install -e .
 ```
 
-You will likely need to change the "rootdir" variable in utils.py. 
+Currently, you will also need GalSim (clone from git repo), roman_imsim (also clone from git repo), and SFFT (clone from my forked repo **FOR NOW. A pull request on the original repo will be merged soon.)
+
+You will likely need to change the "rootdir" variable in utils.py, and output_files_rootdir in imagesubtraction.py. 
 
 This package is modular. Modules are compatible with each other, and they interface
 easily, but you do not need to use all the modules. It contains:
