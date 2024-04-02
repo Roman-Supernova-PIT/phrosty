@@ -19,6 +19,20 @@ from . import plotaesthetics
 
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'W146', 'K213']
 
+def showimage(path=None,band=None,pointing=None,sca=None,data_ext=1,cmap='Greys', **kwargs):
+    """
+    Quickly display an original RomanDESC image from either a filepath or a 
+    filter, pointing, and SCA ID. 
+
+    """
+    path =_build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
+    hdu = fits.open(path)
+    img = hdu[data_ext].data
+    z1,z2 = ZScaleInterval().get_limits(img)
+
+    plt.imshow(img, vmin=z1, vmax=z2, **kwargs)
+    plt.colorbar()
+    plt.show()
     
 class MidpointNormalize(mpl.colors.Normalize):
     """Normalise the colorbar."""
@@ -150,20 +164,6 @@ def classification_contours(data, model,
         plt.savefig(savepath, bbox_inches='tight', dpi=300)
 
     plt.show()
-
-def showimage(path=None,band=None,pointing=None,sca=None,cmap='Greys', **kwargs):
-    """
-    Quickly display an original RomanDESC image. 
-    """
-    path =_build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
-    hdu = fits.open(path)
-    img = hdu[1].data
-    z1,z2 = ZScaleInterval().get_limits(img)
-
-    plt.imshow(img, vmin=z1, vmax=z2, **kwargs)
-    plt.colorbar()
-    plt.show()
-
 
 def animate_stamps(stamps,savepath,metadata=dict(),no_whitespace=True,labels=[],labelxy=(0.05,0.95),staticlabel=None,**kwargs):
     """_summary_
