@@ -8,7 +8,6 @@ from glob import glob
 
 # IMPORTS Astro:
 from astropy.io import fits 
-from astropy.nddata import Cutout2D
 from astropy.coordinates import SkyCoord
 from astropy.wcs.utils import skycoord_to_pixel
 import astropy.units as u
@@ -22,11 +21,30 @@ from sfft.utils.StampGenerator import Stamp_Generator
 from sfft.utils.pyAstroMatic.PYSWarp import PY_SWarp
 from sfft.utils.ReadWCS import Read_WCS
 from sfft.utils.ImageZoomRotate import Image_ZoomRotate
+from sfft.utils.pyAstroMatic.PYSEx import PY_SEx
+from sfft.CustomizedPacket import Customized_Packet
+from sfft.utils.SkyLevelEstimator import SkyLevel_Estimator
+from sfft.utils.SFFTSolutionReader import Realize_MatchingKernel
+from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
 
 # IMPORTS Internal:
 from .utils import _build_filepath
 
+"""
+This module was written with significant contributions from 
+Dr. Lei Hu (https://github.com/thomasvrussell/), and relies on his 
+SFFT image subtraction package (https://github.com/thomasvrussell/sfft).
+"""
+
 output_files_rootdir = '/work/lna18/imsub_out/'
+
+def check_and_mkdir(dirname):
+    """
+    Utility function for checking if a directory exists, and if not,
+    makes that directory. 
+    """
+    if not os.path.exists(dirname):
+        os.mkdir(dirname)
 
 def gz_and_ext(in_path,out_path):
     """
@@ -45,15 +63,15 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
     Subtracts background, found with Source Extractor. 
     """
     original_imgpath = _build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
-    if not os.path.exists(os.path.join(out_path, 'unzip')):
-        os.mkdir(os.path.join(out_path, 'unzip'))
+    zip_savedir = os.path.join(out_path, 'unzip')
+    check_and_mkdir(zip_savedir)
 
     decompressed_path = os.path.join(output_files_rootdir,'unzip',f'{os.path.basename(original_imgpath)[:-3]}')
     gz_and_ext(original_imgpath, decompressed_path)
     output_path = os.path.join(out_path, 'skysub', f'skysub_{os.path.basename(decompressed_path)}')
 
-    if not os.path.exists(os.path.join(out_path, 'skysub')):
-        os.mkdir(os.path.join(out_path, 'skysub'))
+    sub_savedir = os.path.join(out_path, 'skysub')
+    check_and_mkdir(sub_savedir)
 
     SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, FITS_sky=None, FITS_skyrms=None, \
                         ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
@@ -72,8 +90,7 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, remove_tmpdi
     """
     outdir = os.path.join(out_path, 'align')
     output_path = os.path.join(outdir, f'align_{os.path.basename(sci_path)}')
-    if not os.path.exists(outdir):
-        os.mkdir(outdir)
+    check_and_mkdir(outdir)
 
     PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, FITS_resamp=output_path, \
                 GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
@@ -116,7 +133,7 @@ def get_psf(ra,dec,sci_imalign,
                     ref_pointing,
                     ref_sca):
     """
-    1. Get PSF model at specified RA, dec [degrees]. 
+    1. Get PSF model at specified RA, dec [degrees] from RomanDESC sims. 
     2. Rotate PSF model to match reference WCS. 
         2a. Calculate rotation angle during alignment
         2b. Rotate PSF to match rotated science image
@@ -154,8 +171,7 @@ def get_psf(ra,dec,sci_imalign,
 
     # Save rotated PSF
     psf_dir = os.path.join(output_files_rootdir,'psf')
-    if not os.path.exists(psf_dir):
-        os.mkdir(psf_dir)
+    check_and_mkdir(psf_dir)
 
     psf_path = os.path.join(psf_dir, f'rot_psf_{ra}_{dec}_{sci_band}_{sci_pointing}_{sci_sca}.fits')
     fits.HDUList([fits.PrimaryHDU(data=psf_rotated, header=None)]).writeto(psf_path, overwrite=True)
@@ -166,8 +182,7 @@ def crossconvolve(sci_img_path, sci_psf_path,
                     ref_img_path, ref_psf_path):
 
     savedir = os.path.join(output_files_rootdir,'convolved')
-    if not os.path.exists(savedir):
-        os.mkdir(savedir)
+    check_and_mkdir(savedir)
 
     # First convolves reference PSF on science image. 
     # Then, convolves science PSF on reference image. 
@@ -190,62 +205,63 @@ def crossconvolve(sci_img_path, sci_psf_path,
             savepaths.append(savepath)
     return savepaths
 
-def write_stamp(cutout,orig_header,savepath):
-    hdu = fits.PrimaryHDU(cutout.data, header=orig_header)
-    hdu.header.update(cutout.wcs.to_header())
-    hdr = hdu.header
-    hdr['OG_XCR'], hdr['OG_YCR'] = np.array(cutout.center_original) - 2044. # Because you padded the original image
-    hdr['STMP_XCR'], hdr['STMP_YCR'] = cutout.center_cutout
-    hdul = fits.HDUList([hdu])
-    hdul.writeto(savepath, overwrite=True)
+def stampmaker(ra, dec, imgpath, shape=np.array([1000,1000])):
 
-def stampmaker(ra,dec,
-                stamp_savedir,
-                size=100,
-                path=None,
-                band=None,
-                pointing=None,
-                sca=None,
-                ref_path=None,
-                ref_band='H158',
-                ref_pointing='1394',
-                ref_sca='12'):
+    savedir = os.path.join(output_files_rootdir,'stamps')
+    check_and_mkdir(savedir)
 
-        """
-        For now, you can only input images as reference and image that contain the same coordinates. 
-        """
+    savename = os.path.basename(imgpath)
+    savepath = os.path.join(savedir,f'{ra}_{dec}_stamp_{savename}')
 
-        # After everything is done, this directory gets deleted. 
-        tmpdir = mkdtemp(prefix='stmpmk_')
-        original_imgpath = _build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
+    coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+    with fits.open(imgpath) as hdu:
+        wcs = WCS(hdu[0].header)
+    
+    x, y = skycoord_to_pixel(coord, wcs)
+    pxradec = np.array([[x,y]])
+    
+    Stamp_Generator.SG(FITS_obj=imgpath, COORD=pxradec, COORD_TYPE='IMAGE', \
+            STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=savepath)
 
-        # Extract .fits.gz file from original RomanDESC directory to a temporary place. 
-        original_decomp_path = os.path.join(tmpdir, 'original.fits')
-        gz_decompress(original_imgpath,original_decomp_path)
+    return savepath
 
-        # Also, pad borders with 0 so the output image contains all pixels and nothing is cut off. 
-        Stamp_Generator.SG(FITS_obj=original_decomp_path, STAMP_IMGSIZE=[4088*2]*2,
-                                COORD=np.array([[2044.,2044.]]), FILL_VALUE=np.nan, EXTINDEX=1, FITS_StpLst=[original_decomp_path])
+# def detection_mask(imgpath):
 
-        # Now, we need the reference to be padded as well so that the output image contains all pixels
-        # and is not cut off. 
-        refpath = _build_filepath(path=ref_path,band=ref_band,pointing=ref_pointing,sca=ref_sca,filetype='image')
-        ref_decomp_path = os.path.join(tmpdir, 'ref.fits')
-        gz_decompress(refpath,ref_decomp_path)
+#     source_ext_params = ['X_IMAGE', 'Y_IMAGE', 'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLAGS', \
+#     'FLUX_RADIUS', 'FWHM_IMAGE', 'A_IMAGE', 'B_IMAGE', 'KRON_RADIUS', 'THETA_IMAGE', 'SNR_WIN']
 
-        Stamp_Generator.SG(FITS_obj=ref_decomp_path, STAMP_IMGSIZE=[4088*2]*2, 
-                            COORD=np.array([[2044.,2044.]]), FILL_VALUE=np.nan, EXTINDEX=1, FITS_StpLst=[ref_decomp_path])
+#     scatalog = PY_SEx.PS(FITS_obj=imgpath, SExParam=source_ext_params, GAIN_KEY='GAIN', SATUR_KEY='SATURATE', \
+#                             BACK_TYPE='MANUAL', BACK_VALUE=0.0, BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
+#                             DETECT_MINAREA=5, DETECT_MAXAREA=0, DEBLEND_MINCONT=0.001, BACKPHOTO_TYPE='LOCAL', \
+#                             CHECKIMAGE_TYPE='SEGMENTATION', AddRD=True, ONLY_FLAGS=None, XBoundary=0.0, YBoundary=0.0, \
+#                             MDIR=None, VERBOSE_LEVEL=1)[1][0]
 
-        rotate_path = os.path.join(tmpdir, 'orig_rotated.fits')
-        PY_SWarp.PS(FITS_obj=original_decomp_path, FITS_ref=ref_decomp_path, 
-                    FITS_resamp=rotate_path, IMAGE_SIZE=4088*2, 
-                    NAXIS1_VAL=4088, NAXIS2_VAL=4088)
+#     bkg_mask = np.logical_and(scatalog == 0, PixA_SEG_SCI == 0)   # background-mask
+#     det_mask = ~bkg_mask  # detection-mask
 
-        rotated_hdu = fits.open(rotate_path)
-        rotated_array = rotated_hdu[0].data
-        rotated_wcs = WCS(rotated_hdu[0].header, relax=True)
-        orig_hdu = fits.open(original_imgpath)
-        orig_header = orig_hdu[0].header
-        cutout = Cutout2D(rotated_array, position=SkyCoord(ra=ra*u.deg, dec=dec*u.deg), size=size, wcs=rotated_wcs)
+# def sfft(scipath, refpath, 
+#         scipsfpath, refpsfpath, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
+#         ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8):
 
-        write_stamp(cutout,orig_header,stamp_savedir)
+#     sci_basename = os.path.basename(scipath)
+
+#     savedir = os.path.join(output_files_rootdir, 'subtract')
+#     check_and_mkdir(savedir)
+
+#     diff_savedir = os.path.join(savedir,'difference')
+#     soln_savedir = os.path.join(savedir, 'solution')
+#     decorr_savedir = os.path.join(savedir, 'decorr')
+
+#     for dirname in [diff_savedir, soln_savedir, decorr_savedir]:
+#         check_and_mkdir(dirname)
+
+#     diff_savepath = os.path.join(diff_savedir, f'diff_{sci_basename}')
+#     soln_savepath = os.path.join(soln_savedir, f'solution_{sci_basename}')
+#     decorr_savepath = os.path.join(decorr_savedir, f'decorr_{sci_basename}')
+
+#     # Do SFFT subtraction
+#     Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=FITS_mREF, FITS_mSCI=FITS_mSCI, \
+#                         ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
+#                         KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
+#                         BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
+#                         NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
