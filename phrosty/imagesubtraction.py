@@ -307,11 +307,11 @@ def decorr(scipath, refpath,
     imgdatas = []
     psfdatas = []
     bkgsigs = []
-
     for img, psf in zip([scipath, refpath], [scipsfpath, refpsfpath]):
+        imgdata = fits.getdata(img, ext=0).T
         psfdatas.append(fits.getdata(psf, ext=0).T)
-        imgdatas.append(fits.getdata(img, ext=0).T)
-        bkgsigs.append(SkyLevel_Estimator(PixA_obj=img)[1])
+        imgdatas.append(imgdata)
+        bkgsigs.append(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
 
     sci_img, ref_img = imgdatas
     sci_psf, ref_psf = psfdatas
@@ -326,7 +326,8 @@ def decorr(scipath, refpath,
                                         MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], MK_Fin=MK_Fin, \
                                         KERatio=2.0, VERBOSE_LEVEL=2)
 
-    dcdiff = convolve_fft(diffpath, DCKer, boundary='fill', \
+    diff_data = fits.getdata(diffpath, ext=0).T
+    dcdiff = convolve_fft(diff_data, DCKer, boundary='fill', \
                             nan_treatment='fill', fill_value=0.0, normalize_kernel=True)
 
     with fits.open(diffpath) as hdu:
