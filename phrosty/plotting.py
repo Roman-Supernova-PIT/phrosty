@@ -28,9 +28,15 @@ def showimage(path=None,band=None,pointing=None,sca=None,data_ext=1,cmap='Greys'
     path =_build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
     hdu = fits.open(path)
     img = hdu[data_ext].data
-    z1,z2 = ZScaleInterval().get_limits(img)
+    z1,z2 = ZScaleInterval(n_samples=1000,
+            contrast=0.25,
+            max_reject=0.5,
+            min_npixels=5,
+            krej=2.5,
+            max_iterations=5,
+            ).get_limits(img)
 
-    plt.imshow(img, vmin=z1, vmax=z2, **kwargs)
+    plt.imshow(img, vmin=z1, vmax=z2, cmap=cmap, **kwargs)
     plt.colorbar()
     plt.show()
     

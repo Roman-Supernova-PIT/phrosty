@@ -194,7 +194,7 @@ def crossconvolve(sci_img_path, sci_psf_path,
         psfdata = fits.getdata(psf, ext=0).T
 
         convolved = convolve_fft(imgdata, psfdata, boundary='fill', nan_treatment='fill', \
-                                fill_value=0.0, normalize_kernel=True)
+                                fill_value=0.0, normalize_kernel=True, preserve_nan=True)
 
         savename = f'conv_{os.path.basename(img)}'
         savepath = os.path.join(savedir, savename)
@@ -203,6 +203,7 @@ def crossconvolve(sci_img_path, sci_psf_path,
             hdl[0].data[:, :] = convolved.T
             hdl.writeto(savepath, overwrite=True)
             savepaths.append(savepath)
+
     return savepaths
 
 def stampmaker(ra, dec, imgpath, shape=np.array([1000,1000])):
@@ -250,6 +251,9 @@ def sfft(scipath, refpath,
     sci_basename = os.path.basename(scipath)
     ref_basename = os.path.basename(refpath)
 
+    sci_data = fits.getdata(scipath).T
+    ref_data = fits.getdata(refpath).T
+
     savedir = os.path.join(output_files_rootdir, 'subtract')
     check_and_mkdir(savedir)
 
@@ -269,8 +273,9 @@ def sfft(scipath, refpath,
     # Make combined detection mask.
     sci_bkgmask = bkg_mask(scipath)
     ref_bkgmask = bkg_mask(refpath)
-    bkgmask = np.logical_and(sci_bkgmask,ref_bkgmask)
-
+    nanmask = np.isnan(sci_data) | np.isnan(ref_data)
+    _bkgmask = np.logical_and(sci_bkgmask,ref_bkgmask)
+    bkgmask = np.logical_or(nanmask, _bkgmask)
 
     for path, msavepath in zip([refpath, scipath], \
                                 [ref_masked_savepath, sci_masked_savepath]):
@@ -294,7 +299,6 @@ def decorr(scipath, refpath,
             diffpath, solnpath):
 
     sci_basename = os.path.basename(scipath)
-    ref_basename = os.path.basename(refpath)
 
     savedir = os.path.join(output_files_rootdir, 'subtract')
     check_and_mkdir(savedir)
@@ -328,7 +332,8 @@ def decorr(scipath, refpath,
 
     diff_data = fits.getdata(diffpath, ext=0).T
     dcdiff = convolve_fft(diff_data, DCKer, boundary='fill', \
-                            nan_treatment='fill', fill_value=0.0, normalize_kernel=True)
+                            nan_treatment='fill', fill_value=0.0, normalize_kernel=True,
+                            preserve_nan=True)
 
     with fits.open(diffpath) as hdu:
         hdu[0].data[:, :] = dcdiff.T
