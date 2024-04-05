@@ -135,4 +135,13 @@ for path in convolvedpaths:
     spath = stampmaker(ra, dec, path)
     spaths.append(spath)
     showimage(spath,data_ext=0)
+
+# Do SFFT subtraction. 
+scipath, refpath = spaths
+diff, soln = sfft(scipath, refpath, sci_psf_path, ref_psf_path)
+showimage(diff, data_ext=0)
+showimage(soln, data_ext=0)
+
+decorr_path = decorr(scipath, refpath, sci_psf_path, ref_psf_path, diff, soln)
+showimage(decorr_path, data_ext=0)
 ```

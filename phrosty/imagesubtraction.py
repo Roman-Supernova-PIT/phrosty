@@ -225,43 +225,112 @@ def stampmaker(ra, dec, imgpath, shape=np.array([1000,1000])):
 
     return savepath
 
-# def detection_mask(imgpath):
+def bkg_mask(imgpath):
+    """
+    Create detection mask. Not necessary to call directly. 
+    """
 
-#     source_ext_params = ['X_IMAGE', 'Y_IMAGE', 'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLAGS', \
-#     'FLUX_RADIUS', 'FWHM_IMAGE', 'A_IMAGE', 'B_IMAGE', 'KRON_RADIUS', 'THETA_IMAGE', 'SNR_WIN']
+    source_ext_params = ['X_IMAGE', 'Y_IMAGE', 'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLAGS', \
+    'FLUX_RADIUS', 'FWHM_IMAGE', 'A_IMAGE', 'B_IMAGE', 'KRON_RADIUS', 'THETA_IMAGE', 'SNR_WIN']
 
-#     scatalog = PY_SEx.PS(FITS_obj=imgpath, SExParam=source_ext_params, GAIN_KEY='GAIN', SATUR_KEY='SATURATE', \
-#                             BACK_TYPE='MANUAL', BACK_VALUE=0.0, BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
-#                             DETECT_MINAREA=5, DETECT_MAXAREA=0, DEBLEND_MINCONT=0.001, BACKPHOTO_TYPE='LOCAL', \
-#                             CHECKIMAGE_TYPE='SEGMENTATION', AddRD=True, ONLY_FLAGS=None, XBoundary=0.0, YBoundary=0.0, \
-#                             MDIR=None, VERBOSE_LEVEL=1)[1][0]
+    scatalog = PY_SEx.PS(FITS_obj=imgpath, SExParam=source_ext_params, GAIN_KEY='GAIN', SATUR_KEY='SATURATE', \
+                            BACK_TYPE='MANUAL', BACK_VALUE=0.0, BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
+                            DETECT_MINAREA=5, DETECT_MAXAREA=0, DEBLEND_MINCONT=0.001, BACKPHOTO_TYPE='LOCAL', \
+                            CHECKIMAGE_TYPE='SEGMENTATION', AddRD=True, ONLY_FLAGS=None, XBoundary=0.0, YBoundary=0.0, \
+                            MDIR=None, VERBOSE_LEVEL=1)[1][0]
 
-#     bkg_mask = np.logical_and(scatalog == 0, PixA_SEG_SCI == 0)   # background-mask
-#     det_mask = ~bkg_mask  # detection-mask
+    bkg_mask = (scatalog == 0)
 
-# def sfft(scipath, refpath, 
-#         scipsfpath, refpsfpath, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
-#         ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8):
+    return bkg_mask
 
-#     sci_basename = os.path.basename(scipath)
+def sfft(scipath, refpath, 
+        scipsfpath, refpsfpath, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
+        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8):
 
-#     savedir = os.path.join(output_files_rootdir, 'subtract')
-#     check_and_mkdir(savedir)
+    sci_basename = os.path.basename(scipath)
+    ref_basename = os.path.basename(refpath)
 
-#     diff_savedir = os.path.join(savedir,'difference')
-#     soln_savedir = os.path.join(savedir, 'solution')
-#     decorr_savedir = os.path.join(savedir, 'decorr')
+    savedir = os.path.join(output_files_rootdir, 'subtract')
+    check_and_mkdir(savedir)
 
-#     for dirname in [diff_savedir, soln_savedir, decorr_savedir]:
-#         check_and_mkdir(dirname)
+    diff_savedir = os.path.join(savedir,'difference')
+    soln_savedir = os.path.join(savedir, 'solution')
+    masked_savedir = os.path.join(savedir, 'masked')
 
-#     diff_savepath = os.path.join(diff_savedir, f'diff_{sci_basename}')
-#     soln_savepath = os.path.join(soln_savedir, f'solution_{sci_basename}')
-#     decorr_savepath = os.path.join(decorr_savedir, f'decorr_{sci_basename}')
+    for dirname in [diff_savedir, soln_savedir, masked_savedir]:
+        check_and_mkdir(dirname)
 
-#     # Do SFFT subtraction
-#     Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=FITS_mREF, FITS_mSCI=FITS_mSCI, \
-#                         ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
-#                         KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
-#                         BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-#                         NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
+    diff_savepath = os.path.join(diff_savedir, f'diff_{sci_basename}')
+    soln_savepath = os.path.join(soln_savedir, f'solution_{sci_basename}')
+
+    sci_masked_savepath = os.path.join(masked_savedir,f'masked_{sci_basename}')
+    ref_masked_savepath = os.path.join(masked_savedir,f'masked_{ref_basename}')
+
+    # Make combined detection mask.
+    sci_bkgmask = bkg_mask(scipath)
+    ref_bkgmask = bkg_mask(refpath)
+    bkgmask = np.logical_and(sci_bkgmask,ref_bkgmask)
+
+
+    for path, msavepath in zip([refpath, scipath], \
+                                [ref_masked_savepath, sci_masked_savepath]):
+        with fits.open(path) as hdu:
+            hdudata = hdu[0].data.T
+            hdudata[bkgmask] = 0.0
+            hdu[0].data[:, :] = hdudata.T
+            hdu.writeto(msavepath, overwrite=True)
+
+    # Do SFFT subtraction
+    Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
+                        ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
+                        KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
+                        BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
+                        NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
+
+    return diff_savepath, soln_savepath
+
+def decorr(scipath, refpath, 
+            scipsfpath, refpsfpath,
+            diffpath, solnpath):
+
+    sci_basename = os.path.basename(scipath)
+    ref_basename = os.path.basename(refpath)
+
+    savedir = os.path.join(output_files_rootdir, 'subtract')
+    check_and_mkdir(savedir)
+
+    decorr_savedir = os.path.join(savedir, 'decorr')
+    check_and_mkdir(decorr_savedir)
+
+    decorr_savepath = os.path.join(decorr_savedir, f'decorr_{sci_basename}')
+
+    imgdatas = []
+    psfdatas = []
+    bkgsigs = []
+
+    for img, psf in zip([scipath, refpath], [scipsfpath, refpsfpath]):
+        psfdatas.append(fits.getdata(psf, ext=0).T)
+        imgdatas.append(fits.getdata(img, ext=0).T)
+        bkgsigs.append(SkyLevel_Estimator(PixA_obj=img)[1])
+
+    sci_img, ref_img = imgdatas
+    sci_psf, ref_psf = psfdatas
+    sci_bkg, ref_bkg = bkgsigs
+
+    N0, N1 = sci_img.shape
+    XY_q = np.array([[N0/2. + 0.5, N1/2. + 0.5]])
+    MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=solnpath)
+    MK_Fin = MKerStack[0]
+
+    DCKer = DeCorrelation_Calculator.DCC(MK_JLst = [ref_psf], SkySig_JLst=[sci_bkg], \
+                                        MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], MK_Fin=MK_Fin, \
+                                        KERatio=2.0, VERBOSE_LEVEL=2)
+
+    dcdiff = convolve_fft(diffpath, DCKer, boundary='fill', \
+                            nan_treatment='fill', fill_value=0.0, normalize_kernel=True)
+
+    with fits.open(diffpath) as hdu:
+        hdu[0].data[:, :] = dcdiff.T
+        hdu.writeto(decorr_savepath, overwrite=True)
+
+    return decorr_savepath
