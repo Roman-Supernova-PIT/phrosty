@@ -212,7 +212,7 @@ def animate_stamps(stamps,savepath,metadata=dict(),no_whitespace=True,labels=[],
             return [im]
 
     writer = animation.PillowWriter(metadata=metadata)
-    anim = animation.FuncAnimation(fig, animate, interval=400, frames=len(stamps))
+    anim = animation.FuncAnimation(fig, animate, interval=600, frames=len(stamps))
     anim.save(savepath, writer=writer)
 
 # def photometric_repeatability(crossmatch_catalogs, savepath, stdev_endpoints=(20,23), bins=np.arange(10,35,0.5), title=None, figsize=figsize):

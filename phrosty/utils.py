@@ -103,81 +103,19 @@ def read_truth_txt(truthpath=None,band=None,pointing=None,sca=None):
 
     return truth
 
-def ref_wcs():
-    imgpath = _build_filepath(path=None,filetype='image',band='H158',pointing='1394',sca='12')
-    with fits.open(imgpath) as hdu:
-        wcs = WCS(hdu[1].header)
-    return wcs
-
-# def rotate_to_wcs(ra,dec,ref_wcs=ref_wcs(),path=None,band=None,pointing=None,sca=None):
-#     DEPRECATING THIS FUNCTION. ROTATION WILL BE SWARP IN IMAGESUBTRACTION. 
-# 
-#     imgpath = _build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
-#     with fits.open(imgpath) as hdu:
-#         wcs = WCS(hdu[1].header)
-#         img = hdu[1].data
-#     refcoord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-#     wcs_out, shape_out = find_optimal_celestial_wcs((img,wcs), auto_rotate=True, reference=refcoord)
-#     array, footprint = reproject_interp(input_data = (img,wcs), output_projection=ref_wcs, shape_out=shape_out)
-
-    # return array
-
-def radec_isin(ra,dec,path=None,band=None,pointing=None,sca=None,boolean=False):
+def radec_isin(ra,dec,path=None,band=None,pointing=None,sca=None):
     _imgpath = _build_filepath(path,band,pointing,sca,'image')
     with fits.open(_imgpath) as hdu:
-        img = hdu[1].data
         wcs = WCS(hdu[1].header)
-    
     worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-    pxradec = skycoord_to_pixel(worldcoords,wcs)
-    if any(pxradec) < 0 or any(pxradec) > 4088:
-        return False, False, False
+    x, y = skycoord_to_pixel(worldcoords,wcs)
+    pxradec = np.array([x,y])
+    if np.logical_or(any(pxradec < 0), any(pxradec > 4088)): 
+        res = False
     else:
-        if boolean:
-            return True, True, True
-        else:
-            return img, pxradec, wcs
+        res = True
 
-# def get_stamp(ra,dec,path=None,band=None,pointing=None,sca=None,rotate_wcs=False,return_wcs=False,size=100):
-#     """
-#     DEPRECATING THIS FUNCTION. STAMPS WILL BE IN IMAGESUBTRACTION
-#     Retrieve a stamp around a particular provided RA, dec. 
-
-#     :param ra: _description_
-#     :type ra: _type_
-#     :param dec: _description_
-#     :type dec: _type_
-#     :param path: _description_, defaults to None
-#     :type path: str, optional
-#     :param band: _description_, defaults to None
-#     :type band: str, optional
-#     :param pointing: _description_, defaults to None
-#     :type pointing: str, optional
-#     :param sca: _description_, defaults to None
-#     :type sca: str, optional
-#     :param size: _description_, defaults to 100.
-#     :type size: float, optional
-#     :return: _description_
-#     :rtype: numpy.ndarray
-#     """    
-#     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-#     img, pxradec, wcs = radec_isin(ra,dec,band=band,pointing=pointing,sca=sca)
-
-#     if not pxradec: 
-#         print(f'Stamp could not be retrieved for {band} {pointing} {sca}. Perhaps the input RA, dec is not contained within this image?')
-
-#     else:
-#         if rotate_wcs:
-#             img = rotate_to_wcs(ra,dec,path=path,band=band,pointing=pointing,sca=sca)
-
-#         stamp_cutout = Cutout2D(img,coord,size,wcs=ref_wcs())
-#         stamp = stamp_cutout.data
-#         wcs = stamp_cutout.wcs
-
-#     if return_wcs:
-#         return stamp, wcs 
-#     else:
-#         return stamp
+    return res
 
 def get_corners(path=None,band=None,pointing=None,sca=None):
     """Retrieves the RA, dec of the corners of the specified SCA in degrees. 
@@ -326,8 +264,7 @@ def _obj_in(oid,df):
 
 def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
                         pointings=np.arange(0,57365,1),
-                        mjd_start=-np.inf,mjd_end=np.inf,
-                        return_stamps=False,return_wcs=False):
+                        mjd_start=-np.inf,mjd_end=np.inf):
 
     """
     Retrieves all images that a unique object or set of coordinates is in. There are three steps to this, because
@@ -352,13 +289,11 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
     :param band: Filters to include in search. Default ['F184', 'H158', 'J129', 'K213', 'R062', 'Y106', 'Z087'].
     :type band: list or str, optional
     :param pointings: Limit search to particular pointings.  
-    :type pointings:
+    :type pointings: list or np.ndarray, optional
     :param mjd_start: Start MJD to include in search. 
     :type mjd_start: float, optional
     :param mjd_end: End MJD to include in search. 
     :type mjd_end: float, optional
-    :param return_stamps: Default False. 
-    :type return_stamps: bool, optional
     :return: Astropy table with columns filter, pointing, SCA identifying images that contain the input RA 
             and dec. If and object ID is provided in argument oid, this function checks each truth file associated 
             with each image listed in the table it assembles to ensure that the particular object is present in those 
@@ -423,39 +358,29 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
 
     secondcut_tab = Table([sca_tab_filter[pointing_idx], idx_firstcut[pointing_idx], sca_idx+1], names=('filter','pointing','sca'))
 
+    # Now, make sure the provided RA, dec are actually in these images. 
+    # This is slow because it opens each file for its WCS. 
+    inimg = list(map(radec_isin, [ra]*len(secondcut_tab), [dec]*len(secondcut_tab), \
+                    [None]*len(secondcut_tab), secondcut_tab['filter'], secondcut_tab['pointing'], secondcut_tab['sca']))
+
+    thirdcut_tab = secondcut_tab[inimg]
+
     if oid is not None:
         # This part of the code is really slow because I'm opening files. 
         # Want to parallelize in future to speed up. 
         final_idx = []
-        for i, row in enumerate(secondcut_tab):
+        for i, row in enumerate(thirdcut_tab):
             df = read_truth_txt(band=row['filter'],pointing=row['pointing'],sca=row['sca'])
             if _obj_in(oid, df):
                 final_idx.append(i)
             del df
 
-        tab = secondcut_tab[final_idx]
+        tab = thirdcut_tab[final_idx]
+
     else:
-        tab = secondcut_tab
+        tab = thirdcut_tab
 
     return tab
-
-    # if return_stamps:
-    #     stampslist = []
-    #     wcslist = []
-    #     stampsidx = []
-    #     for i, row in enumerate(tab):
-    #         try:
-    #             stamp, wcs = get_stamp(ra,dec,band=row['filter'],pointing=row['pointing'],sca=row['sca'],rotate_wcs=True,return_wcs=True)
-    #             stampslist.append(stamp)
-    #             wcslist.append(wcs)
-    #             stampsidx.append(i)
-    #         except NoOverlapError:
-    #             print(f'{row["filter"]} {row["pointing"]} {row["sca"]} does not contain RA, dec {ra}, {dec}.')
-    #     tab = tab[stampsidx]
-
-    #     return tab, stampslist, wcslist
-    # else:
-    #     return tab
 
 def get_object_data(oid, metadata,
                     colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err'],
