@@ -1,9 +1,10 @@
 # IMPORTS Standard:
-import os, sys
+import os
+# import sys
 import numpy as np
 import gzip
 import shutil
-from tempfile import mkdtemp
+# from tempfile import mkdtemp
 from glob import glob
 
 # IMPORTS Astro:
@@ -206,13 +207,14 @@ def crossconvolve(sci_img_path, sci_psf_path,
 
     return savepaths
 
-def stampmaker(ra, dec, imgpath, shape=np.array([1000,1000])):
+def stampmaker(ra, dec, imgpath, savepath=None, shape=np.array([1000,1000])):
 
-    savedir = os.path.join(output_files_rootdir,'stamps')
-    check_and_mkdir(savedir)
+    if savepath is None:
+        savedir = os.path.join(output_files_rootdir,'stamps')
+        check_and_mkdir(savedir)
 
-    savename = os.path.basename(imgpath)
-    savepath = os.path.join(savedir,f'{ra}_{dec}_stamp_{savename}')
+        savename = os.path.basename(imgpath)
+        savepath = os.path.join(savedir,f'{ra}_{dec}_stamp_{savename}')
 
     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     with fits.open(imgpath) as hdu:
