@@ -2,10 +2,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # IMPORTS Astro:
 from astropy.table import Table, hstack, join
 from astropy.coordinates import SkyCoord, match_coordinates_sky
+from astropy.wcs.utils import skycoord_to_pixel
 import astropy.units as u
 from astropy.visualization import ZScaleInterval
 import sep
@@ -13,6 +15,7 @@ import sep
 # IMPORTS Internal:
 # This is broken: 
 #from .utils import get_obj_type_from_ID
+from .utils import read_truth_txt
 
 ###########################################################################
 
@@ -56,28 +59,51 @@ def detect_sources(scienceimage, byteswap=True):
 
     return objtab
 
-def plot_sources(scienceimage, objects):
+def transform_to_wcs(wcs, path=None, band=None, pointing=None, sca=None):
+    """"
+    Transform world coordinates in a truth file to a new WCS.
+    Outputs pixel coordinates for the transformed coordinates.  
+    input wcs is an astropy wcs object.
+    """
+    truthtab = read_truth_txt(path=path, band=band, pointing=pointing, sca=sca)
+    worldcoords = SkyCoord(ra=truthtab['ra']*u.deg, dec=truthtab['dec']*u.deg)
+    x, y = skycoord_to_pixel(worldcoords, wcs)
+    tab = Table([x, y], names=['x', 'y'])
+
+    return tab
+
+def plot_sources(scienceimage, objects, r=20):
     """Plot the ellipses describing the sources on top of the science image. 
 
     Args:
         scienceimage (array-like): Array containing science image.
-        objects (astropy.table.Table): The table returned from detect_sources.
+        objects (astropy.table.Table): The table returned from detect_sources or transform_to_wcs.
+                                        If the table from detect_sources is used, the markers will
+                                        be ellipses based on the parameters from Source Extractor. 
+                                        If the table from transform_to_wcs is used, the markers 
+                                        will be circles of radius r (px).
     """    
-    zscale=ZScaleInterval()
+    zscale = ZScaleInterval()
     z1,z2 = zscale.get_limits(scienceimage)
     fig, ax = plt.subplots()
-    ax.imshow(scienceimage,vmin=z1,vmax=z2,cmap='Greys',origin='lower')
+    im = ax.imshow(scienceimage,vmin=z1,vmax=z2,cmap='Greys',origin='lower')
     for i in range(len(objects)):
-        e = Ellipse(xy=(objects['x'][i], objects['y'][i]),
-                width=6*objects['a'][i],
-                height=6*objects['b'][i],
-                angle=objects['theta'][i] * 180. / np.pi)
+        if 'a' in objects.colnames and 'b' in objects.colnames and 'theta' in objects.colnames:
+            e = Ellipse(xy=(objects['x'][i], objects['y'][i]),
+                    width=6*objects['a'][i],
+                    height=6*objects['b'][i],
+                    angle=objects['theta'][i] * 180. / np.pi)
+        else:
+            e = Ellipse(xy=(objects['x'][i], objects['y'][i]), 
+                    width=r*2, height=r*2)
         e.set_facecolor('none')
         e.set_edgecolor('red')
         ax.add_artist(e)
-    plt.xlabel('x [px]')
-    plt.ylabel('y [px]')
-    plt.colorbar()
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='vertical')
+    ax.set_xlabel('x [px]')
+    ax.set_ylabel('y [px]')
     plt.show()
 
 def plot_truth(scienceimage, truth):
@@ -99,42 +125,42 @@ def plot_truth(scienceimage, truth):
     plt.colorbar()
     plt.show()
 
-def catalog_matching(objtab, catalog, wcs):
-    """Match the detected sources to the truth catalog. 
+# def catalog_matching(objtab, catalog, wcs):
+#     """Match the detected sources to the truth catalog. 
 
-    Args:
-        objtab (astropy.table.Table): Table with detected objects. Can be directly from output of 
-                                        detect_sources(). Coordinates must be in pixel coordinates,
-                                        and WCS must be supplied (see argument wcs). 
-        catalog (astropy.table.Table): Table with catalog objects. Coordinates must be ra, dec in degrees. 
-                                        There can be any number of columns, but it must contain:
-                                        ['ra_truth', 'dec_truth']. If there are x and y coordinates, those
-                                        should be 'x_truth' and 'y_truth'. Similarly, flux should be 'flux_truth'.
-        wcs (astropy.wcs.WCS): Astropy WCS object for converting the pixel coordinates in objtab to ra, dec; as
-                                        well as identifying catalog coordinates only within the footprint of the
-                                        image.
+#     Args:
+#         objtab (astropy.table.Table): Table with detected objects. Can be directly from output of 
+#                                         detect_sources(). Coordinates must be in pixel coordinates,
+#                                         and WCS must be supplied (see argument wcs). 
+#         catalog (astropy.table.Table): Table with catalog objects. Coordinates must be ra, dec in degrees. 
+#                                         There can be any number of columns, but it must contain:
+#                                         ['ra_truth', 'dec_truth']. If there are x and y coordinates, those
+#                                         should be 'x_truth' and 'y_truth'. Similarly, flux should be 'flux_truth'.
+#         wcs (astropy.wcs.WCS): Astropy WCS object for converting the pixel coordinates in objtab to ra, dec; as
+#                                         well as identifying catalog coordinates only within the footprint of the
+#                                         image.
 
-    Returns:
-        astropy.table.Table: Merged objtab and catalog. 
-    """    
-    detected_coords = wcs.pixel_to_world(objtab['x'], objtab['y'])
-    catalog_coords = wcs.pixel_to_world(catalog['x_truth'], catalog['y_truth'])
-    # catalog_coords = SkyCoord(ra=catalog['ra_truth'], dec=catalog['dec_truth'], unit=(u.deg,u.deg))
-    # footprint_mask = wcs.footprint_contains(catalog_coords_all)
-    # catalog_coords = catalog_coords_all[footprint_mask]
-    idx, sep2d, _ = match_coordinates_sky(detected_coords,catalog_coords)
-    catalog['detection'] = 0
-    catalog['detection'][idx] = 1
-    detected_objects = hstack([catalog[idx], objtab])
-    merged_tables = join(catalog,detected_objects,join_type='outer')
-    merged_tables['objtype'] = list(map(get_obj_type_from_ID,merged_tables['object_id']))
+#     Returns:
+#         astropy.table.Table: Merged objtab and catalog. 
+#     """    
+#     detected_coords = wcs.pixel_to_world(objtab['x'], objtab['y'])
+#     catalog_coords = wcs.pixel_to_world(catalog['x_truth'], catalog['y_truth'])
+#     # catalog_coords = SkyCoord(ra=catalog['ra_truth'], dec=catalog['dec_truth'], unit=(u.deg,u.deg))
+#     # footprint_mask = wcs.footprint_contains(catalog_coords_all)
+#     # catalog_coords = catalog_coords_all[footprint_mask]
+#     idx, sep2d, _ = match_coordinates_sky(detected_coords,catalog_coords)
+#     catalog['detection'] = 0
+#     catalog['detection'][idx] = 1
+#     detected_objects = hstack([catalog[idx], objtab])
+#     merged_tables = join(catalog,detected_objects,join_type='outer')
+#     merged_tables['objtype'] = list(map(get_obj_type_from_ID,merged_tables['object_id']))
 
-    # I don't understand why doing this after catalog matching
-    # as opposed to before makes the plots look correct, but it does,
-    # so we're rolling with it...
-    new_catalog_coords = wcs.pixel_to_world(merged_tables['x_truth'],
-                                            merged_tables['y_truth'])
-    footprint_mask = wcs.footprint_contains(new_catalog_coords)
-    merged_tables = merged_tables[footprint_mask]
+#     # I don't understand why doing this after catalog matching
+#     # as opposed to before makes the plots look correct, but it does,
+#     # so we're rolling with it...
+#     new_catalog_coords = wcs.pixel_to_world(merged_tables['x_truth'],
+#                                             merged_tables['y_truth'])
+#     footprint_mask = wcs.footprint_contains(new_catalog_coords)
+#     merged_tables = merged_tables[footprint_mask]
 
-    return merged_tables
+#     return merged_tables

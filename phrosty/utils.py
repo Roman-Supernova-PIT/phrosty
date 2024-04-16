@@ -7,14 +7,10 @@ import warnings
 # IMPORTS Astro:
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
-from astropy.nddata import Cutout2D
-from astropy.nddata.utils import NoOverlapError
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.wcs.utils import skycoord_to_pixel
 from astropy.table import Table, vstack
 from astropy import units as u
-# from reproject import reproject_interp
-# from reproject.mosaicking import find_optimal_celestial_wcs
 
 # CHANGE THIS TO FIT YOUR USE: 
 rootdir='/cwork/mat90/RomanDESC_sims_2024/RomanTDS'
@@ -77,7 +73,7 @@ def get_roman_bands():
     """    
     return ['F184', 'H158', 'J129', 'K213', 'R062', 'Y106', 'Z087']
 
-def read_truth_txt(truthpath=None,band=None,pointing=None,sca=None):
+def read_truth_txt(path=None,band=None,pointing=None,sca=None):
     """
     Reads in the txt versions of the truth files as convenient astropy tables. 
 
@@ -96,7 +92,7 @@ def read_truth_txt(truthpath=None,band=None,pointing=None,sca=None):
 
     """
 
-    _truthpath = _build_filepath(truthpath,band,pointing,sca,'truthtxt')
+    _truthpath = _build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='truthtxt')
     truth_colnames = ['object_id', 'ra', 'dec', 'x', 'y', 'realized_flux', 'flux', 'mag', 'obj_type']
     truth_pd = pd.read_csv(_truthpath, comment='#', skipinitialspace=True, sep=' ', names=truth_colnames)
     truth = Table.from_pandas(truth_pd)

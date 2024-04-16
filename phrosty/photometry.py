@@ -18,11 +18,14 @@ from galsim import roman
 # IMPORTS Internal:
 from .utils import get_object_instances, get_object_data
 
+"""
+NOTE: This module assumes images have already had background subtracted. 
+"""
+
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213']
 
-def ap_phot(scienceimage,coords,wcs,
-            ap_r=3, bkg_estimator=MMMBackground(), box_size=(50,50),
-            filter_size=(3,3), method='subpixel',subpixels=5,
+def ap_phot(scienceimage,coords,
+            ap_r=3, method='subpixel',subpixels=5,
             merge_tables=True):
     """Does aperture photometry on the input science image and 
         specified coordinates. 
@@ -36,12 +39,6 @@ def ap_phot(scienceimage,coords,wcs,
     :type coords: astropy.table.Table
     :param ap_r: Aperture radius to use for aperture photometry. Defaults to 3.
     :type ap_r: int, optional
-    :param bkg_estimator: _description_. Defaults to MMMBackground().
-    :type bkg_estimator: _type_, optional
-    :param box_size: _description_. Defaults to (50,50).
-    :type box_size: tuple, optional
-    :param filter_size: _description_. Defaults to (3,3).
-    :type filter_size: tuple, optional
     :param method: _description_. Defaults to 'subpixel'.
     :type method: str, optional
     :param subpixels: _description_. Defaults to 5.
@@ -58,18 +55,16 @@ def ap_phot(scienceimage,coords,wcs,
     photcoords = np.transpose(np.vstack([x,y]))
     apertures = CircularAperture(photcoords, r=ap_r)
 
-    bkg = Background2D(scienceimage, box_size=box_size, filter_size=filter_size, bkg_estimator=bkg_estimator)
-    bkgimg = bkg.background
-    img_sub = scienceimage - bkgimg
-
-    ap_results = aperture_photometry(img_sub,apertures,method=method,subpixels=subpixels)
+    ap_results = aperture_photometry(scienceimage,apertures,method=method,subpixels=subpixels)
     apstats = ApertureStats(scienceimage, apertures)
     ap_results['max'] = apstats.max
 
     # Needs to be 'xcentroid' and 'ycentroid' for PSF photometry. 
+    # Same with 'flux'. 
     ap_results.rename_column('xcenter','xcentroid')
     ap_results.rename_column('ycenter','ycentroid')
-        
+    # ap_results.rename_column('aperture_sum','flux')
+
     for col in ap_results.colnames:
         ap_results[col] = ap_results[col].value
 
@@ -77,35 +72,32 @@ def ap_phot(scienceimage,coords,wcs,
         ap_results = hstack([ap_results,coords])
         # These are duplicates: 
         ap_results.remove_columns(['x','y'])
-            
+
     return ap_results
 
-def psf_phot(scienceimage,coords,wcs, 
-            bkg_annulus=(50.0,80.0), saturation=0.9e5, noise=0.5e5,
-            fwhm=3.0, fit_shape=(5,5), oversampling=3, maxiters=10, 
-            exclude_duplicates=False, plot_epsf=False, 
-            ap_r=3, bkg_estimator=MMMBackground(), box_size=(50,50),
-            filter_size=(3,3), method='subpixel',subpixels=5):
+def build_psf(scienceimage,coords,wcs,ap_r=3,plot_epsf=False,
+            saturation=0.9e5, noise=1e4, method='subpixel',subpixels=5, 
+            oversampling=3, maxiters=3,
+            exclude_duplicates=False):
 
-    mean, median, stddev = sigma_clipped_stats(scienceimage)
-    daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
-    
-    ap_results = ap_phot(scienceimage,coords,wcs,
-                        ap_r=ap_r, bkg_estimator=bkg_estimator,
-                        box_size=box_size, filter_size=filter_size,
-                        method=method, subpixels=subpixels, merge_tables=True)
+    """
+    Build PSF from field stars. 
+    """
+
+    ap_results = ap_phot(scienceimage,coords,
+                        ap_r=ap_r, method=method, 
+                        subpixels=subpixels, merge_tables=True)
 
     psfstars = Table({'x': ap_results['xcentroid'], 'y': ap_results['ycentroid'],
-                        'flux': ap_results['aperture_sum'], 'max': ap_results['max']})
+                            'flux': ap_results['flux'], 'max': ap_results['max']})
     # NOTE: Need to make star and galaxy separation work in order to make this work. 
-    print('len psfstars before saturation and flux', len(psfstars))
+    print('Number of stars before saturation and flux cuts for ePSF:', len(psfstars))
     psfstars = psfstars[psfstars['max'] < saturation]
     psfstars = psfstars[psfstars['flux'] > noise]
-    print('len psfstars after saturation and flux', len(psfstars))
+    print('Number of stars after saturation and flux cuts for ePSF:', len(psfstars))
 
     stampsize=25
-    median_subtracted_data = scienceimage - median
-    nddata = NDData(data=median_subtracted_data)
+    nddata = NDData(data=scienceimage)
     extracted_stars = extract_stars(nddata, psfstars, size=stampsize)
 
     if exclude_duplicates:
@@ -128,10 +120,10 @@ def psf_phot(scienceimage,coords,wcs,
         extracted_stars = extract_stars(nddata, new_psfstars, size=stampsize)
 
     # Build ePSF.
-    print('number of extracted stars:', len(extracted_stars))
+    print('Number of extracted stars for ePSF:', len(extracted_stars))
     epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=maxiters)
     psf_func, fitted_stars = epsf_builder(extracted_stars)
-
+    
     if plot_epsf:
         norm = simple_norm(psf_func.data, 'log', percent=99.0)
         plt.imshow(psf_func.data, norm=norm, origin='lower', cmap='Greys')
@@ -139,18 +131,24 @@ def psf_phot(scienceimage,coords,wcs,
         plt.title('ePSF')
         plt.show()
 
-    _localbkg = LocalBackground(min(bkg_annulus),max(bkg_annulus),bkg_estimator)
-    localbkg = _localbkg(data=scienceimage,x=ap_results['xcentroid'],y=ap_results['ycentroid'])
-    psfphot = PSFPhotometry(psf_func, fit_shape, localbkg_estimator=_localbkg,
-                            finder=daofind, aperture_radius=ap_r)
+    return psf_func
 
-    psf_results = psfphot(scienceimage, init_params=ap_results)
-    psf_results['localbkg'] = localbkg
+def psf_phot(scienceimage,coords,psf,init_params,
+            bkg_annulus=(50.0,80.0), fwhm=3.0, fit_shape=(5,5), 
+            oversampling=3, maxiters=10):
 
-    radec = wcs.pixel_to_world(psf_results['x_fit'], psf_results['y_fit'])
+    mean, median, stddev = sigma_clipped_stats(scienceimage)
+    daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
 
-    psf_results['ra'] = radec.ra.value
-    psf_results['dec'] = radec.dec.value
+    if 'flux' not in init_params.colnames:
+        init_params.rename_column('aperture_sum','flux')
+    psfphot = PSFPhotometry(psf,fit_shape,finder=daofind)
+    psf_results = psfphot(scienceimage, init_params=init_params)
+
+    # radec = wcs.pixel_to_world(psf_results['x_fit'], psf_results['y_fit'])
+
+    # psf_results['ra'] = radec.ra.value
+    # psf_results['dec'] = radec.dec.value
 
     return psf_results
 
