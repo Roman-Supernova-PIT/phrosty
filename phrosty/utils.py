@@ -3,6 +3,7 @@ import os.path as pa
 import numpy as np
 import pandas as pd
 import warnings
+from glob import glob
 
 # IMPORTS Astro:
 from astropy.coordinates import SkyCoord
@@ -133,6 +134,63 @@ def get_corners(path=None,band=None,pointing=None,sca=None):
     wcs_corners = wcs.pixel_to_world_values(corners)
 
     return wcs_corners
+
+def get_transient_radec(oid):
+    """
+    Retrieve RA, dec of a transient based on its object ID. 
+    """
+    filepath = '/cwork/mat90/RomanDESC_sims_2024/roman_rubin_cats_v1.1.2_faint/snana*.parquet'
+    file_list = glob(filepath)
+    for file in file_list:
+        # Read the Parquet file
+        df = pd.read_parquet(file)
+        if len(df[df['id'] == oid]) != 0:
+            ra = df[df['id'] == oid]['ra'].values[0]
+            dec = df[df['id'] == oid]['dec'].values[0]
+    return ra, dec
+
+def get_transient_mjd(oid):
+    """
+    Retrieve start and end dates of a transient based on its object ID. 
+    """
+    filepath = '/cwork/mat90/RomanDESC_sims_2024/roman_rubin_cats_v1.1.2_faint/snana*.parquet'
+    file_list = glob(filepath)
+    for file in file_list:
+        # Read the Parquet file
+        df = pd.read_parquet(file)
+        if len(df[df['id'] == oid]) != 0:
+            start = df[df['id'] == oid]['start_mjd'].values[0]
+            end = df[df['id'] == oid]['end_mjd'].values[0]
+    return start, end 
+
+def get_mjd_limits(obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'): 
+    """
+    Retrive the earliest and latest MJD in the simulations.
+    """
+    
+    with fits.open(obseq_path) as obs:
+        obseq = Table(obs[1].data)
+
+    start = min(obseq['date'])
+    end = max(obseq['date'])
+
+    return start, end
+
+def get_radec_limits(obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
+    """
+    Retrieve RA, dec limits (boresight coordinates).
+    """
+    with fits.open(obseq_path) as obs:
+        obseq = Table(obs[1].data)
+
+    ra_min = min(obseq['ra'])
+    ra_max = max(obseq['ra'])
+
+    dec_min = min(obseq['dec'])
+    dec_max = max(obseq['dec'])
+
+    return {'ra': [ra_min,ra_max], 'dec': [dec_min, dec_max]}
+
 
 def get_mjd(pointing,obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
     """Retrieve MJD of a given pointing. 

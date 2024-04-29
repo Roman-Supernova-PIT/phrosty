@@ -133,7 +133,7 @@ def build_psf(scienceimage,coords,wcs,ap_r=3,plot_epsf=False,
 
     return psf_func
 
-def psf_phot(scienceimage,coords,psf,init_params,
+def psf_phot(scienceimage,coords,psf,init_params,wcs=None,
             bkg_annulus=(50.0,80.0), fwhm=3.0, fit_shape=(5,5), 
             oversampling=3, maxiters=10):
 
@@ -145,10 +145,11 @@ def psf_phot(scienceimage,coords,psf,init_params,
     psfphot = PSFPhotometry(psf,fit_shape,finder=daofind)
     psf_results = psfphot(scienceimage, init_params=init_params)
 
-    # radec = wcs.pixel_to_world(psf_results['x_fit'], psf_results['y_fit'])
+    if wcs is not None:
+        radec = wcs.pixel_to_world(psf_results['x_fit'], psf_results['y_fit'])
 
-    # psf_results['ra'] = radec.ra.value
-    # psf_results['dec'] = radec.dec.value
+        psf_results['ra'] = radec.ra.value
+        psf_results['dec'] = radec.dec.value
 
     return psf_results
 
