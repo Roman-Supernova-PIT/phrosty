@@ -78,10 +78,10 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
                         ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
                         DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=output_files_rootdir)
 
-    if remove_tmpdir:
-        tmpdir = glob(os.path.join(output_files_rootdir,'PYSEx_*'))
-        for tdir in tmpdir:
-            shutil.rmtree(tdir, ignore_errors=True)
+    # if remove_tmpdir:
+    #     tmpdir = glob(os.path.join(output_files_rootdir,'PYSEx_*'))
+    #     for tdir in tmpdir:
+    #         shutil.rmtree(tdir, ignore_errors=True)
 
     return output_path
 
@@ -97,10 +97,10 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, remove_tmpdi
                 GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
                 SUBTRACT_BACK='N', FILL_VALUE=np.nan, VERBOSE_TYPE='NORMAL', VERBOSE_LEVEL=1, TMPDIR_ROOT=output_files_rootdir)
 
-    if remove_tmpdir:
-        tmpdir = glob(os.path.join(output_files_rootdir,'PYSWarp_*'))
-        for tdir in tmpdir:
-            shutil.rmtree(tdir, ignore_errors=True)
+    # if remove_tmpdir:
+    #     tmpdir = glob(os.path.join(output_files_rootdir,'PYSWarp_*'))
+    #     for tdir in tmpdir:
+    #         shutil.rmtree(tdir, ignore_errors=True)
 
     return output_path
 

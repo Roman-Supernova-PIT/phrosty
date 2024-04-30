@@ -193,7 +193,8 @@ def get_radec_limits(obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
 
 
 def get_mjd(pointing,obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
-    """Retrieve MJD of a given pointing. 
+    """
+    Retrieve MJD of a given pointing. 
 
     :param pointing: Pointing ID. 
     :type pointing: int
@@ -209,8 +210,29 @@ def get_mjd(pointing,obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
 
     return mjd
 
+def pointings_near_mjd(mjd,window=3,obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
+    """
+    Retrieve pointings near given MJD.
+
+    :param mjd: Central MJD to search around.
+    :type mjd: float
+    :param window: Number of days around central MJD to include in search. 
+    :type window: float
+    :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.
+    :type obseq_path: str, optional
+    :return: Pointings within specified MJD range. 
+    :rtype: list
+    """ 
+
+    with fits.open(obseq_path) as obs:
+        obseq = Table(obs[1].data)
+
+    pointings = np.where(np.logical_and(obseq['date'] < mjd + window, obseq['date'] > mjd - window))[0]
+    return pointings 
+
 def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,obseq_path = f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
-    """Get all pointings and corresponding filters between two MJDs.
+    """
+    Get all pointings and corresponding filters between two MJDs.
     Returns an astropy table with columns 'filter' and 'pointing'. 
     Does not return an 'sca' column because every sca belonging to a
     given pointing satisfies an MJD requirement. 
@@ -232,6 +254,21 @@ def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,obseq_path = f'{rootdir}/Roman
     mjd_tab = Table([obseq['filter'][mjd_idx], mjd_idx], names=('filter','pointing'))
 
     return mjd_tab
+
+def get_exptime(band=None):
+
+    exptime = {'F184': 901.175,
+           'J129': 302.275,
+           'H158': 302.275,
+           'K213': 901.175,
+           'R062': 161.025,
+           'Y106': 302.275,
+           'Z087': 101.7}
+
+    if band in exptime.keys():
+        return exptime[band]
+    else:
+        return exptime
 
 def _coord_transf(ra,dec):
     """
