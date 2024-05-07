@@ -37,7 +37,7 @@ Dr. Lei Hu (https://github.com/thomasvrussell/), and relies on his
 SFFT image subtraction package (https://github.com/thomasvrussell/sfft).
 """
 
-output_files_rootdir = '/work/lna18/imsub_out/'
+output_files_rootdir = os.getenv('IMSUB_OUT', '/work/lna18/imsub_out/')
 
 def check_and_mkdir(dirname):
     """

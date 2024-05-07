@@ -14,7 +14,7 @@ from astropy.table import Table, vstack
 from astropy import units as u
 
 # CHANGE THIS TO FIT YOUR USE: 
-rootdir='/cwork/mat90/RomanDESC_sims_2024/RomanTDS'
+rootdir= os.getenv('ROOTDIR', '/cwork/mat90/RomanDESC_sims_2024/RomanTDS')
 
 # The FITSFixedWarning is consequenceless and it will get thrown every single time you deal with a WCS. 
 warnings.simplefilter('ignore',category=FITSFixedWarning)
