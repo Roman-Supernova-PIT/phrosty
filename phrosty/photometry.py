@@ -25,7 +25,7 @@ NOTE: This module assumes images have already had background subtracted.
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213']
 
 def ap_phot(scienceimage,coords,
-            ap_r=3, method='subpixel',subpixels=5,
+            ap_r=9, method='subpixel',subpixels=5,
             merge_tables=True):
     """Does aperture photometry on the input science image and 
         specified coordinates. 
@@ -75,15 +75,17 @@ def ap_phot(scienceimage,coords,
 
     return ap_results
 
-def build_psf(scienceimage,coords,wcs,ap_r=3,plot_epsf=False,
+def build_psf(scienceimage,coords,wcs,ap_r=9,plot_epsf=False,
             saturation=0.9e5, noise=1e4, method='subpixel',subpixels=5, 
-            oversampling=3, maxiters=3,
+            fwhm=3.0, oversampling=3, maxiters=3,
             exclude_duplicates=False):
 
     """
     Build PSF from field stars. 
     """
 
+    mean, median, stddev = sigma_clipped_stats(scienceimage)
+    daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
     ap_results = ap_phot(scienceimage,coords,
                         ap_r=ap_r, method=method, 
                         subpixels=subpixels, merge_tables=True)
@@ -134,8 +136,7 @@ def build_psf(scienceimage,coords,wcs,ap_r=3,plot_epsf=False,
     return psf_func
 
 def psf_phot(scienceimage,coords,psf,init_params,wcs=None,
-            bkg_annulus=(50.0,80.0), fwhm=3.0, fit_shape=(5,5), 
-            oversampling=3, maxiters=10):
+            fwhm=3.0, fit_shape=(19,19), oversampling=3, maxiters=10):
 
     mean, median, stddev = sigma_clipped_stats(scienceimage)
     daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))

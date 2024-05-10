@@ -100,6 +100,10 @@ def read_truth_txt(path=None,band=None,pointing=None,sca=None):
 
     return truth
 
+def get_fitsobj(path=None,band=None,pointing=None,sca=None):
+    imgpath = _build_filepath(path,band,pointing,sca,'image')
+    return fits.open(imgpath)
+
 def radec_isin(ra,dec,path=None,band=None,pointing=None,sca=None):
     _imgpath = _build_filepath(path,band,pointing,sca,'image')
     with fits.open(_imgpath) as hdu:
@@ -139,6 +143,7 @@ def get_transient_radec(oid):
     """
     Retrieve RA, dec of a transient based on its object ID. 
     """
+    oid = int(oid)
     filepath = '/cwork/mat90/RomanDESC_sims_2024/roman_rubin_cats_v1.1.2_faint/snana*.parquet'
     file_list = glob(filepath)
     for file in file_list:
@@ -272,7 +277,7 @@ def get_exptime(band=None):
 
 def _coord_transf(ra,dec):
     """
-    Helper function for _sca_check and get_object_instances.
+    Helper function for _sca_check and get_object_instances.get p
     Inputs must be in radians. 
 
     :return: Transformed x, y, z coordinates of given RA, dec. 

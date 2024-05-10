@@ -95,7 +95,7 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, remove_tmpdi
 
     PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, FITS_resamp=output_path, \
                 GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
-                SUBTRACT_BACK='N', FILL_VALUE=np.nan, VERBOSE_TYPE='NORMAL', VERBOSE_LEVEL=1, TMPDIR_ROOT=output_files_rootdir)
+                SUBTRACT_BACK='N', FILL_VALUE=np.nan, VERBOSE_TYPE='NORMAL', VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
 
     # if remove_tmpdir:
     #     tmpdir = glob(os.path.join(output_files_rootdir,'PYSWarp_*'))
