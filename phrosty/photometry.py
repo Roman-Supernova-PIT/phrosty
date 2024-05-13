@@ -8,6 +8,7 @@ from astropy.nddata import NDData
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table, hstack, join
 from astropy.visualization import simple_norm
+from astropy.modeling.fitting import NonFiniteValueError
 import astropy.units as u
 from photutils.aperture import CircularAperture, aperture_photometry, ApertureStats
 from photutils.background import LocalBackground, MMMBackground, Background2D
@@ -77,7 +78,7 @@ def ap_phot(scienceimage,coords,
 
 def build_psf(scienceimage,coords,wcs,ap_r=9,plot_epsf=False,
             saturation=0.9e5, noise=1e4, method='subpixel',subpixels=5, 
-            fwhm=3.0, oversampling=3, maxiters=3,
+            fwhm=3.0, oversampling=3, maxiters=3, forced_photometry=True,
             exclude_duplicates=False):
 
     """
@@ -133,26 +134,35 @@ def build_psf(scienceimage,coords,wcs,ap_r=9,plot_epsf=False,
         plt.title('ePSF')
         plt.show()
 
+    if forced_photometry:
+        psf_func.x_0.fixed = True
+        psf_func.y_0.fixed = True
+
     return psf_func
 
 def psf_phot(scienceimage,coords,psf,init_params,wcs=None,
             fwhm=3.0, fit_shape=(19,19), oversampling=3, maxiters=10):
 
-    mean, median, stddev = sigma_clipped_stats(scienceimage)
-    daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
+    # mean, median, stddev = sigma_clipped_stats(scienceimage)
+    # daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
 
     if 'flux' not in init_params.colnames:
         init_params.rename_column('aperture_sum','flux')
-    psfphot = PSFPhotometry(psf,fit_shape,finder=daofind)
-    psf_results = psfphot(scienceimage, init_params=init_params)
 
-    if wcs is not None:
-        radec = wcs.pixel_to_world(psf_results['x_fit'], psf_results['y_fit'])
+    try: 
+        psfphot = PSFPhotometry(psf,fit_shape)
+        psf_results = psfphot(scienceimage, init_params=init_params)
 
-        psf_results['ra'] = radec.ra.value
-        psf_results['dec'] = radec.dec.value
+        if wcs is not None:
+            radec = wcs.pixel_to_world(psf_results['x_fit'], psf_results['y_fit'])
 
-    return psf_results
+            psf_results['ra'] = radec.ra.value
+            psf_results['dec'] = radec.dec.value
+
+        return psf_results
+
+    except NonFiniteValueError:
+        print('fit_shape overlaps with edge of image, and therefore encloses NaNs! Photometry cancelled.')
 
 def crossmatch(pi,ti,seplimit=0.1):
     """ Cross-match the truth files from each image (TI) to the corresponding photometry
