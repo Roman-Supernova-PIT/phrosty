@@ -78,10 +78,10 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
                         ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
                         DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=output_files_rootdir)
 
-    # if remove_tmpdir:
-    #     tmpdir = glob(os.path.join(output_files_rootdir,'PYSEx_*'))
-    #     for tdir in tmpdir:
-    #         shutil.rmtree(tdir, ignore_errors=True)
+    if remove_tmpdir:
+        tmpdir = glob(os.path.join(output_files_rootdir,'PYSEx_*'))
+        for tdir in tmpdir:
+            shutil.rmtree(tdir, ignore_errors=True)
 
     return output_path
 
@@ -97,10 +97,10 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, remove_tmpdi
                 GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
                 SUBTRACT_BACK='N', FILL_VALUE=np.nan, VERBOSE_TYPE='NORMAL', VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
 
-    # if remove_tmpdir:
-    #     tmpdir = glob(os.path.join(output_files_rootdir,'PYSWarp_*'))
-    #     for tdir in tmpdir:
-    #         shutil.rmtree(tdir, ignore_errors=True)
+    if remove_tmpdir:
+        tmpdir = glob(os.path.join(output_files_rootdir,'PYSWarp_*'))
+        for tdir in tmpdir:
+            shutil.rmtree(tdir, ignore_errors=True)
 
     return output_path
 
@@ -298,17 +298,22 @@ def sfft(scipath, refpath,
 
 def decorr(scipath, refpath, 
             scipsfpath, refpsfpath,
-            diffpath, solnpath):
+            diffpath, solnpath, imgtype='difference'):
 
     sci_basename = os.path.basename(scipath)
 
-    savedir = os.path.join(output_files_rootdir, 'subtract')
-    check_and_mkdir(savedir)
+    if imgtype=='difference':
+        savedir = os.path.join(output_files_rootdir, 'subtract')
+        check_and_mkdir(savedir)
 
-    decorr_savedir = os.path.join(savedir, 'decorr')
-    check_and_mkdir(decorr_savedir)
+        decorr_savedir = os.path.join(savedir, 'decorr')
+        check_and_mkdir(decorr_savedir)
 
-    decorr_savepath = os.path.join(decorr_savedir, f'decorr_{sci_basename}')
+        decorr_savepath = os.path.join(decorr_savedir, f'decorr_{sci_basename}')
+    elif imgtype=='psf':
+        savedir = os.path.join(output_files_rootdir,'psfimg')
+        check_and_mkdir(savedir)
+        decorr_savepath = os.path.join(savedir,f'decorr_{sci_basename}')
 
     imgdatas = []
     psfdatas = []
@@ -333,6 +338,8 @@ def decorr(scipath, refpath,
                                         KERatio=2.0, VERBOSE_LEVEL=2)
 
     diff_data = fits.getdata(diffpath, ext=0).T
+
+    # Final decorrelated difference image: 
     dcdiff = convolve_fft(diff_data, DCKer, boundary='fill', \
                             nan_treatment='fill', fill_value=0.0, normalize_kernel=True,
                             preserve_nan=True)

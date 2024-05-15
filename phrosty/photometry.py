@@ -11,7 +11,7 @@ from astropy.visualization import simple_norm
 from astropy.modeling.fitting import NonFiniteValueError
 import astropy.units as u
 from photutils.aperture import CircularAperture, aperture_photometry, ApertureStats
-from photutils.background import LocalBackground, MMMBackground, Background2D
+# from photutils.background import LocalBackground, MMMBackground, Background2D
 from photutils.detection import DAOStarFinder
 from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from galsim import roman
@@ -140,8 +140,8 @@ def build_psf(scienceimage,coords,wcs,ap_r=9,plot_epsf=False,
 
     return psf_func
 
-def psf_phot(scienceimage,coords,psf,init_params,wcs=None,
-            fwhm=3.0, fit_shape=(19,19), oversampling=3, maxiters=10):
+def psf_phot(scienceimage,psf,init_params,wcs=None,
+            fwhm=3.0, fit_shape=(5,5), oversampling=3, maxiters=10):
 
     # mean, median, stddev = sigma_clipped_stats(scienceimage)
     # daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
