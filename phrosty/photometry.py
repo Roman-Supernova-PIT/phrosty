@@ -13,7 +13,7 @@ import astropy.units as u
 from photutils.aperture import CircularAperture, aperture_photometry, ApertureStats
 # from photutils.background import LocalBackground, MMMBackground, Background2D
 from photutils.detection import DAOStarFinder
-from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
+from photutils.psf import PSFPhotometry, FittableImageModel # EPSFBuilder, extract_stars, 
 from galsim import roman
 
 # IMPORTS Internal:
@@ -76,69 +76,73 @@ def ap_phot(scienceimage,coords,
 
     return ap_results
 
-def build_psf(scienceimage,coords,wcs,ap_r=9,plot_epsf=False,
-            saturation=0.9e5, noise=1e4, method='subpixel',subpixels=5, 
-            fwhm=3.0, oversampling=3, maxiters=3, forced_photometry=True,
-            exclude_duplicates=False):
-
-    """
-    Build PSF from field stars. 
-    """
-
-    mean, median, stddev = sigma_clipped_stats(scienceimage)
-    daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
-    ap_results = ap_phot(scienceimage,coords,
-                        ap_r=ap_r, method=method, 
-                        subpixels=subpixels, merge_tables=True)
-
-    psfstars = Table({'x': ap_results['xcentroid'], 'y': ap_results['ycentroid'],
-                            'flux': ap_results['flux'], 'max': ap_results['max']})
-    # NOTE: Need to make star and galaxy separation work in order to make this work. 
-    print('Number of stars before saturation and flux cuts for ePSF:', len(psfstars))
-    psfstars = psfstars[psfstars['max'] < saturation]
-    psfstars = psfstars[psfstars['flux'] > noise]
-    print('Number of stars after saturation and flux cuts for ePSF:', len(psfstars))
-
-    stampsize=25
-    nddata = NDData(data=scienceimage)
-    extracted_stars = extract_stars(nddata, psfstars, size=stampsize)
-
-    if exclude_duplicates:
-        # Get rid of stamps with more than one source.
-        exclude_coords = []
-        for i in range(len(extracted_stars)):
-            try:
-                stampsources = daofind(extracted_stars[i] - median)
-                if len(stampsources) > 1 or len(stampsources) < 1:
-                    exclude_coords.append(extracted_stars.center_flat[i])
-            except:
-                pass
-
-        exclude_rows = []
-        for c in exclude_coords:
-            exclude_rows.append(psfstars[psfstars['x'] == c[0]])
-
-        new_psfstars_rows = [x for x in psfstars if x not in exclude_rows]
-        new_psfstars = Table(rows=new_psfstars_rows, names=psfstars.colnames)
-        extracted_stars = extract_stars(nddata, new_psfstars, size=stampsize)
-
-    # Build ePSF.
-    print('Number of extracted stars for ePSF:', len(extracted_stars))
-    epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=maxiters)
-    psf_func, fitted_stars = epsf_builder(extracted_stars)
+def psfmodel(psfimg):
+    psf = FittableImageModel(psfimg)
+    return psf
     
-    if plot_epsf:
-        norm = simple_norm(psf_func.data, 'log', percent=99.0)
-        plt.imshow(psf_func.data, norm=norm, origin='lower', cmap='Greys')
-        plt.colorbar()
-        plt.title('ePSF')
-        plt.show()
+# def build_psf(scienceimage,coords,wcs,ap_r=9,plot_epsf=False,
+#             saturation=0.9e5, noise=1e4, method='subpixel',subpixels=5, 
+#             fwhm=3.0, oversampling=3, maxiters=3, forced_photometry=True,
+#             exclude_duplicates=False):
 
-    if forced_photometry:
-        psf_func.x_0.fixed = True
-        psf_func.y_0.fixed = True
+#     """
+#     Build PSF from field stars. 
+#     """
 
-    return psf_func
+#     mean, median, stddev = sigma_clipped_stats(scienceimage)
+#     daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
+#     ap_results = ap_phot(scienceimage,coords,
+#                         ap_r=ap_r, method=method, 
+#                         subpixels=subpixels, merge_tables=True)
+
+#     psfstars = Table({'x': ap_results['xcentroid'], 'y': ap_results['ycentroid'],
+#                             'flux': ap_results['flux'], 'max': ap_results['max']})
+#     # NOTE: Need to make star and galaxy separation work in order to make this work. 
+#     print('Number of stars before saturation and flux cuts for ePSF:', len(psfstars))
+#     psfstars = psfstars[psfstars['max'] < saturation]
+#     psfstars = psfstars[psfstars['flux'] > noise]
+#     print('Number of stars after saturation and flux cuts for ePSF:', len(psfstars))
+
+#     stampsize=25
+#     nddata = NDData(data=scienceimage)
+#     extracted_stars = extract_stars(nddata, psfstars, size=stampsize)
+
+#     if exclude_duplicates:
+#         # Get rid of stamps with more than one source.
+#         exclude_coords = []
+#         for i in range(len(extracted_stars)):
+#             try:
+#                 stampsources = daofind(extracted_stars[i] - median)
+#                 if len(stampsources) > 1 or len(stampsources) < 1:
+#                     exclude_coords.append(extracted_stars.center_flat[i])
+#             except:
+#                 pass
+
+#         exclude_rows = []
+#         for c in exclude_coords:
+#             exclude_rows.append(psfstars[psfstars['x'] == c[0]])
+
+#         new_psfstars_rows = [x for x in psfstars if x not in exclude_rows]
+#         new_psfstars = Table(rows=new_psfstars_rows, names=psfstars.colnames)
+#         extracted_stars = extract_stars(nddata, new_psfstars, size=stampsize)
+
+#     # Build ePSF.
+#     print('Number of extracted stars for ePSF:', len(extracted_stars))
+#     epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=maxiters)
+#     psf_func, fitted_stars = epsf_builder(extracted_stars)
+    
+#     if plot_epsf:
+#         norm = simple_norm(psf_func.data, 'log', percent=99.0)
+#         plt.imshow(psf_func.data, norm=norm, origin='lower', cmap='Greys')
+#         plt.colorbar()
+#         plt.title('ePSF')
+#         plt.show()
+
+#     if forced_photometry:
+#         psf_func.x_0.fixed = True
+#         psf_func.y_0.fixed = True
+
+#     return psf_func
 
 def psf_phot(scienceimage,psf,init_params,wcs=None,
             fwhm=3.0, fit_shape=(5,5), oversampling=3, maxiters=10):

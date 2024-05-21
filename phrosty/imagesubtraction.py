@@ -14,6 +14,7 @@ from astropy.wcs.utils import skycoord_to_pixel
 import astropy.units as u
 from astropy.wcs import WCS
 from astropy.convolution import convolve_fft
+from photutils.psf import FittableImageModel
 
 # IMPORTS SFFT:
 from roman_imsim.utils import roman_utils
@@ -27,6 +28,7 @@ from sfft.CustomizedPacket import Customized_Packet
 from sfft.utils.SkyLevelEstimator import SkyLevel_Estimator
 from sfft.utils.SFFTSolutionReader import Realize_MatchingKernel
 from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
+from sfft.utils.meta.MultiProc import Multi_Proc
 
 # IMPORTS Internal:
 from .utils import _build_filepath
@@ -49,7 +51,7 @@ def check_and_mkdir(dirname):
 
 def gz_and_ext(in_path,out_path):
     """
-    Unzips the original file and turns it into a single-extension FITS file.     
+    Utility function that unzips the original file and turns it into a single-extension FITS file.     
     """
     with gzip.open(in_path,'rb') as f_in, open(out_path,'wb') as f_out:
         shutil.copyfileobj(f_in,f_out)
@@ -76,12 +78,12 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
 
     SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, FITS_sky=None, FITS_skyrms=None, \
                         ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
-                        DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=output_files_rootdir)
+                        DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=None)
 
-    if remove_tmpdir:
-        tmpdir = glob(os.path.join(output_files_rootdir,'PYSEx_*'))
-        for tdir in tmpdir:
-            shutil.rmtree(tdir, ignore_errors=True)
+    # if remove_tmpdir:
+    #     tmpdir = glob(os.path.join(output_files_rootdir,'PYSEx_*'))
+    #     for tdir in tmpdir:
+    #         shutil.rmtree(tdir, ignore_errors=True)
 
     return output_path
 
@@ -97,10 +99,10 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, remove_tmpdi
                 GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
                 SUBTRACT_BACK='N', FILL_VALUE=np.nan, VERBOSE_TYPE='NORMAL', VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
 
-    if remove_tmpdir:
-        tmpdir = glob(os.path.join(output_files_rootdir,'PYSWarp_*'))
-        for tdir in tmpdir:
-            shutil.rmtree(tdir, ignore_errors=True)
+    # if remove_tmpdir:
+    #     tmpdir = glob(os.path.join(output_files_rootdir,'PYSWarp_*'))
+    #     for tdir in tmpdir:
+    #         shutil.rmtree(tdir, ignore_errors=True)
 
     return output_path
 
@@ -323,6 +325,8 @@ def decorr(scipath, refpath,
         psfdatas.append(fits.getdata(psf, ext=0).T)
         imgdatas.append(imgdata)
         bkgsigs.append(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
+        print('SkyLevel_Estimator.SLE()')
+        print(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
 
     sci_img, ref_img = imgdatas
     sci_psf, ref_psf = psfdatas
@@ -349,3 +353,73 @@ def decorr(scipath, refpath,
         hdu.writeto(decorr_savepath, overwrite=True)
 
     return decorr_savepath
+
+def calc_psf(scipath, refpath,
+            scipsfpath, refpsfpath, 
+            soln, 
+            SUBTTAG='DCSCI', nproc=1, TILESIZE_RATIO=5, GKerHW=9):
+    """
+    Calculate the PSF. 
+    scipath -- should be sky-subtracted, aligned, and cross-convolved with the reference PSF. 
+    refpath -- should be sky-subtracted and cross-convolved with the science PSF. 
+    """
+    # * define an image grid (use one psf size)
+    _hdr = fits.getheader(scipath, ext=0) # FITS_lSCI = output_dir + '/%s.sciE.skysub.fits' %sciname
+    N0, N1 = int(_hdr['NAXIS1']), int(_hdr['NAXIS2'])
+
+    lab = 0
+    XY_TiC = []
+    TILESIZE_RATIO = 10
+    TiHW = round(TILESIZE_RATIO * GKerHW) 
+    TiN = 2*TiHW+1
+    AllocatedL = np.zeros((N0, N1), dtype=int)
+    for xs in np.arange(0, N0, TiN):
+        xe = np.min([xs+TiN, N0])
+        for ys in np.arange(0, N1, TiN):
+            ye = np.min([ys+TiN, N1])
+            AllocatedL[xs: xe, ys: ye] = lab
+            x_q = 0.5 + xs + (xe - xs)/2.0   # tile-center (x)
+            y_q = 0.5 + ys + (ye - ys)/2.0   # tile-center (y)
+            XY_TiC.append([x_q, y_q])
+            lab += 1
+    XY_TiC = np.array(XY_TiC)
+    NTILE = XY_TiC.shape[0]
+
+    XY_q = np.array([[N0/2.+0.5, N1/2.+0.5]])
+    MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=soln).T
+
+    PixA_lREF = fits.getdata(refpath, ext=0).T # use stamp
+    PixA_lSCI = fits.getdata(scipath, ext=0).T # use stamp
+
+    PixA_PSF_lREF = fits.getdata(refpsfpath, ext=0).T
+    PixA_PSF_lSCI = fits.getdata(scipsfpath, ext=0).T
+
+    bkgsig_REF = SkyLevel_Estimator.SLE(PixA_obj=PixA_lREF)[1]
+    bkgsig_SCI = SkyLevel_Estimator.SLE(PixA_obj=PixA_lSCI)[1]
+
+    # record model PSF of decorrelated image (DCMREF, DCSCI, DCDIFF) for the grid
+    FITS_dcPSFFStack = os.path.join(output_files_rootdir,'psf_final',f'{os.path.basename(scipath)[:-5]}.sfft_{SUBTTAG}.DeCorrelated.dcPSFFStack.fits')
+
+    XY_q = np.array([[N0/2.+0.5, N1/2.+0.5]])
+    MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=soln)
+    MK_Fin = MKerStack[0]
+
+    # calculate decorrelation kernels on the grid
+    DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[PixA_PSF_lREF], SkySig_JLst=[bkgsig_SCI], \
+            MK_ILst=[PixA_PSF_lSCI], SkySig_ILst=[bkgsig_REF], MK_Fin=MK_Fin, \
+            KERatio=2.0, VERBOSE_LEVEL=0)
+
+    NX_DCKer, NY_DCKer = DCKer.shape
+
+    PixA_dcPSF = convolve_fft(PixA_PSF_lSCI, DCKer, boundary='fill', \
+            nan_treatment='fill', fill_value=0.0, normalize_kernel=True)
+
+    _hdr = fits.Header()
+    _hdr['NTILE'] = NTILE
+    _hdr['NX_PSF'] = PixA_dcPSF.shape[0]
+    _hdr['NY_PSF'] = PixA_dcPSF.shape[1]
+    _hdl = fits.HDUList([fits.PrimaryHDU(PixA_dcPSF.T, header=_hdr)])
+    _hdl.writeto(FITS_dcPSFFStack, overwrite=True)
+    print("MeLOn CheckPoint: PSF for DeCorrelated images Saved! \n # %s!" %FITS_dcPSFFStack)
+
+    return FITS_dcPSFFStack
