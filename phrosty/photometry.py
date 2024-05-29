@@ -14,6 +14,7 @@ from photutils.aperture import CircularAperture, aperture_photometry, ApertureSt
 # from photutils.background import LocalBackground, MMMBackground, Background2D
 from photutils.detection import DAOStarFinder
 from photutils.psf import PSFPhotometry, FittableImageModel # EPSFBuilder, extract_stars, 
+from photutils.background import LocalBackground, MMMBackground
 from galsim import roman
 
 # IMPORTS Internal:
@@ -27,7 +28,7 @@ roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213']
 
 def ap_phot(scienceimage,coords,
             ap_r=9, method='subpixel',subpixels=5,
-            merge_tables=True):
+            merge_tables=True,**kwargs):
     """Does aperture photometry on the input science image and 
         specified coordinates. 
 
@@ -56,7 +57,7 @@ def ap_phot(scienceimage,coords,
     photcoords = np.transpose(np.vstack([x,y]))
     apertures = CircularAperture(photcoords, r=ap_r)
 
-    ap_results = aperture_photometry(scienceimage,apertures,method=method,subpixels=subpixels)
+    ap_results = aperture_photometry(scienceimage,apertures,method=method,subpixels=subpixels,**kwargs)
     apstats = ApertureStats(scienceimage, apertures)
     ap_results['max'] = apstats.max
 
@@ -145,7 +146,8 @@ def psfmodel(psfimg):
 #     return psf_func
 
 def psf_phot(scienceimage,psf,init_params,wcs=None,
-            fwhm=3.0, fit_shape=(5,5), oversampling=3, maxiters=10):
+            forced_phot=True, fwhm=3.0, fit_shape=(5,5), 
+            oversampling=3, maxiters=10):
 
     # mean, median, stddev = sigma_clipped_stats(scienceimage)
     # daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
@@ -153,12 +155,22 @@ def psf_phot(scienceimage,psf,init_params,wcs=None,
     if 'flux' not in init_params.colnames:
         init_params.rename_column('aperture_sum','flux')
 
+    if forced_phot:
+        print('x, y are fixed!')
+        psf.x_0.fixed = True
+        psf.y_0.fixed = True
+
     try: 
-        psfphot = PSFPhotometry(psf,fit_shape)
+        bkgfunc = LocalBackground(15,25,MMMBackground())
+        psfphot = PSFPhotometry(psf,fit_shape,localbkg_estimator=bkgfunc)
         psf_results = psfphot(scienceimage, init_params=init_params)
 
         if wcs is not None:
+            init_radec = wcs.pixel_to_world(psf_results['x_init'], psf_results['y_init'])
             radec = wcs.pixel_to_world(psf_results['x_fit'], psf_results['y_fit'])
+
+            psf_results['ra_init'] = init_radec.ra.value
+            psf_results['dec_init'] = init_radec.dec.value
 
             psf_results['ra'] = radec.ra.value
             psf_results['dec'] = radec.dec.value
