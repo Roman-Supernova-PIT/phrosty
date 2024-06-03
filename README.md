@@ -77,12 +77,21 @@ for path in convolvedpaths:
 
 # Do SFFT subtraction. 
 scipath, refpath = spaths
-diff, soln = sfft(scipath, refpath, sci_psf_path, ref_psf_path)
+diff, soln = difference(scipath, refpath, sci_psf_path, ref_psf_path)
 showimage(diff, data_ext=0)
 
+# Make your decorrelation kernel.
+dcker_path = decorr_kernel(scipath, refpath, sci_psf_path, ref_psf_path, diff, soln)
+
 # Decorrelate the difference image. 
-decorr_path = decorr(scipath, refpath, sci_psf_path, ref_psf_path, diff, soln)
+decorr_diff_path = decorr_img(diff, dcker_path, imgtype='difference')
 showimage(decorr_path, data_ext=0)
+
+# Decorrelate the cross-convolved science image so you can get the zeropoint from this correctly.
+decorr_zpt_path = decorr_img(spaths[0], dcker_path, imgtype='science')
+
+# Calculate your final PSF to be used on your difference image and decorrelated cross-convolved science image. 
+psfpath = calc_psf(spaths[0], spaths[1], sci_psf_path, ref_psf_path, dcker_path)
 ```
 
 ## Old readme contents:

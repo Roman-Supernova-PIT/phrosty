@@ -6,6 +6,7 @@ import gzip
 import shutil
 # from tempfile import mkdtemp
 from glob import glob
+import matplotlib.pyplot as plt
 
 # IMPORTS Astro:
 from astropy.io import fits 
@@ -248,7 +249,7 @@ def bkg_mask(imgpath):
 
     return bkg_mask
 
-def sfft(scipath, refpath, 
+def difference(scipath, refpath, 
         scipsfpath, refpsfpath, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
         ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8):
 
@@ -298,24 +299,16 @@ def sfft(scipath, refpath,
 
     return diff_savepath, soln_savepath
 
-def decorr(scipath, refpath, 
+def decorr_kernel(scipath, refpath, 
             scipsfpath, refpsfpath,
-            diffpath, solnpath, imgtype='difference'):
+            diffpath, solnpath):
 
     sci_basename = os.path.basename(scipath)
 
-    if imgtype=='difference':
-        savedir = os.path.join(output_files_rootdir, 'subtract')
-        check_and_mkdir(savedir)
+    savedir = os.path.join(output_files_rootdir, 'dcker')
+    check_and_mkdir(savedir)
 
-        decorr_savedir = os.path.join(savedir, 'decorr')
-        check_and_mkdir(decorr_savedir)
-
-        decorr_savepath = os.path.join(decorr_savedir, f'decorr_{sci_basename}')
-    elif imgtype=='psf':
-        savedir = os.path.join(output_files_rootdir,'psfimg')
-        check_and_mkdir(savedir)
-        decorr_savepath = os.path.join(savedir,f'decorr_{sci_basename}')
+    decorr_savepath = os.path.join(savedir, f'DCKer_{sci_basename}')
 
     imgdatas = []
     psfdatas = []
@@ -325,8 +318,6 @@ def decorr(scipath, refpath,
         psfdatas.append(fits.getdata(psf, ext=0).T)
         imgdatas.append(imgdata)
         bkgsigs.append(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
-        print('SkyLevel_Estimator.SLE()')
-        print(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
 
     sci_img, ref_img = imgdatas
     sci_psf, ref_psf = psfdatas
@@ -341,14 +332,33 @@ def decorr(scipath, refpath,
                                         MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], MK_Fin=MK_Fin, \
                                         KERatio=2.0, VERBOSE_LEVEL=2)
 
-    diff_data = fits.getdata(diffpath, ext=0).T
+    with fits.open(scipath) as hdu:
+        hdu[0].data = DCKer.T
+        hdu.writeto(decorr_savepath, overwrite=True)
+
+    return decorr_savepath
+    
+def decorr_img(imgpath, dckerpath, imgtype='difference'):
+    decorr_basename = os.path.basename(imgpath)
+    if imgtype == 'difference':
+        savedir = os.path.join(output_files_rootdir,'subtract','decorr')
+        check_and_mkdir(savedir)
+        decorr_savepath = os.path.join(savedir,f'decorr_{decorr_basename}')
+
+    elif imgtype == 'science':
+        savedir = os.path.join(output_files_rootdir,'science')
+        check_and_mkdir(savedir)
+        decorr_savepath = os.path.join(savedir,f'decorr_{decorr_basename}')
+
+    img_data = fits.getdata(imgpath, ext=0).T
+    DCKer = fits.getdata(dckerpath)
 
     # Final decorrelated difference image: 
-    dcdiff = convolve_fft(diff_data, DCKer, boundary='fill', \
+    dcdiff = convolve_fft(img_data, DCKer, boundary='fill', \
                             nan_treatment='fill', fill_value=0.0, normalize_kernel=True,
                             preserve_nan=True)
 
-    with fits.open(diffpath) as hdu:
+    with fits.open(imgpath) as hdu:
         hdu[0].data[:, :] = dcdiff.T
         hdu.writeto(decorr_savepath, overwrite=True)
 
@@ -356,70 +366,77 @@ def decorr(scipath, refpath,
 
 def calc_psf(scipath, refpath,
             scipsfpath, refpsfpath, 
-            soln, 
+            dckerpath,
             SUBTTAG='DCSCI', nproc=1, TILESIZE_RATIO=5, GKerHW=9):
     """
     Calculate the PSF. 
     scipath -- should be sky-subtracted, aligned, and cross-convolved with the reference PSF. 
     refpath -- should be sky-subtracted and cross-convolved with the science PSF. 
     """
+
+    psf_basename = os.path.basename(scipath[:-5])
+    savedir = os.path.join(output_files_rootdir,'psf_final')
+    check_and_mkdir(savedir)
+    psf_savepath = os.path.join(output_files_rootdir,'psf_final',f'{psf_basename[:-5]}.sfft_{SUBTTAG}.DeCorrelated.dcPSFFStack.fits')
+
     # * define an image grid (use one psf size)
     _hdr = fits.getheader(scipath, ext=0) # FITS_lSCI = output_dir + '/%s.sciE.skysub.fits' %sciname
-    N0, N1 = int(_hdr['NAXIS1']), int(_hdr['NAXIS2'])
+    # N0, N1 = int(_hdr['NAXIS1']), int(_hdr['NAXIS2'])
 
-    lab = 0
-    XY_TiC = []
-    TILESIZE_RATIO = 10
-    TiHW = round(TILESIZE_RATIO * GKerHW) 
-    TiN = 2*TiHW+1
-    AllocatedL = np.zeros((N0, N1), dtype=int)
-    for xs in np.arange(0, N0, TiN):
-        xe = np.min([xs+TiN, N0])
-        for ys in np.arange(0, N1, TiN):
-            ye = np.min([ys+TiN, N1])
-            AllocatedL[xs: xe, ys: ye] = lab
-            x_q = 0.5 + xs + (xe - xs)/2.0   # tile-center (x)
-            y_q = 0.5 + ys + (ye - ys)/2.0   # tile-center (y)
-            XY_TiC.append([x_q, y_q])
-            lab += 1
-    XY_TiC = np.array(XY_TiC)
-    NTILE = XY_TiC.shape[0]
+    # lab = 0
+    # XY_TiC = []
+    # TILESIZE_RATIO = 10
+    # TiHW = round(TILESIZE_RATIO * GKerHW) 
+    # TiN = 2*TiHW+1
+    # AllocatedL = np.zeros((N0, N1), dtype=int)
+    # for xs in np.arange(0, N0, TiN):
+    #     xe = np.min([xs+TiN, N0])
+    #     for ys in np.arange(0, N1, TiN):
+    #         ye = np.min([ys+TiN, N1])
+    #         AllocatedL[xs: xe, ys: ye] = lab
+    #         x_q = 0.5 + xs + (xe - xs)/2.0   # tile-center (x)
+    #         y_q = 0.5 + ys + (ye - ys)/2.0   # tile-center (y)
+    #         XY_TiC.append([x_q, y_q])
+    #         lab += 1
+    # XY_TiC = np.array(XY_TiC)
+    # NTILE = XY_TiC.shape[0]
 
-    XY_q = np.array([[N0/2.+0.5, N1/2.+0.5]])
-    MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=soln).T
+    # XY_q = np.array([[N0/2.+0.5, N1/2.+0.5]])
+    # MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=soln).T
 
-    PixA_lREF = fits.getdata(refpath, ext=0).T # use stamp
-    PixA_lSCI = fits.getdata(scipath, ext=0).T # use stamp
+    # PixA_lREF = fits.getdata(refpath, ext=0).T # use stamp
+    # PixA_lSCI = fits.getdata(scipath, ext=0).T # use stamp
 
-    PixA_PSF_lREF = fits.getdata(refpsfpath, ext=0).T
+    # PixA_PSF_lREF = fits.getdata(refpsfpath, ext=0).T
     PixA_PSF_lSCI = fits.getdata(scipsfpath, ext=0).T
 
-    bkgsig_REF = SkyLevel_Estimator.SLE(PixA_obj=PixA_lREF)[1]
-    bkgsig_SCI = SkyLevel_Estimator.SLE(PixA_obj=PixA_lSCI)[1]
+    # bkgsig_REF = SkyLevel_Estimator.SLE(PixA_obj=PixA_lREF)[1]
+    # bkgsig_SCI = SkyLevel_Estimator.SLE(PixA_obj=PixA_lSCI)[1]
 
     # record model PSF of decorrelated image (DCMREF, DCSCI, DCDIFF) for the grid
-    FITS_dcPSFFStack = os.path.join(output_files_rootdir,'psf_final',f'{os.path.basename(scipath)[:-5]}.sfft_{SUBTTAG}.DeCorrelated.dcPSFFStack.fits')
+    # FITS_dcPSFFStack = os.path.join(output_files_rootdir,'psf_final',f'{os.path.basename(scipath)[:-5]}.sfft_{SUBTTAG}.DeCorrelated.dcPSFFStack.fits')
 
-    XY_q = np.array([[N0/2.+0.5, N1/2.+0.5]])
-    MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=soln)
-    MK_Fin = MKerStack[0]
+    # XY_q = np.array([[N0/2.+0.5, N1/2.+0.5]])
+    # MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=soln)
+    # MK_Fin = MKerStack[0]
 
     # calculate decorrelation kernels on the grid
-    DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[PixA_PSF_lREF], SkySig_JLst=[bkgsig_SCI], \
-            MK_ILst=[PixA_PSF_lSCI], SkySig_ILst=[bkgsig_REF], MK_Fin=MK_Fin, \
-            KERatio=2.0, VERBOSE_LEVEL=0)
+    # DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[PixA_PSF_lREF], SkySig_JLst=[bkgsig_SCI], \
+    #         MK_ILst=[PixA_PSF_lSCI], SkySig_ILst=[bkgsig_REF], MK_Fin=MK_Fin, \
+    #         KERatio=2.0, VERBOSE_LEVEL=0)
 
+    DCKer = fits.getdata(dckerpath)
     NX_DCKer, NY_DCKer = DCKer.shape
 
     PixA_dcPSF = convolve_fft(PixA_PSF_lSCI, DCKer, boundary='fill', \
             nan_treatment='fill', fill_value=0.0, normalize_kernel=True)
 
     _hdr = fits.Header()
-    _hdr['NTILE'] = NTILE
+    # _hdr['NTILE'] = NTILE
     _hdr['NX_PSF'] = PixA_dcPSF.shape[0]
     _hdr['NY_PSF'] = PixA_dcPSF.shape[1]
     _hdl = fits.HDUList([fits.PrimaryHDU(PixA_dcPSF.T, header=_hdr)])
-    _hdl.writeto(FITS_dcPSFFStack, overwrite=True)
-    print("MeLOn CheckPoint: PSF for DeCorrelated images Saved! \n # %s!" %FITS_dcPSFFStack)
+    _hdl.writeto(psf_savepath, overwrite=True)
+    print("MeLOn CheckPoint: PSF for DeCorrelated images Saved! \n # %s!" %psf_savepath)
 
-    return FITS_dcPSFFStack
+    return psf_savepath
