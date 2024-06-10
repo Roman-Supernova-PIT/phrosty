@@ -18,10 +18,7 @@ you will get path errors.
 
 DEPENDENCIES: 
 You need to clone and install this directory:
-https://github.com/laldoroty/sfft/tree/no_keys_in_header
-
-Note that this fork of the original SFFT package may be merged via pull request soon.
-You also need all dependencies listed in the installation instructions for SFFT. 
+https://github.com/thomasvrussell/sfft
 
 You also need GalSim, but you can't pip install it at this time because the features
 you need are not yet pushed to pip. So, clone and install. 

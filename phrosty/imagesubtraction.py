@@ -5,8 +5,8 @@ import numpy as np
 import gzip
 import shutil
 # from tempfile import mkdtemp
-from glob import glob
-import matplotlib.pyplot as plt
+# from glob import glob
+# import matplotlib.pyplot as plt
 
 # IMPORTS Astro:
 from astropy.io import fits 
@@ -15,7 +15,7 @@ from astropy.wcs.utils import skycoord_to_pixel
 import astropy.units as u
 from astropy.wcs import WCS
 from astropy.convolution import convolve_fft
-from photutils.psf import FittableImageModel
+# from photutils.psf import FittableImageModel
 
 # IMPORTS SFFT:
 from roman_imsim.utils import roman_utils
@@ -29,7 +29,7 @@ from sfft.CustomizedPacket import Customized_Packet
 from sfft.utils.SkyLevelEstimator import SkyLevel_Estimator
 from sfft.utils.SFFTSolutionReader import Realize_MatchingKernel
 from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
-from sfft.utils.meta.MultiProc import Multi_Proc
+# from sfft.utils.meta.MultiProc import Multi_Proc
 
 # IMPORTS Internal:
 from .utils import _build_filepath
@@ -40,7 +40,7 @@ Dr. Lei Hu (https://github.com/thomasvrussell/), and relies on his
 SFFT image subtraction package (https://github.com/thomasvrussell/sfft).
 """
 
-output_files_rootdir = '/work/lna18/imsub_out/'
+output_files_rootdir = os.getenv('IMSUB_OUT','/work/lna18/imsub_out/')
 
 def check_and_mkdir(dirname):
     """
@@ -81,11 +81,6 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
                         ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
                         DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=None)
 
-    # if remove_tmpdir:
-    #     tmpdir = glob(os.path.join(output_files_rootdir,'PYSEx_*'))
-    #     for tdir in tmpdir:
-    #         shutil.rmtree(tdir, ignore_errors=True)
-
     return output_path
 
 def imalign(template_path, sci_path, out_path=output_files_rootdir, remove_tmpdir=True):
@@ -99,11 +94,6 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, remove_tmpdi
     PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, FITS_resamp=output_path, \
                 GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
                 SUBTRACT_BACK='N', FILL_VALUE=np.nan, VERBOSE_TYPE='NORMAL', VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
-
-    # if remove_tmpdir:
-    #     tmpdir = glob(os.path.join(output_files_rootdir,'PYSWarp_*'))
-    #     for tdir in tmpdir:
-    #         shutil.rmtree(tdir, ignore_errors=True)
 
     return output_path
 
@@ -377,7 +367,7 @@ def calc_psf(scipath, refpath,
     psf_basename = os.path.basename(scipath[:-5])
     savedir = os.path.join(output_files_rootdir,'psf_final')
     check_and_mkdir(savedir)
-    psf_savepath = os.path.join(output_files_rootdir,'psf_final',f'{psf_basename[:-5]}.sfft_{SUBTTAG}.DeCorrelated.dcPSFFStack.fits')
+    psf_savepath = os.path.join(output_files_rootdir,'psf_final',f'{psf_basename}.sfft_{SUBTTAG}.DeCorrelated.dcPSFFStack.fits')
 
     # * define an image grid (use one psf size)
     _hdr = fits.getheader(scipath, ext=0) # FITS_lSCI = output_dir + '/%s.sciE.skysub.fits' %sciname
