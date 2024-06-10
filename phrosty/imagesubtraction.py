@@ -142,8 +142,9 @@ def get_psf(ra,dec,sci_imalign,
     # Get PSF at specified RA, dec in science image. 
     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
     config = roman_utils(config_path,visit=sci_pointing,sca=sci_sca)
-    psf = config.getPSF_Image(501, x=pxradec[0], y=pxradec[1]).array
-
+    # add transpose here as Image_ZoomRotate only accept that form (LH, 2024/06/07)
+    psf = config.getPSF_Image(501, x=pxradec[0], y=pxradec[1]).array.T 
+    
     # Get vector from sky-subtracted science WCS
     hdr = fits.getheader(sci_skysub, ext=0)
     _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)
@@ -168,7 +169,7 @@ def get_psf(ra,dec,sci_imalign,
     check_and_mkdir(psf_dir)
 
     psf_path = os.path.join(psf_dir, f'rot_psf_{ra}_{dec}_{sci_band}_{sci_pointing}_{sci_sca}.fits')
-    fits.HDUList([fits.PrimaryHDU(data=psf_rotated, header=None)]).writeto(psf_path, overwrite=True)
+    fits.HDUList([fits.PrimaryHDU(data=psf_rotated.T, header=None)]).writeto(psf_path, overwrite=True)
     
     return psf_path
 
