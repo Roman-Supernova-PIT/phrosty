@@ -91,9 +91,10 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, remove_tmpdi
     output_path = os.path.join(outdir, f'align_{os.path.basename(sci_path)}')
     check_and_mkdir(outdir)
 
-    PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, FITS_resamp=output_path, \
-                GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
-                SUBTRACT_BACK='N', FILL_VALUE=np.nan, VERBOSE_TYPE='NORMAL', VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
+    cd = PY_SWarp.Mk_ConfigDict(GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
+                                SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL')
+    PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
+                FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
 
     return output_path
 
