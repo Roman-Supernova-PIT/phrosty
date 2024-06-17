@@ -1,12 +1,8 @@
 # IMPORTS Standard:
 import os
-# import sys
 import numpy as np
 import gzip
 import shutil
-# from tempfile import mkdtemp
-# from glob import glob
-# import matplotlib.pyplot as plt
 
 # IMPORTS Astro:
 from astropy.io import fits 
@@ -61,7 +57,9 @@ def gz_and_ext(in_path,out_path):
         newhdu = fits.HDUList([fits.PrimaryHDU(data=hdu[1].data, header=hdu[0].header)])
         newhdu.writeto(out_path, overwrite=True)
 
-def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir, remove_tmpdir=True):
+    return out_path
+
+def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir):
 
     """
     Subtracts background, found with Source Extractor. 
@@ -70,8 +68,12 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
     zip_savedir = os.path.join(out_path, 'unzip')
     check_and_mkdir(zip_savedir)
 
-    decompressed_path = os.path.join(output_files_rootdir,'unzip',f'{os.path.basename(original_imgpath)[:-3]}')
-    gz_and_ext(original_imgpath, decompressed_path)
+    if f'{os.path.basename(original_imgpath)[-3:]}' == '.gz':
+        decompressed_path = os.path.join(output_files_rootdir,'unzip',f'{os.path.basename(original_imgpath)[:-3]}')
+        gz_and_ext(original_imgpath, decompressed_path)
+    else:
+        decompressed_path = os.path.join(zip_savedir,f'{os.path.basename(original_imgpath)}')
+        
     output_path = os.path.join(out_path, 'skysub', f'skysub_{os.path.basename(decompressed_path)}')
 
     sub_savedir = os.path.join(out_path, 'skysub')
@@ -83,7 +85,7 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
 
     return output_path
 
-def imalign(template_path, sci_path, out_path=output_files_rootdir, remove_tmpdir=True):
+def imalign(template_path, sci_path, out_path=output_files_rootdir):
     """
     Align images with SWarp. 
     """
@@ -92,7 +94,7 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, remove_tmpdi
     check_and_mkdir(outdir)
 
     cd = PY_SWarp.Mk_ConfigDict(GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
-                                SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL')
+                                SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.)
     PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
                 FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
 
@@ -119,22 +121,28 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-def get_psf(ra,dec,sci_imalign,
-                    sci_skysub,
+def get_imsim_psf(ra,dec,
                     sci_band,
                     sci_pointing,
                     sci_sca,
-                    ref_band,
-                    ref_pointing,
-                    ref_sca):
+                    ref_band=None,
+                    ref_pointing=None,
+                    ref_sca=None,
+                    ref_path=None):
+
     """
-    1. Get PSF model at specified RA, dec [degrees] from RomanDESC sims. 
-    2. Rotate PSF model to match reference WCS. 
-        2a. Calculate rotation angle during alignment
-        2b. Rotate PSF to match rotated science image
+    Retrieves PSF directly from roman_imsim.
     """
 
-    ref_path = _build_filepath(path=None,band=ref_band,pointing=ref_pointing,sca=ref_sca,filetype='image')
+    # Check if reference image was provided. If not, just retrieve PSF from science
+    # image without changing the WCS. 
+    if all(val is None for val in [ref_band,ref_pointing,ref_sca,ref_path]):
+        print('Warning! No reference provided. WCS will match science image.')
+        wcsband, wcspointing, wcssca, wcspath = sci_band, sci_pointing, sci_sca, ref_path
+    else:
+        wcsband, wcspointing, wcssca, wcspath = ref_band, ref_pointing, ref_sca, ref_path
+
+    ref_path = _build_filepath(path=wcspath,band=wcsband,pointing=wcspointing,sca=wcssca,filetype='image')
     ref_hdu = fits.open(ref_path)
     ref_wcs = WCS(ref_hdu[0].header)
     worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
@@ -145,15 +153,39 @@ def get_psf(ra,dec,sci_imalign,
     config = roman_utils(config_path,visit=sci_pointing,sca=sci_sca)
     # add transpose here as Image_ZoomRotate only accept that form (LH, 2024/06/07)
     psf = config.getPSF_Image(501, x=pxradec[0], y=pxradec[1]).array.T 
-    
-    # Get vector from sky-subtracted science WCS
+
+    return psf
+
+def rotate_psf(ra,dec,sci_skysub,
+                    sci_imalign,
+                    sci_band,
+                    sci_pointing,
+                    sci_sca,
+                    ref_band=None,
+                    ref_pointing=None,
+                    ref_sca=None,
+                    ref_path=None):
+    """
+    2. Rotate PSF model to match reference WCS. 
+        2a. Calculate rotation angle during alignment
+        2b. Rotate PSF to match rotated science image
+    """
+
+    if all(val is None for val in [ref_band,ref_pointing,ref_sca,ref_path]):
+        raise ValueError('You need to provide either [ref_band, ref_pointing, ref_sca] OR ref_path.')
+
+    psf = get_imsim_psf(ra,dec,
+                        sci_band,sci_pointing,sci_sca,
+                        ref_band,ref_pointing,ref_sca,ref_path)
+
+    # Get vector from sky-subtracted science WCS (i.e., not rotated to reference)
     hdr = fits.getheader(sci_skysub, ext=0)
     _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)
     x0, y0 = 0.5 + int(hdr['NAXIS1'])/2.0, 0.5 + int(hdr['NAXIS2'])/2.0
     ra0, dec0 = _w.all_pix2world(np.array([[x0, y0]]), 1)[0]
     skyN_vector = calculate_skyN_vector(wcshdr=hdr, x_start=x0, y_start=y0)
 
-    # Get vector from rotated science WCS
+    # Get vector from rotated science WCS (i.e., rotated to reference)
     hdr = fits.getheader(sci_imalign, ext=0)
     _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)
     x1, y1 = _w.all_world2pix(np.array([[ra0, dec0]]), 1)[0]
@@ -432,3 +464,88 @@ def calc_psf(scipath, refpath,
     print("MeLOn CheckPoint: PSF for DeCorrelated images Saved! \n # %s!" %psf_savepath)
 
     return psf_savepath
+
+def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,**kwargs):
+    """Coadd images using SWarp. 
+
+    kwargs: see sfft.utils.pyAstroMatic.PYSWarp.PY_SWarp.Mk_ConfigDict
+
+    :param imgpath_list: Paths to images that will be coadded.
+    :type imgpath_list: list
+    :param refpath: Path to image to use as WCS reference.
+    :type refpath: str
+    :param savepath: Path to save coadded image.
+    :type savepath: str
+    :return: 
+    :rtype: str
+    """
+    cd = PY_SWarp.Mk_ConfigDict(GAIN_DEFAULT=1., SATLEV_DEFAULT=100000., 
+                                RESAMPLING_TYPE='BILINEAR', **kwargs)
+
+    imgpaths = []
+    for p in imgpath_list:
+        if p[-3:] == '.gz':
+            zip_savedir = os.path.join(out_path, 'unzip')
+            check_and_mkdir(zip_savedir)
+
+            decompressed_path = os.path.join(zip_savedir,f'{os.path.basename(p)[:-3]}')
+            dc_path = gz_and_ext(p, decompressed_path)
+
+            imgpaths.append(dc_path)
+        else:
+            imgpaths.append(p)
+
+    coadd_savedir = os.path.join(out_path,'coadd')
+    check_and_mkdir(coadd_savedir)
+    coadd_savepath = os.path.join(coadd_savedir,out_name)
+    
+    coadd = PY_SWarp.Coadd(FITS_obj=imgpaths, FITS_ref=refpath, ConfigDict=cd,
+                            OUT_path=coadd_savepath, FILL_VALUE=np.nan)
+
+    return coadd_savepath, imgpaths
+
+def swarp_coadd_psf(ra,dec,sci_imalign_paths,sci_skysub_paths,
+                    ref_table,refpath,out_name,out_path=output_files_rootdir):
+    """_summary_
+
+    :param ra: _description_
+    :type ra: _type_
+    :param dec: _description_
+    :type dec: _type_
+    :param sci_imalign: _description_
+    :type sci_imalign: _type_
+    :param sci_skysub: _description_
+    :type sci_skysub: _type_
+    :param sci_band: _description_
+    :type sci_band: _type_
+    :param sci_pointing: _description_
+    :type sci_pointing: _type_
+    :param sci_sca: _description_
+    :type sci_sca: _type_
+    :param ref_table: filter, pointing, sca astropy table w/ images in the coadded template. 
+    :type ref_table: _type_
+    :param refpath: Path to coadded template. For WCS info. 
+    :type refpath: _type_
+    :param out_name: _description_
+    :type out_name: _type_
+    :param out_path: _description_, defaults to output_files_rootdir
+    :type out_path: _type_, optional
+    :return: _description_
+    :rtype: _type_
+    """
+
+    coadd_psf_savedir = os.path.join(out_path,'coadd_psf')
+    check_and_mkdir(coadd_psf_savedir)
+    coadd_psf_savepath = os.path.join(coadd_psf_savedir,out_name)
+
+    psf_list = []
+    # Can be parallelized: 
+    for i, row in enumerate(ref_table):
+        psf = rotate_psf(ra,dec,sci_imalign_paths[i],sci_skysub_paths[i],
+                         sci_band=row['filter'],sci_pointing=row['pointing'],sci_sca=row['sca'],
+                         ref_path=refpath)
+        psf_list.append(psf)
+
+    coadd_psf = swarp_coadd_img(psf_list,refpath,coadd_psf_savepath)
+
+    return coadd_psf_savepath

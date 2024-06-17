@@ -236,7 +236,7 @@ def pointings_near_mjd(mjd,window=3,obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_
     pointings = np.where(np.logical_and(obseq['date'] < mjd + window, obseq['date'] > mjd - window))[0]
     return pointings 
 
-def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,obseq_path = f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
+def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,return_inverse=False,obseq_path = f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
     """
     Get all pointings and corresponding filters between two MJDs.
     Returns an astropy table with columns 'filter' and 'pointing'. 
@@ -247,6 +247,8 @@ def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,obseq_path = f'{rootdir}/Roman
     :type mjd_start: float, optional
     :param mjd_end: End MJD, defaults to np.inf
     :type mjd_end: float, optional
+    :param return_inverse: If true, returns all pointings outside the MJD range specified instead of inside. 
+    :type return_inverse: bool
     :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.
     :type obseq_path: str, optional
     :return: Astropy table with pointing numbers and corresponding filters that satisfy the
@@ -256,7 +258,11 @@ def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,obseq_path = f'{rootdir}/Roman
     with fits.open(obseq_path) as obs:
         obseq = Table(obs[1].data)
 
-    mjd_idx = np.where((obseq['date'] > float(mjd_start)) & (obseq['date'] < float(mjd_end)))[0]
+    if not return_inverse:
+        mjd_idx = np.where((obseq['date'] > float(mjd_start)) & (obseq['date'] < float(mjd_end)))[0]
+    elif return_inverse:
+        mjd_idx = np.where(~((obseq['date'] > float(mjd_start)) & (obseq['date'] < float(mjd_end))))[0]
+
     mjd_tab = Table([obseq['filter'][mjd_idx], mjd_idx], names=('filter','pointing'))
 
     return mjd_tab
