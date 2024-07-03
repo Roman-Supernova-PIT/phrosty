@@ -131,7 +131,8 @@ def get_imsim_psf(ra,dec,
                     ref_path=None):
 
     """
-    Retrieves PSF directly from roman_imsim.
+    Retrieves PSF directly from roman_imsim. If you have a reference image, retrieves it 
+    according to the reference WCS. 
     """
 
     # Check if reference image was provided. If not, just retrieve PSF from science
@@ -222,7 +223,7 @@ def crossconvolve(sci_img_path, sci_psf_path,
         psfdata = fits.getdata(psf, ext=0).T
 
         convolved = convolve_fft(imgdata, psfdata, boundary='fill', nan_treatment='fill', \
-                                fill_value=0.0, normalize_kernel=True, preserve_nan=True)
+                                fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True)
 
         savename = f'conv_{os.path.basename(img)}'
         savepath = os.path.join(savedir, savename)
@@ -504,7 +505,7 @@ def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,
 
     return coadd_savepath, imgpaths
 
-def swarp_coadd_psf(ra,dec,sci_imalign_paths,sci_skysub_paths,
+def swarp_coadd_psf(ra,dec,sci_skysub_paths,sci_imalign_paths,
                     ref_table,refpath,out_name,out_path=output_files_rootdir):
     """_summary_
 
@@ -516,12 +517,6 @@ def swarp_coadd_psf(ra,dec,sci_imalign_paths,sci_skysub_paths,
     :type sci_imalign: _type_
     :param sci_skysub: _description_
     :type sci_skysub: _type_
-    :param sci_band: _description_
-    :type sci_band: _type_
-    :param sci_pointing: _description_
-    :type sci_pointing: _type_
-    :param sci_sca: _description_
-    :type sci_sca: _type_
     :param ref_table: filter, pointing, sca astropy table w/ images in the coadded template. 
     :type ref_table: _type_
     :param refpath: Path to coadded template. For WCS info. 
@@ -541,7 +536,7 @@ def swarp_coadd_psf(ra,dec,sci_imalign_paths,sci_skysub_paths,
     psf_list = []
     # Can be parallelized: 
     for i, row in enumerate(ref_table):
-        psf = rotate_psf(ra,dec,sci_imalign_paths[i],sci_skysub_paths[i],
+        psf = rotate_psf(ra,dec,sci_skysub_paths[i],sci_imalign_paths[i],
                          sci_band=row['filter'],sci_pointing=row['pointing'],sci_sca=row['sca'],
                          ref_path=refpath)
         psf_list.append(psf)
