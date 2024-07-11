@@ -672,7 +672,7 @@ class imsub():
             skysub_path = sky_subtract(path=self.science_path,force=force)
         if align_path is None:
             print('Path to aligned science image not provided. Doing this now. ')
-            align_path = imalign(template_path=self.template_path,sci_path=skysub,force=force)
+            align_path = imalign(template_path=self.template_path,sci_path=skysub_path,force=force)
 
         self.sci_skysub_path = skysub_path
         self.sci_align_path = align_path
