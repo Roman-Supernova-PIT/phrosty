@@ -365,6 +365,19 @@ def _obj_in(oid,df):
     else:
         return False    
 
+def transform_to_wcs(wcs, path=None, band=None, pointing=None, sca=None):
+    """"
+    Transform world coordinates in a truth file to a new WCS.
+    Outputs pixel coordinates for the transformed coordinates.  
+    input wcs is an astropy wcs object.
+    """
+    truthtab = read_truth_txt(path=path, band=band, pointing=pointing, sca=sca)
+    worldcoords = SkyCoord(ra=truthtab['ra']*u.deg, dec=truthtab['dec']*u.deg)
+    x, y = skycoord_to_pixel(worldcoords, wcs)
+    tab = Table([x, y], names=['x', 'y'])
+
+    return tab
+
 def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
                         pointings=np.arange(0,57365,1),
                         mjd_start=-np.inf,mjd_end=np.inf):
