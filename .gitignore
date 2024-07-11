@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+# LNA 20200711
+tests/__pycache__/
 
 # C extensions
 *.so
