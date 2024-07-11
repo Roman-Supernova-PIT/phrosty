@@ -85,7 +85,7 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
         SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, FITS_sky=None, FITS_skyrms=None, \
                             ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
                             DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=None)
-    elif not force and os.path.exists(output_path):
+    elif not force:
         print(output_path, 'already exists. Skipping sky subtraction.')
 
     return output_path
@@ -103,7 +103,7 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, force=False)
                                     SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.)
         PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
                     FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
-    elif not force and os.path.exists(output_path):
+    elif not force:
         print(output_path, 'already exists. Skipping alignment.')
 
     return output_path
@@ -216,14 +216,13 @@ def rotate_psf(ra,dec,sci_skysub,
 
         # Save rotated PSF
         fits.HDUList([fits.PrimaryHDU(data=psf_rotated.T, header=None)]).writeto(psf_path, overwrite=True)
-    elif not force and os.path.exists(psf_path):
+    elif not force:
         print(psf_path, 'already exists. Skipping getting PSF.')
 
     return psf_path
 
 def crossconvolve(sci_img_path, sci_psf_path,
-                    ref_img_path, ref_psf_path,
-                    force=False):
+                    ref_img_path, ref_psf_path):
 
     savedir = os.path.join(output_files_rootdir,'convolved')
     check_and_mkdir(savedir)
@@ -231,28 +230,22 @@ def crossconvolve(sci_img_path, sci_psf_path,
     # First convolves reference PSF on science image. 
     # Then, convolves science PSF on reference image. 
     savepaths = []
-    for img in [sci_img_path,ref_img_path]:
+    for img, psf, name in zip([sci_img_path, ref_img_path],
+                        [ref_psf_path, sci_psf_path],
+                        ['sci', 'ref']):
+        imgdata = fits.getdata(img, ext=0).T
+        psfdata = fits.getdata(psf, ext=0).T
+
+        convolved = convolve_fft(imgdata, psfdata, boundary='fill', nan_treatment='fill', \
+                                fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True)
+
         savename = f'conv_{os.path.basename(img)}'
         savepath = os.path.join(savedir, savename)
-        savepaths.append(savepath)
 
-    if (force is True) or (force is False and not any([os.path.exists(p) for p in savepaths])):
-        for img, psf, name in zip([sci_img_path, ref_img_path],
-                            [ref_psf_path, sci_psf_path],
-                            ['sci', 'ref']):
-
-            imgdata = fits.getdata(img, ext=0).T
-            psfdata = fits.getdata(psf, ext=0).T
-
-            convolved = convolve_fft(imgdata, psfdata, boundary='fill', nan_treatment='fill', \
-                                    fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True)
-
-            with fits.open(img) as hdl:
-                hdl[0].data[:, :] = convolved.T
-                hdl.writeto(savepath, overwrite=True)
-                savepaths.append(savepath)
-    elif not force and all([os.path.exists(p) for p in savepaths]):
-        print(savepaths, 'already exist. Skipping cross convolve.')
+        with fits.open(img) as hdl:
+            hdl[0].data[:, :] = convolved.T
+            hdl.writeto(savepath, overwrite=True)
+            savepaths.append(savepath)
 
     return savepaths
 
@@ -297,7 +290,7 @@ def bkg_mask(imgpath):
 
 def difference(scipath, refpath, 
         scipsfpath, refpsfpath, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
-        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8, force=False):
+        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8):
 
     sci_basename = os.path.basename(scipath)
     ref_basename = os.path.basename(refpath)
@@ -315,39 +308,33 @@ def difference(scipath, refpath,
     for dirname in [diff_savedir, soln_savedir, masked_savedir]:
         check_and_mkdir(dirname)
 
-
     diff_savepath = os.path.join(diff_savedir, f'diff_{sci_basename}')
     soln_savepath = os.path.join(soln_savedir, f'solution_{sci_basename}')
 
     sci_masked_savepath = os.path.join(masked_savedir,f'masked_{sci_basename}')
     ref_masked_savepath = os.path.join(masked_savedir,f'masked_{ref_basename}')
 
+    # Make combined detection mask.
+    sci_bkgmask = bkg_mask(scipath)
+    ref_bkgmask = bkg_mask(refpath)
+    nanmask = np.isnan(sci_data) | np.isnan(ref_data)
+    _bkgmask = np.logical_and(sci_bkgmask,ref_bkgmask)
+    bkgmask = np.logical_or(nanmask, _bkgmask)
 
-    if (force is True) or (force is False and not os.path.exists(diff_savepath)):
-        # Make combined detection mask.
-        sci_bkgmask = bkg_mask(scipath)
-        ref_bkgmask = bkg_mask(refpath)
-        nanmask = np.isnan(sci_data) | np.isnan(ref_data)
-        _bkgmask = np.logical_and(sci_bkgmask,ref_bkgmask)
-        bkgmask = np.logical_or(nanmask, _bkgmask)
+    for path, msavepath in zip([refpath, scipath], \
+                                [ref_masked_savepath, sci_masked_savepath]):
+        with fits.open(path) as hdu:
+            hdudata = hdu[0].data.T
+            hdudata[bkgmask] = 0.0
+            hdu[0].data[:, :] = hdudata.T
+            hdu.writeto(msavepath, overwrite=True)
 
-        for path, msavepath in zip([refpath, scipath], \
-                                    [ref_masked_savepath, sci_masked_savepath]):
-            with fits.open(path) as hdu:
-                hdudata = hdu[0].data.T
-                hdudata[bkgmask] = 0.0
-                hdu[0].data[:, :] = hdudata.T
-                hdu.writeto(msavepath, overwrite=True)
-
-        # Do SFFT subtraction
-        Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
-                            ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
-                            KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
-                            BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-                            NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
-
-    elif not force and os.path.exists(diff_savepath):
-        print(diff_savepath, 'already exists. Skipping image subtraction.')
+    # Do SFFT subtraction
+    Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
+                        ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
+                        KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
+                        BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
+                        NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
 
     return diff_savepath, soln_savepath
 
@@ -389,7 +376,7 @@ def decorr_kernel(scipath, refpath,
         hdu.writeto(decorr_savepath, overwrite=True)
 
     return decorr_savepath
-
+    
 def decorr_img(imgpath, dckerpath, imgtype='difference'):
     decorr_basename = os.path.basename(imgpath)
     if imgtype == 'difference':
@@ -647,35 +634,26 @@ class imsub():
 
         return self.science_path
 
-    def preprocess_template(self,skysub_path=None,align_path=None,force=False):
+    def preprocess_template(self,force=False):
         """
         Sky subtract and 'align' the template image (to itself).
         Updates self.template_path to the sky-subtracted and 
         'aligned' template image rather than the original input.
         Optional step. 
         """
-        if skysub_path is None:
-            skysub_path = sky_subtract(path=self.template_path,force=force)
-
-        if align_path is None:
-            align_path = imalign(template_path=skysub_path,sci_path=skysub_path,force=force)
-
-        self.template_path = align_path
+        skysub = sky_subtract(path=self.template_path,force=force)
+        align = imalign(template_path=skysub,sci_path=skysub,force=force)
+        self.template_path = align
 
         return self.template_path
 
-    def preprocess_sci(self,skysub_path=None,align_path=None,force=False):
+    def preprocess_sci(self,force=False):
         assert self.template_path is not None, 'You need to set a template path. Go back and use self.set_template.'
-        
-        if skysub_path is None:
-            print('Path to sky subtracted image not provided. Doing this now.')
-            skysub_path = sky_subtract(path=self.science_path,force=force)
-        if align_path is None:
-            print('Path to aligned science image not provided. Doing this now. ')
-            align_path = imalign(template_path=self.template_path,sci_path=skysub_path,force=force)
+        skysub = sky_subtract(path=self.science_path,force=force)
+        align = imalign(template_path=self.template_path,sci_path=skysub,force=force)
 
-        self.sci_skysub_path = skysub_path
-        self.sci_align_path = align_path
+        self.sci_skysub_path = skysub
+        self.sci_align_path = align
 
         return self.sci_skysub_path, self.sci_align_path
 
@@ -683,7 +661,6 @@ class imsub():
         """Set path to template psf."""
 
         if path is None:
-            print('Path to template PSF not provided. Getting this now.')
             psf_path = rotate_psf(self.ra,self.dec,
                                   self.template_path,
                                   self.template_path,
@@ -702,7 +679,6 @@ class imsub():
     def set_science_psf(self,path=None,force=False):
         """Set path to science image PSF."""
         if path is None:
-            print('Path to science PSF not provided. Getting this now.')
             psf_path = rotate_psf(self.ra,self.dec,
                                   self.sci_skysub_path,
                                   self.sci_align_path,
@@ -735,15 +711,15 @@ class imsub():
 
         return self.cc_sci_path, self.cc_ref_path
 
-    def diff(self,diffpath=None,solnpath=None,force=False):
-        """Do the difference imaging."""
+    def diff(self,force=False):
+        """Do the difference imaging.
         
-        if diffpath is None or solnpath is None:
-            print('Path to difference image and/or solution not provided. Doing this now.')
-            diffpath, solnpath = difference(self.cc_sci_path, self.cc_ref_path, 
-                                    self.sci_psf_path, self.temp_psf_path, 
-                                    backend='Numpy')
-            self.diff_path,self.soln_path = diffpath,solnpath
+        NOTE: Need to make 'force' arg actually do something.
+        """
+        diff, soln = difference(self.cc_sci_path, self.cc_ref_path, 
+                                self.sci_psf_path, self.temp_psf_path, 
+                                backend='Numpy')
+        self.diff_path,self.soln_path = diff,soln
 
         return self.diff_path,self.soln_path
 
