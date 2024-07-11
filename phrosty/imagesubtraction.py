@@ -3,6 +3,7 @@ import os
 import numpy as np
 import gzip
 import shutil
+import matplotlib.pyplot as plt
 
 # IMPORTS Astro:
 from astropy.io import fits 
@@ -11,6 +12,7 @@ from astropy.wcs.utils import skycoord_to_pixel
 import astropy.units as u
 from astropy.wcs import WCS
 from astropy.convolution import convolve_fft
+from astropy.visualization import ZScaleInterval
 # from photutils.psf import FittableImageModel
 
 # IMPORTS SFFT:
@@ -28,7 +30,7 @@ from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
 # from sfft.utils.meta.MultiProc import Multi_Proc
 
 # IMPORTS Internal:
-from .utils import _build_filepath
+from .utils import _build_filepath, get_transient_radec, get_transient_mjd
 
 """
 This module was written with significant contributions from 
@@ -59,7 +61,7 @@ def gz_and_ext(in_path,out_path):
 
     return out_path
 
-def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir):
+def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir, force=False):
 
     """
     Subtracts background, found with Source Extractor. 
@@ -76,27 +78,33 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
         
     output_path = os.path.join(out_path, 'skysub', f'skysub_{os.path.basename(decompressed_path)}')
 
-    sub_savedir = os.path.join(out_path, 'skysub')
-    check_and_mkdir(sub_savedir)
+    if (force is True) or (force is False and not os.path.exists(output_path)):
+        sub_savedir = os.path.join(out_path, 'skysub')
+        check_and_mkdir(sub_savedir)
 
-    SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, FITS_sky=None, FITS_skyrms=None, \
-                        ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
-                        DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=None)
+        SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, FITS_sky=None, FITS_skyrms=None, \
+                            ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
+                            DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=None)
+    elif not force:
+        print(output_path, 'already exists. Skipping sky subtraction.')
 
     return output_path
 
-def imalign(template_path, sci_path, out_path=output_files_rootdir):
+def imalign(template_path, sci_path, out_path=output_files_rootdir, force=False):
     """
     Align images with SWarp. 
     """
     outdir = os.path.join(out_path, 'align')
     output_path = os.path.join(outdir, f'align_{os.path.basename(sci_path)}')
-    check_and_mkdir(outdir)
+    if (force is True) or (force is False and not os.path.exists(output_path)):
+        check_and_mkdir(outdir)
 
-    cd = PY_SWarp.Mk_ConfigDict(GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
-                                SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.)
-    PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
-                FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
+        cd = PY_SWarp.Mk_ConfigDict(GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
+                                    SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.)
+        PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
+                    FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
+    elif not force:
+        print(output_path, 'already exists. Skipping alignment.')
 
     return output_path
 
@@ -138,7 +146,7 @@ def get_imsim_psf(ra,dec,
     # Check if reference image was provided. If not, just retrieve PSF from science
     # image without changing the WCS. 
     if all(val is None for val in [ref_band,ref_pointing,ref_sca,ref_path]):
-        print('Warning! No reference provided. WCS will match science image.')
+        print('Warning! No reference provided. WCS will not be rotated.')
         wcsband, wcspointing, wcssca, wcspath = sci_band, sci_pointing, sci_sca, ref_path
     else:
         wcsband, wcspointing, wcssca, wcspath = ref_band, ref_pointing, ref_sca, ref_path
@@ -165,7 +173,8 @@ def rotate_psf(ra,dec,sci_skysub,
                     ref_band=None,
                     ref_pointing=None,
                     ref_sca=None,
-                    ref_path=None):
+                    ref_path=None,
+                    force=False):
     """
     2. Rotate PSF model to match reference WCS. 
         2a. Calculate rotation angle during alignment
@@ -175,36 +184,41 @@ def rotate_psf(ra,dec,sci_skysub,
     if all(val is None for val in [ref_band,ref_pointing,ref_sca,ref_path]):
         raise ValueError('You need to provide either [ref_band, ref_pointing, ref_sca] OR ref_path.')
 
-    psf = get_imsim_psf(ra,dec,
-                        sci_band,sci_pointing,sci_sca,
-                        ref_band,ref_pointing,ref_sca,ref_path)
-
-    # Get vector from sky-subtracted science WCS (i.e., not rotated to reference)
-    hdr = fits.getheader(sci_skysub, ext=0)
-    _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)
-    x0, y0 = 0.5 + int(hdr['NAXIS1'])/2.0, 0.5 + int(hdr['NAXIS2'])/2.0
-    ra0, dec0 = _w.all_pix2world(np.array([[x0, y0]]), 1)[0]
-    skyN_vector = calculate_skyN_vector(wcshdr=hdr, x_start=x0, y_start=y0)
-
-    # Get vector from rotated science WCS (i.e., rotated to reference)
-    hdr = fits.getheader(sci_imalign, ext=0)
-    _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)
-    x1, y1 = _w.all_world2pix(np.array([[ra0, dec0]]), 1)[0]
-    skyN_vectorp = calculate_skyN_vector(wcshdr=hdr, x_start=x1, y_start=y1)
-    PATTERN_ROTATE_ANGLE = calculate_rotate_angle(vector_ref=skyN_vector, vector_obj=skyN_vectorp)
-
-    # Do rotation
-    psf_rotated = Image_ZoomRotate.IZR(PixA_obj=psf, ZOOM_SCALE_X=1., \
-                                        ZOOM_SCALE_Y=1., PATTERN_ROTATE_ANGLE=PATTERN_ROTATE_ANGLE, \
-                                        RESAMPLING_TYPE='BILINEAR', FILL_VALUE=0.0, VERBOSE_LEVEL=1)[0]
-
-    # Save rotated PSF
+    # Set up filepaths.
     psf_dir = os.path.join(output_files_rootdir,'psf')
     check_and_mkdir(psf_dir)
 
     psf_path = os.path.join(psf_dir, f'rot_psf_{ra}_{dec}_{sci_band}_{sci_pointing}_{sci_sca}.fits')
-    fits.HDUList([fits.PrimaryHDU(data=psf_rotated.T, header=None)]).writeto(psf_path, overwrite=True)
-    
+
+    if (force is True) or (force is False and not os.path.exists(psf_path)):
+        psf = get_imsim_psf(ra,dec,
+                            sci_band,sci_pointing,sci_sca,
+                            ref_band,ref_pointing,ref_sca,ref_path)
+
+        # Get vector from sky-subtracted science WCS (i.e., not rotated to reference)
+        hdr = fits.getheader(sci_skysub, ext=0)
+        _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)
+        x0, y0 = 0.5 + int(hdr['NAXIS1'])/2.0, 0.5 + int(hdr['NAXIS2'])/2.0
+        ra0, dec0 = _w.all_pix2world(np.array([[x0, y0]]), 1)[0]
+        skyN_vector = calculate_skyN_vector(wcshdr=hdr, x_start=x0, y_start=y0)
+
+        # Get vector from rotated science WCS (i.e., rotated to reference)
+        hdr = fits.getheader(sci_imalign, ext=0)
+        _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)
+        x1, y1 = _w.all_world2pix(np.array([[ra0, dec0]]), 1)[0]
+        skyN_vectorp = calculate_skyN_vector(wcshdr=hdr, x_start=x1, y_start=y1)
+        PATTERN_ROTATE_ANGLE = calculate_rotate_angle(vector_ref=skyN_vector, vector_obj=skyN_vectorp)
+
+        # Do rotation
+        psf_rotated = Image_ZoomRotate.IZR(PixA_obj=psf, ZOOM_SCALE_X=1., \
+                                            ZOOM_SCALE_Y=1., PATTERN_ROTATE_ANGLE=PATTERN_ROTATE_ANGLE, \
+                                            RESAMPLING_TYPE='BILINEAR', FILL_VALUE=0.0, VERBOSE_LEVEL=1)[0]
+
+        # Save rotated PSF
+        fits.HDUList([fits.PrimaryHDU(data=psf_rotated.T, header=None)]).writeto(psf_path, overwrite=True)
+    elif not force:
+        print(psf_path, 'already exists. Skipping getting PSF.')
+
     return psf_path
 
 def crossconvolve(sci_img_path, sci_psf_path,
@@ -544,3 +558,177 @@ def swarp_coadd_psf(ra,dec,sci_skysub_paths,sci_imalign_paths,
     coadd_psf = swarp_coadd_img(psf_list,refpath,coadd_psf_savepath)
 
     return coadd_psf_savepath
+
+class imsub():
+    def __init__(self,oid,band,rootdir):
+        self.ra, self.dec = get_transient_radec(oid)
+        self.start, self.end = get_transient_mjd(oid)
+        self.coord = SkyCoord(ra=self.ra*u.deg,dec=self.dec*u.deg)
+
+        self.science_path = None
+        self.template_path = None
+
+        self.band = band
+        self.sci_pointing = None
+        self.sci_sca = None
+        self.temp_pointing = None
+        self.temp_sca = None
+
+        self.sci_skysub_path = None
+        self.sci_align_path = None
+
+        self.temp_psf_path = None
+        self.sci_psf_path = None
+
+        self.cc_sci_path = None
+        self.cc_temp_path = None
+
+        self.diff_path = None
+        self.soln_path = None
+
+    def set_template(self,path):
+        """Set the path to the template image."""
+        assert os.path.exists(path), 'The input path does not exist.'
+
+        if path[-3:] == '.gz':
+            print('The input path needs to be .fits, not .fits.gz. Fixing this now.')
+            zip_savedir = os.path.join(output_files_rootdir,'unzip')
+            check_and_mkdir(zip_savedir)
+            out_path = os.path.join(zip_savedir,f'{os.path.basename(path)[:-3]}')
+            if not os.path.exists(out_path):
+                gz_and_ext(path,out_path)
+            else:
+                print('Luckily,', out_path, 'already exists!')
+            
+            self.template_path = out_path
+        else:
+            self.template_path = path
+
+        splitpath = path.split('_')
+        self.temp_pointing = int(splitpath[-2])
+        self.temp_sca = int(splitpath[-1].split('.')[0])
+
+        return self.template_path
+
+    def set_science(self,path):
+        """Set the path to the science image."""
+        assert os.path.exists(path), 'The input path does not exist.'
+
+        if path[-3:] == '.gz':
+            print('The input path needs to be .fits, not .fits.gz. Fixing this now.')
+            zip_savedir = os.path.join(output_files_rootdir,'unzip')
+            check_and_mkdir(zip_savedir)
+            out_path = os.path.join(zip_savedir,f'{os.path.basename(path)[:-3]}')
+            if not os.path.exists(out_path):
+                gz_and_ext(path,out_path)
+            else:
+                print('Luckily,', out_path, 'already exists!')
+            
+            self.science_path = out_path
+        else:
+            self.science_path = path
+
+        splitpath = path.split('_')
+        self.sci_pointing = int(splitpath[-2])
+        self.sci_sca = int(splitpath[-1].split('.')[0])
+
+        return self.science_path
+
+    def preprocess_template(self,force=False):
+        """
+        Sky subtract and 'align' the template image (to itself).
+        Updates self.template_path to the sky-subtracted and 
+        'aligned' template image rather than the original input.
+        Optional step. 
+        """
+        skysub = sky_subtract(path=self.template_path,force=force)
+        align = imalign(template_path=skysub,sci_path=skysub,force=force)
+        self.template_path = align
+
+        return self.template_path
+
+    def preprocess_sci(self,force=False):
+        assert self.template_path is not None, 'You need to set a template path. Go back and use self.set_template.'
+        skysub = sky_subtract(path=self.science_path,force=force)
+        align = imalign(template_path=self.template_path,sci_path=skysub,force=force)
+
+        self.sci_skysub_path = skysub
+        self.sci_align_path = align
+
+        return self.sci_skysub_path, self.sci_align_path
+
+    def set_template_psf(self,path=None,force=False):
+        """Set path to template psf."""
+
+        if path is None:
+            psf_path = rotate_psf(self.ra,self.dec,
+                                  self.template_path,
+                                  self.template_path,
+                                  self.band,
+                                  self.temp_pointing,
+                                  self.temp_sca,
+                                  ref_path=self.template_path,
+                                  force=force)
+
+            self.temp_psf_path = psf_path
+        else:
+            assert os.path.exists(path), f'Input path {path} does not exist.'
+            self.temp_psf_path = path
+        return self.temp_psf_path
+
+    def set_science_psf(self,path=None,force=False):
+        """Set path to science image PSF."""
+        if path is None:
+            psf_path = rotate_psf(self.ra,self.dec,
+                                  self.sci_skysub_path,
+                                  self.sci_align_path,
+                                  self.band,
+                                  self.sci_pointing,
+                                  self.sci_sca,
+                                  ref_path=self.template_path,
+                                  force=force)
+
+            self.sci_psf_path = psf_path
+        else:
+            assert os.path.exists(path), f'Input path {path} does not exist.'
+            self.sci_psf_path = path
+        return self.sci_psf_path
+
+    def crossconv(self,force=False):
+        """"Cross convolve the images with the PSFs.
+        
+        NOTE: Need to make 'force' arg actually do something. 
+        """
+        assert self.sci_align_path is not None, 'The path to the aligned science image does not exist. Go back and use self.preprocess_sci.'
+        assert self.sci_psf_path is not None, 'The path to the science PSF does not exist. Go back and use self.set_science_psf.'
+        assert self.template_path is not None, 'The path to the template image does not exist. Go back and use self.set_template.'
+        assert self.temp_psf_path is not None, 'The path to the template PSF does not exist. Go back and use self.set_template_psf.'
+        
+        sci,ref = crossconvolve(self.sci_align_path, self.sci_psf_path,
+                                self.template_path, self.temp_psf_path)
+
+        self.cc_sci_path,self.cc_ref_path = sci,ref
+
+        return self.cc_sci_path, self.cc_ref_path
+
+    def diff(self,force=False):
+        """Do the difference imaging.
+        
+        NOTE: Need to make 'force' arg actually do something.
+        """
+        diff, soln = difference(self.cc_sci_path, self.cc_ref_path, 
+                                self.sci_psf_path, self.temp_psf_path, 
+                                backend='Numpy')
+        self.diff_path,self.soln_path = diff,soln
+
+        return self.diff_path,self.soln_path
+
+    def show_diff(self):
+        assert self.diff_path is not None, 'The path to the difference image does not exist. Go back and use self.diff.'
+
+        with fits.open(self.diff_path) as hdu:
+            img = hdu[0].data
+        vmin,vmax = ZScaleInterval().get_limits(img)
+        plt.imshow(img,vmin=vmin,vmax=vmax)
+        plt.colorbar()
+        plt.show()
