@@ -315,13 +315,11 @@ def difference(scipath, refpath,
     for dirname in [diff_savedir, soln_savedir, masked_savedir]:
         check_and_mkdir(dirname)
 
-
     diff_savepath = os.path.join(diff_savedir, f'diff_{sci_basename}')
     soln_savepath = os.path.join(soln_savedir, f'solution_{sci_basename}')
 
     sci_masked_savepath = os.path.join(masked_savedir,f'masked_{sci_basename}')
     ref_masked_savepath = os.path.join(masked_savedir,f'masked_{ref_basename}')
-
 
     if (force is True) or (force is False and not os.path.exists(diff_savepath)):
         # Make combined detection mask.
