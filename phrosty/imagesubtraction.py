@@ -78,14 +78,16 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
         
     output_path = os.path.join(out_path, 'skysub', f'skysub_{os.path.basename(decompressed_path)}')
 
-    if (force is True) or (force is False and not os.path.exists(output_path)):
+    do_skysub = (force is True) or (force is False and not os.path.exists(output_path))
+    skip_skysub = (not force) and os.path.exists(output_path)
+    if do_skysub:
         sub_savedir = os.path.join(out_path, 'skysub')
         check_and_mkdir(sub_savedir)
 
         SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, FITS_sky=None, FITS_skyrms=None, \
                             ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
                             DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=None)
-    elif not force:
+    elif skip_skysub:
         print(output_path, 'already exists. Skipping sky subtraction.')
 
     return output_path
@@ -96,14 +98,17 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, force=False)
     """
     outdir = os.path.join(out_path, 'align')
     output_path = os.path.join(outdir, f'align_{os.path.basename(sci_path)}')
-    if (force is True) or (force is False and not os.path.exists(output_path)):
+
+    do_align = (force is True) or (force is False and not os.path.exists(output_path))
+    skip_align = (not force) and os.path.exists(output_path)
+    if do_align:
         check_and_mkdir(outdir)
 
         cd = PY_SWarp.Mk_ConfigDict(GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
                                     SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.)
         PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
                     FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
-    elif not force:
+    elif skip_align:
         print(output_path, 'already exists. Skipping alignment.')
 
     return output_path
@@ -190,7 +195,9 @@ def rotate_psf(ra,dec,sci_skysub,
 
     psf_path = os.path.join(psf_dir, f'rot_psf_{ra}_{dec}_{sci_band}_{sci_pointing}_{sci_sca}.fits')
 
-    if (force is True) or (force is False and not os.path.exists(psf_path)):
+    do_psf = (force is True) or (force is False and not os.path.exists(psf_path))
+    skip_psf = (not force) and os.path.exists(psf_path)
+    if do_psf:
         psf = get_imsim_psf(ra,dec,
                             sci_band,sci_pointing,sci_sca,
                             ref_band,ref_pointing,ref_sca,ref_path)
@@ -216,13 +223,14 @@ def rotate_psf(ra,dec,sci_skysub,
 
         # Save rotated PSF
         fits.HDUList([fits.PrimaryHDU(data=psf_rotated.T, header=None)]).writeto(psf_path, overwrite=True)
-    elif not force:
+    elif skip_psf:
         print(psf_path, 'already exists. Skipping getting PSF.')
 
     return psf_path
 
 def crossconvolve(sci_img_path, sci_psf_path,
-                    ref_img_path, ref_psf_path):
+                    ref_img_path, ref_psf_path,
+                    force=False):
 
     savedir = os.path.join(output_files_rootdir,'convolved')
     check_and_mkdir(savedir)
@@ -230,22 +238,30 @@ def crossconvolve(sci_img_path, sci_psf_path,
     # First convolves reference PSF on science image. 
     # Then, convolves science PSF on reference image. 
     savepaths = []
-    for img, psf, name in zip([sci_img_path, ref_img_path],
-                        [ref_psf_path, sci_psf_path],
-                        ['sci', 'ref']):
-        imgdata = fits.getdata(img, ext=0).T
-        psfdata = fits.getdata(psf, ext=0).T
-
-        convolved = convolve_fft(imgdata, psfdata, boundary='fill', nan_treatment='fill', \
-                                fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True)
-
+    for img in [sci_img_path,ref_img_path]:
         savename = f'conv_{os.path.basename(img)}'
         savepath = os.path.join(savedir, savename)
+        savepaths.append(savepath)
 
-        with fits.open(img) as hdl:
-            hdl[0].data[:, :] = convolved.T
-            hdl.writeto(savepath, overwrite=True)
-            savepaths.append(savepath)
+    do_conv = (force is True) or (force is False and not any([os.path.exists(p) for p in savepaths]))
+    skip_conv =  (not force) and all([os.path.exists(p) for p in savepaths])
+    if do_conv:
+        for img, psf, name, save in zip([sci_img_path, ref_img_path],
+                            [ref_psf_path, sci_psf_path],
+                            ['sci', 'ref'], savepaths):
+
+            imgdata = fits.getdata(img, ext=0).T
+            psfdata = fits.getdata(psf, ext=0).T
+
+            convolved = convolve_fft(imgdata, psfdata, boundary='fill', nan_treatment='fill', \
+                                    fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True)
+
+            with fits.open(img) as hdl:
+                hdl[0].data[:, :] = convolved.T
+                hdl.writeto(save, overwrite=True)
+
+    elif skip_conv:
+        print(savepaths, 'already exist. Skipping cross convolve.')
 
     return savepaths
 
@@ -290,7 +306,7 @@ def bkg_mask(imgpath):
 
 def difference(scipath, refpath, 
         scipsfpath, refpsfpath, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
-        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8):
+        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8, force=False):
 
     sci_basename = os.path.basename(scipath)
     ref_basename = os.path.basename(refpath)
@@ -314,27 +330,33 @@ def difference(scipath, refpath,
     sci_masked_savepath = os.path.join(masked_savedir,f'masked_{sci_basename}')
     ref_masked_savepath = os.path.join(masked_savedir,f'masked_{ref_basename}')
 
-    # Make combined detection mask.
-    sci_bkgmask = bkg_mask(scipath)
-    ref_bkgmask = bkg_mask(refpath)
-    nanmask = np.isnan(sci_data) | np.isnan(ref_data)
-    _bkgmask = np.logical_and(sci_bkgmask,ref_bkgmask)
-    bkgmask = np.logical_or(nanmask, _bkgmask)
+    do_subtract = (force is True) or (force is False and not os.path.exists(diff_savepath))
+    skip_subtract = (not force) and os.path.exists(diff_savepath)
+    if do_subtract:
+        # Make combined detection mask.
+        sci_bkgmask = bkg_mask(scipath)
+        ref_bkgmask = bkg_mask(refpath)
+        nanmask = np.isnan(sci_data) | np.isnan(ref_data)
+        _bkgmask = np.logical_and(sci_bkgmask,ref_bkgmask)
+        bkgmask = np.logical_or(nanmask, _bkgmask)
 
-    for path, msavepath in zip([refpath, scipath], \
-                                [ref_masked_savepath, sci_masked_savepath]):
-        with fits.open(path) as hdu:
-            hdudata = hdu[0].data.T
-            hdudata[bkgmask] = 0.0
-            hdu[0].data[:, :] = hdudata.T
-            hdu.writeto(msavepath, overwrite=True)
+        for path, msavepath in zip([refpath, scipath], \
+                                    [ref_masked_savepath, sci_masked_savepath]):
+            with fits.open(path) as hdu:
+                hdudata = hdu[0].data.T
+                hdudata[bkgmask] = 0.0
+                hdu[0].data[:, :] = hdudata.T
+                hdu.writeto(msavepath, overwrite=True)
 
-    # Do SFFT subtraction
-    Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
-                        ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
-                        KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
-                        BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-                        NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
+        # Do SFFT subtraction
+        Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
+                            ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
+                            KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
+                            BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
+                            NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
+
+    elif skip_subtract:
+        print(diff_savepath, 'already exists. Skipping image subtraction.')
 
     return diff_savepath, soln_savepath
 
@@ -376,7 +398,7 @@ def decorr_kernel(scipath, refpath,
         hdu.writeto(decorr_savepath, overwrite=True)
 
     return decorr_savepath
-    
+
 def decorr_img(imgpath, dckerpath, imgtype='difference'):
     decorr_basename = os.path.basename(imgpath)
     if imgtype == 'difference':
@@ -495,7 +517,7 @@ def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,
     :rtype: str
     """
     cd = PY_SWarp.Mk_ConfigDict(GAIN_DEFAULT=1., SATLEV_DEFAULT=100000., 
-                                RESAMPLING_TYPE='BILINEAR', **kwargs)
+                                RESAMPLING_TYPE='BILINEAR', WEIGHT_TYPE='MAP_WEIGHT', **kwargs)
 
     imgpaths = []
     for p in imgpath_list:
@@ -555,36 +577,88 @@ def swarp_coadd_psf(ra,dec,sci_skysub_paths,sci_imalign_paths,
                          ref_path=refpath)
         psf_list.append(psf)
 
-    coadd_psf = swarp_coadd_img(psf_list,refpath,coadd_psf_savepath)
+    coadd_psf_init = swarp_coadd_img(psf_list,refpath,coadd_psf_savepath)
 
     return coadd_psf_savepath
 
 class imsub():
-    def __init__(self,oid,band,rootdir):
-        self.ra, self.dec = get_transient_radec(oid)
-        self.start, self.end = get_transient_mjd(oid)
-        self.coord = SkyCoord(ra=self.ra*u.deg,dec=self.dec*u.deg)
+    """
+    Class that wraps the functions in imagesubtraction.py and includes 
+    path tracking. 
 
-        self.science_path = None
-        self.template_path = None
+    USAGE EXAMPLE:
+    from phrosty.imagesubtraction import imsub
+
+    refpath = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/images/simple_model/R062/6/Roman_TDS_simple_model_R062_6_17.fits.gz'
+    scipath = '/cwork/mat90/RomanDESC_sims_2024/RomanTDS/images/simple_model/R062/35083/Roman_TDS_simple_model_R062_35083_8.fits.gz'
+
+    s = imsub(20172782,'R062','/work/lna18/imsub_out')
+    s.set_template(refpath)
+    s.set_science(scipath)
+    s.preprocess_template()
+    s.preprocess_sci()
+    s.set_template_psf()
+    s.set_science_psf()
+    s.crossconv()
+    s.diff()
+    """
+    def __init__(self,band,oid=None,ra=None,dec=None,
+                    science_path=None,template_path=None,
+                    sci_pointing=None,sci_sca=None,
+                    temp_pointing=None,temp_sca=None,
+                    sci_skysub_path=None,sci_align_path=None,
+                    temp_psf_path=None,sci_psf_path=None,
+                    cc_sci_path=None,cc_temp_path=None,
+                    diff_path=None,soln_path=None,
+                    decorr_kernel_path=None):
+        self.oid = oid
+        self.ra, self.dec = ra, dec
+        self.start, self.end = None, None
+        self.coord = None
+
+        self.science_path = science_path
+        self.template_path = template_path
 
         self.band = band
-        self.sci_pointing = None
-        self.sci_sca = None
-        self.temp_pointing = None
-        self.temp_sca = None
+        self.sci_pointing = sci_pointing
+        self.sci_sca = sci_sca
+        self.temp_pointing = temp_pointing
+        self.temp_sca = temp_sca
 
-        self.sci_skysub_path = None
-        self.sci_align_path = None
+        self.sci_skysub_path = sci_skysub_path
+        self.sci_align_path = sci_align_path
 
-        self.temp_psf_path = None
-        self.sci_psf_path = None
+        self.temp_psf_path = temp_psf_path
+        self.sci_psf_path = sci_psf_path
 
-        self.cc_sci_path = None
-        self.cc_temp_path = None
+        self.cc_sci_path = cc_sci_path
+        self.cc_temp_path = cc_temp_path
 
-        self.diff_path = None
-        self.soln_path = None
+        self.diff_path = diff_path
+        self.soln_path = soln_path
+
+        self.decorr_kernel_path = decorr_kernel_path
+
+    @property
+    def get_radec(self):
+        """Get the RA and Dec of the SN if object ID is provided."""
+        self.ra, self.dec = get_transient_radec(self.oid)
+        return self.ra, self.dec
+
+    @property
+    def sncoord(self):
+        """Make a SkyCoord object with self.ra, self.dec."""
+        assert (self.ra is not None or self.dec is not None), 'self.ra and/or self.dec are/is missing. \
+                                                                Input RA and dec when initializing object, \
+                                                                or use self.get_radec and provide object ID.'
+        self.coord = SkyCoord(ra=self.ra*u.deg,dec=self.dec*u.deg)
+        return self.coord
+    
+    @property
+    def get_mjd(self):
+        """Get the start and end MJD of the transient if object ID is provided."""
+        self.start, self.end = get_transient_mjd(self.oid)
+        return self.start, self.end
 
     def set_template(self,path):
         """Set the path to the template image."""
@@ -634,26 +708,35 @@ class imsub():
 
         return self.science_path
 
-    def preprocess_template(self,force=False):
+    def preprocess_template(self,skysub_path=None,align_path=None,force=False):
         """
         Sky subtract and 'align' the template image (to itself).
         Updates self.template_path to the sky-subtracted and 
         'aligned' template image rather than the original input.
         Optional step. 
         """
-        skysub = sky_subtract(path=self.template_path,force=force)
-        align = imalign(template_path=skysub,sci_path=skysub,force=force)
-        self.template_path = align
+        if skysub_path is None:
+            skysub_path = sky_subtract(path=self.template_path,force=force)
+
+        if align_path is None:
+            align_path = imalign(template_path=skysub_path,sci_path=skysub_path,force=force)
+
+        self.template_path = align_path
 
         return self.template_path
 
-    def preprocess_sci(self,force=False):
+    def preprocess_sci(self,skysub_path=None,align_path=None,force=False):
         assert self.template_path is not None, 'You need to set a template path. Go back and use self.set_template.'
-        skysub = sky_subtract(path=self.science_path,force=force)
-        align = imalign(template_path=self.template_path,sci_path=skysub,force=force)
+        
+        if skysub_path is None:
+            print('Path to sky subtracted image not provided. Doing this now.')
+            skysub_path = sky_subtract(path=self.science_path,force=force)
+        if align_path is None:
+            print('Path to aligned science image not provided. Doing this now. ')
+            align_path = imalign(template_path=self.template_path,sci_path=skysub_path,force=force)
 
-        self.sci_skysub_path = skysub
-        self.sci_align_path = align
+        self.sci_skysub_path = skysub_path
+        self.sci_align_path = align_path
 
         return self.sci_skysub_path, self.sci_align_path
 
@@ -661,6 +744,7 @@ class imsub():
         """Set path to template psf."""
 
         if path is None:
+            print('Path to template PSF not provided. Getting this now.')
             psf_path = rotate_psf(self.ra,self.dec,
                                   self.template_path,
                                   self.template_path,
@@ -679,6 +763,7 @@ class imsub():
     def set_science_psf(self,path=None,force=False):
         """Set path to science image PSF."""
         if path is None:
+            print('Path to science PSF not provided. Getting this now.')
             psf_path = rotate_psf(self.ra,self.dec,
                                   self.sci_skysub_path,
                                   self.sci_align_path,
@@ -711,19 +796,20 @@ class imsub():
 
         return self.cc_sci_path, self.cc_ref_path
 
-    def diff(self,force=False):
-        """Do the difference imaging.
+    def diff(self,diffpath=None,solnpath=None,force=False):
+        """Do the difference imaging."""
         
-        NOTE: Need to make 'force' arg actually do something.
-        """
-        diff, soln = difference(self.cc_sci_path, self.cc_ref_path, 
-                                self.sci_psf_path, self.temp_psf_path, 
-                                backend='Numpy')
-        self.diff_path,self.soln_path = diff,soln
+        if diffpath is None or solnpath is None:
+            print('Path to difference image and/or solution not provided. Doing this now.')
+            diffpath, solnpath = difference(self.cc_sci_path, self.cc_ref_path, 
+                                    self.sci_psf_path, self.temp_psf_path, 
+                                    backend='Numpy')
+            self.diff_path,self.soln_path = diffpath,solnpath
 
         return self.diff_path,self.soln_path
 
-    def show_diff(self):
+    def show_diff(self,savepath=None):
+        """Quick display and/or save the difference image."""
         assert self.diff_path is not None, 'The path to the difference image does not exist. Go back and use self.diff.'
 
         with fits.open(self.diff_path) as hdu:
@@ -731,4 +817,37 @@ class imsub():
         vmin,vmax = ZScaleInterval().get_limits(img)
         plt.imshow(img,vmin=vmin,vmax=vmax)
         plt.colorbar()
-        plt.show()
+
+        if savepath is not None:
+            plt.savefig(savepath,bbox_inches='tight',dpi=300)
+        else:
+            plt.show()
+
+    def set_dcker(self,dckerpath=None):
+        """Make the decorrelation kernel."""
+
+        if dckerpath is not None:
+            assert os.path.exists(dckerpath), 'The path to the decorrelation kernel does not exist.'
+
+        elif dckerpath is None:
+            inputs = [self.cc_sci_path,self.cc_temp_path,
+                                        self.sci_psf_path,self.temp_psf_path,
+                                        self.diff_path,self.soln_path]
+            
+            assert None not in inputs, 'You need to define the paths to one or more of the following: \
+                                    cross-convolved science image, cross-convolved template image, \
+                                    science PSF, template PSF, difference, solution.'
+            dckerpath = decorr_kernel(self.cc_sci_path,self.cc_temp_path,
+                                        self.sci_psf_path,self.temp_psf_path,
+                                        self.diff_path,self.soln_path)
+
+        self.decorr_kernel_path = dckerpath
+        return self.decorr_kernel_path
+
+    def decorr(self,imgpath,dckerpath):
+        """Decorrelate an image."""
+        assert os.path.exists(dckerpath), 'The path to the decorrelation kernel does not exist.'
+        assert os.path.exists(imgpath), 'The path to the image to be decorrelated does not exist.'
+    
+        dc = decorr_img(imgpath,dckerpath)
+        return dc
