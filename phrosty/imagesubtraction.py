@@ -13,6 +13,7 @@ import astropy.units as u
 from astropy.wcs import WCS
 from astropy.convolution import convolve_fft
 from astropy.visualization import ZScaleInterval
+from galsim import PositionD
 # from photutils.psf import FittableImageModel
 
 # IMPORTS SFFT:
@@ -30,7 +31,7 @@ from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
 # from sfft.utils.meta.MultiProc import Multi_Proc
 
 # IMPORTS Internal:
-from .utils import _build_filepath, get_transient_radec, get_transient_mjd
+from .utils import _build_filepath, get_transient_radec, get_transient_mjd, get_fitsobj
 
 """
 This module was written with significant contributions from 
@@ -46,7 +47,10 @@ def check_and_mkdir(dirname):
     makes that directory. 
     """
     if not os.path.exists(dirname):
+        print(f'{dirname} does not exist. Creating now.')
         os.mkdir(dirname)
+    else:
+        print(f'{dirname} exists.')
 
 def gz_and_ext(in_path,out_path):
     """
@@ -134,90 +138,120 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-def get_imsim_psf(ra,dec,
-                    sci_band,
-                    sci_pointing,
-                    sci_sca,
-                    ref_band=None,
-                    ref_pointing=None,
-                    ref_sca=None,
-                    ref_path=None):
+# def get_imsim_psf(ra,dec,
+#                     sci_band,
+#                     sci_pointing,
+#                     sci_sca,
+#                     ref_band=None,
+#                     ref_pointing=None,
+#                     ref_sca=None,
+#                     ref_path=None):
+
+#     """
+#     Retrieves PSF directly from roman_imsim. If you have a reference image, retrieves it 
+#     according to the reference WCS. 
+#     """
+
+#     # Check if reference image was provided. If not, just retrieve PSF from science
+#     # image without changing the WCS. 
+#     if all(val is None for val in [ref_band,ref_pointing,ref_sca,ref_path]):
+#         print('Warning! No reference provided. WCS will not be rotated.')
+#         wcsband, wcspointing, wcssca, wcspath = sci_band, sci_pointing, sci_sca, ref_path
+#     else:
+#         wcsband, wcspointing, wcssca, wcspath = ref_band, ref_pointing, ref_sca, ref_path
+
+#     ref_path = _build_filepath(path=wcspath,band=wcsband,pointing=wcspointing,sca=wcssca,filetype='image')
+#     ref_hdu = fits.open(ref_path)
+#     ref_wcs = WCS(ref_hdu[0].header)
+#     worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+#     pxradec = skycoord_to_pixel(worldcoords,ref_wcs)
+
+#     # Get PSF at specified RA, dec in science image. 
+#     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
+#     config = roman_utils(config_path,visit=sci_pointing,sca=sci_sca)
+#     # add transpose here as Image_ZoomRotate only accept that form (LH, 2024/06/07)
+#     psf = config.getPSF_Image(501, x=pxradec[0], y=pxradec[1]).array.T 
+
+#     return psf
+
+def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdir,force=False):
 
     """
-    Retrieves PSF directly from roman_imsim. If you have a reference image, retrieves it 
-    according to the reference WCS. 
+    Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
+    are centered on the image instead of at the corner. 
+
+    force parameter does not currently do anything.
     """
 
-    # Check if reference image was provided. If not, just retrieve PSF from science
-    # image without changing the WCS. 
-    if all(val is None for val in [ref_band,ref_pointing,ref_sca,ref_path]):
-        print('Warning! No reference provided. WCS will not be rotated.')
-        wcsband, wcspointing, wcssca, wcspath = sci_band, sci_pointing, sci_sca, ref_path
-    else:
-        wcsband, wcspointing, wcssca, wcspath = ref_band, ref_pointing, ref_sca, ref_path
+    savedir = os.path.join(output_files_rootdir,'psf')
+    check_and_mkdir(savedir)
+    savename = f'psf_{ra}_{dec}_{band}_{pointing}_{sca}.fits'
+    savepath = os.path.join(savedir,savename)
 
-    ref_path = _build_filepath(path=wcspath,band=wcsband,pointing=wcspointing,sca=wcssca,filetype='image')
-    ref_hdu = fits.open(ref_path)
-    ref_wcs = WCS(ref_hdu[0].header)
-    worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-    pxradec = skycoord_to_pixel(worldcoords,ref_wcs)
+    # Get WCS of the image you need the PSF for.
+    hdu = get_fitsobj(band=band,pointing=pointing,sca=sca)
+    wcs = WCS(hdu[0].header)
+    coord = SkyCoord(ra=ra*u.deg,dec=dec*u.deg)
+    x,y = wcs.world_to_pixel(coord)
 
-    # Get PSF at specified RA, dec in science image. 
+    # Get PSF at specified ra, dec. 
     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
-    config = roman_utils(config_path,visit=sci_pointing,sca=sci_sca)
-    # add transpose here as Image_ZoomRotate only accept that form (LH, 2024/06/07)
-    psf = config.getPSF_Image(501, x=pxradec[0], y=pxradec[1]).array.T 
+    config = roman_utils(config_path,pointing,sca)
+    psf = config.getPSF_Image(size,x,y)
 
-    return psf
+    # Change the WCS so CRPIX and CRVAL are centered. 
+    pos = PositionD(x=x,y=y)
+    wcs_new = psf.wcs.affine(image_pos=pos)
+    psf.wcs = wcs_new
 
-def rotate_psf(ra,dec,sci_skysub,
-                    sci_imalign,
-                    sci_band,
-                    sci_pointing,
-                    sci_sca,
-                    ref_band=None,
-                    ref_pointing=None,
-                    ref_sca=None,
-                    ref_path=None,
-                    force=False):
+    # Save fits object.
+    psf.write(savepath)
+
+    # Transpose the data array so it works with SFFT. 
+    # Can't do this like psf.array = psf.array.T because you get an error:
+    # "property 'array' of 'Image' object has no setter".
+    hdu = fits.open(savepath)
+    hdu[0].data = hdu[0].data.T
+    hdu.writeto(savepath,overwrite=True)
+
+    return savepath
+
+def rotate_psf(ra,dec,psf,target,force=False):
     """
     2. Rotate PSF model to match reference WCS. 
         2a. Calculate rotation angle during alignment
         2b. Rotate PSF to match rotated science image
     """
 
-    if all(val is None for val in [ref_band,ref_pointing,ref_sca,ref_path]):
-        raise ValueError('You need to provide either [ref_band, ref_pointing, ref_sca] OR ref_path.')
-
     # Set up filepaths.
     psf_dir = os.path.join(output_files_rootdir,'psf')
     check_and_mkdir(psf_dir)
 
-    psf_path = os.path.join(psf_dir, f'rot_psf_{ra}_{dec}_{sci_band}_{sci_pointing}_{sci_sca}.fits')
+    basename = os.path.basename(psf)
+    psf_path = os.path.join(psf_dir, f'rot_{basename}.fits')
 
     do_psf = (force is True) or (force is False and not os.path.exists(psf_path))
     skip_psf = (not force) and os.path.exists(psf_path)
     if do_psf:
-        psf = get_imsim_psf(ra,dec,
-                            sci_band,sci_pointing,sci_sca,
-                            ref_band,ref_pointing,ref_sca,ref_path)
-
-        # Get vector from sky-subtracted science WCS (i.e., not rotated to reference)
-        hdr = fits.getheader(sci_skysub, ext=0)
+        # Get vector from original PSF WCS (i.e., not rotated to reference)
+        hdr = fits.getheader(psf, ext=0)
         _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)
         x0, y0 = 0.5 + int(hdr['NAXIS1'])/2.0, 0.5 + int(hdr['NAXIS2'])/2.0
         ra0, dec0 = _w.all_pix2world(np.array([[x0, y0]]), 1)[0]
         skyN_vector = calculate_skyN_vector(wcshdr=hdr, x_start=x0, y_start=y0)
 
-        # Get vector from rotated science WCS (i.e., rotated to reference)
-        hdr = fits.getheader(sci_imalign, ext=0)
+        # Also get the PSF image for rotation
+        psfimg = fits.getdata(psf, ext=0) # Already saved as a transposed matrix from get_imsim_psf. 
+
+        # Get vector from target WCS (i.e., rotated)
+        hdr = fits.getheader(target, ext=0)
         _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)
         x1, y1 = _w.all_world2pix(np.array([[ra0, dec0]]), 1)[0]
         skyN_vectorp = calculate_skyN_vector(wcshdr=hdr, x_start=x1, y_start=y1)
         PATTERN_ROTATE_ANGLE = calculate_rotate_angle(vector_ref=skyN_vector, vector_obj=skyN_vectorp)
 
         # Do rotation
-        psf_rotated = Image_ZoomRotate.IZR(PixA_obj=psf, ZOOM_SCALE_X=1., \
+        psf_rotated = Image_ZoomRotate.IZR(PixA_obj=psfimg, ZOOM_SCALE_X=1., \
                                             ZOOM_SCALE_Y=1., PATTERN_ROTATE_ANGLE=PATTERN_ROTATE_ANGLE, \
                                             RESAMPLING_TYPE='BILINEAR', FILL_VALUE=0.0, VERBOSE_LEVEL=1)[0]
 
@@ -533,15 +567,21 @@ def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,
         else:
             imgpaths.append(p)
 
-    if not psf:
-        subdir = 'coadd'
-    elif psf:
+    if psf:
         subdir = 'coadd_psf'
+    elif not psf:
+        subdir = 'coadd'
     coadd_savedir = os.path.join(out_path,subdir)
     check_and_mkdir(coadd_savedir)
     coadd_savepath = os.path.join(coadd_savedir,out_name)
 
     print('COADD_SAVEPATH in swarp_coadd_img')
+    print(coadd_savepath)
+    print('FITS_obj')
+    print(imgpaths)
+    print('FITS_ref')
+    print(refpath)
+    print('OUT_path')
     print(coadd_savepath)
     
     coadd = PY_SWarp.Coadd(FITS_obj=imgpaths, FITS_ref=refpath, ConfigDict=cd,
