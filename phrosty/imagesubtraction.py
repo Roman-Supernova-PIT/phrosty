@@ -502,7 +502,7 @@ def calc_psf(scipath, refpath,
 
     return psf_savepath
 
-def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,**kwargs):
+def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,psf=False,**kwargs):
     """Coadd images using SWarp. 
 
     kwargs: see sfft.utils.pyAstroMatic.PYSWarp.PY_SWarp.Mk_ConfigDict
@@ -517,7 +517,8 @@ def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,
     :rtype: str
     """
     cd = PY_SWarp.Mk_ConfigDict(GAIN_DEFAULT=1., SATLEV_DEFAULT=100000., 
-                                RESAMPLING_TYPE='BILINEAR', WEIGHT_TYPE='MAP_WEIGHT', **kwargs)
+                                RESAMPLING_TYPE='BILINEAR', WEIGHT_TYPE='MAP_WEIGHT', 
+                                RESCALE_WEIGHTS='N', **kwargs)
 
     imgpaths = []
     for p in imgpath_list:
@@ -532,54 +533,71 @@ def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,
         else:
             imgpaths.append(p)
 
-    coadd_savedir = os.path.join(out_path,'coadd')
+    if not psf:
+        subdir = 'coadd'
+    elif psf:
+        subdir = 'coadd_psf'
+    coadd_savedir = os.path.join(out_path,subdir)
     check_and_mkdir(coadd_savedir)
     coadd_savepath = os.path.join(coadd_savedir,out_name)
+
+    print('COADD_SAVEPATH in swarp_coadd_img')
+    print(coadd_savepath)
     
     coadd = PY_SWarp.Coadd(FITS_obj=imgpaths, FITS_ref=refpath, ConfigDict=cd,
                             OUT_path=coadd_savepath, FILL_VALUE=np.nan)
 
+    print('COADD_SAVEPATH IN swarp_coadd_img again')
+    print(coadd_savepath)
+
     return coadd_savepath, imgpaths
 
-def swarp_coadd_psf(ra,dec,sci_skysub_paths,sci_imalign_paths,
-                    ref_table,refpath,out_name,out_path=output_files_rootdir):
-    """_summary_
+# def swarp_coadd_psf(ra,dec,sci_skysub_paths,sci_imalign_paths,
+#                     ref_table,refpath,out_name,out_path=output_files_rootdir):
+#     """_summary_
 
-    :param ra: _description_
-    :type ra: _type_
-    :param dec: _description_
-    :type dec: _type_
-    :param sci_imalign: _description_
-    :type sci_imalign: _type_
-    :param sci_skysub: _description_
-    :type sci_skysub: _type_
-    :param ref_table: filter, pointing, sca astropy table w/ images in the coadded template. 
-    :type ref_table: _type_
-    :param refpath: Path to coadded template. For WCS info. 
-    :type refpath: _type_
-    :param out_name: _description_
-    :type out_name: _type_
-    :param out_path: _description_, defaults to output_files_rootdir
-    :type out_path: _type_, optional
-    :return: _description_
-    :rtype: _type_
-    """
+#     :param ra: _description_
+#     :type ra: _type_
+#     :param dec: _description_
+#     :type dec: _type_
+#     :param sci_imalign: _description_
+#     :type sci_imalign: _type_
+#     :param sci_skysub: _description_
+#     :type sci_skysub: _type_
+#     :param ref_table: filter, pointing, sca astropy table w/ images in the coadded template. 
+#     :type ref_table: _type_
+#     :param refpath: Path to coadded template. For WCS info. 
+#     :type refpath: _type_
+#     :param out_name: _description_
+#     :type out_name: _type_
+#     :param out_path: _description_, defaults to output_files_rootdir
+#     :type out_path: _type_, optional
+#     :return: _description_
+#     :rtype: _type_
+#     """
 
-    coadd_psf_savedir = os.path.join(out_path,'coadd_psf')
-    check_and_mkdir(coadd_psf_savedir)
-    coadd_psf_savepath = os.path.join(coadd_psf_savedir,out_name)
+#     coadd_psf_savedir = os.path.join(out_path,'coadd_psf')
+#     check_and_mkdir(coadd_psf_savedir)
+#     coadd_psf_savepath = os.path.join(coadd_psf_savedir,out_name)
 
-    psf_list = []
-    # Can be parallelized: 
-    for i, row in enumerate(ref_table):
-        psf = rotate_psf(ra,dec,sci_skysub_paths[i],sci_imalign_paths[i],
-                         sci_band=row['filter'],sci_pointing=row['pointing'],sci_sca=row['sca'],
-                         ref_path=refpath)
-        psf_list.append(psf)
+#     print('COADD_PSF_SAVEPATH')
+#     print(coadd_psf_savepath)
+#     psf_list = []
+#     # Can be parallelized: 
+#     for i, row in enumerate(ref_table):
+#         psf = rotate_psf(ra,dec,sci_skysub_paths[i],sci_imalign_paths[i],
+#                          sci_band=row['filter'],sci_pointing=row['pointing'],sci_sca=row['sca'],
+#                          ref_path=refpath)
+#         psf_list.append(psf)
 
-    coadd_psf_init = swarp_coadd_img(psf_list,refpath,coadd_psf_savepath)
+#     coadd_psf_init, imgpaths = swarp_coadd_img(imgpath_list=psf_list,
+#                                                refpath=refpath,
+#                                                out_name=coadd_psf_savepath,
+#                                                psf=True)
 
-    return coadd_psf_savepath
+#     print('COADD_PSF_SAVEPATH AGAIN')
+#     print(coadd_psf_savepath)
+#     return coadd_psf_savepath
 
 class imsub():
     """
