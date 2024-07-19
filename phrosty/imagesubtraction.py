@@ -332,7 +332,7 @@ def bkg_mask(imgpath):
                             BACK_TYPE='MANUAL', BACK_VALUE=0.0, BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
                             DETECT_MINAREA=5, DETECT_MAXAREA=0, DEBLEND_MINCONT=0.001, BACKPHOTO_TYPE='LOCAL', \
                             CHECKIMAGE_TYPE='SEGMENTATION', AddRD=True, ONLY_FLAGS=None, XBoundary=0.0, YBoundary=0.0, \
-                            MDIR=None, VERBOSE_LEVEL=1)[1][0]
+                            DEFAULT_GAIN=1.0, DEFAULT_SATUR=100000, MDIR=None, VERBOSE_LEVEL=1)[1][0]
 
     bkg_mask = (scatalog == 0)
 
@@ -551,7 +551,7 @@ def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,
     :rtype: str
     """
     cd = PY_SWarp.Mk_ConfigDict(GAIN_DEFAULT=1., SATLEV_DEFAULT=100000., 
-                                RESAMPLING_TYPE='BILINEAR', WEIGHT_TYPE='MAP_WEIGHT', 
+                                RESAMPLING_TYPE='BILINEAR', WEIGHT_TYPE='NONE', 
                                 RESCALE_WEIGHTS='N', **kwargs)
 
     imgpaths = []
