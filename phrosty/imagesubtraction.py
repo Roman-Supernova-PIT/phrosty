@@ -47,10 +47,7 @@ def check_and_mkdir(dirname):
     makes that directory. 
     """
     if not os.path.exists(dirname):
-        print(f'{dirname} does not exist. Creating now.')
         os.mkdir(dirname)
-    else:
-        print(f'{dirname} exists.')
 
 def gz_and_ext(in_path,out_path):
     """
@@ -65,7 +62,7 @@ def gz_and_ext(in_path,out_path):
 
     return out_path
 
-def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir, force=False):
+def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir, force=False, verbose=False):
 
     """
     Subtracts background, found with Source Extractor. 
@@ -91,12 +88,12 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
         SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, FITS_sky=None, FITS_skyrms=None, \
                             ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
                             DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=None)
-    elif skip_skysub:
+    elif skip_skysub and verbose:
         print(output_path, 'already exists. Skipping sky subtraction.')
 
     return output_path
 
-def imalign(template_path, sci_path, out_path=output_files_rootdir, force=False):
+def imalign(template_path, sci_path, out_path=output_files_rootdir, force=False, verbose=False):
     """
     Align images with SWarp. 
     """
@@ -112,7 +109,7 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir, force=False)
                                     SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.)
         PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
                     FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
-    elif skip_align:
+    elif skip_align and verbose:
         print(output_path, 'already exists. Skipping alignment.')
 
     return output_path
@@ -216,7 +213,7 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdi
 
     return savepath
 
-def rotate_psf(ra,dec,psf,target,force=False):
+def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
     """
     2. Rotate PSF model to match reference WCS. 
         2a. Calculate rotation angle during alignment
@@ -257,14 +254,14 @@ def rotate_psf(ra,dec,psf,target,force=False):
 
         # Save rotated PSF
         fits.HDUList([fits.PrimaryHDU(data=psf_rotated.T, header=None)]).writeto(psf_path, overwrite=True)
-    elif skip_psf:
+    elif skip_psf and verbose:
         print(psf_path, 'already exists. Skipping getting PSF.')
 
     return psf_path
 
 def crossconvolve(sci_img_path, sci_psf_path,
                     ref_img_path, ref_psf_path,
-                    force=False):
+                    force=False,verbose=False):
 
     savedir = os.path.join(output_files_rootdir,'convolved')
     check_and_mkdir(savedir)
@@ -294,7 +291,7 @@ def crossconvolve(sci_img_path, sci_psf_path,
                 hdl[0].data[:, :] = convolved.T
                 hdl.writeto(save, overwrite=True)
 
-    elif skip_conv:
+    elif skip_conv and verbose:
         print(savepaths, 'already exist. Skipping cross convolve.')
 
     return savepaths
@@ -340,7 +337,7 @@ def bkg_mask(imgpath):
 
 def difference(scipath, refpath, 
         scipsfpath, refpsfpath, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
-        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8, force=False):
+        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8, force=False, verbose=False):
 
     sci_basename = os.path.basename(scipath)
     ref_basename = os.path.basename(refpath)
@@ -389,7 +386,7 @@ def difference(scipath, refpath,
                             BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
                             NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
 
-    elif skip_subtract:
+    elif skip_subtract and verbose:
         print(diff_savepath, 'already exists. Skipping image subtraction.')
 
     return diff_savepath, soln_savepath
@@ -462,7 +459,7 @@ def decorr_img(imgpath, dckerpath, imgtype='difference'):
 def calc_psf(scipath, refpath,
             scipsfpath, refpsfpath, 
             dckerpath,
-            SUBTTAG='DCSCI', nproc=1, TILESIZE_RATIO=5, GKerHW=9):
+            SUBTTAG='DCSCI', nproc=1, TILESIZE_RATIO=5, GKerHW=9,verbose=False):
     """
     Calculate the PSF. 
     scipath -- should be sky-subtracted, aligned, and cross-convolved with the reference PSF. 
@@ -532,11 +529,12 @@ def calc_psf(scipath, refpath,
     _hdr['NY_PSF'] = PixA_dcPSF.shape[1]
     _hdl = fits.HDUList([fits.PrimaryHDU(PixA_dcPSF.T, header=_hdr)])
     _hdl.writeto(psf_savepath, overwrite=True)
-    print("MeLOn CheckPoint: PSF for DeCorrelated images Saved! \n # %s!" %psf_savepath)
+    if verbose:
+        print("MeLOn CheckPoint: PSF for DeCorrelated images Saved! \n # %s!" %psf_savepath)
 
     return psf_savepath
 
-def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,psf=False,**kwargs):
+def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subdir='coadd',**kwargs):
     """Coadd images using SWarp. 
 
     kwargs: see sfft.utils.pyAstroMatic.PYSWarp.PY_SWarp.Mk_ConfigDict
@@ -567,77 +565,14 @@ def swarp_coadd_img(imgpath_list,refpath,out_name,out_path=output_files_rootdir,
         else:
             imgpaths.append(p)
 
-    if psf:
-        subdir = 'coadd_psf'
-    elif not psf:
-        subdir = 'coadd'
     coadd_savedir = os.path.join(out_path,subdir)
     check_and_mkdir(coadd_savedir)
     coadd_savepath = os.path.join(coadd_savedir,out_name)
-
-    print('COADD_SAVEPATH in swarp_coadd_img')
-    print(coadd_savepath)
-    print('FITS_obj')
-    print(imgpaths)
-    print('FITS_ref')
-    print(refpath)
-    print('OUT_path')
-    print(coadd_savepath)
     
     coadd = PY_SWarp.Coadd(FITS_obj=imgpaths, FITS_ref=refpath, ConfigDict=cd,
                             OUT_path=coadd_savepath, FILL_VALUE=np.nan)
 
-    print('COADD_SAVEPATH IN swarp_coadd_img again')
-    print(coadd_savepath)
-
     return coadd_savepath, imgpaths
-
-# def swarp_coadd_psf(ra,dec,sci_skysub_paths,sci_imalign_paths,
-#                     ref_table,refpath,out_name,out_path=output_files_rootdir):
-#     """_summary_
-
-#     :param ra: _description_
-#     :type ra: _type_
-#     :param dec: _description_
-#     :type dec: _type_
-#     :param sci_imalign: _description_
-#     :type sci_imalign: _type_
-#     :param sci_skysub: _description_
-#     :type sci_skysub: _type_
-#     :param ref_table: filter, pointing, sca astropy table w/ images in the coadded template. 
-#     :type ref_table: _type_
-#     :param refpath: Path to coadded template. For WCS info. 
-#     :type refpath: _type_
-#     :param out_name: _description_
-#     :type out_name: _type_
-#     :param out_path: _description_, defaults to output_files_rootdir
-#     :type out_path: _type_, optional
-#     :return: _description_
-#     :rtype: _type_
-#     """
-
-#     coadd_psf_savedir = os.path.join(out_path,'coadd_psf')
-#     check_and_mkdir(coadd_psf_savedir)
-#     coadd_psf_savepath = os.path.join(coadd_psf_savedir,out_name)
-
-#     print('COADD_PSF_SAVEPATH')
-#     print(coadd_psf_savepath)
-#     psf_list = []
-#     # Can be parallelized: 
-#     for i, row in enumerate(ref_table):
-#         psf = rotate_psf(ra,dec,sci_skysub_paths[i],sci_imalign_paths[i],
-#                          sci_band=row['filter'],sci_pointing=row['pointing'],sci_sca=row['sca'],
-#                          ref_path=refpath)
-#         psf_list.append(psf)
-
-#     coadd_psf_init, imgpaths = swarp_coadd_img(imgpath_list=psf_list,
-#                                                refpath=refpath,
-#                                                out_name=coadd_psf_savepath,
-#                                                psf=True)
-
-#     print('COADD_PSF_SAVEPATH AGAIN')
-#     print(coadd_psf_savepath)
-#     return coadd_psf_savepath
 
 class imsub():
     """
