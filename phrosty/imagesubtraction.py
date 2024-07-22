@@ -4,6 +4,7 @@ import numpy as np
 import gzip
 import shutil
 import matplotlib.pyplot as plt
+from tempfile import mkdtemp
 
 # IMPORTS Astro:
 from astropy.io import fits 
@@ -135,7 +136,7 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdir,force=False):
+def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -173,8 +174,8 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdi
     # "property 'array' of 'Image' object has no setter".
     hdu = fits.open(savepath)
     hdu[0].data = hdu[0].data.T
-    hdu[0].header['CRVAL1'] = 0.0
-    hdu[0].header['CRVAL2'] = 0.0
+    hdu[0].header['CRVAL1'] = ra
+    hdu[0].header['CRVAL2'] = dec
     hdu[0].header['CRPIX1'] = 0.5 + int(hdu[0].header['NAXIS1'])/2.
     hdu[0].header['CRPIX2'] = 0.5 + int(hdu[0].header['NAXIS2'])/2.
     hdu.writeto(savepath,overwrite=True)
@@ -216,12 +217,13 @@ def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
         PATTERN_ROTATE_ANGLE = calculate_rotate_angle(vector_ref=skyN_vector, vector_obj=skyN_vectorp)
 
         # Do rotation
-        psf_rotated = Image_ZoomRotate.IZR(PixA_obj=psfimg, ZOOM_SCALE_X=1., \
+        psf_rotated, psf_rot_head, func = Image_ZoomRotate.IZR(PixA_obj=psfimg, ZOOM_SCALE_X=1., \
                                             ZOOM_SCALE_Y=1., PATTERN_ROTATE_ANGLE=PATTERN_ROTATE_ANGLE, \
-                                            RESAMPLING_TYPE='BILINEAR', FILL_VALUE=0.0, VERBOSE_LEVEL=1)[0]
+                                            RESAMPLING_TYPE='BILINEAR', FILL_VALUE=0.0, VERBOSE_LEVEL=1,
+                                            RETURN_IMG_ONLY=False)
 
         # Save rotated PSF
-        fits.HDUList([fits.PrimaryHDU(data=psf_rotated.T, header=None)]).writeto(psf_path, overwrite=True)
+        fits.HDUList([fits.PrimaryHDU(data=psf_rotated.T, header=psf_rot_head)]).writeto(psf_path, overwrite=True)
     elif skip_psf and verbose:
         print(psf_path, 'already exists. Skipping getting PSF.')
 
