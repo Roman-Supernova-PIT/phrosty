@@ -207,7 +207,7 @@ def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
         skyN_vector = calculate_skyN_vector(wcshdr=hdr, x_start=x0, y_start=y0)
 
         # Also get the PSF image for rotation
-        psfimg = fits.getdata(psf, ext=0) # Already saved as a transposed matrix from get_imsim_psf. 
+        psfimg = fits.getdata(psf, ext=0).T 
 
         # Get vector from target WCS (i.e., rotated)
         hdr = fits.getheader(target, ext=0)
