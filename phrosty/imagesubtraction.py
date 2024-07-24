@@ -135,42 +135,6 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-# def get_imsim_psf(ra,dec,
-#                     sci_band,
-#                     sci_pointing,
-#                     sci_sca,
-#                     ref_band=None,
-#                     ref_pointing=None,
-#                     ref_sca=None,
-#                     ref_path=None):
-
-#     """
-#     Retrieves PSF directly from roman_imsim. If you have a reference image, retrieves it 
-#     according to the reference WCS. 
-#     """
-
-#     # Check if reference image was provided. If not, just retrieve PSF from science
-#     # image without changing the WCS. 
-#     if all(val is None for val in [ref_band,ref_pointing,ref_sca,ref_path]):
-#         print('Warning! No reference provided. WCS will not be rotated.')
-#         wcsband, wcspointing, wcssca, wcspath = sci_band, sci_pointing, sci_sca, ref_path
-#     else:
-#         wcsband, wcspointing, wcssca, wcspath = ref_band, ref_pointing, ref_sca, ref_path
-
-#     ref_path = _build_filepath(path=wcspath,band=wcsband,pointing=wcspointing,sca=wcssca,filetype='image')
-#     ref_hdu = fits.open(ref_path)
-#     ref_wcs = WCS(ref_hdu[0].header)
-#     worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-#     pxradec = skycoord_to_pixel(worldcoords,ref_wcs)
-
-#     # Get PSF at specified RA, dec in science image. 
-#     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
-#     config = roman_utils(config_path,visit=sci_pointing,sca=sci_sca)
-#     # add transpose here as Image_ZoomRotate only accept that form (LH, 2024/06/07)
-#     psf = config.getPSF_Image(501, x=pxradec[0], y=pxradec[1]).array.T 
-
-#     return psf
-
 def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdir,force=False):
 
     """
@@ -473,50 +437,7 @@ def calc_psf(scipath, refpath,
 
     # * define an image grid (use one psf size)
     _hdr = fits.getheader(scipath, ext=0) # FITS_lSCI = output_dir + '/%s.sciE.skysub.fits' %sciname
-    # N0, N1 = int(_hdr['NAXIS1']), int(_hdr['NAXIS2'])
-
-    # lab = 0
-    # XY_TiC = []
-    # TILESIZE_RATIO = 10
-    # TiHW = round(TILESIZE_RATIO * GKerHW) 
-    # TiN = 2*TiHW+1
-    # AllocatedL = np.zeros((N0, N1), dtype=int)
-    # for xs in np.arange(0, N0, TiN):
-    #     xe = np.min([xs+TiN, N0])
-    #     for ys in np.arange(0, N1, TiN):
-    #         ye = np.min([ys+TiN, N1])
-    #         AllocatedL[xs: xe, ys: ye] = lab
-    #         x_q = 0.5 + xs + (xe - xs)/2.0   # tile-center (x)
-    #         y_q = 0.5 + ys + (ye - ys)/2.0   # tile-center (y)
-    #         XY_TiC.append([x_q, y_q])
-    #         lab += 1
-    # XY_TiC = np.array(XY_TiC)
-    # NTILE = XY_TiC.shape[0]
-
-    # XY_q = np.array([[N0/2.+0.5, N1/2.+0.5]])
-    # MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=soln).T
-
-    # PixA_lREF = fits.getdata(refpath, ext=0).T # use stamp
-    # PixA_lSCI = fits.getdata(scipath, ext=0).T # use stamp
-
-    # PixA_PSF_lREF = fits.getdata(refpsfpath, ext=0).T
     PixA_PSF_lSCI = fits.getdata(scipsfpath, ext=0).T
-
-    # bkgsig_REF = SkyLevel_Estimator.SLE(PixA_obj=PixA_lREF)[1]
-    # bkgsig_SCI = SkyLevel_Estimator.SLE(PixA_obj=PixA_lSCI)[1]
-
-    # record model PSF of decorrelated image (DCMREF, DCSCI, DCDIFF) for the grid
-    # FITS_dcPSFFStack = os.path.join(output_files_rootdir,'psf_final',f'{os.path.basename(scipath)[:-5]}.sfft_{SUBTTAG}.DeCorrelated.dcPSFFStack.fits')
-
-    # XY_q = np.array([[N0/2.+0.5, N1/2.+0.5]])
-    # MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=soln)
-    # MK_Fin = MKerStack[0]
-
-    # calculate decorrelation kernels on the grid
-    # DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[PixA_PSF_lREF], SkySig_JLst=[bkgsig_SCI], \
-    #         MK_ILst=[PixA_PSF_lSCI], SkySig_ILst=[bkgsig_REF], MK_Fin=MK_Fin, \
-    #         KERatio=2.0, VERBOSE_LEVEL=0)
-
     DCKer = fits.getdata(dckerpath)
     NX_DCKer, NY_DCKer = DCKer.shape
 
@@ -524,7 +445,6 @@ def calc_psf(scipath, refpath,
             nan_treatment='fill', fill_value=0.0, normalize_kernel=True)
 
     _hdr = fits.Header()
-    # _hdr['NTILE'] = NTILE
     _hdr['NX_PSF'] = PixA_dcPSF.shape[0]
     _hdr['NY_PSF'] = PixA_dcPSF.shape[1]
     _hdl = fits.HDUList([fits.PrimaryHDU(PixA_dcPSF.T, header=_hdr)])
