@@ -197,7 +197,7 @@ def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
     check_and_mkdir(psf_dir)
 
     basename = os.path.basename(psf)
-    psf_path = os.path.join(psf_dir, f'rot_{basename}.fits')
+    psf_path = os.path.join(psf_dir, f'rot_{basename}')
 
     do_psf = (force is True) or (force is False and not os.path.exists(psf_path))
     skip_psf = (not force) and os.path.exists(psf_path)
@@ -371,14 +371,12 @@ def decorr_kernel(scipath, refpath,
             diffpath, solnpath, savename=None):
 
     if savename is None:
-        sci_basename = os.path.basename(scipath)
-    else: 
-        sci_basename = savename
+        savename = os.path.basename(scipath)
 
     savedir = os.path.join(output_files_rootdir, 'dcker')
     check_and_mkdir(savedir)
 
-    decorr_savepath = os.path.join(savedir, f'DCKer_{sci_basename}')
+    decorr_savepath = os.path.join(savedir, f'DCKer_{savename}')
 
     imgdatas = []
     psfdatas = []
@@ -411,13 +409,11 @@ def decorr_kernel(scipath, refpath,
 def decorr_img(imgpath, dckerpath, savename=None):
     
     if savename is None:
-        decorr_basename = os.path.basename(imgpath)
-    else:
-        decorr_basename = savename
+        savename = os.path.basename(imgpath)
 
     savedir = os.path.join(output_files_rootdir,'decorr')
     check_and_mkdir(savedir)
-    decorr_savepath = os.path.join(savedir,f'decorr_{decorr_basename}')
+    decorr_savepath = os.path.join(savedir,f'decorr_{savename}')
 
     img_data = fits.getdata(imgpath, ext=0).T
     DCKer = fits.getdata(dckerpath)
@@ -436,7 +432,7 @@ def decorr_img(imgpath, dckerpath, savename=None):
 def calc_psf(scipath, refpath,
             scipsfpath, refpsfpath, 
             dckerpath,
-            SUBTTAG='DCSCI', nproc=1, TILESIZE_RATIO=5, GKerHW=9,verbose=False):
+            SUBTTAG='DCSCI', nproc=1, TILESIZE_RATIO=5, GKerHW=9, verbose=False):
     """
     Calculate the PSF. 
     scipath -- should be sky-subtracted, aligned, and cross-convolved with the reference PSF. 
