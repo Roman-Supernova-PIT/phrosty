@@ -135,7 +135,7 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdir,force=False):
+def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -159,6 +159,9 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdi
     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
     config = roman_utils(config_path,pointing,sca)
     psf = config.getPSF_Image(size,x,y)
+    print('Savepath PSF:')
+    print(savepath)
+    psf.write(savepath)
 
     # Change the WCS so CRPIX and CRVAL are centered. 
     pos = PositionD(x=x,y=y)
@@ -173,9 +176,14 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdi
     # "property 'array' of 'Image' object has no setter".
     hdu = fits.open(savepath)
     hdu[0].data = hdu[0].data.T
+    hdu[0].header['CRVAL1'] = ra
+    hdu[0].header['CRVAL2'] = dec
+    hdu[0].header['CRPIX1'] = 0.5 + int(hdu[0].header['NAXIS1'])/2.
+    hdu[0].header['CRPIX2'] = 0.5 + int(hdu[0].header['NAXIS2'])/2.
     hdu.writeto(savepath,overwrite=True)
 
     return savepath
+
 
 def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
     """
@@ -300,14 +308,17 @@ def bkg_mask(imgpath):
     return bkg_mask
 
 def difference(scipath, refpath, 
-        scipsfpath, refpsfpath, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
+        scipsfpath, refpsfpath, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
         ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8, force=False, verbose=False):
 
-    sci_basename = os.path.basename(scipath)
     ref_basename = os.path.basename(refpath)
+    sci_basename = os.path.basename(scipath)
 
     sci_data = fits.getdata(scipath).T
     ref_data = fits.getdata(refpath).T
+
+    if savename is None:
+        savename = sci_basename
 
     savedir = os.path.join(output_files_rootdir, 'subtract')
     check_and_mkdir(savedir)
@@ -319,11 +330,11 @@ def difference(scipath, refpath,
     for dirname in [diff_savedir, soln_savedir, masked_savedir]:
         check_and_mkdir(dirname)
 
-    diff_savepath = os.path.join(diff_savedir, f'diff_{sci_basename}')
-    soln_savepath = os.path.join(soln_savedir, f'solution_{sci_basename}')
+    diff_savepath = os.path.join(diff_savedir, f'diff_{savename}')
+    soln_savepath = os.path.join(soln_savedir, f'solution_{savename}')
 
-    sci_masked_savepath = os.path.join(masked_savedir,f'masked_{sci_basename}')
-    ref_masked_savepath = os.path.join(masked_savedir,f'masked_{ref_basename}')
+    sci_masked_savepath = os.path.join(masked_savedir,f'masked_{savename}')
+    ref_masked_savepath = os.path.join(masked_savedir,f'masked_{savename}')
 
     do_subtract = (force is True) or (force is False and not os.path.exists(diff_savepath))
     skip_subtract = (not force) and os.path.exists(diff_savepath)
@@ -357,9 +368,12 @@ def difference(scipath, refpath,
 
 def decorr_kernel(scipath, refpath, 
             scipsfpath, refpsfpath,
-            diffpath, solnpath):
+            diffpath, solnpath, savename=None):
 
-    sci_basename = os.path.basename(scipath)
+    if savename is None:
+        sci_basename = os.path.basename(scipath)
+    else: 
+        sci_basename = savename
 
     savedir = os.path.join(output_files_rootdir, 'dcker')
     check_and_mkdir(savedir)
@@ -394,17 +408,16 @@ def decorr_kernel(scipath, refpath,
 
     return decorr_savepath
 
-def decorr_img(imgpath, dckerpath, imgtype='difference'):
-    decorr_basename = os.path.basename(imgpath)
-    if imgtype == 'difference':
-        savedir = os.path.join(output_files_rootdir,'subtract','decorr')
-        check_and_mkdir(savedir)
-        decorr_savepath = os.path.join(savedir,f'decorr_{decorr_basename}')
+def decorr_img(imgpath, dckerpath, savename=None):
+    
+    if savename is None:
+        decorr_basename = os.path.basename(imgpath)
+    else:
+        decorr_basename = savename
 
-    elif imgtype == 'science':
-        savedir = os.path.join(output_files_rootdir,'science')
-        check_and_mkdir(savedir)
-        decorr_savepath = os.path.join(savedir,f'decorr_{decorr_basename}')
+    savedir = os.path.join(output_files_rootdir,'decorr')
+    check_and_mkdir(savedir)
+    decorr_savepath = os.path.join(savedir,f'decorr_{decorr_basename}')
 
     img_data = fits.getdata(imgpath, ext=0).T
     DCKer = fits.getdata(dckerpath)
