@@ -159,8 +159,6 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
     config = roman_utils(config_path,pointing,sca)
     psf = config.getPSF_Image(size,x,y)
-    print('Savepath PSF:')
-    print(savepath)
     psf.write(savepath)
 
     # Change the WCS so CRPIX and CRVAL are centered. 
@@ -210,7 +208,7 @@ def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
         skyN_vector = calculate_skyN_vector(wcshdr=hdr, x_start=x0, y_start=y0)
 
         # Also get the PSF image for rotation
-        psfimg = fits.getdata(psf, ext=0) # Already saved as a transposed matrix from get_imsim_psf. 
+        psfimg = fits.getdata(psf, ext=0).T # Already saved as a transposed matrix from get_imsim_psf. 
 
         # Get vector from target WCS (i.e., rotated)
         hdr = fits.getheader(target, ext=0)
@@ -428,40 +426,6 @@ def decorr_img(imgpath, dckerpath, savename=None):
         hdu.writeto(decorr_savepath, overwrite=True)
 
     return decorr_savepath
-
-def calc_psf(scipath, refpath,
-            scipsfpath, refpsfpath, 
-            dckerpath,
-            SUBTTAG='DCSCI', nproc=1, TILESIZE_RATIO=5, GKerHW=9, verbose=False):
-    """
-    Calculate the PSF. 
-    scipath -- should be sky-subtracted, aligned, and cross-convolved with the reference PSF. 
-    refpath -- should be sky-subtracted and cross-convolved with the science PSF. 
-    """
-
-    psf_basename = os.path.basename(scipath[:-5])
-    savedir = os.path.join(output_files_rootdir,'psf_final')
-    check_and_mkdir(savedir)
-    psf_savepath = os.path.join(output_files_rootdir,'psf_final',f'{psf_basename}.sfft_{SUBTTAG}.DeCorrelated.dcPSFFStack.fits')
-
-    # * define an image grid (use one psf size)
-    _hdr = fits.getheader(scipath, ext=0) # FITS_lSCI = output_dir + '/%s.sciE.skysub.fits' %sciname
-    PixA_PSF_lSCI = fits.getdata(scipsfpath, ext=0).T
-    DCKer = fits.getdata(dckerpath)
-    NX_DCKer, NY_DCKer = DCKer.shape
-
-    PixA_dcPSF = convolve_fft(PixA_PSF_lSCI, DCKer, boundary='fill', \
-            nan_treatment='fill', fill_value=0.0, normalize_kernel=True)
-
-    _hdr = fits.Header()
-    _hdr['NX_PSF'] = PixA_dcPSF.shape[0]
-    _hdr['NY_PSF'] = PixA_dcPSF.shape[1]
-    _hdl = fits.HDUList([fits.PrimaryHDU(PixA_dcPSF.T, header=_hdr)])
-    _hdl.writeto(psf_savepath, overwrite=True)
-    if verbose:
-        print("MeLOn CheckPoint: PSF for DeCorrelated images Saved! \n # %s!" %psf_savepath)
-
-    return psf_savepath
 
 def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subdir='coadd',**kwargs):
     """Coadd images using SWarp. 
