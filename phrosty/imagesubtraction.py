@@ -93,12 +93,14 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
 
     return output_path
 
-def imalign(template_path, sci_path, out_path=output_files_rootdir, force=False, verbose=False):
+def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None,force=False, verbose=False):
     """
     Align images with SWarp. 
     """
     outdir = os.path.join(out_path, 'align')
-    output_path = os.path.join(outdir, f'align_{os.path.basename(sci_path)}')
+    if savename is None:
+        savename = os.path.basename(sci_path)
+    output_path = os.path.join(outdir, f'align_{savename}')
 
     do_align = (force is True) or (force is False and not os.path.exists(output_path))
     skip_align = (not force) and os.path.exists(output_path)
@@ -231,9 +233,10 @@ def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
 
 def crossconvolve(sci_img_path, sci_psf_path,
                     ref_img_path, ref_psf_path,
-                    force=False,verbose=False):
+                    force=False,verbose=False,
+                    out_path=output_files_rootdir):
 
-    savedir = os.path.join(output_files_rootdir,'convolved')
+    savedir = os.path.join(out_path,'convolved')
     check_and_mkdir(savedir)
 
     # First convolves reference PSF on science image. 
@@ -306,10 +309,9 @@ def bkg_mask(imgpath):
     return bkg_mask
 
 def difference(scipath, refpath, 
-        scipsfpath, refpsfpath, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
+        scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
         ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8, force=False, verbose=False):
 
-    ref_basename = os.path.basename(refpath)
     sci_basename = os.path.basename(scipath)
 
     sci_data = fits.getdata(scipath).T
@@ -318,7 +320,7 @@ def difference(scipath, refpath,
     if savename is None:
         savename = sci_basename
 
-    savedir = os.path.join(output_files_rootdir, 'subtract')
+    savedir = os.path.join(out_path, 'subtract')
     check_and_mkdir(savedir)
 
     diff_savedir = os.path.join(savedir,'difference')
@@ -366,12 +368,12 @@ def difference(scipath, refpath,
 
 def decorr_kernel(scipath, refpath, 
             scipsfpath, refpsfpath,
-            diffpath, solnpath, savename=None):
+            diffpath, solnpath, out_path=output_files_rootdir, savename=None):
 
     if savename is None:
         savename = os.path.basename(scipath)
 
-    savedir = os.path.join(output_files_rootdir, 'dcker')
+    savedir = os.path.join(out_path, 'dcker')
     check_and_mkdir(savedir)
 
     decorr_savepath = os.path.join(savedir, f'DCKer_{savename}')
@@ -404,12 +406,12 @@ def decorr_kernel(scipath, refpath,
 
     return decorr_savepath
 
-def decorr_img(imgpath, dckerpath, savename=None):
+def decorr_img(imgpath, dckerpath, out_path=output_files_rootdir, savename=None):
     
     if savename is None:
         savename = os.path.basename(imgpath)
 
-    savedir = os.path.join(output_files_rootdir,'decorr')
+    savedir = os.path.join(out_path,'decorr')
     check_and_mkdir(savedir)
     decorr_savepath = os.path.join(savedir,f'decorr_{savename}')
 
