@@ -6,6 +6,7 @@ from matplotlib import rcParams
 import matplotlib as mpl
 from matplotlib.colors import Normalize
 from matplotlib import animation
+from matplotlib.patches import Rectangle
 import numpy as np
 
 # IMPORTS Astro:
@@ -19,7 +20,7 @@ from . import plotaesthetics
 
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'W146', 'K213']
 
-def showimage(path=None,band=None,pointing=None,sca=None,data_ext=1,cmap='Greys', **kwargs):
+def showimage(path=None,band=None,pointing=None,sca=None,xycoords=None,box=False,boxsize=1000,data_ext=1,cmap='Greys', **kwargs):
     """
     Quickly display an original RomanDESC image from either a filepath or a 
     filter, pointing, and SCA ID. 
@@ -36,8 +37,17 @@ def showimage(path=None,band=None,pointing=None,sca=None,data_ext=1,cmap='Greys'
             max_iterations=5,
             ).get_limits(img)
 
-    plt.imshow(img, vmin=z1, vmax=z2, cmap=cmap, **kwargs)
-    plt.colorbar()
+    fig,ax = plt.subplots()
+    imgax = ax.imshow(img, vmin=z1, vmax=z2, cmap=cmap, **kwargs)
+
+    if xycoords is not None:
+        ax.plot(xycoords[0],xycoords[1],markeredgecolor='r',marker='o',linestyle='',markersize=10,fillstyle='none')
+
+        if box: 
+            rect = Rectangle((int(xycoords[0]-boxsize/2),int(xycoords[1]-boxsize/2)),width=boxsize,height=boxsize,fill=None,edgecolor='r')
+            ax.add_artist(rect)
+
+    fig.colorbar(imgax, ax=ax)
     plt.show()
     
 class MidpointNormalize(mpl.colors.Normalize):
