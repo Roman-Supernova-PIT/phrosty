@@ -185,7 +185,7 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     return savepath
 
 
-def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
+def rotate_psf(ra,dec,psf,target,savename=None,force=False,verbose=False):
     """
     2. Rotate PSF model to match reference WCS. 
         2a. Calculate rotation angle during alignment
@@ -197,7 +197,9 @@ def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
     check_and_mkdir(psf_dir)
 
     basename = os.path.basename(psf)
-    psf_path = os.path.join(psf_dir, f'rot_{basename}')
+    if savename is None:
+        savename = f'rot_{basename}'
+    psf_path = os.path.join(psf_dir, savename)
 
     do_psf = (force is True) or (force is False and not os.path.exists(psf_path))
     skip_psf = (not force) and os.path.exists(psf_path)
