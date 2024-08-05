@@ -39,6 +39,7 @@ Thanks to Bastien Carreres for help with the matrix operations.
 def parse_csvs(filepaths):
     """
     Read in csv files. Merge tables. 'filepaths' is a list of paths. 
+    Collects all epochs of observations. 
     """
 
     overlap_cols = ['filter','pointing','sca','mjd','ra_init','dec_init','x_init','y_init']
@@ -63,6 +64,7 @@ def parse_csvs(filepaths):
 def construct_A_and_C(combined_table):
     """
     Input table from parse_csvs. 
+    Constructs vector A and diagonal elements of C for all epochs of observation. 
     """
 
     colnames = combined_table.colnames
@@ -74,25 +76,22 @@ def construct_A_and_C(combined_table):
 
     i, j = np.triu_indices(len(flux_table), k=1)
 
-    flux_diffs = []
-    fluxerr_sum = []
+    A_all = []
+    C_diag_all = []
 
     for idx in i:
         for jdx in j:
-            dv = list(flux_array[idx] - flux_array[jdx])
-            sv = list(np.sqrt(fluxerr_array[idx]**2 + fluxerr_array[jdx]**2))
+            dv = flux_array[idx] - flux_array[jdx]
+            sv = np.sqrt(fluxerr_array[idx]**2 + fluxerr_array[jdx]**2)
 
-            flux_diffs += dv
-            fluxerr_sum += sv
+            A_all.append(dv)
+            C_diag_all.append(sv)
 
-    A = np.array(flux_diffs)
-    C = np.diagflat(fluxerr_sum)
-
-    return A, C
+    return A_all, C_diag_all
 
 def construct_X(n,N):
     """
-    Construct matrix X. 
+    Construct matrix X. Applies to one epoch at a time. 
     """
     i, j = np.triu_indices(n, k=1)
     X = np.zeros((N,n))
@@ -103,9 +102,13 @@ def construct_X(n,N):
 
 def solve(A, X, C):
     """
+    Solve one epoch. 
     v = (X^{T} C^{-1} X)^{-1} X^{T} C^{-1} A
+
+    Final solution will be (original vector of flux differences - v). 
     """
 
-    XTCXXT = np.linalg.solve(X.T @ (1/C) @ X, X.T)
+    XTCXXT = np.linalg.lstsq(X.T @ np.linalg.inv(C) @ X, X.T, rcond=None)
+    v = XTCXXT @ np.linalg.inv(C) @ A
 
-    return XTCXXT @ (1/C) @ A
+    return v
