@@ -32,7 +32,7 @@ v = (X^{T} C^{-1} X)^{-1} X^{T} C^{-1} A
 
 NOTE: This method requires that all input LCs have the same length. 
 
-Thanks ot Bastien Carreres for help with the matrix operations. 
+Thanks to Bastien Carreres for help with the matrix operations. 
 
 """
 
@@ -107,5 +107,5 @@ def solve(A, X, C):
     """
 
     XTCXXT = np.linalg.solve(X.T @ (1/C) @ X, X.T)
-    
+
     return XTCXXT @ (1/C) @ A
