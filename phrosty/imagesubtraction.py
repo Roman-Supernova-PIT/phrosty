@@ -93,12 +93,14 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
 
     return output_path
 
-def imalign(template_path, sci_path, out_path=output_files_rootdir, force=False, verbose=False):
+def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None,force=False, verbose=False):
     """
     Align images with SWarp. 
     """
     outdir = os.path.join(out_path, 'align')
-    output_path = os.path.join(outdir, f'align_{os.path.basename(sci_path)}')
+    if savename is None:
+        savename = os.path.basename(sci_path)
+    output_path = os.path.join(outdir, f'align_{savename}')
 
     do_align = (force is True) or (force is False and not os.path.exists(output_path))
     skip_align = (not force) and os.path.exists(output_path)
@@ -135,43 +137,7 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-# def get_imsim_psf(ra,dec,
-#                     sci_band,
-#                     sci_pointing,
-#                     sci_sca,
-#                     ref_band=None,
-#                     ref_pointing=None,
-#                     ref_sca=None,
-#                     ref_path=None):
-
-#     """
-#     Retrieves PSF directly from roman_imsim. If you have a reference image, retrieves it 
-#     according to the reference WCS. 
-#     """
-
-#     # Check if reference image was provided. If not, just retrieve PSF from science
-#     # image without changing the WCS. 
-#     if all(val is None for val in [ref_band,ref_pointing,ref_sca,ref_path]):
-#         print('Warning! No reference provided. WCS will not be rotated.')
-#         wcsband, wcspointing, wcssca, wcspath = sci_band, sci_pointing, sci_sca, ref_path
-#     else:
-#         wcsband, wcspointing, wcssca, wcspath = ref_band, ref_pointing, ref_sca, ref_path
-
-#     ref_path = _build_filepath(path=wcspath,band=wcsband,pointing=wcspointing,sca=wcssca,filetype='image')
-#     ref_hdu = fits.open(ref_path)
-#     ref_wcs = WCS(ref_hdu[0].header)
-#     worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-#     pxradec = skycoord_to_pixel(worldcoords,ref_wcs)
-
-#     # Get PSF at specified RA, dec in science image. 
-#     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
-#     config = roman_utils(config_path,visit=sci_pointing,sca=sci_sca)
-#     # add transpose here as Image_ZoomRotate only accept that form (LH, 2024/06/07)
-#     psf = config.getPSF_Image(501, x=pxradec[0], y=pxradec[1]).array.T 
-
-#     return psf
-
-def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdir,force=False):
+def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -195,6 +161,7 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdi
     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
     config = roman_utils(config_path,pointing,sca)
     psf = config.getPSF_Image(size,x,y)
+    psf.write(savepath)
 
     # Change the WCS so CRPIX and CRVAL are centered. 
     pos = PositionD(x=x,y=y)
@@ -209,11 +176,16 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=200,out_path=output_files_rootdi
     # "property 'array' of 'Image' object has no setter".
     hdu = fits.open(savepath)
     hdu[0].data = hdu[0].data.T
+    hdu[0].header['CRVAL1'] = ra
+    hdu[0].header['CRVAL2'] = dec
+    hdu[0].header['CRPIX1'] = 0.5 + int(hdu[0].header['NAXIS1'])/2.
+    hdu[0].header['CRPIX2'] = 0.5 + int(hdu[0].header['NAXIS2'])/2.
     hdu.writeto(savepath,overwrite=True)
 
     return savepath
 
-def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
+
+def rotate_psf(ra,dec,psf,target,savename=None,force=False,verbose=False):
     """
     2. Rotate PSF model to match reference WCS. 
         2a. Calculate rotation angle during alignment
@@ -225,7 +197,9 @@ def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
     check_and_mkdir(psf_dir)
 
     basename = os.path.basename(psf)
-    psf_path = os.path.join(psf_dir, f'rot_{basename}.fits')
+    if savename is None:
+        savename = f'rot_{basename}'
+    psf_path = os.path.join(psf_dir, savename)
 
     do_psf = (force is True) or (force is False and not os.path.exists(psf_path))
     skip_psf = (not force) and os.path.exists(psf_path)
@@ -238,7 +212,7 @@ def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
         skyN_vector = calculate_skyN_vector(wcshdr=hdr, x_start=x0, y_start=y0)
 
         # Also get the PSF image for rotation
-        psfimg = fits.getdata(psf, ext=0) # Already saved as a transposed matrix from get_imsim_psf. 
+        psfimg = fits.getdata(psf, ext=0).T # Already saved as a transposed matrix from get_imsim_psf. 
 
         # Get vector from target WCS (i.e., rotated)
         hdr = fits.getheader(target, ext=0)
@@ -261,9 +235,10 @@ def rotate_psf(ra,dec,psf,target,force=False,verbose=False):
 
 def crossconvolve(sci_img_path, sci_psf_path,
                     ref_img_path, ref_psf_path,
-                    force=False,verbose=False):
+                    force=False,verbose=False,
+                    out_path=output_files_rootdir):
 
-    savedir = os.path.join(output_files_rootdir,'convolved')
+    savedir = os.path.join(out_path,'convolved')
     check_and_mkdir(savedir)
 
     # First convolves reference PSF on science image. 
@@ -336,16 +311,18 @@ def bkg_mask(imgpath):
     return bkg_mask
 
 def difference(scipath, refpath, 
-        scipsfpath, refpsfpath, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
+        scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
         ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8, force=False, verbose=False):
 
     sci_basename = os.path.basename(scipath)
-    ref_basename = os.path.basename(refpath)
 
     sci_data = fits.getdata(scipath).T
     ref_data = fits.getdata(refpath).T
 
-    savedir = os.path.join(output_files_rootdir, 'subtract')
+    if savename is None:
+        savename = sci_basename
+
+    savedir = os.path.join(out_path, 'subtract')
     check_and_mkdir(savedir)
 
     diff_savedir = os.path.join(savedir,'difference')
@@ -355,11 +332,11 @@ def difference(scipath, refpath,
     for dirname in [diff_savedir, soln_savedir, masked_savedir]:
         check_and_mkdir(dirname)
 
-    diff_savepath = os.path.join(diff_savedir, f'diff_{sci_basename}')
-    soln_savepath = os.path.join(soln_savedir, f'solution_{sci_basename}')
+    diff_savepath = os.path.join(diff_savedir, f'diff_{savename}')
+    soln_savepath = os.path.join(soln_savedir, f'solution_{savename}')
 
-    sci_masked_savepath = os.path.join(masked_savedir,f'masked_{sci_basename}')
-    ref_masked_savepath = os.path.join(masked_savedir,f'masked_{ref_basename}')
+    sci_masked_savepath = os.path.join(masked_savedir,f'masked_{savename}')
+    ref_masked_savepath = os.path.join(masked_savedir,f'masked_{savename}')
 
     do_subtract = (force is True) or (force is False and not os.path.exists(diff_savepath))
     skip_subtract = (not force) and os.path.exists(diff_savepath)
@@ -393,14 +370,15 @@ def difference(scipath, refpath,
 
 def decorr_kernel(scipath, refpath, 
             scipsfpath, refpsfpath,
-            diffpath, solnpath):
+            diffpath, solnpath, out_path=output_files_rootdir, savename=None):
 
-    sci_basename = os.path.basename(scipath)
+    if savename is None:
+        savename = os.path.basename(scipath)
 
-    savedir = os.path.join(output_files_rootdir, 'dcker')
+    savedir = os.path.join(out_path, 'dcker')
     check_and_mkdir(savedir)
 
-    decorr_savepath = os.path.join(savedir, f'DCKer_{sci_basename}')
+    decorr_savepath = os.path.join(savedir, f'DCKer_{savename}')
 
     imgdatas = []
     psfdatas = []
@@ -430,17 +408,14 @@ def decorr_kernel(scipath, refpath,
 
     return decorr_savepath
 
-def decorr_img(imgpath, dckerpath, imgtype='difference'):
-    decorr_basename = os.path.basename(imgpath)
-    if imgtype == 'difference':
-        savedir = os.path.join(output_files_rootdir,'subtract','decorr')
-        check_and_mkdir(savedir)
-        decorr_savepath = os.path.join(savedir,f'decorr_{decorr_basename}')
+def decorr_img(imgpath, dckerpath, out_path=output_files_rootdir, savename=None):
+    
+    if savename is None:
+        savename = os.path.basename(imgpath)
 
-    elif imgtype == 'science':
-        savedir = os.path.join(output_files_rootdir,'science')
-        check_and_mkdir(savedir)
-        decorr_savepath = os.path.join(savedir,f'decorr_{decorr_basename}')
+    savedir = os.path.join(out_path,'decorr')
+    check_and_mkdir(savedir)
+    decorr_savepath = os.path.join(savedir,f'decorr_{savename}')
 
     img_data = fits.getdata(imgpath, ext=0).T
     DCKer = fits.getdata(dckerpath)
@@ -455,84 +430,6 @@ def decorr_img(imgpath, dckerpath, imgtype='difference'):
         hdu.writeto(decorr_savepath, overwrite=True)
 
     return decorr_savepath
-
-def calc_psf(scipath, refpath,
-            scipsfpath, refpsfpath, 
-            dckerpath,
-            SUBTTAG='DCSCI', nproc=1, TILESIZE_RATIO=5, GKerHW=9,verbose=False):
-    """
-    Calculate the PSF. 
-    scipath -- should be sky-subtracted, aligned, and cross-convolved with the reference PSF. 
-    refpath -- should be sky-subtracted and cross-convolved with the science PSF. 
-    """
-
-    psf_basename = os.path.basename(scipath[:-5])
-    savedir = os.path.join(output_files_rootdir,'psf_final')
-    check_and_mkdir(savedir)
-    psf_savepath = os.path.join(output_files_rootdir,'psf_final',f'{psf_basename}.sfft_{SUBTTAG}.DeCorrelated.dcPSFFStack.fits')
-
-    # * define an image grid (use one psf size)
-    _hdr = fits.getheader(scipath, ext=0) # FITS_lSCI = output_dir + '/%s.sciE.skysub.fits' %sciname
-    # N0, N1 = int(_hdr['NAXIS1']), int(_hdr['NAXIS2'])
-
-    # lab = 0
-    # XY_TiC = []
-    # TILESIZE_RATIO = 10
-    # TiHW = round(TILESIZE_RATIO * GKerHW) 
-    # TiN = 2*TiHW+1
-    # AllocatedL = np.zeros((N0, N1), dtype=int)
-    # for xs in np.arange(0, N0, TiN):
-    #     xe = np.min([xs+TiN, N0])
-    #     for ys in np.arange(0, N1, TiN):
-    #         ye = np.min([ys+TiN, N1])
-    #         AllocatedL[xs: xe, ys: ye] = lab
-    #         x_q = 0.5 + xs + (xe - xs)/2.0   # tile-center (x)
-    #         y_q = 0.5 + ys + (ye - ys)/2.0   # tile-center (y)
-    #         XY_TiC.append([x_q, y_q])
-    #         lab += 1
-    # XY_TiC = np.array(XY_TiC)
-    # NTILE = XY_TiC.shape[0]
-
-    # XY_q = np.array([[N0/2.+0.5, N1/2.+0.5]])
-    # MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=soln).T
-
-    # PixA_lREF = fits.getdata(refpath, ext=0).T # use stamp
-    # PixA_lSCI = fits.getdata(scipath, ext=0).T # use stamp
-
-    # PixA_PSF_lREF = fits.getdata(refpsfpath, ext=0).T
-    PixA_PSF_lSCI = fits.getdata(scipsfpath, ext=0).T
-
-    # bkgsig_REF = SkyLevel_Estimator.SLE(PixA_obj=PixA_lREF)[1]
-    # bkgsig_SCI = SkyLevel_Estimator.SLE(PixA_obj=PixA_lSCI)[1]
-
-    # record model PSF of decorrelated image (DCMREF, DCSCI, DCDIFF) for the grid
-    # FITS_dcPSFFStack = os.path.join(output_files_rootdir,'psf_final',f'{os.path.basename(scipath)[:-5]}.sfft_{SUBTTAG}.DeCorrelated.dcPSFFStack.fits')
-
-    # XY_q = np.array([[N0/2.+0.5, N1/2.+0.5]])
-    # MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=soln)
-    # MK_Fin = MKerStack[0]
-
-    # calculate decorrelation kernels on the grid
-    # DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[PixA_PSF_lREF], SkySig_JLst=[bkgsig_SCI], \
-    #         MK_ILst=[PixA_PSF_lSCI], SkySig_ILst=[bkgsig_REF], MK_Fin=MK_Fin, \
-    #         KERatio=2.0, VERBOSE_LEVEL=0)
-
-    DCKer = fits.getdata(dckerpath)
-    NX_DCKer, NY_DCKer = DCKer.shape
-
-    PixA_dcPSF = convolve_fft(PixA_PSF_lSCI, DCKer, boundary='fill', \
-            nan_treatment='fill', fill_value=0.0, normalize_kernel=True)
-
-    _hdr = fits.Header()
-    # _hdr['NTILE'] = NTILE
-    _hdr['NX_PSF'] = PixA_dcPSF.shape[0]
-    _hdr['NY_PSF'] = PixA_dcPSF.shape[1]
-    _hdl = fits.HDUList([fits.PrimaryHDU(PixA_dcPSF.T, header=_hdr)])
-    _hdl.writeto(psf_savepath, overwrite=True)
-    if verbose:
-        print("MeLOn CheckPoint: PSF for DeCorrelated images Saved! \n # %s!" %psf_savepath)
-
-    return psf_savepath
 
 def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subdir='coadd',**kwargs):
     """Coadd images using SWarp. 
