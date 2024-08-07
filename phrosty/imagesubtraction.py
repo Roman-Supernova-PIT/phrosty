@@ -236,6 +236,8 @@ def rotate_psf(ra,dec,psf,target,savename=None,force=False,verbose=False):
 def crossconvolve(sci_img_path, sci_psf_path,
                     ref_img_path, ref_psf_path,
                     force=False,verbose=False,
+                    sci_outname=None,
+                    ref_outname=None,
                     out_path=output_files_rootdir):
 
     savedir = os.path.join(out_path,'convolved')
@@ -244,8 +246,14 @@ def crossconvolve(sci_img_path, sci_psf_path,
     # First convolves reference PSF on science image. 
     # Then, convolves science PSF on reference image. 
     savepaths = []
-    for img in [sci_img_path,ref_img_path]:
-        savename = f'conv_{os.path.basename(img)}'
+    for img, name in zip([sci_img_path,ref_img_path],
+                    [sci_outname,ref_outname]):
+
+        if name is None:
+            savename = f'conv_{os.path.basename(img)}'
+        else:
+            savename = name
+
         savepath = os.path.join(savedir, savename)
         savepaths.append(savepath)
 
