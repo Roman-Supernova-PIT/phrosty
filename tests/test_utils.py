@@ -1,12 +1,13 @@
 # IMPORTS Standard:
 import os
+import numpy as np
 
 # IMPORTS Astro:
 from astropy.io import fits
 from astropy.table import Table
 
 # IMPORTS Internal:
-from phrosty.utils import get_mjd
+from phrosty.utils import get_mjd, get_transient_zcmb, get_transient_peakmjd
 
 def test_get_mjd():
     pointing = 0
@@ -17,3 +18,19 @@ def test_get_mjd():
     mjd = get_mjd(pointing)
 
     assert tmjd == mjd
+
+def test_get_transient_zcmb():
+    oid = 20172782
+    zcmb = np.float32(0.3601)
+
+    tzcmb = get_transient_zcmb(oid)
+
+    assert zcmb == tzcmb
+
+def test_get_transient_peakmjd():
+    oid = 20172782
+    mjd = np.float32(62476.507812)
+
+    tmjd = get_transient_peakmjd(oid)
+
+    assert mjd == tmjd
