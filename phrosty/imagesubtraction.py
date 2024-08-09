@@ -1,8 +1,10 @@
 # IMPORTS Standard:
 import os
+import sys
 import numpy as np
 import gzip
 import shutil
+import logging
 import matplotlib.pyplot as plt
 
 # IMPORTS Astro:
@@ -32,6 +34,16 @@ from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
 
 # IMPORTS Internal:
 from .utils import _build_filepath, get_transient_radec, get_transient_mjd, get_fitsobj
+
+# Configure logger (Rob)
+_logger = logging.getLogger(f'phrosty')
+if not _logger.hasHandlers():
+    log_out = logging.StreamHandler(sys.stderr)
+    formatter = logging.Formatter(f'[%(asctime)s - %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    log_out.setFormatter(formatter)
+    _logger.addHandler(log_out)
+    _logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
+
 
 """
 This module was written with significant contributions from 
@@ -108,7 +120,8 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None
         check_and_mkdir(outdir)
 
         cd = PY_SWarp.Mk_ConfigDict(GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
-                                    SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.)
+                                    SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.,
+                                    NTHREADS=1)
         PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
                     FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
     elif skip_align and verbose:
@@ -137,7 +150,7 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False):
+def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False,logger=None):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -146,10 +159,14 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     force parameter does not currently do anything.
     """
 
+    logger = _logger if logger is None else logger
+
     savedir = os.path.join(output_files_rootdir,'psf')
     check_and_mkdir(savedir)
     savename = f'psf_{ra}_{dec}_{band}_{pointing}_{sca}.fits'
     savepath = os.path.join(savedir,savename)
+
+    logger.debug(f'get_imsim_psf() {savepath}')
 
     # Get WCS of the image you need the PSF for.
     hdu = get_fitsobj(band=band,pointing=pointing,sca=sca)
@@ -157,19 +174,27 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     coord = SkyCoord(ra=ra*u.deg,dec=dec*u.deg)
     x,y = wcs.world_to_pixel(coord)
 
+    logger.debug(f'get_imsim_psf() WCS did.')
+
     # Get PSF at specified ra, dec. 
     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
     config = roman_utils(config_path,pointing,sca)
     psf = config.getPSF_Image(size,x,y)
     psf.write(savepath)
 
+    logger.debug(f'get_imsim_psf() PSF writted with galsim.')
+
     # Change the WCS so CRPIX and CRVAL are centered. 
     pos = PositionD(x=x,y=y)
     wcs_new = psf.wcs.affine(image_pos=pos)
     psf.wcs = wcs_new
 
+    logger.debug(f'get_imsim_psf() WCS affine transformed.')
+
     # Save fits object.
     psf.write(savepath)
+
+    logger.debug(f'get_imsim_psf() PSF rewritten with affine transform.')
 
     # Transpose the data array so it works with SFFT. 
     # Can't do this like psf.array = psf.array.T because you get an error:
@@ -181,6 +206,8 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     hdu[0].header['CRPIX1'] = 0.5 + int(hdu[0].header['NAXIS1'])/2.
     hdu[0].header['CRPIX2'] = 0.5 + int(hdu[0].header['NAXIS2'])/2.
     hdu.writeto(savepath,overwrite=True)
+
+    logger.debug('get_imsim_psf() FINISHED!')
 
     return savepath
 
@@ -455,7 +482,7 @@ def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subd
     """
     cd = PY_SWarp.Mk_ConfigDict(GAIN_DEFAULT=1., SATLEV_DEFAULT=100000., 
                                 RESAMPLING_TYPE='BILINEAR', WEIGHT_TYPE='NONE', 
-                                RESCALE_WEIGHTS='N', **kwargs)
+                                RESCALE_WEIGHTS='N', NTHREADS=1, **kwargs)
 
     imgpaths = []
     for p in imgpath_list:
