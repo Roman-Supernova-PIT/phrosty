@@ -180,9 +180,24 @@ def get_transient_zcmb(oid):
         # Read the Parquet file
         df = pd.read_parquet(file)
         if len(df[df['id'] == oid]) != 0:
-            z = df[df['id'] == oid]['z_CMB'].values[0]
+            z = float(df[df['id'] == oid]['z_CMB'].values[0])
 
     return z
+
+def get_transient_peakmjd(oid):
+    """
+    Retrieve z of a transient based on its object ID. 
+    """
+    oid = int(oid)
+    filepath = '/cwork/mat90/RomanDESC_sims_2024/roman_rubin_cats_v1.1.2_faint/snana*.parquet'
+    file_list = glob(filepath)
+    for file in file_list:
+        # Read the Parquet file
+        df = pd.read_parquet(file)
+        if len(df[df['id'] == oid]) != 0:
+            mjd = df[df['id'] == oid]['peak_mjd'].values[0]
+
+    return mjd
 
 def get_mjd_limits(obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'): 
     """
