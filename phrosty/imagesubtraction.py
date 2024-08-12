@@ -6,6 +6,7 @@ import gzip
 import shutil
 import logging
 import matplotlib.pyplot as plt
+import tracemalloc
 
 # IMPORTS Astro:
 from astropy.io import fits 
@@ -166,15 +167,11 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     savename = f'psf_{ra}_{dec}_{band}_{pointing}_{sca}.fits'
     savepath = os.path.join(savedir,savename)
 
-    logger.debug(f'get_imsim_psf() {savepath}')
-
     # Get WCS of the image you need the PSF for.
     hdu = get_fitsobj(band=band,pointing=pointing,sca=sca)
     wcs = WCS(hdu[0].header)
     coord = SkyCoord(ra=ra*u.deg,dec=dec*u.deg)
     x,y = wcs.world_to_pixel(coord)
-
-    logger.debug(f'get_imsim_psf() WCS did.')
 
     # Get PSF at specified ra, dec. 
     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
@@ -182,19 +179,13 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     psf = config.getPSF_Image(size,x,y)
     psf.write(savepath)
 
-    logger.debug(f'get_imsim_psf() PSF writted with galsim.')
-
     # Change the WCS so CRPIX and CRVAL are centered. 
     pos = PositionD(x=x,y=y)
     wcs_new = psf.wcs.affine(image_pos=pos)
     psf.wcs = wcs_new
 
-    logger.debug(f'get_imsim_psf() WCS affine transformed.')
-
     # Save fits object.
     psf.write(savepath)
-
-    logger.debug(f'get_imsim_psf() PSF rewritten with affine transform.')
 
     # Transpose the data array so it works with SFFT. 
     # Can't do this like psf.array = psf.array.T because you get an error:
@@ -206,8 +197,6 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     hdu[0].header['CRPIX1'] = 0.5 + int(hdu[0].header['NAXIS1'])/2.
     hdu[0].header['CRPIX2'] = 0.5 + int(hdu[0].header['NAXIS2'])/2.
     hdu.writeto(savepath,overwrite=True)
-
-    logger.debug('get_imsim_psf() FINISHED!')
 
     return savepath
 
@@ -347,7 +336,9 @@ def bkg_mask(imgpath):
 
 def difference(scipath, refpath, 
         scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
-        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8, force=False, verbose=False):
+        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False, logger=None):
+
+    tracemalloc.start()
 
     sci_basename = os.path.basename(scipath)
 
@@ -391,12 +382,15 @@ def difference(scipath, refpath,
                 hdu[0].data[:, :] = hdudata.T
                 hdu.writeto(msavepath, overwrite=True)
 
+        size,peak = tracemalloc.get_traced_memory()
+        print(f'MEMORY IN imagesubtraction.difference() BEFORE Customized_Packet.CP: size = {size}, peak = {peak}')
+
         # Do SFFT subtraction
         Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
                             ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
                             KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
                             BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-                            NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
+                            NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
 
     elif skip_subtract and verbose:
         print(diff_savepath, 'already exists. Skipping image subtraction.')
