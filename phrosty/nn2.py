@@ -79,13 +79,17 @@ def construct_A_and_C(combined_table):
     A_all = []
     C_diag_all = []
 
-    for idx in i:
-        for jdx in j:
-            dv = flux_array[idx] - flux_array[jdx]
-            sv = np.sqrt(fluxerr_array[idx]**2 + fluxerr_array[jdx]**2)
+    for epoch_flux, epoch_fluxerr in zip(flux_array,fluxerr_array):
+        A_all.append(epoch_flux[i]-epoch_flux[j])
+        C_diag_all.append(epoch_fluxerr[i],epoch_fluxerr[j])
 
-            A_all.append(dv)
-            C_diag_all.append(sv)
+    # for idx in i:
+    #     for jdx in j:
+    #         dv = flux_array[idx] - flux_array[jdx]
+    #         sv = np.sqrt(fluxerr_array[idx]**2 + fluxerr_array[jdx]**2)
+
+    #         A_all.append(dv)
+    #         C_diag_all.append(sv)
 
     return A_all, C_diag_all
 

@@ -1,9 +1,12 @@
 # IMPORTS Standard:
 import os
+import sys
 import numpy as np
 import gzip
 import shutil
+import logging
 import matplotlib.pyplot as plt
+import tracemalloc
 
 # IMPORTS Astro:
 from astropy.io import fits 
@@ -32,6 +35,16 @@ from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
 
 # IMPORTS Internal:
 from .utils import _build_filepath, get_transient_radec, get_transient_mjd, get_fitsobj
+
+# Configure logger (Rob)
+_logger = logging.getLogger(f'phrosty')
+if not _logger.hasHandlers():
+    log_out = logging.StreamHandler(sys.stderr)
+    formatter = logging.Formatter(f'[%(asctime)s - %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    log_out.setFormatter(formatter)
+    _logger.addHandler(log_out)
+    _logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
+
 
 """
 This module was written with significant contributions from 
@@ -108,7 +121,8 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None
         check_and_mkdir(outdir)
 
         cd = PY_SWarp.Mk_ConfigDict(GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
-                                    SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.)
+                                    SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.,
+                                    NTHREADS=1)
         PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
                     FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
     elif skip_align and verbose:
@@ -137,7 +151,7 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False):
+def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False,logger=None):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -145,6 +159,8 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
 
     force parameter does not currently do anything.
     """
+
+    logger = _logger if logger is None else logger
 
     savedir = os.path.join(output_files_rootdir,'psf')
     check_and_mkdir(savedir)
@@ -236,6 +252,8 @@ def rotate_psf(ra,dec,psf,target,savename=None,force=False,verbose=False):
 def crossconvolve(sci_img_path, sci_psf_path,
                     ref_img_path, ref_psf_path,
                     force=False,verbose=False,
+                    sci_outname=None,
+                    ref_outname=None,
                     out_path=output_files_rootdir):
 
     savedir = os.path.join(out_path,'convolved')
@@ -244,8 +262,14 @@ def crossconvolve(sci_img_path, sci_psf_path,
     # First convolves reference PSF on science image. 
     # Then, convolves science PSF on reference image. 
     savepaths = []
-    for img in [sci_img_path,ref_img_path]:
-        savename = f'conv_{os.path.basename(img)}'
+    for img, name in zip([sci_img_path,ref_img_path],
+                    [sci_outname,ref_outname]):
+
+        if name is None:
+            savename = f'conv_{os.path.basename(img)}'
+        else:
+            savename = name
+
         savepath = os.path.join(savedir, savename)
         savepaths.append(savepath)
 
@@ -271,14 +295,14 @@ def crossconvolve(sci_img_path, sci_psf_path,
 
     return savepaths
 
-def stampmaker(ra, dec, imgpath, savepath=None, shape=np.array([1000,1000])):
+def stampmaker(ra, dec, imgpath, savedir=None, shape=np.array([1000,1000])):
 
-    if savepath is None:
+    if savedir is None:
         savedir = os.path.join(output_files_rootdir,'stamps')
         check_and_mkdir(savedir)
 
-        savename = os.path.basename(imgpath)
-        savepath = os.path.join(savedir,f'{ra}_{dec}_stamp_{savename}')
+    savename = os.path.basename(imgpath)
+    savepath = os.path.join(savedir,f'{ra}_{dec}_stamp_{savename}')
 
     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     with fits.open(imgpath) as hdu:
@@ -312,7 +336,9 @@ def bkg_mask(imgpath):
 
 def difference(scipath, refpath, 
         scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
-        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8, force=False, verbose=False):
+        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False, logger=None):
+
+    tracemalloc.start()
 
     sci_basename = os.path.basename(scipath)
 
@@ -356,12 +382,15 @@ def difference(scipath, refpath,
                 hdu[0].data[:, :] = hdudata.T
                 hdu.writeto(msavepath, overwrite=True)
 
+        size,peak = tracemalloc.get_traced_memory()
+        print(f'MEMORY IN imagesubtraction.difference() BEFORE Customized_Packet.CP: size = {size}, peak = {peak}')
+
         # Do SFFT subtraction
         Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
                             ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
                             KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
                             BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-                            NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
+                            NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
 
     elif skip_subtract and verbose:
         print(diff_savepath, 'already exists. Skipping image subtraction.')
@@ -447,7 +476,7 @@ def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subd
     """
     cd = PY_SWarp.Mk_ConfigDict(GAIN_DEFAULT=1., SATLEV_DEFAULT=100000., 
                                 RESAMPLING_TYPE='BILINEAR', WEIGHT_TYPE='NONE', 
-                                RESCALE_WEIGHTS='N', **kwargs)
+                                RESCALE_WEIGHTS='N', NTHREADS=1, **kwargs)
 
     imgpaths = []
     for p in imgpath_list:
