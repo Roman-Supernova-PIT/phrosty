@@ -18,7 +18,7 @@ from astropy import units as u
 # Note: on DCC, this should be '/cwork/mat90/RomanDESC_sims_2024/' 
 # It's the path to the location of the RomanTDS folder in the RomanDESC sims. 
 rootdir = os.getenv('SIMS_DIR', None)
-assert rootdir is not None. 'You need to set SIMS_DIR as an environment variable.'
+assert rootdir is not None, 'You need to set SIMS_DIR as an environment variable.'
 
 snana_pq_path = os.path.join(rootdir,'/roman_rubin_cats_v1.1.2_faint/snana*.parquet')
 obseq_path = os.path.join(rootdir,'RomanTDS/Roman_TDS_obseq_11_6_23.fits')
