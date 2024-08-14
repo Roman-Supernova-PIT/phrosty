@@ -14,8 +14,15 @@ from astropy.wcs.utils import skycoord_to_pixel
 from astropy.table import Table, vstack
 from astropy import units as u
 
-# CHANGE THIS TO FIT YOUR USE: 
-rootdir = os.getenv('ROOTDIR', '/cwork/mat90/RomanDESC_sims_2024/RomanTDS')
+# Set environment variable so this works:
+# Note: on DCC, this should be '/cwork/mat90/RomanDESC_sims_2024/' 
+# It's the path to the location of the RomanTDS folder in the RomanDESC sims. 
+rootdir = os.getenv('ROOTDIR', None)
+assert rootdir is not None. 'You need to set ROOTDIR as an environment variable.'
+
+snana_pq_path = os.path.join(rootdir,'/roman_rubin_cats_v1.1.2_faint/snana*.parquet')
+obseq_path = os.path.join(rootdir,'RomanTDS/Roman_TDS_obseq_11_6_23.fits')
+obseq_radec_path = os.path.join(rootdir,'RomanTDS/Roman_TDS_obseq_11_6_23_radec.fits')
 
 # The FITSFixedWarning is consequenceless and it will get thrown every single time you deal with a WCS. 
 warnings.simplefilter('ignore',category=FITSFixedWarning)
@@ -44,15 +51,15 @@ def _build_filepath(path,band,pointing,sca,filetype,rootdir=rootdir):
     if filetype not in ['image', 'truth', 'truthtxt']:
         raise ValueError(f'filetype must be in {filetype}.')
     elif filetype == 'image':
-        subdir = 'images/simple_model'
+        subdir = 'RomanTDS/images/simple_model'
         prefix = 'simple_model'
         extension = 'fits.gz'
     elif filetype == 'truth':
-        subdir = 'images/truth'
+        subdir = 'RomanTDS/images/truth'
         prefix = 'truth'
         extension = 'fits.gz'
     elif filetype == 'truthtxt':
-        subdir = 'truth'
+        subdir = 'RomanTDS/truth'
         prefix = 'index'
         extension = 'txt'
 
@@ -145,8 +152,7 @@ def get_transient_radec(oid):
     Retrieve RA, dec of a transient based on its object ID. 
     """
     oid = int(oid)
-    filepath = '/cwork/mat90/RomanDESC_sims_2024/roman_rubin_cats_v1.1.2_faint/snana*.parquet'
-    file_list = glob(filepath)
+    file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
         df = pd.read_parquet(file)
@@ -159,8 +165,8 @@ def get_transient_mjd(oid):
     """
     Retrieve start and end dates of a transient based on its object ID. 
     """
-    filepath = '/cwork/mat90/RomanDESC_sims_2024/roman_rubin_cats_v1.1.2_faint/snana*.parquet'
-    file_list = glob(filepath)
+    oid = int(oid)
+    file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
         df = pd.read_parquet(file)
@@ -174,8 +180,7 @@ def get_transient_zcmb(oid):
     Retrieve z_CMB of a transient based on its object ID. 
     """
     oid = int(oid)
-    filepath = '/cwork/mat90/RomanDESC_sims_2024/roman_rubin_cats_v1.1.2_faint/snana*.parquet'
-    file_list = glob(filepath)
+    file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
         df = pd.read_parquet(file)
@@ -189,8 +194,7 @@ def get_transient_peakmjd(oid):
     Retrieve z of a transient based on its object ID. 
     """
     oid = int(oid)
-    filepath = '/cwork/mat90/RomanDESC_sims_2024/roman_rubin_cats_v1.1.2_faint/snana*.parquet'
-    file_list = glob(filepath)
+    file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
         df = pd.read_parquet(file)
@@ -199,7 +203,7 @@ def get_transient_peakmjd(oid):
 
     return mjd
 
-def get_mjd_limits(obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'): 
+def get_mjd_limits(obseq_path=obseq_path): 
     """
     Retrive the earliest and latest MJD in the simulations.
     """
@@ -212,7 +216,7 @@ def get_mjd_limits(obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
 
     return start, end
 
-def get_radec_limits(obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
+def get_radec_limits(obseq_path=obseq_path):
     """
     Retrieve RA, dec limits (boresight coordinates).
     """
@@ -228,7 +232,7 @@ def get_radec_limits(obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
     return {'ra': [ra_min,ra_max], 'dec': [dec_min, dec_max]}
 
 
-def get_mjd(pointing,obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
+def get_mjd(pointing,obseq_path=obseq_path):
     """
     Retrieve MJD of a given pointing. 
 
@@ -246,7 +250,7 @@ def get_mjd(pointing,obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
 
     return mjd
 
-def pointings_near_mjd(mjd,window=3,obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
+def pointings_near_mjd(mjd,window=3,obseq_path=obseq_path):
     """
     Retrieve pointings near given MJD.
 
@@ -266,7 +270,7 @@ def pointings_near_mjd(mjd,window=3,obseq_path=f'{rootdir}/Roman_TDS_obseq_11_6_
     pointings = np.where(np.logical_and(obseq['date'] < mjd + window, obseq['date'] > mjd - window))[0]
     return pointings 
 
-def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,return_inverse=False,obseq_path = f'{rootdir}/Roman_TDS_obseq_11_6_23.fits'):
+def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,return_inverse=False,obseq_path=obseq_path):
     """
     Get all pointings and corresponding filters between two MJDs.
     Returns an astropy table with columns 'filter' and 'pointing'. 
@@ -410,7 +414,9 @@ def transform_to_wcs(wcs, path=None, band=None, pointing=None, sca=None):
 
 def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
                         pointings=np.arange(0,57365,1),
-                        mjd_start=-np.inf,mjd_end=np.inf):
+                        mjd_start=-np.inf,mjd_end=np.inf,
+                        obseq_path=obseq_path,
+                        obseq_radec_path=obseq_radec_path):
 
     """
     Retrieves all images that a unique object or set of coordinates is in. There are three steps to this, because
@@ -450,11 +456,9 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
     :rtype: astropy.table.Table
     """
     
-    obseq_path = pa.join(rootdir,'Roman_TDS_obseq_11_6_23.fits')
     with fits.open(obseq_path) as osp:
         obseq_orig = Table(osp[1].data)
 
-    obseq_radec_path = pa.join(rootdir,'Roman_TDS_obseq_11_6_23_radec.fits')
     with fits.open(obseq_radec_path) as osradecp:
         obseq_radec_orig = Table(osradecp[1].data)
 
@@ -532,6 +536,8 @@ def get_object_data(oid, metadata,
                     colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err'],
                     crossmatch_dir='/hpc/group/cosmology/lna18/roman_sim_imgs/Roman_Rubin_Sims_2024/preview/crossmatched_truth'):
 
+    # NOTE: THESE PATHS HAVE NOT BEEN GENERALIZED. 
+
     """Retrieves all information from crossmatched photmetry files about a particular object, specified with its
     unique object ID. 
 
@@ -560,37 +566,4 @@ def get_object_data(oid, metadata,
         object_row_reduced = object_row[colnames]
         object_tab = vstack([object_tab, object_row_reduced], join_type='exact')
 
-    return object_tab        
-
-def train_config(objtype):
-    if objtype == 'galaxy':
-        return 0
-    elif objtype == 'star':
-        return 1
-    elif objtype == 'transient':
-        return 2
-    else: 
-        return 3
-
-def predict_config(objtype):
-    if objtype == 0:
-        return 'galaxy'
-    elif objtype == 1:
-        return 'star'
-    elif objtype == 2:
-        return 'transient'
-    else:
-        return 'other'
-
-# def get_obj_type_from_ID(ID):
-# THIS IS NO LONGER TRUE. CHANGE ID BOUNDS.
-# But also may not be necessary because object type is now
-# a column in the truth txt files. 
-#     if ID > 9921000000000 and ID < 10779202101973:
-#         return 'galaxy'
-#     elif ID > 30328699913 and ID < 50963307358:
-#         return 'star'
-#     elif ID > 20000001 and ID < 120026449:
-#         return 'transient'
-#     else:
-#         return 'unknown'
+    return object_tab
