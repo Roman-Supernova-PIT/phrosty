@@ -52,7 +52,8 @@ Dr. Lei Hu (https://github.com/thomasvrussell/), and relies on his
 SFFT image subtraction package (https://github.com/thomasvrussell/sfft).
 """
 
-output_files_rootdir = os.getenv('IMSUB_OUT','/work/lna18/imsub_out/')
+output_files_rootdir = os.getenv('DIA_OUT_DIR', None)
+assert output_files_rootdir is not None, 'You need to set DIA_OUT_DIR as an environment variable.'
 
 def check_and_mkdir(dirname):
     """
