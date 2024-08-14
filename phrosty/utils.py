@@ -17,8 +17,8 @@ from astropy import units as u
 # Set environment variable so this works:
 # Note: on DCC, this should be '/cwork/mat90/RomanDESC_sims_2024/' 
 # It's the path to the location of the RomanTDS folder in the RomanDESC sims. 
-rootdir = os.getenv('ROOTDIR', None)
-assert rootdir is not None. 'You need to set ROOTDIR as an environment variable.'
+rootdir = os.getenv('SIMS_DIR', None)
+assert rootdir is not None. 'You need to set SIMS_DIR as an environment variable.'
 
 snana_pq_path = os.path.join(rootdir,'/roman_rubin_cats_v1.1.2_faint/snana*.parquet')
 obseq_path = os.path.join(rootdir,'RomanTDS/Roman_TDS_obseq_11_6_23.fits')
@@ -202,6 +202,38 @@ def get_transient_peakmjd(oid):
             mjd = df[df['id'] == oid]['peak_mjd'].values[0]
 
     return mjd
+
+def get_transient_info(oid):
+    """
+    Retrieve RA, Dec, MJD start, MJD end for specified object ID.  
+    """
+    RA, DEC = get_transient_radec(oid)
+    start, end = get_transient_mjd(oid)
+
+    return RA, DEC, start, end
+
+def transient_in_or_out(oid,start,end,band,transient_info_filepath):
+    """
+    Retrieve pointings that contain and do not contain the specified SN,
+    per the truth files by MJD. 
+
+    transient_info_filepath is the output of get_object_instances. 
+
+    Returns a tuple of astropy tables (images with the SN, images without the SN).
+    """
+    tab = Table.read(transient_info_filepath)
+    tab.sort('pointing')
+    tab = tab[tab['filter'] == band]
+
+    in_all = get_mjd_info(start,end)
+    in_rows = np.where(np.isin(tab['pointing'],in_all['pointing']))[0]
+    in_tab = tab[in_rows]
+
+    out_all = get_mjd_info(start,end,return_inverse=True)
+    out_rows = np.where(np.isin(tab['pointing'],out_all['pointing']))[0]
+    out_tab = tab[out_rows]
+
+    return in_tab, out_tab
 
 def get_mjd_limits(obseq_path=obseq_path): 
     """
