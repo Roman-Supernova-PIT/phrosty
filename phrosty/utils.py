@@ -20,7 +20,9 @@ from astropy import units as u
 rootdir = os.getenv('SIMS_DIR', None)
 assert rootdir is not None, 'You need to set SIMS_DIR as an environment variable.'
 
-snana_pq_path = os.path.join(rootdir,'/roman_rubin_cats_v1.1.2_faint/snana*.parquet')
+snana_pq_path = os.getenv('SNANA_PQ_DIR', None)
+assert snana_pq_path is not None, 'You need to set SNANA_PQ_DIR as an environment variable.'
+
 obseq_path = os.path.join(rootdir,'RomanTDS/Roman_TDS_obseq_11_6_23.fits')
 obseq_radec_path = os.path.join(rootdir,'RomanTDS/Roman_TDS_obseq_11_6_23_radec.fits')
 
