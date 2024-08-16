@@ -384,7 +384,8 @@ def difference(scipath, refpath,
                 hdu.writeto(msavepath, overwrite=True)
 
         size,peak = tracemalloc.get_traced_memory()
-        print(f'MEMORY IN imagesubtraction.difference() BEFORE Customized_Packet.CP: size = {size}, peak = {peak}')
+        logger.debug(f'MEMORY IN imagesubtraction.difference() BEFORE Customized_Packet.CP: size = {size}, peak = {peak}')
+        tracemalloc.reset_peak()
 
         # Do SFFT subtraction
         Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
@@ -392,6 +393,10 @@ def difference(scipath, refpath,
                             KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
                             BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
                             NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
+
+        size,peak = tracemalloc.get_traced_memory()
+        logger.debug(f'MEMORY IN imagesubtraction.difference() AFTER Customized_Packet.CP: size = {size}, peak = {peak}')
+        tracemalloc.reset_peak()
 
     elif skip_subtract and verbose:
         print(diff_savepath, 'already exists. Skipping image subtraction.')
