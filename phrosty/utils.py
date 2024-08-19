@@ -1,10 +1,12 @@
 # IMPORTS Standard:
 import os
 import os.path as pa
+import sys
 import numpy as np
 import pandas as pd
 import warnings
 from glob import glob
+import logging
 
 # IMPORTS Astro:
 from astropy.coordinates import SkyCoord
@@ -249,7 +251,7 @@ def set_logger(proc,name):
         logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
     return logger
 
-def get_templates(oid,band,n_templates=1,verbose=False):
+def get_templates(oid,band,infodir,n_templates=1,verbose=False):
     """
     Get template images, i.e., which images for a given OID do not actually contain the
     transient but do contain the RA/dec coordinates.
@@ -268,7 +270,7 @@ def get_templates(oid,band,n_templates=1,verbose=False):
 
     return template_list
 
-def get_science(oid,band,verbose=False):
+def get_science(oid,band,infodir,verbose=False):
     """
     Get science images, i.e., which images for a given OID actually contain the
     transient and also contain the RA/dec coordinates.
