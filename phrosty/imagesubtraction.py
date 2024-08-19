@@ -296,14 +296,16 @@ def crossconvolve(sci_img_path, sci_psf_path,
 
     return savepaths
 
-def stampmaker(ra, dec, imgpath, savedir=None, shape=np.array([1000,1000])):
+def stampmaker(ra, dec, imgpath, savedir=None, savename=None, shape=np.array([1000,1000])):
 
     if savedir is None:
         savedir = os.path.join(output_files_rootdir,'stamps')
         check_and_mkdir(savedir)
 
-    savename = os.path.basename(imgpath)
-    savepath = os.path.join(savedir,f'{ra}_{dec}_stamp_{savename}')
+    if savename is None:
+        savename = f'stamp_{os.path.basename(imgpath)}.fits'
+
+    savepath = os.path.join(savedir,savename)
 
     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     with fits.open(imgpath) as hdu:
@@ -407,13 +409,14 @@ def decorr_kernel(scipath, refpath,
             scipsfpath, refpsfpath,
             diffpath, solnpath, out_path=output_files_rootdir, savename=None):
 
-    if savename is None:
-        savename = os.path.basename(scipath)
-
     savedir = os.path.join(out_path, 'dcker')
     check_and_mkdir(savedir)
 
-    decorr_savepath = os.path.join(savedir, f'DCKer_{savename}')
+    if savename is None:
+        basename = os.path.basename(scipath)
+        savename = F'DCKer_{basename}'
+
+    decorr_savepath = os.path.join(savedir, savename)
 
     imgdatas = []
     psfdatas = []
@@ -445,12 +448,14 @@ def decorr_kernel(scipath, refpath,
 
 def decorr_img(imgpath, dckerpath, out_path=output_files_rootdir, savename=None):
     
-    if savename is None:
-        savename = os.path.basename(imgpath)
-
     savedir = os.path.join(out_path,'decorr')
     check_and_mkdir(savedir)
-    decorr_savepath = os.path.join(savedir,f'decorr_{savename}')
+
+    if savename is None:
+        basename = os.path.basename(imgpath)
+        savename = f'decorr_{basename}'
+
+    decorr_savepath = os.path.join(savedir,savename)
 
     img_data = fits.getdata(imgpath, ext=0).T
     DCKer = fits.getdata(dckerpath)
