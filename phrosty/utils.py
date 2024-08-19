@@ -238,6 +238,55 @@ def transient_in_or_out(oid,start,end,band,transient_info_filepath):
 
     return in_tab, out_tab
 
+def set_logger(proc,name):
+    # Configure logger (Rob)
+    logger = logging.getLogger(f'{name}_{proc}')
+    if not logger.hasHandlers():
+        log_out = logging.StreamHandler(sys.stderr)
+        formatter = logging.Formatter(f'[%(asctime)s - {proc} - %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+        log_out.setFormatter(formatter)
+        logger.addHandler(log_out)
+        logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
+    return logger
+
+def get_templates(oid,band,n_templates=1,verbose=False):
+    """
+    Get template images, i.e., which images for a given OID do not actually contain the
+    transient but do contain the RA/dec coordinates.
+    """
+    ra,dec,start,end = get_transient_info(oid)
+
+    filepath = os.path.join(infodir,f'{oid}/{oid}_instances.csv')
+    in_tab,out_tab = transient_in_or_out(oid,start,end,band,transient_info_filepath=filepath)
+
+    template_tab = out_tab[:n_templates]
+    if verbose:
+        print('The template images are:')
+        print(template_tab)
+
+    template_list = [dict(zip(template_tab.colnames,row)) for row in template_tab]
+
+    return template_list
+
+def get_science(oid,band,verbose=False):
+    """
+    Get science images, i.e., which images for a given OID actually contain the
+    transient and also contain the RA/dec coordinates.
+    """
+
+    ra,dec,start,end = get_transient_info(oid)
+
+    filepath = os.path.join(infodir,f'{oid}/{oid}_instances.csv')
+    in_tab,out_tab = transient_in_or_out(oid,start,end,band,transient_info_filepath=filepath)
+
+    if verbose:
+        print('The science images are:')
+        print(in_tab)
+        
+    science_list = [dict(zip(in_tab.colnames,row)) for row in in_tab]
+    
+    return science_list
+
 def get_mjd_limits(obseq_path=obseq_path): 
     """
     Retrive the earliest and latest MJD in the simulations.
