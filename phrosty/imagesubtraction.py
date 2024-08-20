@@ -338,7 +338,7 @@ def bkg_mask(imgpath):
     return bkg_mask
 
 def difference(scipath, refpath, 
-        scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
+        scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, 
         ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False, logger=None):
 
     tracemalloc.start()
