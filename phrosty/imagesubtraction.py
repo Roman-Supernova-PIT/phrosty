@@ -26,6 +26,7 @@ from sfft.utils.StampGenerator import Stamp_Generator
 from sfft.utils.pyAstroMatic.PYSWarp import PY_SWarp
 from sfft.utils.ReadWCS import Read_WCS
 from sfft.utils.ImageZoomRotate import Image_ZoomRotate
+from sfft.utils.CudaResampling import Cuda_Resampling
 from sfft.utils.pyAstroMatic.PYSEx import PY_SEx
 from sfft.CustomizedPacket import Customized_Packet
 from sfft.utils.SkyLevelEstimator import SkyLevel_Estimator
@@ -111,21 +112,23 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None
     """
     Align images with SWarp. 
     """
+
     outdir = os.path.join(out_path, 'align')
     if savename is None:
         savename = os.path.basename(sci_path)
     output_path = os.path.join(outdir, f'align_{savename}')
+
+    
 
     do_align = (force is True) or (force is False and not os.path.exists(output_path))
     skip_align = (not force) and os.path.exists(output_path)
     if do_align:
         check_and_mkdir(outdir)
 
-        cd = PY_SWarp.Mk_ConfigDict(GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
-                                    SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.,
-                                    NTHREADS=1)
-        PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
-                    FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
+        _logger.debug( "Using Cuda_Resampling.CR to resample image" )
+        
+        Cuda_Resampling.CR( sci_path, template_path, output_path, METHOD="BILINEAR" )
+
     elif skip_align and verbose:
         print(output_path, 'already exists. Skipping alignment.')
 
@@ -152,7 +155,8 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False,logger=None):
+def get_imsim_psf(ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
+                  out_path=output_files_rootdir, force=False, logger=None):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -174,8 +178,9 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     coord = SkyCoord(ra=ra*u.deg,dec=dec*u.deg)
     x,y = wcs.world_to_pixel(coord)
 
-    # Get PSF at specified ra, dec. 
-    config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
+    # Get PSF at specified ra, dec.
+    assert config_yaml_file is not None, "config_yaml_file is a required argument"
+    config_path = config_yaml_file
     config = roman_utils(config_path,pointing,sca)
     psf = config.getPSF_Image(size,x,y)
     psf.write(savepath)
@@ -338,7 +343,7 @@ def bkg_mask(imgpath):
     return bkg_mask
 
 def difference(scipath, refpath, 
-               scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, 
+               out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, 
                ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False, logger=None):
 
     tracemalloc.start()
