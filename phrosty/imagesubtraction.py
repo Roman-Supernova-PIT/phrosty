@@ -1,9 +1,12 @@
 # IMPORTS Standard:
 import os
+import sys
 import numpy as np
 import gzip
 import shutil
+import logging
 import matplotlib.pyplot as plt
+import tracemalloc
 
 # IMPORTS Astro:
 from astropy.io import fits 
@@ -33,13 +36,24 @@ from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
 # IMPORTS Internal:
 from .utils import _build_filepath, get_transient_radec, get_transient_mjd, get_fitsobj
 
+# Configure logger (Rob)
+_logger = logging.getLogger(f'phrosty')
+if not _logger.hasHandlers():
+    log_out = logging.StreamHandler(sys.stderr)
+    formatter = logging.Formatter(f'[%(asctime)s - %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    log_out.setFormatter(formatter)
+    _logger.addHandler(log_out)
+    _logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
+
+
 """
 This module was written with significant contributions from 
 Dr. Lei Hu (https://github.com/thomasvrussell/), and relies on his 
 SFFT image subtraction package (https://github.com/thomasvrussell/sfft).
 """
 
-output_files_rootdir = os.getenv('IMSUB_OUT','/work/lna18/imsub_out/')
+output_files_rootdir = os.getenv('DIA_OUT_DIR', None)
+assert output_files_rootdir is not None, 'You need to set DIA_OUT_DIR as an environment variable.'
 
 def check_and_mkdir(dirname):
     """
@@ -108,7 +122,8 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None
         check_and_mkdir(outdir)
 
         cd = PY_SWarp.Mk_ConfigDict(GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
-                                    SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.)
+                                    SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.,
+                                    NTHREADS=1)
         PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
                     FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
     elif skip_align and verbose:
@@ -137,7 +152,7 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False):
+def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False,logger=None):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -146,7 +161,9 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     force parameter does not currently do anything.
     """
 
-    savedir = os.path.join(output_files_rootdir,'psf')
+    logger = _logger if logger is None else logger
+
+    savedir = os.path.join(out_path,'psf')
     check_and_mkdir(savedir)
     savename = f'psf_{ra}_{dec}_{band}_{pointing}_{sca}.fits'
     savepath = os.path.join(savedir,savename)
@@ -234,9 +251,11 @@ def rotate_psf(ra,dec,psf,target,savename=None,force=False,verbose=False):
     return psf_path
 
 def crossconvolve(sci_img_path, sci_psf_path,
-                    ref_img_path, ref_psf_path,
-                    force=False,verbose=False,
-                    out_path=output_files_rootdir):
+                  ref_img_path, ref_psf_path,
+                  force=False,verbose=False,
+                  sci_outname=None,
+                  ref_outname=None,
+                  out_path=output_files_rootdir):
 
     savedir = os.path.join(out_path,'convolved')
     check_and_mkdir(savedir)
@@ -244,13 +263,19 @@ def crossconvolve(sci_img_path, sci_psf_path,
     # First convolves reference PSF on science image. 
     # Then, convolves science PSF on reference image. 
     savepaths = []
-    for img in [sci_img_path,ref_img_path]:
-        savename = f'conv_{os.path.basename(img)}'
+    for img, name in zip([sci_img_path,ref_img_path],
+                    [sci_outname,ref_outname]):
+
+        if name is None:
+            savename = f'conv_{os.path.basename(img)}'
+        else:
+            savename = name
+
         savepath = os.path.join(savedir, savename)
         savepaths.append(savepath)
 
     do_conv = (force is True) or (force is False and not any([os.path.exists(p) for p in savepaths]))
-    skip_conv =  (not force) and all([os.path.exists(p) for p in savepaths])
+    skip_conv = (not force) and all([os.path.exists(p) for p in savepaths])
     if do_conv:
         for img, psf, name, save in zip([sci_img_path, ref_img_path],
                             [ref_psf_path, sci_psf_path],
@@ -260,7 +285,7 @@ def crossconvolve(sci_img_path, sci_psf_path,
             psfdata = fits.getdata(psf, ext=0).T
 
             convolved = convolve_fft(imgdata, psfdata, boundary='fill', nan_treatment='fill', \
-                                    fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True)
+                                     fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True)
 
             with fits.open(img) as hdl:
                 hdl[0].data[:, :] = convolved.T
@@ -271,14 +296,16 @@ def crossconvolve(sci_img_path, sci_psf_path,
 
     return savepaths
 
-def stampmaker(ra, dec, imgpath, savepath=None, shape=np.array([1000,1000])):
+def stampmaker(ra, dec, imgpath, savedir=None, savename=None, shape=np.array([1000,1000])):
 
-    if savepath is None:
+    if savedir is None:
         savedir = os.path.join(output_files_rootdir,'stamps')
         check_and_mkdir(savedir)
 
-        savename = os.path.basename(imgpath)
-        savepath = os.path.join(savedir,f'{ra}_{dec}_stamp_{savename}')
+    if savename is None:
+        savename = f'stamp_{os.path.basename(imgpath)}.fits'
+
+    savepath = os.path.join(savedir,savename)
 
     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     with fits.open(imgpath) as hdu:
@@ -287,8 +314,8 @@ def stampmaker(ra, dec, imgpath, savepath=None, shape=np.array([1000,1000])):
     x, y = skycoord_to_pixel(coord, wcs)
     pxradec = np.array([[x,y]])
     
-    Stamp_Generator.SG(FITS_obj=imgpath, COORD=pxradec, COORD_TYPE='IMAGE', \
-            STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=savepath)
+    Stamp_Generator.SG(FITS_obj=imgpath, COORD=pxradec, COORD_TYPE='IMAGE',
+                       STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=savepath)
 
     return savepath
 
@@ -301,18 +328,20 @@ def bkg_mask(imgpath):
     'FLUX_RADIUS', 'FWHM_IMAGE', 'A_IMAGE', 'B_IMAGE', 'KRON_RADIUS', 'THETA_IMAGE', 'SNR_WIN']
 
     scatalog = PY_SEx.PS(FITS_obj=imgpath, SExParam=source_ext_params, GAIN_KEY='GAIN', SATUR_KEY='SATURATE', \
-                            BACK_TYPE='MANUAL', BACK_VALUE=0.0, BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
-                            DETECT_MINAREA=5, DETECT_MAXAREA=0, DEBLEND_MINCONT=0.001, BACKPHOTO_TYPE='LOCAL', \
-                            CHECKIMAGE_TYPE='SEGMENTATION', AddRD=True, ONLY_FLAGS=None, XBoundary=0.0, YBoundary=0.0, \
-                            DEFAULT_GAIN=1.0, DEFAULT_SATUR=100000, MDIR=None, VERBOSE_LEVEL=1)[1][0]
+                         BACK_TYPE='MANUAL', BACK_VALUE=0.0, BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
+                         DETECT_MINAREA=5, DETECT_MAXAREA=0, DEBLEND_MINCONT=0.001, BACKPHOTO_TYPE='LOCAL', \
+                         CHECKIMAGE_TYPE='SEGMENTATION', AddRD=True, ONLY_FLAGS=None, XBoundary=0.0, YBoundary=0.0, \
+                         DEFAULT_GAIN=1.0, DEFAULT_SATUR=100000, MDIR=None, VERBOSE_LEVEL=1)[1][0]
 
     bkg_mask = (scatalog == 0)
 
     return bkg_mask
 
 def difference(scipath, refpath, 
-        scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=3, BGPolyOrder=0, 
-        ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=8, force=False, verbose=False):
+               scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, 
+               ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False, logger=None):
+
+    tracemalloc.start()
 
     sci_basename = os.path.basename(scipath)
 
@@ -356,12 +385,20 @@ def difference(scipath, refpath,
                 hdu[0].data[:, :] = hdudata.T
                 hdu.writeto(msavepath, overwrite=True)
 
+        size,peak = tracemalloc.get_traced_memory()
+        logger.debug(f'MEMORY IN imagesubtraction.difference() BEFORE Customized_Packet.CP: size = {size}, peak = {peak}')
+        tracemalloc.reset_peak()
+
         # Do SFFT subtraction
         Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
-                            ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
-                            KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
-                            BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-                            NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
+                             ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
+                             KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
+                             BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
+                             NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
+
+        size,peak = tracemalloc.get_traced_memory()
+        logger.debug(f'MEMORY IN imagesubtraction.difference() AFTER Customized_Packet.CP: size = {size}, peak = {peak}')
+        tracemalloc.reset_peak()
 
     elif skip_subtract and verbose:
         print(diff_savepath, 'already exists. Skipping image subtraction.')
@@ -369,16 +406,17 @@ def difference(scipath, refpath,
     return diff_savepath, soln_savepath
 
 def decorr_kernel(scipath, refpath, 
-            scipsfpath, refpsfpath,
-            diffpath, solnpath, out_path=output_files_rootdir, savename=None):
-
-    if savename is None:
-        savename = os.path.basename(scipath)
+                  scipsfpath, refpsfpath,
+                  diffpath, solnpath, out_path=output_files_rootdir, savename=None):
 
     savedir = os.path.join(out_path, 'dcker')
     check_and_mkdir(savedir)
 
-    decorr_savepath = os.path.join(savedir, f'DCKer_{savename}')
+    if savename is None:
+        basename = os.path.basename(scipath)
+        savename = F'DCKer_{basename}'
+
+    decorr_savepath = os.path.join(savedir, savename)
 
     imgdatas = []
     psfdatas = []
@@ -398,9 +436,9 @@ def decorr_kernel(scipath, refpath,
     MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=solnpath)
     MK_Fin = MKerStack[0]
 
-    DCKer = DeCorrelation_Calculator.DCC(MK_JLst = [ref_psf], SkySig_JLst=[sci_bkg], \
-                                        MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], MK_Fin=MK_Fin, \
-                                        KERatio=2.0, VERBOSE_LEVEL=2)
+    DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[ref_psf], SkySig_JLst=[sci_bkg],
+                                         MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], 
+                                         MK_Fin=MK_Fin, KERatio=2.0, VERBOSE_LEVEL=2)
 
     with fits.open(scipath) as hdu:
         hdu[0].data = DCKer.T
@@ -409,21 +447,23 @@ def decorr_kernel(scipath, refpath,
     return decorr_savepath
 
 def decorr_img(imgpath, dckerpath, out_path=output_files_rootdir, savename=None):
-    
-    if savename is None:
-        savename = os.path.basename(imgpath)
 
     savedir = os.path.join(out_path,'decorr')
     check_and_mkdir(savedir)
-    decorr_savepath = os.path.join(savedir,f'decorr_{savename}')
+
+    if savename is None:
+        basename = os.path.basename(imgpath)
+        savename = f'decorr_{basename}'
+
+    decorr_savepath = os.path.join(savedir,savename)
 
     img_data = fits.getdata(imgpath, ext=0).T
     DCKer = fits.getdata(dckerpath)
 
     # Final decorrelated difference image: 
-    dcdiff = convolve_fft(img_data, DCKer, boundary='fill', \
-                            nan_treatment='fill', fill_value=0.0, normalize_kernel=True,
-                            preserve_nan=True)
+    dcdiff = convolve_fft(img_data, DCKer, boundary='fill',
+                          nan_treatment='fill', fill_value=0.0, 
+                          normalize_kernel=True, preserve_nan=True)
 
     with fits.open(imgpath) as hdu:
         hdu[0].data[:, :] = dcdiff.T
@@ -447,7 +487,7 @@ def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subd
     """
     cd = PY_SWarp.Mk_ConfigDict(GAIN_DEFAULT=1., SATLEV_DEFAULT=100000., 
                                 RESAMPLING_TYPE='BILINEAR', WEIGHT_TYPE='NONE', 
-                                RESCALE_WEIGHTS='N', **kwargs)
+                                RESCALE_WEIGHTS='N', NTHREADS=1, **kwargs)
 
     imgpaths = []
     for p in imgpath_list:
@@ -467,7 +507,7 @@ def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subd
     coadd_savepath = os.path.join(coadd_savedir,out_name)
     
     coadd = PY_SWarp.Coadd(FITS_obj=imgpaths, FITS_ref=refpath, ConfigDict=cd,
-                            OUT_path=coadd_savepath, FILL_VALUE=np.nan)
+                           OUT_path=coadd_savepath, FILL_VALUE=np.nan)
 
     return coadd_savepath, imgpaths
 
