@@ -120,6 +120,37 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
 
     return output_path, PixA_sky, PixA_skyrms, DETECT_MASK
 
+
+def run_resample(FITS_obj, FITS_targ, FITS_resamp):
+    """run resampling using CUDA"""
+    hdr_obj = fits.getheader(FITS_obj, ext=0)
+    hdr_targ = fits.getheader(FITS_targ, ext=0)
+
+    PixA_obj = fits.getdata(FITS_obj, ext=0).T
+    PixA_targ = fits.getdata(FITS_targ, ext=0).T
+
+    if not PixA_obj.flags['C_CONTIGUOUS']:
+        PixA_obj = np.ascontiguousarray(PixA_obj, np.float64)
+        PixA_obj_GPU = cupy.array(PixA_obj)
+    else: PixA_obj_GPU = cupy.array(PixA_obj.astype(np.float64))
+
+    if not PixA_targ.flags['C_CONTIGUOUS']:
+        PixA_targ = np.ascontiguousarray(PixA_targ, np.float64)
+        PixA_targ_GPU = cupy.array(PixA_targ)
+    else: PixA_targ_GPU = cupy.array(PixA_targ.astype(np.float64))
+
+    CR = Cuda_Resampling(RESAMP_METHOD='BILINEAR', VERBOSE_LEVEL=1)
+    XX_proj_GPU, YY_proj_GPU = CR.projection_sip(hdr_obj, hdr_targ, Nsamp=1024, RANDOM_SEED=10086)
+    PixA_Eobj_GPU, EProjDict = CR.frame_extension(XX_proj_GPU=XX_proj_GPU, YY_proj_GPU=YY_proj_GPU, PixA_obj_GPU=PixA_obj_GPU)
+    PixA_resamp = cupy.asnumpy(CR.resampling(PixA_Eobj_GPU=PixA_Eobj_GPU, EProjDict=EProjDict))
+
+    with fits.open(FITS_targ) as hdl:
+        PixA_resamp[PixA_resamp == 0.] = np.nan
+        hdl[0].data[:, :] = PixA_resamp.T
+        hdl.writeto(FITS_resamp, overwrite=True)
+    return None
+
+
 def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None,force=False, verbose=False):
     """
     Align images with SWarp. 
@@ -130,7 +161,6 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None
         savename = os.path.basename(sci_path)
     output_path = os.path.join(outdir, f'align_{savename}')
 
-    
 
     do_align = (force is True) or (force is False and not os.path.exists(output_path))
     skip_align = (not force) and os.path.exists(output_path)
@@ -139,7 +169,8 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None
 
         _logger.debug( "Using Cuda_Resampling.CR to resample image" )
         
-        Cuda_Resampling.CR( sci_path, template_path, output_path, METHOD="BILINEAR" )
+        # Cuda_Resampling.CR( sci_path, template_path, output_path, METHOD="BILINEAR" )
+        run_resample( sci_path, template_path, output_path )
         
     elif skip_align and verbose:
         print(output_path, 'already exists. Skipping alignment.')
