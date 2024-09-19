@@ -152,6 +152,26 @@ def get_corners(path=None,band=None,pointing=None,sca=None):
 
     return wcs_corners
 
+# TODO clean this up for style
+# TODO write something to clear this out
+_parquet_cache = {}
+
+def _read_parquet( file ):
+    global _parquet_cache
+
+    if file not in _parquet_cache:
+        logger = set_logger( "read_parquet", "read_parquet" )
+        logger.info( f"**** Reading parquet file {file}" )
+        _parquet_cache[file] = pd.read_parquet( file )
+
+        totm = 0
+        for f, df in _parquet_cache.items():
+            totm += df.memory_usage(index=True).sum()
+        
+        logger.info( f"**** Done reading parquet file {file}; cache using {totm/1024/1024} MiB" )
+    return _parquet_cache[ file ]
+
+
 def get_transient_radec(oid):
     """
     Retrieve RA, dec of a transient based on its object ID. 
@@ -160,7 +180,7 @@ def get_transient_radec(oid):
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
-        df = pd.read_parquet(file)
+        df = _read_parquet(file)
         if len(df[df['id'] == oid]) != 0:
             ra = df[df['id'] == oid]['ra'].values[0]
             dec = df[df['id'] == oid]['dec'].values[0]
@@ -174,7 +194,7 @@ def get_transient_mjd(oid):
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
-        df = pd.read_parquet(file)
+        df = _read_parquet(file)
         if len(df[df['id'] == oid]) != 0:
             start = df[df['id'] == oid]['start_mjd'].values[0]
             end = df[df['id'] == oid]['end_mjd'].values[0]

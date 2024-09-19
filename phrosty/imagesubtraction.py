@@ -1,3 +1,7 @@
+# temp import for use with nsys
+# (see "with nvtx.annotate" blocks below)
+import nvtx
+
 # IMPORTS Standard:
 import os
 import sys
@@ -391,11 +395,12 @@ def difference(scipath, refpath,
         tracemalloc.reset_peak()
 
         # Do SFFT subtraction
-        Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
-                             ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
-                             KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
-                             BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-                             NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
+        with nvtx.annotate( "Customized_Packet.CP", color=0x44ff44 ):
+            Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
+                                 ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
+                                 KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
+                                 BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
+                                 NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
 
         size,peak = tracemalloc.get_traced_memory()
         logger.debug(f'MEMORY IN imagesubtraction.difference() AFTER Customized_Packet.CP: size = {size}, peak = {peak}')
@@ -422,24 +427,28 @@ def decorr_kernel(scipath, refpath,
     imgdatas = []
     psfdatas = []
     bkgsigs = []
-    for img, psf in zip([scipath, refpath], [scipsfpath, refpsfpath]):
-        imgdata = fits.getdata(img, ext=0).T
-        psfdatas.append(fits.getdata(psf, ext=0).T)
-        imgdatas.append(imgdata)
-        bkgsigs.append(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
+    with nvtx.annotate( "get_data_and_SkyLevel", color="#ff44ff" ):
+        for img, psf in zip([scipath, refpath], [scipsfpath, refpsfpath]):
+            imgdata = fits.getdata(img, ext=0).T
+            psfdatas.append(fits.getdata(psf, ext=0).T)
+            imgdatas.append(imgdata)
+            with nvtx.annotate( "SkyLevel_Estimator", color="#ff22ff" ):
+                bkgsigs.append(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
 
     sci_img, ref_img = imgdatas
     sci_psf, ref_psf = psfdatas
     sci_bkg, ref_bkg = bkgsigs
 
-    N0, N1 = sci_img.shape
-    XY_q = np.array([[N0/2. + 0.5, N1/2. + 0.5]])
-    MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=solnpath)
-    MK_Fin = MKerStack[0]
+    with nvtx.annotate( "Realize_MatchingKernel", color="#ff88ff" ):
+        N0, N1 = sci_img.shape
+        XY_q = np.array([[N0/2. + 0.5, N1/2. + 0.5]])
+        MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=solnpath)
+        MK_Fin = MKerStack[0]
 
-    DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[ref_psf], SkySig_JLst=[sci_bkg],
-                                         MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], 
-                                         MK_Fin=MK_Fin, KERatio=2.0, VERBOSE_LEVEL=2)
+    with nvtx.annotate( "DeCorrelation_Calculator", color="#ffaaff" ):
+        DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[ref_psf], SkySig_JLst=[sci_bkg],
+                                             MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], 
+                                             MK_Fin=MK_Fin, KERatio=2.0, VERBOSE_LEVEL=2)
 
     with fits.open(scipath) as hdu:
         hdu[0].data = DCKer.T
