@@ -152,7 +152,7 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False,logger=None):
+def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False,logger=None, config_yaml_file=None):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -175,7 +175,8 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     x,y = wcs.world_to_pixel(coord)
 
     # Get PSF at specified ra, dec. 
-    config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
+    assert config_yaml_file is not None, "config_yaml_file is a required argument"
+    config_path = config_yaml_file
     config = roman_utils(config_path,pointing,sca)
     psf = config.getPSF_Image(size,x,y)
     psf.write(savepath)
@@ -338,7 +339,7 @@ def bkg_mask(imgpath):
     return bkg_mask
 
 def difference(scipath, refpath, 
-               scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, 
+               out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, 
                ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False, logger=None):
 
     tracemalloc.start()
