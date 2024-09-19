@@ -1,12 +1,21 @@
+# temp import for use with nsys
+# (see "with nvtx.annotate" blocks below)
+import nvtx
+
 # IMPORTS Standard:
 import os
 import sys
 import numpy as np
+import cupy
+import cupyx.scipy
 import gzip
 import shutil
 import logging
 import matplotlib.pyplot as plt
 import tracemalloc
+import json
+
+from numba import cuda
 
 # IMPORTS Astro:
 from astropy.io import fits 
@@ -100,13 +109,16 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
         sub_savedir = os.path.join(out_path, 'skysub')
         check_and_mkdir(sub_savedir)
 
-        SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, FITS_sky=None, FITS_skyrms=None, \
-                            ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
-                            DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=None)
+        ( SKYDIP, SKYPEAK, PIxA_skysub,
+          PixA_sky, PixA_skyrms, DETECT_MASK ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, 
+                                                                     FITS_sky=None, FITS_skyrms=None,
+                                                                     ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, 
+                                                                     DETECT_THRESH=1.5, DETECT_MINAREA=5, DETECT_MAXAREA=0, 
+                                                                     VERBOSE_LEVEL=2, MDIR=None)
     elif skip_skysub and verbose:
         print(output_path, 'already exists. Skipping sky subtraction.')
 
-    return output_path
+    return output_path, PixA_sky, PixA_skyrms, DETECT_MASK
 
 def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None,force=False, verbose=False):
     """
@@ -128,7 +140,7 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None
         _logger.debug( "Using Cuda_Resampling.CR to resample image" )
         
         Cuda_Resampling.CR( sci_path, template_path, output_path, METHOD="BILINEAR" )
-
+        
     elif skip_align and verbose:
         print(output_path, 'already exists. Skipping alignment.')
 
@@ -340,6 +352,12 @@ def bkg_mask(imgpath):
 
     bkg_mask = (scatalog == 0)
 
+    # BAD IDEA : we were reading masks from different images
+    #   (unaligned template, convolved neither.)
+    # fname = os.path.join( output_files_rootdir, f'detect_mask/{os.path.basename(imgpath)}.npy' )
+    # _logger.info( f"Trying to load detection mask from {fname}" )
+    # bkg_mask = np.load( fname )
+    
     return bkg_mask
 
 def difference(scipath, refpath, 
@@ -395,11 +413,12 @@ def difference(scipath, refpath,
         tracemalloc.reset_peak()
 
         # Do SFFT subtraction
-        Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
-                             ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
-                             KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
-                             BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-                             NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
+        with nvtx.annotate( "Customized_Packet.CP", color=0x44ff44 ):
+            Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
+                                 ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
+                                 KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
+                                 BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
+                                 NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
 
         size,peak = tracemalloc.get_traced_memory()
         logger.debug(f'MEMORY IN imagesubtraction.difference() AFTER Customized_Packet.CP: size = {size}, peak = {peak}')
@@ -426,24 +445,33 @@ def decorr_kernel(scipath, refpath,
     imgdatas = []
     psfdatas = []
     bkgsigs = []
-    for img, psf in zip([scipath, refpath], [scipsfpath, refpsfpath]):
-        imgdata = fits.getdata(img, ext=0).T
-        psfdatas.append(fits.getdata(psf, ext=0).T)
-        imgdatas.append(imgdata)
-        bkgsigs.append(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
+    with nvtx.annotate( "get_data_and_SkyLevel", color="#ff44ff" ):
+        for img, psf in zip([scipath, refpath], [scipsfpath, refpsfpath]):
+            imgdata = fits.getdata(img, ext=0).T
+            psfdatas.append(fits.getdata(psf, ext=0).T)
+            imgdatas.append(imgdata)
+            with nvtx.annotate( "SkyLevel_Estimator", color="#ff22ff" ):
+                # bkgsigs.append(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
+                # TODO : clean up interface.  This file was written in
+                #   diff-img preprocess.py
+                skyrmspath = os.path.join(output_files_rootdir, f'skyrms/{os.path.basename(img)}.json')
+                bkgsigs.append( json.load( open( skyrmspath ) )['skyrms'] )
+                
 
     sci_img, ref_img = imgdatas
     sci_psf, ref_psf = psfdatas
     sci_bkg, ref_bkg = bkgsigs
 
-    N0, N1 = sci_img.shape
-    XY_q = np.array([[N0/2. + 0.5, N1/2. + 0.5]])
-    MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=solnpath)
-    MK_Fin = MKerStack[0]
+    with nvtx.annotate( "Realize_MatchingKernel", color="#ff88ff" ):
+        N0, N1 = sci_img.shape
+        XY_q = np.array([[N0/2. + 0.5, N1/2. + 0.5]])
+        MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=solnpath)
+        MK_Fin = MKerStack[0]
 
-    DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[ref_psf], SkySig_JLst=[sci_bkg],
-                                         MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], 
-                                         MK_Fin=MK_Fin, KERatio=2.0, VERBOSE_LEVEL=2)
+    with nvtx.annotate( "DeCorrelation_Calculator", color="#ffaaff" ):
+        DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[ref_psf], SkySig_JLst=[sci_bkg],
+                                             MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], 
+                                             MK_Fin=MK_Fin, KERatio=2.0, VERBOSE_LEVEL=2)
 
     with fits.open(scipath) as hdu:
         hdu[0].data = DCKer.T
@@ -465,10 +493,21 @@ def decorr_img(imgpath, dckerpath, out_path=output_files_rootdir, savename=None)
     img_data = fits.getdata(imgpath, ext=0).T
     DCKer = fits.getdata(dckerpath)
 
-    # Final decorrelated difference image: 
+    # Final decorrelated difference image:
+    #  TODO : right now, we're acting as if
+    #     the fftn= and ifftn= arguments
+    #     of convolve_fft need to take and
+    #     return numpy arrays, so we do all
+    #     the conversions manually.  There
+    #     must be a cleaner way.
+    # THINK: can we just replace astropy convolve_fft
+    #    with cupy and do our own post-processing?
     dcdiff = convolve_fft(img_data, DCKer, boundary='fill',
                           nan_treatment='fill', fill_value=0.0, 
-                          normalize_kernel=True, preserve_nan=True)
+                          normalize_kernel=True, preserve_nan=True,
+                          fftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.fftn( cupy.array( x ) ) ),
+                          ifftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.ifftn( cupy.array( x ) ) )
+                          )
 
     with fits.open(imgpath) as hdu:
         hdu[0].data[:, :] = dcdiff.T
