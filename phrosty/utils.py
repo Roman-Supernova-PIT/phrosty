@@ -7,6 +7,7 @@ import pandas as pd
 import warnings
 from glob import glob
 import logging
+import requests
 
 # IMPORTS Astro:
 from astropy.coordinates import SkyCoord
@@ -251,7 +252,7 @@ def set_logger(proc,name):
         logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
     return logger
 
-def get_templates(oid,band,infodir,n_templates=1,verbose=False):
+def get_templates(oid,band,infodir,n_templates=1,returntype='list',verbose=False):
     """
     Get template images, i.e., which images for a given OID do not actually contain the
     transient but do contain the RA/dec coordinates.
@@ -266,11 +267,14 @@ def get_templates(oid,band,infodir,n_templates=1,verbose=False):
         print('The template images are:')
         print(template_tab)
 
-    template_list = [dict(zip(template_tab.colnames,row)) for row in template_tab]
+    if returntype == 'list':
+        template_list = [dict(zip(template_tab.colnames,row)) for row in template_tab]
 
-    return template_list
+        return template_list
+    elif returntype == 'table':
+        return template_tab
 
-def get_science(oid,band,infodir,verbose=False):
+def get_science(oid,band,infodir,returntype='list',verbose=False):
     """
     Get science images, i.e., which images for a given OID actually contain the
     transient and also contain the RA/dec coordinates.
@@ -285,9 +289,26 @@ def get_science(oid,band,infodir,verbose=False):
         print('The science images are:')
         print(in_tab)
         
-    science_list = [dict(zip(in_tab.colnames,row)) for row in in_tab]
+    if returntype == 'list':
+        science_list = [dict(zip(in_tab.colnames,row)) for row in in_tab]
+        
+        return science_list
+
+    elif returntype == 'table':
+        return in_tab
+
+def make_object_table(oid):
+
+    ra,dec = get_transient_radec(oid)
     
-    return science_list
+    server_url = 'https://roman-desc-simdex.lbl.gov'
+    req = requests.Session()
+    result = req.post(f'{server_url}/findromanimages/containing=({ra},{dec})')
+    if result.status_code != 200:
+        raise RuntimeError(f"Got status code {result.status_code}\n{result.text}")
+    
+    objs = pd.DataFrame(result.json())[['filter','pointing','sca']]
+    return objs
 
 def get_mjd_limits(obseq_path=obseq_path): 
     """
