@@ -115,11 +115,11 @@ def read_truth_txt(path=None,band=None,pointing=None,sca=None):
 
 def get_fitsobj(path=None,band=None,pointing=None,sca=None):
     imgpath = _build_filepath(path,band,pointing,sca,'image')
-    return fits.open(imgpath)
+    return fits.open(imgpath, fsspec_kwargs={"anon": True})
 
 def radec_isin(ra,dec,path=None,band=None,pointing=None,sca=None):
     _imgpath = _build_filepath(path,band,pointing,sca,'image')
-    with fits.open(_imgpath) as hdu:
+    with fits.open(_imgpath, fsspec_kwargs={"anon": True}) as hdu:
         wcs = WCS(hdu[1].header)
     worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     x, y = skycoord_to_pixel(worldcoords,wcs)
@@ -145,7 +145,7 @@ def get_corners(path=None,band=None,pointing=None,sca=None):
     :rtype: tuple
     """    
     _imgpath = _build_filepath(path,band,pointing,sca,'image')
-    with fits.open(_imgpath) as hdu:
+    with fits.open(_imgpath, fsspec_kwargs={"anon": True}) as hdu:
         wcs = WCS(hdu[1].header)
     corners = [[0,0],[0,4088],[4088,0],[4088,4088]]
     wcs_corners = wcs.pixel_to_world_values(corners)
@@ -294,7 +294,7 @@ def get_mjd_limits(obseq_path=obseq_path):
     Retrive the earliest and latest MJD in the simulations.
     """
     
-    with fits.open(obseq_path) as obs:
+    with fits.open(obseq_path, fsspec_kwargs={"anon": True}) as obs:
         obseq = Table(obs[1].data)
 
     start = min(obseq['date'])
@@ -306,7 +306,7 @@ def get_radec_limits(obseq_path=obseq_path):
     """
     Retrieve RA, dec limits (boresight coordinates).
     """
-    with fits.open(obseq_path) as obs:
+    with fits.open(obseq_path, fsspec_kwargs={"anon": True}) as obs:
         obseq = Table(obs[1].data)
 
     ra_min = min(obseq['ra'])
@@ -330,7 +330,7 @@ def get_mjd(pointing,obseq_path=obseq_path):
     :rtype: float
     """    
 
-    with fits.open(obseq_path) as obs:
+    with fits.open(obseq_path, fsspec_kwargs={"anon": True}) as obs:
         obseq = Table(obs[1].data)
     mjd = float(obseq['date'][int(pointing)])
 
@@ -350,7 +350,7 @@ def pointings_near_mjd(mjd,window=3,obseq_path=obseq_path):
     :rtype: list
     """ 
 
-    with fits.open(obseq_path) as obs:
+    with fits.open(obseq_path, fsspec_kwargs={"anon": True}) as obs:
         obseq = Table(obs[1].data)
 
     pointings = np.where(np.logical_and(obseq['date'] < mjd + window, obseq['date'] > mjd - window))[0]
@@ -375,7 +375,7 @@ def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,return_inverse=False,obseq_pat
             MJD requirements. 
     :rtype: astropy.table.Table
     """
-    with fits.open(obseq_path) as obs:
+    with fits.open(obseq_path, fsspec={"anon": True}, fsspec_kwargs={"anon": True}) as obs:
         obseq = Table(obs[1].data)
 
     if not return_inverse:
@@ -542,10 +542,10 @@ def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
     :rtype: astropy.table.Table
     """
     
-    with fits.open(obseq_path) as osp:
+    with fits.open(obseq_path, fsspec_kwargs={"anon": True}) as osp:
         obseq_orig = Table(osp[1].data)
 
-    with fits.open(obseq_radec_path) as osradecp:
+    with fits.open(obseq_radec_path, fsspec_kwargs={"anon": True}) as osradecp:
         obseq_radec_orig = Table(osradecp[1].data)
 
     pointing_idx = np.array(pointings)

@@ -70,7 +70,7 @@ def gz_and_ext(in_path,out_path):
     with gzip.open(in_path,'rb') as f_in, open(out_path,'wb') as f_out:
         shutil.copyfileobj(f_in,f_out)
     
-    with fits.open(out_path) as hdu:
+    with fits.open(out_path, fsspec_kwargs={"anon": True}) as hdu:
         newhdu = fits.HDUList([fits.PrimaryHDU(data=hdu[1].data, header=hdu[0].header)])
         newhdu.writeto(out_path, overwrite=True)
 
@@ -191,7 +191,7 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     # Transpose the data array so it works with SFFT. 
     # Can't do this like psf.array = psf.array.T because you get an error:
     # "property 'array' of 'Image' object has no setter".
-    hdu = fits.open(savepath)
+    hdu = fits.open(savepath, fsspec_kwargs={"anon": True})
     hdu[0].data = hdu[0].data.T
     hdu[0].header['CRVAL1'] = ra
     hdu[0].header['CRVAL2'] = dec
@@ -287,7 +287,7 @@ def crossconvolve(sci_img_path, sci_psf_path,
             convolved = convolve_fft(imgdata, psfdata, boundary='fill', nan_treatment='fill', \
                                      fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True)
 
-            with fits.open(img) as hdl:
+            with fits.open(img, fsspec_kwargs={"anon": True}) as hdl:
                 hdl[0].data[:, :] = convolved.T
                 hdl.writeto(save, overwrite=True)
 
@@ -308,7 +308,7 @@ def stampmaker(ra, dec, imgpath, savedir=None, savename=None, shape=np.array([10
     savepath = os.path.join(savedir,savename)
 
     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-    with fits.open(imgpath) as hdu:
+    with fits.open(imgpath, fsspec_kwargs={"anon": True}) as hdu:
         wcs = WCS(hdu[0].header)
     
     x, y = skycoord_to_pixel(coord, wcs)
@@ -379,7 +379,7 @@ def difference(scipath, refpath,
 
         for path, msavepath in zip([refpath, scipath], \
                                     [ref_masked_savepath, sci_masked_savepath]):
-            with fits.open(path) as hdu:
+            with fits.open(path, fsspec_kwargs={"anon": True}) as hdu:
                 hdudata = hdu[0].data.T
                 hdudata[bkgmask] = 0.0
                 hdu[0].data[:, :] = hdudata.T
@@ -440,7 +440,7 @@ def decorr_kernel(scipath, refpath,
                                          MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], 
                                          MK_Fin=MK_Fin, KERatio=2.0, VERBOSE_LEVEL=2)
 
-    with fits.open(scipath) as hdu:
+    with fits.open(scipath, fsspec_kwargs={"anon": True}) as hdu:
         hdu[0].data = DCKer.T
         hdu.writeto(decorr_savepath, overwrite=True)
 
@@ -465,7 +465,7 @@ def decorr_img(imgpath, dckerpath, out_path=output_files_rootdir, savename=None)
                           nan_treatment='fill', fill_value=0.0, 
                           normalize_kernel=True, preserve_nan=True)
 
-    with fits.open(imgpath) as hdu:
+    with fits.open(imgpath, fsspec_kwargs={"anon": True}) as hdu:
         hdu[0].data[:, :] = dcdiff.T
         hdu.writeto(decorr_savepath, overwrite=True)
 
@@ -742,7 +742,7 @@ class imsub():
         """Quick display and/or save the difference image."""
         assert self.diff_path is not None, 'The path to the difference image does not exist. Go back and use self.diff.'
 
-        with fits.open(self.diff_path) as hdu:
+        with fits.open(self.diff_path, fsspec_kwargs={"anon": True}) as hdu:
             img = hdu[0].data
         vmin,vmax = ZScaleInterval().get_limits(img)
         plt.imshow(img,vmin=vmin,vmax=vmax)
