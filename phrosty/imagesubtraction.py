@@ -67,8 +67,13 @@ def gz_and_ext(in_path,out_path):
     """
     Utility function that unzips the original file and turns it into a single-extension FITS file.     
     """
-    with gzip.open(in_path,'rb') as f_in, open(out_path,'wb') as f_out:
-        shutil.copyfileobj(f_in,f_out)
+    import boto3
+    import botocore
+    from smart_open import open
+    config = botocore.client.Config(signature_version=botocore.UNSIGNED)
+    params = {'client': boto3.client('s3', config=config)}
+    with open(in_path,'rb', transport_params=params) as f_in, open(out_path,'wb', transport_params=params) as f_out:
+        f_out.write(f_in.read())
     
     with fits.open(out_path, fsspec_kwargs={"anon": True}) as hdu:
         newhdu = fits.HDUList([fits.PrimaryHDU(data=hdu[1].data, header=hdu[0].header)])

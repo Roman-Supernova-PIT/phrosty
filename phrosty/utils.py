@@ -8,6 +8,10 @@ import warnings
 from glob import glob
 import logging
 
+import boto3
+import botocore
+from smart_open import open
+
 # IMPORTS Astro:
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
@@ -79,6 +83,32 @@ def _build_filepath(path,band,pointing,sca,filetype,rootdir=rootdir):
 
     elif (path is None) and (band is None) and (pointing is None) and (sca is None):
         raise ValueError('You need to provide either the full image path, or the band, pointing, and SCA.')
+
+
+def files_that_exist(image_info):
+    """
+    Returns list of dicts of {band, pointing, and sca} that exist on disk.
+
+    Works with local files or S3.
+    Order of list is preserved.
+    """
+    config = botocore.client.Config(signature_version=botocore.UNSIGNED)
+    params = {"client": boto3.client("s3", config=config)}
+
+    new_image_info = []
+    for infodict in image_info:
+        band, pointing, sca = infodict["filter"], infodict["pointing"], infodict["sca"]
+        original_imgpath = _build_filepath(path=None, band=band, pointing=pointing, sca=sca, filetype="image")
+        try:
+            fh = open(original_imgpath, transport_params=params)
+            fh.close()
+            new_image_info.append(infodict)
+        except Exception as e:
+            print(e)
+            pass
+
+    return new_image_info
+
 
 def get_roman_bands():
     """
