@@ -41,10 +41,10 @@ from sfft.CustomizedPacket import Customized_Packet
 from sfft.utils.SkyLevelEstimator import SkyLevel_Estimator
 from sfft.utils.SFFTSolutionReader import Realize_MatchingKernel
 from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
-# from sfft.utils.meta.MultiProc import Multi_Proc
+from SpaceSFFTPurePack.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow, SpaceSFFT_CupyFlow_NVTX
 
 # IMPORTS Internal:
-from .utils import _build_filepath, get_transient_radec, get_transient_mjd, get_fitsobj
+from phrosty.utils import _build_filepath, get_transient_radec, get_transient_mjd, get_fitsobj
 
 # Configure logger (Rob)
 _logger = logging.getLogger(f'phrosty')
