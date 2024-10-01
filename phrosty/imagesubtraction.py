@@ -153,7 +153,7 @@ def run_resample(FITS_obj, FITS_targ, FITS_resamp):
 
 def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None,force=False, verbose=False):
     """
-    Align images with SWarp. 
+    Align images. 
     """
 
     outdir = os.path.join(out_path, 'align')
@@ -176,6 +176,99 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None
         print(output_path, 'already exists. Skipping alignment.')
 
     return output_path
+
+# def cuda_imalign(template_path, sci_path,
+#                  template_psf_path, sci_psf_path,
+#                  template_detection_mask_path, sci_detection_mask_path,
+#                  out_path=output_files_rootdir,savename=None,
+#                  force=False, verbose=False
+#                 ):
+
+#     outdir = os.path.join(out_path, 'align')
+#     if savename is None:
+#         savename = os.path.basename(sci_path)
+#     output_path = os.path.join(outdir, f'align_{savename}')
+
+#     do_align = (force is True) or (force is False and not os.path.exists(output_path))
+#     skip_align = (not force) and os.path.exists(output_path)
+#     if do_align:
+#         check_and_mkdir(outdir)
+
+#         _logger.debug( "Using SpaceSFFTCupyFlow to resample image" )
+
+#         with nvtx.annotate("toGPU", color="#714CF9"):
+
+#             FITS_REF = template_path
+#             FITS_oSCI = sci_path
+
+#             FITS_PSF_REF = template_psf_path
+#             FITS_PSF_oSCI = sci_psf_path
+
+#             FITS_REF_DMASK = template_detection_mask_path
+#             FITS_oSCI_DMASK = sci_detection_mask_path
+
+#             hdr_REF = fits.getheader(FITS_REF, ext=0)
+#             hdr_oSCI = fits.getheader(FITS_oSCI, ext=0)
+
+#             PixA_REF = fits.getdata(FITS_REF, ext=0).T
+#             PixA_oSCI = fits.getdata(FITS_oSCI, ext=0).T
+
+#             PixA_REF_DMASK = fits.getdata(FITS_REF_DMASK, ext=0).T
+#             PixA_oSCI_DMASK = fits.getdata(FITS_oSCI_DMASK, ext=0).T
+
+#             PSF_REF = fits.getdata(FITS_PSF_REF, ext=0).T
+#             PSF_oSCI = fits.getdata(FITS_PSF_oSCI, ext=0).T
+
+#             if not PixA_REF.flags['C_CONTIGUOUS']:
+#                 PixA_REF = np.ascontiguousarray(PixA_REF, np.float64)
+#                 PixA_REF_GPU = cp.array(PixA_REF)
+#             else: PixA_REF_GPU = cp.array(PixA_REF.astype(np.float64))
+
+#             if not PixA_oSCI.flags['C_CONTIGUOUS']:
+#                 PixA_oSCI = np.ascontiguousarray(PixA_oSCI, np.float64)
+#                 PixA_oSCI_GPU = cp.array(PixA_oSCI)
+#             else: PixA_oSCI_GPU = cp.array(PixA_oSCI.astype(np.float64))
+
+#             if not PixA_REF_DMASK.flags['C_CONTIGUOUS']:
+#                 PixA_REF_DMASK = np.ascontiguousarray(PixA_REF_DMASK, np.float64)
+#                 PixA_REF_DMASK_GPU = cp.array(PixA_REF_DMASK)
+#             else: PixA_REF_DMASK_GPU = cp.array(PixA_REF_DMASK.astype(np.float64))
+
+#             if not PixA_oSCI_DMASK.flags['C_CONTIGUOUS']:
+#                 PixA_oSCI_DMASK = np.ascontiguousarray(PixA_oSCI_DMASK, np.float64)
+#                 PixA_oSCI_DMASK_GPU = cp.array(PixA_oSCI_DMASK)
+#             else: PixA_oSCI_DMASK_GPU = cp.array(PixA_oSCI_DMASK.astype(np.float64))
+
+#             if not PSF_REF.flags['C_CONTIGUOUS']:
+#                 PSF_REF = np.ascontiguousarray(PSF_REF, np.float64)
+#                 PSF_REF_GPU = cp.array(PSF_REF)
+#             else: PSF_REF_GPU = cp.array(PSF_REF.astype(np.float64))
+
+#             if not PSF_oSCI.flags['C_CONTIGUOUS']:
+#                 PSF_oSCI = np.ascontiguousarray(PSF_oSCI, np.float64)
+#                 PSF_oSCI_GPU = cp.array(PSF_oSCI)
+#             else: PSF_oSCI_GPU = cp.array(PSF_oSCI.astype(np.float64))
+
+#         PixA_DIFF_GPU, PixA_DCDIFF_GPU, PixA_DSNR_GPU = SpaceSFFT_CupyFlow_NVTX.SSCFN(hdr_REF=hdr_REF, hdr_oSCI=hdr_oSCI, 
+#             PixA_REF_GPU=PixA_REF_GPU, PixA_oSCI_GPU=PixA_oSCI_GPU, PixA_REF_DMASK_GPU=PixA_REF_DMASK_GPU, 
+#             PixA_oSCI_DMASK_GPU=PixA_oSCI_DMASK_GPU, PSF_REF_GPU=PSF_REF_GPU, PSF_oSCI_GPU=PSF_oSCI_GPU, 
+#             GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, ConstPhotRatio=True, CUDA_DEVICE_4SUBTRACT='0', GAIN=1.0)
+
+#         with nvtx.annotate("toCPU", color="#FD89B4"):
+#             PixA_DCDIFF = cp.asnumpy(PixA_DCDIFF_GPU)
+#             PixA_DSNR = cp.asnumpy(PixA_DSNR_GPU)
+
+        # save the final results
+        # FITS_DCDIFF = output_dir + "/%s.sciE.skysub.resamp.sfftdiff.decorr.fits" % sciname
+        # with fits.open(FITS_REF) as hdul:
+        #     hdul[0].data = PixA_DCDIFF.T
+        #     hdul.writeto(FITS_DCDIFF, overwrite=True)
+
+        # FITS_DSNR = output_dir + "/%s.sciE.skysub.resamp.sfftdiff.decorr.snr.fits" % sciname
+        # with fits.open(FITS_REF) as hdul:
+        #     hdul[0].data = PixA_DSNR.T
+        #     hdul.writeto(FITS_DSNR, overwrite=True)
+        # print("Done!")
 
 def calculate_skyN_vector(wcshdr, x_start, y_start, shift_dec=1.0):
     """
