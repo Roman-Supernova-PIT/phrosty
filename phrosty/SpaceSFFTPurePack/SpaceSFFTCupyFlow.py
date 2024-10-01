@@ -2,13 +2,13 @@ import cupy as cp
 import numpy as np
 from sfft.utils.SFFTSolutionReader import Realize_MatchingKernel
 from sfft.PureCupyCustomizedPacket import PureCupy_Customized_Packet
-from SpaceSFFTPurePack.sfftutils.PatternRotationCalculator import PatternRotation_Calculator
-from SpaceSFFTPurePack.sfftutils.PureCupyFFTKits import PureCupy_FFTKits
-from SpaceSFFTPurePack.sfftutils.PureCupyDeCorrelationCalculator import PureCupy_DeCorrelation_Calculator
 
-# loacal imports
-from SpaceSFFTPurePack.ResampKits import Cupy_ZoomRotate
-from SpaceSFFTPurePack.ResampKits import Cupy_Resampling
+# IMPORTS Local:
+from phrosty.SpaceSFFTPurePack.sfftutils.PatternRotationCalculator import PatternRotation_Calculator
+from phrosty.SpaceSFFTPurePack.sfftutils.PureCupyFFTKits import PureCupy_FFTKits
+from phrosty.SpaceSFFTPurePack.sfftutils.PureCupyDeCorrelationCalculator import PureCupy_DeCorrelation_Calculator
+from phrosty.SpaceSFFTPurePack.ResampKits import Cupy_ZoomRotate
+from phrosty.SpaceSFFTPurePack.ResampKits import Cupy_Resampling
 
 __last_update__ = "2024-09-22"
 __author__ = "Lei Hu <leihu@andrew.cmu.edu>"
@@ -46,6 +46,8 @@ class SpaceSFFT_CupyFlow:
         BlankMask_GPU = PixA_SCI_GPU == 0.
 
         PATTERN_ROTATE_ANGLE = PatternRotation_Calculator.PRC(hdr_obj=hdr_oSCI, hdr_targ=hdr_REF)
+
+        # This rotates the science PSF
         PSF_SCI_GPU = Cupy_ZoomRotate.CZR(PixA_obj_GPU=PSF_oSCI_GPU, ZOOM_SCALE_X=1., ZOOM_SCALE_Y=1., \
             OUTSIZE_PARIRY_X='UNCHANGED', OUTSIZE_PARIRY_Y='UNCHANGED', PATTERN_ROTATE_ANGLE=PATTERN_ROTATE_ANGLE, \
             RESAMP_METHOD='BILINEAR', PAD_FILL_VALUE=0., NAN_FILL_VALUE=0., THREAD_PER_BLOCK=8, \

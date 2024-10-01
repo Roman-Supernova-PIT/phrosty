@@ -41,9 +41,9 @@ from sfft.CustomizedPacket import Customized_Packet
 from sfft.utils.SkyLevelEstimator import SkyLevel_Estimator
 from sfft.utils.SFFTSolutionReader import Realize_MatchingKernel
 from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
-from SpaceSFFTPurePack.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow, SpaceSFFT_CupyFlow_NVTX
 
 # IMPORTS Internal:
+from phrosty.SpaceSFFTPurePack.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow, SpaceSFFT_CupyFlow_NVTX
 from phrosty.utils import _build_filepath, get_transient_radec, get_transient_mjd, get_fitsobj
 
 # Configure logger (Rob)
@@ -259,15 +259,20 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None
 #             PixA_DSNR = cp.asnumpy(PixA_DSNR_GPU)
 
         # save the final results
-        # FITS_DCDIFF = output_dir + "/%s.sciE.skysub.resamp.sfftdiff.decorr.fits" % sciname
+
+        # FITS_DCDIFF = os.path.join(out_path,'decorr',f'decorr_diff_{savename})
         # with fits.open(FITS_REF) as hdul:
         #     hdul[0].data = PixA_DCDIFF.T
         #     hdul.writeto(FITS_DCDIFF, overwrite=True)
 
-        # FITS_DSNR = output_dir + "/%s.sciE.skysub.resamp.sfftdiff.decorr.snr.fits" % sciname
+        # FITS_DSNR = os.path.join(out_path,'decorr',f'decorr_snr_{savename}')
         # with fits.open(FITS_REF) as hdul:
         #     hdul[0].data = PixA_DSNR.T
         #     hdul.writeto(FITS_DSNR, overwrite=True)
+
+
+        # ADD DECORR PSF AND DECORR SCIENCE IMAGE. 
+
         # print("Done!")
 
 def calculate_skyN_vector(wcshdr, x_start, y_start, shift_dec=1.0):

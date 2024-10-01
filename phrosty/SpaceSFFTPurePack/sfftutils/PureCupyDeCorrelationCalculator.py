@@ -1,7 +1,7 @@
 import cupy as cp
 import numpy as np
 # from sfft.utils.PureCupyFFTKits import PureCupy_FFTKits
-from SpaceSFFTPurePack.sfftutils.PureCupyFFTKits import PureCupy_FFTKits
+from phrosty.SpaceSFFTPurePack.sfftutils.PureCupyFFTKits import PureCupy_FFTKits
 
 __last_update__ = "2024-09-22"
 __author__ = "Lei Hu <leihu@andrew.cmu.edu>"
