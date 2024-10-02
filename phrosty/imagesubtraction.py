@@ -316,6 +316,9 @@ def get_imsim_psf(ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
     check_and_mkdir(savedir)
     savename = f'psf_{ra}_{dec}_{band}_{pointing}_{sca}.fits'
     savepath = os.path.join(savedir,savename)
+    # If savepath exists, just use it and assume it's correct
+    if not force and os.path.exists(savepath):
+        return savepath
 
     # Get WCS of the image you need the PSF for.
     hdu = get_fitsobj(band=band,pointing=pointing,sca=sca)
