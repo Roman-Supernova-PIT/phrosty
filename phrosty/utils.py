@@ -7,6 +7,7 @@ import pandas as pd
 import warnings
 from glob import glob
 import logging
+import requests
 
 # IMPORTS Astro:
 from astropy.coordinates import SkyCoord
@@ -152,15 +153,39 @@ def get_corners(path=None,band=None,pointing=None,sca=None):
 
     return wcs_corners
 
+
+# TODO clean this up for style
+# TODO write something to clear this out
+_parquet_cache = {}
+
+def _read_parquet( file ):
+    global _parquet_cache
+
+    if file not in _parquet_cache:
+        logger = set_logger( "read_parquet", "read_parquet" )
+        logger.info( f"**** Reading parquet file {file}" )
+        _parquet_cache[file] = pd.read_parquet( file )
+
+        totm = 0
+        for f, df in _parquet_cache.items():
+            totm += df.memory_usage(index=True).sum()
+        
+        logger.info( f"**** Done reading parquet file {file}; cache using {totm/1024/1024} MiB" )
+    return _parquet_cache[ file ]
+
+
 def get_transient_radec(oid):
     """
     Retrieve RA, dec of a transient based on its object ID. 
     """
+
+    logger = set_logger( "get_transient_info", "get_transient_radec" )
+    
     oid = int(oid)
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
-        df = pd.read_parquet(file)
+        df = _read_parquet(file)
         if len(df[df['id'] == oid]) != 0:
             ra = df[df['id'] == oid]['ra'].values[0]
             dec = df[df['id'] == oid]['dec'].values[0]
@@ -174,7 +199,7 @@ def get_transient_mjd(oid):
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
-        df = pd.read_parquet(file)
+        df = _read_parquet(file)
         if len(df[df['id'] == oid]) != 0:
             start = df[df['id'] == oid]['start_mjd'].values[0]
             end = df[df['id'] == oid]['end_mjd'].values[0]
@@ -188,7 +213,7 @@ def get_transient_zcmb(oid):
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
-        df = pd.read_parquet(file)
+        df = _read_parquet(file)
         if len(df[df['id'] == oid]) != 0:
             z = float(df[df['id'] == oid]['z_CMB'].values[0])
 
@@ -202,7 +227,7 @@ def get_transient_peakmjd(oid):
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
-        df = pd.read_parquet(file)
+        df = _read_parquet(file)
         if len(df[df['id'] == oid]) != 0:
             mjd = df[df['id'] == oid]['peak_mjd'].values[0]
 
@@ -212,8 +237,14 @@ def get_transient_info(oid):
     """
     Retrieve RA, Dec, MJD start, MJD end for specified object ID.  
     """
+
+    logger = set_logger( "get_transient_info", "get_transient_info" )
+
+    logger.info( "*** calling get_transient_radec" )
     RA, DEC = get_transient_radec(oid)
+    logger.info( "*** calling get_transient_mjd" )
     start, end = get_transient_mjd(oid)
+    logger.info( "*** Done with get_transient_info" )
 
     return RA, DEC, start, end
 
@@ -251,7 +282,7 @@ def set_logger(proc,name):
         logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
     return logger
 
-def get_templates(oid,band,infodir,n_templates=1,verbose=False):
+def get_templates(oid,band,infodir,n_templates=1,returntype='list',verbose=False):
     """
     Get template images, i.e., which images for a given OID do not actually contain the
     transient but do contain the RA/dec coordinates.
@@ -266,11 +297,14 @@ def get_templates(oid,band,infodir,n_templates=1,verbose=False):
         print('The template images are:')
         print(template_tab)
 
-    template_list = [dict(zip(template_tab.colnames,row)) for row in template_tab]
+    if returntype == 'list':
+        template_list = [dict(zip(template_tab.colnames,row)) for row in template_tab]
 
-    return template_list
+        return template_list
+    elif returntype == 'table':
+        return template_tab
 
-def get_science(oid,band,infodir,verbose=False):
+def get_science(oid,band,infodir,returntype='list',verbose=False):
     """
     Get science images, i.e., which images for a given OID actually contain the
     transient and also contain the RA/dec coordinates.
@@ -285,9 +319,26 @@ def get_science(oid,band,infodir,verbose=False):
         print('The science images are:')
         print(in_tab)
         
-    science_list = [dict(zip(in_tab.colnames,row)) for row in in_tab]
+    if returntype == 'list':
+        science_list = [dict(zip(in_tab.colnames,row)) for row in in_tab]
+        
+        return science_list
+
+    elif returntype == 'table':
+        return in_tab
+
+def make_object_table(oid):
+
+    ra,dec = get_transient_radec(oid)
     
-    return science_list
+    server_url = 'https://roman-desc-simdex.lbl.gov'
+    req = requests.Session()
+    result = req.post(f'{server_url}/findromanimages/containing=({ra},{dec})')
+    if result.status_code != 200:
+        raise RuntimeError(f"Got status code {result.status_code}\n{result.text}")
+    
+    objs = pd.DataFrame(result.json())[['filter','pointing','sca']]
+    return objs
 
 def get_mjd_limits(obseq_path=obseq_path): 
     """

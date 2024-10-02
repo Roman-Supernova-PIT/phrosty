@@ -1,12 +1,21 @@
+# temp import for use with nsys
+# (see "with nvtx.annotate" blocks below)
+import nvtx
+
 # IMPORTS Standard:
 import os
 import sys
 import numpy as np
+import cupy
+import cupyx.scipy
 import gzip
 import shutil
 import logging
 import matplotlib.pyplot as plt
 import tracemalloc
+import json
+
+from numba import cuda
 
 # IMPORTS Astro:
 from astropy.io import fits 
@@ -26,15 +35,16 @@ from sfft.utils.StampGenerator import Stamp_Generator
 from sfft.utils.pyAstroMatic.PYSWarp import PY_SWarp
 from sfft.utils.ReadWCS import Read_WCS
 from sfft.utils.ImageZoomRotate import Image_ZoomRotate
+from sfft.utils.CudaResampling import Cuda_Resampling
 from sfft.utils.pyAstroMatic.PYSEx import PY_SEx
 from sfft.CustomizedPacket import Customized_Packet
 from sfft.utils.SkyLevelEstimator import SkyLevel_Estimator
 from sfft.utils.SFFTSolutionReader import Realize_MatchingKernel
 from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
-# from sfft.utils.meta.MultiProc import Multi_Proc
 
 # IMPORTS Internal:
-from .utils import _build_filepath, get_transient_radec, get_transient_mjd, get_fitsobj
+from phrosty.SpaceSFFTPurePack.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow, SpaceSFFT_CupyFlow_NVTX
+from phrosty.utils import _build_filepath, get_transient_radec, get_transient_mjd, get_fitsobj
 
 # Configure logger (Rob)
 _logger = logging.getLogger(f'phrosty')
@@ -99,37 +109,175 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
         sub_savedir = os.path.join(out_path, 'skysub')
         check_and_mkdir(sub_savedir)
 
-        SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, FITS_sky=None, FITS_skyrms=None, \
-                            ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \
-                            DETECT_MINAREA=5, DETECT_MAXAREA=0, VERBOSE_LEVEL=2, MDIR=None)
+        ( SKYDIP, SKYPEAK, PIxA_skysub,
+          PixA_sky, PixA_skyrms, DETECT_MASK ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, 
+                                                                     FITS_sky=None, FITS_skyrms=None,
+                                                                     ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, 
+                                                                     DETECT_THRESH=1.5, DETECT_MINAREA=5, DETECT_MAXAREA=0, 
+                                                                     VERBOSE_LEVEL=2, MDIR=None)
     elif skip_skysub and verbose:
         print(output_path, 'already exists. Skipping sky subtraction.')
 
-    return output_path
+    return output_path, PixA_sky, PixA_skyrms, DETECT_MASK
+
+
+def run_resample(FITS_obj, FITS_targ, FITS_resamp):
+    """run resampling using CUDA"""
+    hdr_obj = fits.getheader(FITS_obj, ext=0)
+    hdr_targ = fits.getheader(FITS_targ, ext=0)
+
+    PixA_obj = fits.getdata(FITS_obj, ext=0).T
+    PixA_targ = fits.getdata(FITS_targ, ext=0).T
+
+    if not PixA_obj.flags['C_CONTIGUOUS']:
+        PixA_obj = np.ascontiguousarray(PixA_obj, np.float64)
+        PixA_obj_GPU = cupy.array(PixA_obj)
+    else: PixA_obj_GPU = cupy.array(PixA_obj.astype(np.float64))
+
+    if not PixA_targ.flags['C_CONTIGUOUS']:
+        PixA_targ = np.ascontiguousarray(PixA_targ, np.float64)
+        PixA_targ_GPU = cupy.array(PixA_targ)
+    else: PixA_targ_GPU = cupy.array(PixA_targ.astype(np.float64))
+
+    with nvtx.annotate( "Cuda_Resampling", color=0xdddd00 ):
+        CR = Cuda_Resampling(RESAMP_METHOD='BILINEAR', VERBOSE_LEVEL=1)
+    with nvtx.annotate( "CR.projection_sip", color=0xbbbb00 ):
+        XX_proj_GPU, YY_proj_GPU = CR.projection_sip(hdr_obj, hdr_targ, Nsamp=1024, RANDOM_SEED=10086)
+    with nvtx.annotate( "CR.frame_extension", color=0x999900 ):
+        PixA_Eobj_GPU, EProjDict = CR.frame_extension(XX_proj_GPU=XX_proj_GPU, YY_proj_GPU=YY_proj_GPU, PixA_obj_GPU=PixA_obj_GPU)
+    with nvtx.annotate( "CR.resampling", color=0x777700 ):
+        PixA_resamp = cupy.asnumpy(CR.resampling(PixA_Eobj_GPU=PixA_Eobj_GPU, EProjDict=EProjDict))
+
+    with fits.open(FITS_targ) as hdl:
+        PixA_resamp[PixA_resamp == 0.] = np.nan
+        hdl[0].data[:, :] = PixA_resamp.T
+        hdl.writeto(FITS_resamp, overwrite=True)
+    return None
+
 
 def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None,force=False, verbose=False):
     """
-    Align images with SWarp. 
+    Align images. 
     """
+
     outdir = os.path.join(out_path, 'align')
     if savename is None:
         savename = os.path.basename(sci_path)
     output_path = os.path.join(outdir, f'align_{savename}')
+
 
     do_align = (force is True) or (force is False and not os.path.exists(output_path))
     skip_align = (not force) and os.path.exists(output_path)
     if do_align:
         check_and_mkdir(outdir)
 
-        cd = PY_SWarp.Mk_ConfigDict(GAIN_KEY='GAIN', SATUR_KEY='SATURATE', OVERSAMPLING=1, RESAMPLING_TYPE='BILINEAR', \
-                                    SUBTRACT_BACK='N', VERBOSE_TYPE='NORMAL', GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.,
-                                    NTHREADS=1)
-        PY_SWarp.PS(FITS_obj=sci_path, FITS_ref=template_path, ConfigDict=cd, FITS_resamp=output_path, \
-                    FILL_VALUE=np.nan, VERBOSE_LEVEL=1, TMPDIR_ROOT=None)
+        _logger.debug( "Using Cuda_Resampling.CR to resample image" )
+        
+        # Cuda_Resampling.CR( sci_path, template_path, output_path, METHOD="BILINEAR" )
+        run_resample( sci_path, template_path, output_path )
+        
     elif skip_align and verbose:
         print(output_path, 'already exists. Skipping alignment.')
 
     return output_path
+
+# def cuda_imalign(template_path, sci_path,
+#                  template_psf_path, sci_psf_path,
+#                  template_detection_mask_path, sci_detection_mask_path,
+#                  out_path=output_files_rootdir,savename=None,
+#                  force=False, verbose=False
+#                 ):
+
+#     outdir = os.path.join(out_path, 'align')
+#     if savename is None:
+#         savename = os.path.basename(sci_path)
+#     output_path = os.path.join(outdir, f'align_{savename}')
+
+#     do_align = (force is True) or (force is False and not os.path.exists(output_path))
+#     skip_align = (not force) and os.path.exists(output_path)
+#     if do_align:
+#         check_and_mkdir(outdir)
+
+#         _logger.debug( "Using SpaceSFFTCupyFlow to resample image" )
+
+#         with nvtx.annotate("toGPU", color="#714CF9"):
+
+#             FITS_REF = template_path
+#             FITS_oSCI = sci_path
+
+#             FITS_PSF_REF = template_psf_path
+#             FITS_PSF_oSCI = sci_psf_path
+
+#             FITS_REF_DMASK = template_detection_mask_path
+#             FITS_oSCI_DMASK = sci_detection_mask_path
+
+#             hdr_REF = fits.getheader(FITS_REF, ext=0)
+#             hdr_oSCI = fits.getheader(FITS_oSCI, ext=0)
+
+#             PixA_REF = fits.getdata(FITS_REF, ext=0).T
+#             PixA_oSCI = fits.getdata(FITS_oSCI, ext=0).T
+
+#             PixA_REF_DMASK = fits.getdata(FITS_REF_DMASK, ext=0).T
+#             PixA_oSCI_DMASK = fits.getdata(FITS_oSCI_DMASK, ext=0).T
+
+#             PSF_REF = fits.getdata(FITS_PSF_REF, ext=0).T
+#             PSF_oSCI = fits.getdata(FITS_PSF_oSCI, ext=0).T
+
+#             if not PixA_REF.flags['C_CONTIGUOUS']:
+#                 PixA_REF = np.ascontiguousarray(PixA_REF, np.float64)
+#                 PixA_REF_GPU = cp.array(PixA_REF)
+#             else: PixA_REF_GPU = cp.array(PixA_REF.astype(np.float64))
+
+#             if not PixA_oSCI.flags['C_CONTIGUOUS']:
+#                 PixA_oSCI = np.ascontiguousarray(PixA_oSCI, np.float64)
+#                 PixA_oSCI_GPU = cp.array(PixA_oSCI)
+#             else: PixA_oSCI_GPU = cp.array(PixA_oSCI.astype(np.float64))
+
+#             if not PixA_REF_DMASK.flags['C_CONTIGUOUS']:
+#                 PixA_REF_DMASK = np.ascontiguousarray(PixA_REF_DMASK, np.float64)
+#                 PixA_REF_DMASK_GPU = cp.array(PixA_REF_DMASK)
+#             else: PixA_REF_DMASK_GPU = cp.array(PixA_REF_DMASK.astype(np.float64))
+
+#             if not PixA_oSCI_DMASK.flags['C_CONTIGUOUS']:
+#                 PixA_oSCI_DMASK = np.ascontiguousarray(PixA_oSCI_DMASK, np.float64)
+#                 PixA_oSCI_DMASK_GPU = cp.array(PixA_oSCI_DMASK)
+#             else: PixA_oSCI_DMASK_GPU = cp.array(PixA_oSCI_DMASK.astype(np.float64))
+
+#             if not PSF_REF.flags['C_CONTIGUOUS']:
+#                 PSF_REF = np.ascontiguousarray(PSF_REF, np.float64)
+#                 PSF_REF_GPU = cp.array(PSF_REF)
+#             else: PSF_REF_GPU = cp.array(PSF_REF.astype(np.float64))
+
+#             if not PSF_oSCI.flags['C_CONTIGUOUS']:
+#                 PSF_oSCI = np.ascontiguousarray(PSF_oSCI, np.float64)
+#                 PSF_oSCI_GPU = cp.array(PSF_oSCI)
+#             else: PSF_oSCI_GPU = cp.array(PSF_oSCI.astype(np.float64))
+
+#         PixA_DIFF_GPU, PixA_DCDIFF_GPU, PixA_DSNR_GPU = SpaceSFFT_CupyFlow_NVTX.SSCFN(hdr_REF=hdr_REF, hdr_oSCI=hdr_oSCI, 
+#             PixA_REF_GPU=PixA_REF_GPU, PixA_oSCI_GPU=PixA_oSCI_GPU, PixA_REF_DMASK_GPU=PixA_REF_DMASK_GPU, 
+#             PixA_oSCI_DMASK_GPU=PixA_oSCI_DMASK_GPU, PSF_REF_GPU=PSF_REF_GPU, PSF_oSCI_GPU=PSF_oSCI_GPU, 
+#             GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, ConstPhotRatio=True, CUDA_DEVICE_4SUBTRACT='0', GAIN=1.0)
+
+#         with nvtx.annotate("toCPU", color="#FD89B4"):
+#             PixA_DCDIFF = cp.asnumpy(PixA_DCDIFF_GPU)
+#             PixA_DSNR = cp.asnumpy(PixA_DSNR_GPU)
+
+        # save the final results
+
+        # FITS_DCDIFF = os.path.join(out_path,'decorr',f'decorr_diff_{savename})
+        # with fits.open(FITS_REF) as hdul:
+        #     hdul[0].data = PixA_DCDIFF.T
+        #     hdul.writeto(FITS_DCDIFF, overwrite=True)
+
+        # FITS_DSNR = os.path.join(out_path,'decorr',f'decorr_snr_{savename}')
+        # with fits.open(FITS_REF) as hdul:
+        #     hdul[0].data = PixA_DSNR.T
+        #     hdul.writeto(FITS_DSNR, overwrite=True)
+
+
+        # ADD DECORR PSF AND DECORR SCIENCE IMAGE. 
+
+        # print("Done!")
 
 def calculate_skyN_vector(wcshdr, x_start, y_start, shift_dec=1.0):
     """
@@ -152,7 +300,8 @@ def calculate_rotate_angle(vector_ref, vector_obj):
         rotate_angle += 360.0 
     return rotate_angle
 
-def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdir,force=False,logger=None):
+def get_imsim_psf(ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
+                  out_path=output_files_rootdir, force=False, logger=None):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -174,8 +323,9 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     coord = SkyCoord(ra=ra*u.deg,dec=dec*u.deg)
     x,y = wcs.world_to_pixel(coord)
 
-    # Get PSF at specified ra, dec. 
-    config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
+    # Get PSF at specified ra, dec.
+    assert config_yaml_file is not None, "config_yaml_file is a required argument"
+    config_path = config_yaml_file
     config = roman_utils(config_path,pointing,sca)
     psf = config.getPSF_Image(size,x,y)
     psf.write(savepath)
@@ -284,8 +434,12 @@ def crossconvolve(sci_img_path, sci_psf_path,
             imgdata = fits.getdata(img, ext=0).T
             psfdata = fits.getdata(psf, ext=0).T
 
+            # See comment in decorr_img
             convolved = convolve_fft(imgdata, psfdata, boundary='fill', nan_treatment='fill', \
-                                     fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True)
+                                     fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True,
+                                     fftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.fftn( cupy.array( x ) ) ),
+                                     ifftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.ifftn( cupy.array( x ) ) )
+                                     )
 
             with fits.open(img) as hdl:
                 hdl[0].data[:, :] = convolved.T
@@ -335,10 +489,16 @@ def bkg_mask(imgpath):
 
     bkg_mask = (scatalog == 0)
 
+    # BAD IDEA : we were reading masks from different images
+    #   (unaligned template, convolved neither.)
+    # fname = os.path.join( output_files_rootdir, f'detect_mask/{os.path.basename(imgpath)}.npy' )
+    # _logger.info( f"Trying to load detection mask from {fname}" )
+    # bkg_mask = np.load( fname )
+    
     return bkg_mask
 
 def difference(scipath, refpath, 
-               scipsfpath, refpsfpath, out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, 
+               out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, 
                ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False, logger=None):
 
     tracemalloc.start()
@@ -390,11 +550,12 @@ def difference(scipath, refpath,
         tracemalloc.reset_peak()
 
         # Do SFFT subtraction
-        Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
-                             ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
-                             KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
-                             BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-                             NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
+        with nvtx.annotate( "Customized_Packet.CP", color=0x44ff44 ):
+            Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
+                                 ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
+                                 KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
+                                 BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
+                                 NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
 
         size,peak = tracemalloc.get_traced_memory()
         logger.debug(f'MEMORY IN imagesubtraction.difference() AFTER Customized_Packet.CP: size = {size}, peak = {peak}')
@@ -421,24 +582,33 @@ def decorr_kernel(scipath, refpath,
     imgdatas = []
     psfdatas = []
     bkgsigs = []
-    for img, psf in zip([scipath, refpath], [scipsfpath, refpsfpath]):
-        imgdata = fits.getdata(img, ext=0).T
-        psfdatas.append(fits.getdata(psf, ext=0).T)
-        imgdatas.append(imgdata)
-        bkgsigs.append(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
+    with nvtx.annotate( "get_data_and_SkyLevel", color="#ff44ff" ):
+        for img, psf in zip([scipath, refpath], [scipsfpath, refpsfpath]):
+            imgdata = fits.getdata(img, ext=0).T
+            psfdatas.append(fits.getdata(psf, ext=0).T)
+            imgdatas.append(imgdata)
+            with nvtx.annotate( "SkyLevel_Estimator", color="#ff22ff" ):
+                # bkgsigs.append(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])
+                # TODO : clean up interface.  This file was written in
+                #   diff-img preprocess.py
+                skyrmspath = os.path.join(output_files_rootdir, f'skyrms/{os.path.basename(img)}.json')
+                bkgsigs.append( json.load( open( skyrmspath ) )['skyrms'] )
+                
 
     sci_img, ref_img = imgdatas
     sci_psf, ref_psf = psfdatas
     sci_bkg, ref_bkg = bkgsigs
 
-    N0, N1 = sci_img.shape
-    XY_q = np.array([[N0/2. + 0.5, N1/2. + 0.5]])
-    MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=solnpath)
-    MK_Fin = MKerStack[0]
+    with nvtx.annotate( "Realize_MatchingKernel", color="#ff88ff" ):
+        N0, N1 = sci_img.shape
+        XY_q = np.array([[N0/2. + 0.5, N1/2. + 0.5]])
+        MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=solnpath)
+        MK_Fin = MKerStack[0]
 
-    DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[ref_psf], SkySig_JLst=[sci_bkg],
-                                         MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], 
-                                         MK_Fin=MK_Fin, KERatio=2.0, VERBOSE_LEVEL=2)
+    with nvtx.annotate( "DeCorrelation_Calculator", color="#ffaaff" ):
+        DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[ref_psf], SkySig_JLst=[sci_bkg],
+                                             MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], 
+                                             MK_Fin=MK_Fin, KERatio=2.0, VERBOSE_LEVEL=2)
 
     with fits.open(scipath) as hdu:
         hdu[0].data = DCKer.T
@@ -460,10 +630,21 @@ def decorr_img(imgpath, dckerpath, out_path=output_files_rootdir, savename=None)
     img_data = fits.getdata(imgpath, ext=0).T
     DCKer = fits.getdata(dckerpath)
 
-    # Final decorrelated difference image: 
+    # Final decorrelated difference image:
+    #  TODO : right now, we're acting as if
+    #     the fftn= and ifftn= arguments
+    #     of convolve_fft need to take and
+    #     return numpy arrays, so we do all
+    #     the conversions manually.  There
+    #     must be a cleaner way.
+    # THINK: can we just replace astropy convolve_fft
+    #    with cupy and do our own post-processing?
     dcdiff = convolve_fft(img_data, DCKer, boundary='fill',
                           nan_treatment='fill', fill_value=0.0, 
-                          normalize_kernel=True, preserve_nan=True)
+                          normalize_kernel=True, preserve_nan=True,
+                          fftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.fftn( cupy.array( x ) ) ),
+                          ifftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.ifftn( cupy.array( x ) ) )
+                          )
 
     with fits.open(imgpath) as hdu:
         hdu[0].data[:, :] = dcdiff.T

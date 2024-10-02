@@ -146,8 +146,8 @@ def psfmodel(psfimg):
 #     return psf_func
 
 def psf_phot(scienceimage,psf,init_params,wcs=None,
-            forced_phot=True, fwhm=3.0, fit_shape=(5,5), 
-            oversampling=3, maxiters=10):
+             forced_phot=True, fwhm=3.0, fit_shape=(5,5), 
+             oversampling=3, maxiters=10):
 
     # mean, median, stddev = sigma_clipped_stats(scienceimage)
     # daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
