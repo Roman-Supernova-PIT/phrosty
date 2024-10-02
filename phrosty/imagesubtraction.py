@@ -139,10 +139,14 @@ def run_resample(FITS_obj, FITS_targ, FITS_resamp):
         PixA_targ_GPU = cupy.array(PixA_targ)
     else: PixA_targ_GPU = cupy.array(PixA_targ.astype(np.float64))
 
-    CR = Cuda_Resampling(RESAMP_METHOD='BILINEAR', VERBOSE_LEVEL=1)
-    XX_proj_GPU, YY_proj_GPU = CR.projection_sip(hdr_obj, hdr_targ, Nsamp=1024, RANDOM_SEED=10086)
-    PixA_Eobj_GPU, EProjDict = CR.frame_extension(XX_proj_GPU=XX_proj_GPU, YY_proj_GPU=YY_proj_GPU, PixA_obj_GPU=PixA_obj_GPU)
-    PixA_resamp = cupy.asnumpy(CR.resampling(PixA_Eobj_GPU=PixA_Eobj_GPU, EProjDict=EProjDict))
+    with nvtx.annotate( "Cuda_Resampling", color=0xdddd00 ):
+        CR = Cuda_Resampling(RESAMP_METHOD='BILINEAR', VERBOSE_LEVEL=1)
+    with nvtx.annotate( "CR.projection_sip", color=0xbbbb00 ):
+        XX_proj_GPU, YY_proj_GPU = CR.projection_sip(hdr_obj, hdr_targ, Nsamp=1024, RANDOM_SEED=10086)
+    with nvtx.annotate( "CR.frame_extension", color=0x999900 ):
+        PixA_Eobj_GPU, EProjDict = CR.frame_extension(XX_proj_GPU=XX_proj_GPU, YY_proj_GPU=YY_proj_GPU, PixA_obj_GPU=PixA_obj_GPU)
+    with nvtx.annotate( "CR.resampling", color=0x777700 ):
+        PixA_resamp = cupy.asnumpy(CR.resampling(PixA_Eobj_GPU=PixA_Eobj_GPU, EProjDict=EProjDict))
 
     with fits.open(FITS_targ) as hdl:
         PixA_resamp[PixA_resamp == 0.] = np.nan
@@ -430,8 +434,12 @@ def crossconvolve(sci_img_path, sci_psf_path,
             imgdata = fits.getdata(img, ext=0).T
             psfdata = fits.getdata(psf, ext=0).T
 
+            # See comment in decorr_img
             convolved = convolve_fft(imgdata, psfdata, boundary='fill', nan_treatment='fill', \
-                                     fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True)
+                                     fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True,
+                                     fftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.fftn( cupy.array( x ) ) ),
+                                     ifftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.ifftn( cupy.array( x ) ) )
+                                     )
 
             with fits.open(img) as hdl:
                 hdl[0].data[:, :] = convolved.T
