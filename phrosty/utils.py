@@ -86,7 +86,7 @@ def get_roman_bands():
     :return: List of bands included in the Roman-DESC TDS simulations. 
     :rtype: list
     """    
-    return ['F184', 'H158', 'J129', 'K213', 'R062', 'Y106', 'Z087']
+    return ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213']
 
 def read_truth_txt(path=None,band=None,pointing=None,sca=None):
     """
