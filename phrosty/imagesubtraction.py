@@ -91,7 +91,7 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
     """
     Subtracts background, found with Source Extractor. 
     """
-    original_imgpath = _build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
+    original_imgpath = path if path is not None else _build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
     zip_savedir = os.path.join(out_path, 'unzip')
     check_and_mkdir(zip_savedir)
 
@@ -331,23 +331,23 @@ def get_imsim_psf(ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
     psf.write(savepath)
 
     # Change the WCS so CRPIX and CRVAL are centered. 
-    pos = PositionD(x=x,y=y)
-    wcs_new = psf.wcs.affine(image_pos=pos)
-    psf.wcs = wcs_new
+    # pos = PositionD(x=x,y=y)
+    # wcs_new = psf.wcs.affine(image_pos=pos)
+    # psf.wcs = wcs_new
 
     # Save fits object.
-    psf.write(savepath)
+    # psf.write(savepath)
 
-    # Transpose the data array so it works with SFFT. 
-    # Can't do this like psf.array = psf.array.T because you get an error:
-    # "property 'array' of 'Image' object has no setter".
-    hdu = fits.open(savepath)
-    hdu[0].data = hdu[0].data.T
-    hdu[0].header['CRVAL1'] = ra
-    hdu[0].header['CRVAL2'] = dec
-    hdu[0].header['CRPIX1'] = 0.5 + int(hdu[0].header['NAXIS1'])/2.
-    hdu[0].header['CRPIX2'] = 0.5 + int(hdu[0].header['NAXIS2'])/2.
-    hdu.writeto(savepath,overwrite=True)
+    # # Transpose the data array so it works with SFFT. 
+    # # Can't do this like psf.array = psf.array.T because you get an error:
+    # # "property 'array' of 'Image' object has no setter".
+    # hdu = fits.open(savepath)
+    # hdu[0].data = hdu[0].data
+    # # hdu[0].header['CRVAL1'] = ra
+    # # hdu[0].header['CRVAL2'] = dec
+    # # hdu[0].header['CRPIX1'] = 0.5 + int(hdu[0].header['NAXIS1'])/2.
+    # # hdu[0].header['CRPIX2'] = 0.5 + int(hdu[0].header['NAXIS2'])/2.
+    # hdu.writeto(savepath,overwrite=True)
 
     return savepath
 
