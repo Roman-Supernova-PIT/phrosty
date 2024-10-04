@@ -102,23 +102,28 @@ def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_
         decompressed_path = os.path.join(zip_savedir,f'{os.path.basename(original_imgpath)}')
         
     output_path = os.path.join(out_path, 'skysub', f'skysub_{os.path.basename(decompressed_path)}')
-
-    do_skysub = (force is True) or (force is False and not os.path.exists(output_path))
+    detmask_path = os.path.join(out_path, 'skysub', f'detmask_{os.path.basename(decompressed_path)}')
+    
+    do_skysub = force or ( ( not force ) and ( not os.path.exists(output_path) ) )
     skip_skysub = (not force) and os.path.exists(output_path)
     if do_skysub:
         sub_savedir = os.path.join(out_path, 'skysub')
         check_and_mkdir(sub_savedir)
 
-        ( SKYDIP, SKYPEAK, PIxA_skysub,
-          PixA_sky, PixA_skyrms, DETECT_MASK ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path, FITS_skysub=output_path, 
-                                                                     FITS_sky=None, FITS_skyrms=None,
-                                                                     ESATUR_KEY='ESATUR', BACK_SIZE=64, BACK_FILTERSIZE=3, 
-                                                                     DETECT_THRESH=1.5, DETECT_MINAREA=5, DETECT_MAXAREA=0, 
-                                                                     VERBOSE_LEVEL=2, MDIR=None)
+        ( SKYDIP, SKYPEAK, PixA_skysub,
+          PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path,
+                                                        FITS_skysub=output_path,
+                                                        FITS_detmask=detmask_path,
+                                                        FITS_sky=None, FITS_skyrms=None,
+                                                        ESATUR_KEY='ESATUR',
+                                                        BACK_SIZE=64, BACK_FILTERSIZE=3, 
+                                                        DETECT_THRESH=1.5, DETECT_MINAREA=5,
+                                                        DETECT_MAXAREA=0, 
+                                                        VERBOSE_LEVEL=2, MDIR=None)
     elif skip_skysub and verbose:
         print(output_path, 'already exists. Skipping sky subtraction.')
 
-    return output_path, PixA_sky, PixA_skyrms, DETECT_MASK
+    return output_path, PixA_sky, PixA_skyrms, detmask_path
 
 
 def run_resample(FITS_obj, FITS_targ, FITS_resamp):
