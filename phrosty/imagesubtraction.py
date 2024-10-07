@@ -34,7 +34,7 @@ from sfft.utils.StampGenerator import Stamp_Generator
 from sfft.utils.pyAstroMatic.PYSWarp import PY_SWarp
 from sfft.utils.ReadWCS import Read_WCS
 from sfft.utils.ImageZoomRotate import Image_ZoomRotate
-from sfft.utils.CudaResampling import Cuda_Resampling
+# from sfft.utils.CudaResampling import Cuda_Resampling
 from sfft.utils.pyAstroMatic.PYSEx import PY_SEx
 from sfft.CustomizedPacket import Customized_Packet
 from sfft.utils.SkyLevelEstimator import SkyLevel_Estimator
@@ -233,7 +233,7 @@ def get_imsim_psf(ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
     assert config_yaml_file is not None, "config_yaml_file is a required argument"
     config_path = config_yaml_file
     config = roman_utils(config_path,pointing,sca)
-    psf = config.getPSF_Image(size,x,y)
+    psf = config.getPSF_Image(size,x,y,oversampling_factor=3)
     psf.write(savepath)
 
     return savepath
