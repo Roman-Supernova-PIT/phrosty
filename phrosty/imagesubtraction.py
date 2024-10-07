@@ -301,7 +301,7 @@ def calculate_rotate_angle(vector_ref, vector_obj):
     return rotate_angle
 
 def get_imsim_psf(ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
-                  out_path=output_files_rootdir, force=False, logger=None):
+                  out_path=output_files_rootdir, force=False, logger=None, **getPSF_image_kwargs):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -327,7 +327,7 @@ def get_imsim_psf(ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
     assert config_yaml_file is not None, "config_yaml_file is a required argument"
     config_path = config_yaml_file
     config = roman_utils(config_path,pointing,sca)
-    psf = config.getPSF_Image(size,x,y)
+    psf = config.getPSF_Image(size,x,y, **getPSF_image_kwargs)
     psf.write(savepath)
 
     # Change the WCS so CRPIX and CRVAL are centered. 
