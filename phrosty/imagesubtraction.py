@@ -233,7 +233,7 @@ def get_imsim_psf(ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
     assert config_yaml_file is not None, "config_yaml_file is a required argument"
     config_path = config_yaml_file
     config = roman_utils(config_path,pointing,sca)
-    psf = config.getPSF_Image(size,x,y,oversampling_factor=3)
+    psf = config.getPSF_Image(size,x,y,oversampling_factor=1)
     psf.write(savepath)
 
     return savepath
