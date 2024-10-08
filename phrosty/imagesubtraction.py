@@ -10,6 +10,7 @@ import cupy
 import cupyx.scipy
 import gzip
 import shutil
+import pathlib
 import logging
 import matplotlib.pyplot as plt
 import tracemalloc
@@ -85,44 +86,61 @@ def gz_and_ext(in_path,out_path):
 
     return out_path
 
-def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir, force=False, verbose=False):
+# def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir, force=False, verbose=False):
+def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp"), force=False ):
+    """Subtracts background, found with Source Extractor. 
+
+    Parameters
+    ----------
+      inpath: Path
+        Original FITS image
+
+      skysubpath: Path
+        Sky-subtracted FITS image
+
+      detmaskpath: Path
+        Detection Mask FITS Image.  (Will be uint8, I think.)
+
+      temp_dir: Path
+        Already-existing directory where we can write a temporary file.
+        (If the image is .gz compressed, source-extractor can't handle
+        that, so we have to write a decompressed version.)
+
+      force: bool, default False
+        If False, and outpath already exists, do nothing.  If True,
+        clobber the existing file and recalculate it.
+
+    Returns
+    -------
+      skyrms: float
+        Median of the skyrms image calculated by source-extractor
 
     """
-    Subtracts background, found with Source Extractor. 
-    """
-    original_imgpath = path if path is not None else _build_filepath(path=path,band=band,pointing=pointing,sca=sca,filetype='image')
-    zip_savedir = os.path.join(out_path, 'unzip')
-    check_and_mkdir(zip_savedir)
 
-    if f'{os.path.basename(original_imgpath)[-3:]}' == '.gz':
-        decompressed_path = os.path.join(output_files_rootdir,'unzip',f'{os.path.basename(original_imgpath)[:-3]}')
-        gz_and_ext(original_imgpath, decompressed_path)
-    else:
-        decompressed_path = os.path.join(zip_savedir,f'{os.path.basename(original_imgpath)}')
-        
-    output_path = os.path.join(out_path, 'skysub', f'skysub_{os.path.basename(decompressed_path)}')
-    detmask_path = os.path.join(out_path, 'skysub', f'detmask_{os.path.basename(decompressed_path)}')
+    if ( not force ) and ( skysubpath.is_file() ) and ( detmaskpath.is_file() ):
+        raise RuntimeError( "OMG I don't know how to figure out skyrms" )
     
-    do_skysub = force or ( ( not force ) and ( not os.path.exists(output_path) ) )
-    skip_skysub = (not force) and os.path.exists(output_path)
-    if do_skysub:
-        sub_savedir = os.path.join(out_path, 'skysub')
-        check_and_mkdir(sub_savedir)
+    do_skysub = force or ( ( not force ) and ( not skysubpath.is_file() ) and ( detmaskpath.is_file() ) )
 
-        ( SKYDIP, SKYPEAK, PixA_skysub,
-          PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path,
-                                                        FITS_skysub=output_path,
-                                                        FITS_detmask=detmask_path,
-                                                        FITS_sky=None, FITS_skyrms=None,
-                                                        ESATUR_KEY='ESATUR',
-                                                        BACK_SIZE=64, BACK_FILTERSIZE=3, 
-                                                        DETECT_THRESH=1.5, DETECT_MINAREA=5,
-                                                        DETECT_MAXAREA=0, 
-                                                        VERBOSE_LEVEL=2, MDIR=None)
-    elif skip_skysub and verbose:
-        print(output_path, 'already exists. Skipping sky subtraction.')
+    if inpath.name[-3:] == '.gz':
+        decompressed_path = temp_dir / inpath.name[:-3]
+        gz_and_ext( inpath, decompressed_path )
+    else:
+        decompressed_path = inpath
+        
 
-    return output_path, PixA_sky, PixA_skyrms, detmask_path
+    ( SKYDIP, SKYPEAK, PixA_skysub,
+      PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path,
+                                                    FITS_skysub=skysubpath,
+                                                    FITS_detmask=detmaskpath,
+                                                    FITS_sky=None, FITS_skyrms=None,
+                                                    ESATUR_KEY='ESATUR',
+                                                    BACK_SIZE=64, BACK_FILTERSIZE=3, 
+                                                    DETECT_THRESH=1.5, DETECT_MINAREA=5,
+                                                    DETECT_MAXAREA=0, 
+                                                    VERBOSE_LEVEL=2, MDIR=None)
+
+    return np.median( PixA_skyrms )
 
 
 def run_resample(FITS_obj, FITS_targ, FITS_resamp):
