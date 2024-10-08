@@ -19,7 +19,7 @@ import json
 from numba import cuda
 
 # IMPORTS Astro:
-from astropy.io import fits 
+from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from astropy.wcs.utils import skycoord_to_pixel
 import astropy.units as u
@@ -57,8 +57,8 @@ if not _logger.hasHandlers():
 
 
 """
-This module was written with significant contributions from 
-Dr. Lei Hu (https://github.com/thomasvrussell/), and relies on his 
+This module was written with significant contributions from
+Dr. Lei Hu (https://github.com/thomasvrussell/), and relies on his
 SFFT image subtraction package (https://github.com/thomasvrussell/sfft).
 """
 
@@ -68,18 +68,18 @@ assert output_files_rootdir is not None, 'You need to set DIA_OUT_DIR as an envi
 def check_and_mkdir(dirname):
     """
     Utility function for checking if a directory exists, and if not,
-    makes that directory. 
+    makes that directory.
     """
     if not os.path.exists(dirname):
         os.mkdir(dirname)
 
 def gz_and_ext(in_path,out_path):
     """
-    Utility function that unzips the original file and turns it into a single-extension FITS file.     
+    Utility function that unzips the original file and turns it into a single-extension FITS file.
     """
     with gzip.open(in_path,'rb') as f_in, open(out_path,'wb') as f_out:
         shutil.copyfileobj(f_in,f_out)
-    
+
     with fits.open(out_path) as hdu:
         newhdu = fits.HDUList([fits.PrimaryHDU(data=hdu[1].data, header=hdu[0].header)])
         newhdu.writeto(out_path, overwrite=True)
@@ -88,7 +88,7 @@ def gz_and_ext(in_path,out_path):
 
 # def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir, force=False, verbose=False):
 def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp"), force=False ):
-    """Subtracts background, found with Source Extractor. 
+    """Subtracts background, found with Source Extractor.
 
     Parameters
     ----------
@@ -118,8 +118,10 @@ def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp")
     """
 
     if ( not force ) and ( skysubpath.is_file() ) and ( detmaskpath.is_file() ):
-        raise RuntimeError( "OMG I don't know how to figure out skyrms" )
-    
+        with fits.open( skysubpath ) as hdul:
+            skyrms = hdul[0].header['SKYRMS']
+        return skyrms
+
     do_skysub = force or ( ( not force ) and ( not skysubpath.is_file() ) and ( detmaskpath.is_file() ) )
 
     if inpath.name[-3:] == '.gz':
@@ -127,7 +129,7 @@ def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp")
         gz_and_ext( inpath, decompressed_path )
     else:
         decompressed_path = inpath
-        
+
 
     ( SKYDIP, SKYPEAK, PixA_skysub,
       PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path,
@@ -135,9 +137,9 @@ def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp")
                                                     FITS_detmask=detmaskpath,
                                                     FITS_sky=None, FITS_skyrms=None,
                                                     ESATUR_KEY='ESATUR',
-                                                    BACK_SIZE=64, BACK_FILTERSIZE=3, 
+                                                    BACK_SIZE=64, BACK_FILTERSIZE=3,
                                                     DETECT_THRESH=1.5, DETECT_MINAREA=5,
-                                                    DETECT_MAXAREA=0, 
+                                                    DETECT_MAXAREA=0,
                                                     VERBOSE_LEVEL=2, MDIR=None)
 
     return np.median( PixA_skyrms )
@@ -179,7 +181,7 @@ def run_resample(FITS_obj, FITS_targ, FITS_resamp):
 
 def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None,force=False, verbose=False):
     """
-    Align images. 
+    Align images.
     """
 
     outdir = os.path.join(out_path, 'align')
@@ -194,10 +196,10 @@ def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None
         check_and_mkdir(outdir)
 
         _logger.debug( "Using Cuda_Resampling.CR to resample image" )
-        
+
         # Cuda_Resampling.CR( sci_path, template_path, output_path, METHOD="BILINEAR" )
         run_resample( sci_path, template_path, output_path )
-        
+
     elif skip_align and verbose:
         print(output_path, 'already exists. Skipping alignment.')
 
@@ -220,31 +222,29 @@ def calculate_rotate_angle(vector_ref, vector_obj):
     """
     rad = np.arctan2(np.cross(vector_ref, vector_obj), np.dot(vector_ref, vector_obj))
     rotate_angle = np.rad2deg(rad)
-    if rotate_angle < 0.0: 
-        rotate_angle += 360.0 
+    if rotate_angle < 0.0:
+        rotate_angle += 360.0
     return rotate_angle
 
-def get_imsim_psf(ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
-                  out_path=output_files_rootdir, force=False, logger=None):
+def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
+                  psf_path=None, force=False, logger=None):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
-    are centered on the image instead of at the corner. 
+    are centered on the image instead of at the corner.
 
     force parameter does not currently do anything.
     """
 
+    if psf_path is None:
+        raise ValueError( "psf_path can't be None" )
+
     logger = _logger if logger is None else logger
 
-    savedir = os.path.join(out_path,'psf')
-    check_and_mkdir(savedir)
-    savename = f'psf_{ra}_{dec}_{band}_{pointing}_{sca}.fits'
-    savepath = os.path.join(savedir,savename)
-
     # Get WCS of the image you need the PSF for.
-    hdu = get_fitsobj(band=band,pointing=pointing,sca=sca)
-    wcs = WCS(hdu[0].header)
-    coord = SkyCoord(ra=ra*u.deg,dec=dec*u.deg)
+    with fits.open( image_path ) as hdu:
+        wcs = WCS(hdu[0].header)
+    coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     x,y = wcs.world_to_pixel(coord)
 
     # Get PSF at specified ra, dec.
@@ -252,14 +252,12 @@ def get_imsim_psf(ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
     config_path = config_yaml_file
     config = roman_utils(config_path,pointing,sca)
     psf = config.getPSF_Image(size,x,y,oversampling_factor=1)
-    psf.write(savepath)
-
-    return savepath
+    psf.write( str(psf_path) )
 
 
 def rotate_psf(ra,dec,psf,target,savename=None,force=False,verbose=False):
     """
-    2. Rotate PSF model to match reference WCS. 
+    2. Rotate PSF model to match reference WCS.
         2a. Calculate rotation angle during alignment
         2b. Rotate PSF to match rotated science image
     """
@@ -284,7 +282,7 @@ def rotate_psf(ra,dec,psf,target,savename=None,force=False,verbose=False):
         skyN_vector = calculate_skyN_vector(wcshdr=hdr, x_start=x0, y_start=y0)
 
         # Also get the PSF image for rotation
-        psfimg = fits.getdata(psf, ext=0).T # Already saved as a transposed matrix from get_imsim_psf. 
+        psfimg = fits.getdata(psf, ext=0).T # Already saved as a transposed matrix from get_imsim_psf.
 
         # Get vector from target WCS (i.e., rotated)
         hdr = fits.getheader(target, ext=0)
@@ -315,8 +313,8 @@ def crossconvolve(sci_img_path, sci_psf_path,
     savedir = os.path.join(out_path,'convolved')
     check_and_mkdir(savedir)
 
-    # First convolves reference PSF on science image. 
-    # Then, convolves science PSF on reference image. 
+    # First convolves reference PSF on science image.
+    # Then, convolves science PSF on reference image.
     savepaths = []
     for img, name in zip([sci_img_path,ref_img_path],
                     [sci_outname,ref_outname]):
@@ -368,19 +366,20 @@ def stampmaker(ra, dec, imgpath, savedir=None, savename=None, shape=np.array([10
 
     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     with fits.open(imgpath) as hdu:
-        wcs = WCS(hdu[0].header)
-    
+        hdun = 1 if str(imgpath)[-3:] in ('.fz', '.gz') else 0
+        wcs = WCS(hdu[hdun].header)
+
     x, y = skycoord_to_pixel(coord, wcs)
     pxradec = np.array([[x,y]])
-    
-    Stamp_Generator.SG(FITS_obj=imgpath, COORD=pxradec, COORD_TYPE='IMAGE',
+
+    Stamp_Generator.SG(FITS_obj=imgpath, EXTINDEX=hdun, COORD=pxradec, COORD_TYPE='IMAGE',
                        STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=savepath)
 
     return savepath
 
 def bkg_mask(imgpath):
     """
-    Create detection mask. Not necessary to call directly. 
+    Create detection mask. Not necessary to call directly.
     """
 
     source_ext_params = ['X_IMAGE', 'Y_IMAGE', 'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLAGS', \
@@ -399,11 +398,11 @@ def bkg_mask(imgpath):
     # fname = os.path.join( output_files_rootdir, f'detect_mask/{os.path.basename(imgpath)}.npy' )
     # _logger.info( f"Trying to load detection mask from {fname}" )
     # bkg_mask = np.load( fname )
-    
+
     return bkg_mask
 
-def difference(scipath, refpath, 
-               out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0, 
+def difference(scipath, refpath,
+               out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0,
                ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False, logger=None):
 
     tracemalloc.start()
@@ -471,7 +470,7 @@ def difference(scipath, refpath,
 
     return diff_savepath, soln_savepath
 
-def decorr_kernel(scipath, refpath, 
+def decorr_kernel(scipath, refpath,
                   scipsfpath, refpsfpath,
                   diffpath, solnpath, out_path=output_files_rootdir, savename=None):
 
@@ -498,7 +497,7 @@ def decorr_kernel(scipath, refpath,
                 #   diff-img preprocess.py
                 skyrmspath = os.path.join(output_files_rootdir, f'skyrms/{os.path.basename(img)}.json')
                 bkgsigs.append( json.load( open( skyrmspath ) )['skyrms'] )
-                
+
 
     sci_img, ref_img = imgdatas
     sci_psf, ref_psf = psfdatas
@@ -512,7 +511,7 @@ def decorr_kernel(scipath, refpath,
 
     with nvtx.annotate( "DeCorrelation_Calculator", color="#ffaaff" ):
         DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[ref_psf], SkySig_JLst=[sci_bkg],
-                                             MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg], 
+                                             MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg],
                                              MK_Fin=MK_Fin, KERatio=2.0, VERBOSE_LEVEL=2)
 
     with fits.open(scipath) as hdu:
@@ -545,7 +544,7 @@ def decorr_img(imgpath, dckerpath, out_path=output_files_rootdir, savename=None)
     # THINK: can we just replace astropy convolve_fft
     #    with cupy and do our own post-processing?
     dcdiff = convolve_fft(img_data, DCKer, boundary='fill',
-                          nan_treatment='fill', fill_value=0.0, 
+                          nan_treatment='fill', fill_value=0.0,
                           normalize_kernel=True, preserve_nan=True,
                           fftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.fftn( cupy.array( x ) ) ),
                           ifftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.ifftn( cupy.array( x ) ) )
@@ -558,7 +557,7 @@ def decorr_img(imgpath, dckerpath, out_path=output_files_rootdir, savename=None)
     return decorr_savepath
 
 def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subdir='coadd',**kwargs):
-    """Coadd images using SWarp. 
+    """Coadd images using SWarp.
 
     kwargs: see sfft.utils.pyAstroMatic.PYSWarp.PY_SWarp.Mk_ConfigDict
 
@@ -568,11 +567,11 @@ def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subd
     :type refpath: str
     :param savepath: Path to save coadded image.
     :type savepath: str
-    :return: 
+    :return:
     :rtype: str
     """
-    cd = PY_SWarp.Mk_ConfigDict(GAIN_DEFAULT=1., SATLEV_DEFAULT=100000., 
-                                RESAMPLING_TYPE='BILINEAR', WEIGHT_TYPE='NONE', 
+    cd = PY_SWarp.Mk_ConfigDict(GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.,
+                                RESAMPLING_TYPE='BILINEAR', WEIGHT_TYPE='NONE',
                                 RESCALE_WEIGHTS='N', NTHREADS=1, **kwargs)
 
     imgpaths = []
@@ -591,7 +590,7 @@ def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subd
     coadd_savedir = os.path.join(out_path,subdir)
     check_and_mkdir(coadd_savedir)
     coadd_savepath = os.path.join(coadd_savedir,out_name)
-    
+
     coadd = PY_SWarp.Coadd(FITS_obj=imgpaths, FITS_ref=refpath, ConfigDict=cd,
                            OUT_path=coadd_savepath, FILL_VALUE=np.nan)
 
