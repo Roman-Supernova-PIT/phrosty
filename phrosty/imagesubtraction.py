@@ -173,18 +173,25 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     savename = f'psf_{ra}_{dec}_{band}_{pointing}_{sca}.fits'
     savepath = os.path.join(savedir,savename)
 
+    logger.debug(f"Get WCS of {band}, {pointing}, {sca}")
+    logger.debug("get_fitsobj")
     # Get WCS of the image you need the PSF for.
     hdu = get_fitsobj(band=band,pointing=pointing,sca=sca)
+    logger.debug("Get WCS")
     wcs = WCS(hdu[0].header)
+    logger.debug("Get SkyCoord")
     coord = SkyCoord(ra=ra*u.deg,dec=dec*u.deg)
+    logger.debug("Get x, y")
     x,y = wcs.world_to_pixel(coord)
 
+    logger.debug(f"Get PSF at given RA, Dec")
     # Get PSF at specified ra, dec. 
     config_path = os.path.join(os.path.dirname(__file__), 'auxiliary', 'tds.yaml')
     config = roman_utils(config_path,pointing,sca)
     psf = config.getPSF_Image(size,x,y)
     psf.write(savepath)
 
+    logger.debug("Change WCS so CRPIX and CRVAl are centered")
     # Change the WCS so CRPIX and CRVAL are centered. 
     pos = PositionD(x=x,y=y)
     wcs_new = psf.wcs.affine(image_pos=pos)
@@ -193,6 +200,7 @@ def get_imsim_psf(ra,dec,band,pointing,sca,size=201,out_path=output_files_rootdi
     # Save fits object.
     psf.write(savepath)
 
+    logger.debug("Transpose data array.")
     # Transpose the data array so it works with SFFT. 
     # Can't do this like psf.array = psf.array.T because you get an error:
     # "property 'array' of 'Image' object has no setter".

@@ -115,7 +115,7 @@ gal:
 
 input:
     obseq_data:
-        file_name: /cwork/mat90/RomanDESC_sims_2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits
+        file_name: /teams/orca/Roman_TDS_obseq_11_6_23.fits
         visit: 80840
         SCA: '@image.SCA'
     roman_psf:

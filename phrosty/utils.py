@@ -102,10 +102,10 @@ def files_that_exist(image_info):
         try:
             fh = open(original_imgpath, transport_params=params)
             fh.close()
-            new_image_info.append(infodict)
         except Exception as e:
-            print(e)
-            pass
+            continue
+
+        new_image_info.append(infodict)
 
     return new_image_info
 
