@@ -524,8 +524,10 @@ def main():
                                [ science_images, template_images ] ):
         with open( infile ) as ifp:
             for line in ifp:
-                img, point, sca, mjd = line.split()
-                imlist.append( ( pathlib.Path(img), int(point), int(sca), float(mjd) ) )
+                # WARNING: hardcoded header format
+                if 'path pointing sca mjd' not in line:
+                    img, point, sca, mjd = line.split()
+                    imlist.append( ( pathlib.Path(img), int(point), int(sca), float(mjd) ) )
 
     # WARNING, hardcoded, fix this later
     galsim_config = pathlib.Path( os.getenv("SN_INFO_DIR" ) ) / "tds.yaml"
