@@ -295,10 +295,9 @@ class Pipeline:
             assert sci_pointing is not None, 'If zpt_plot=True, sci_pointing must be provided.'
             assert sci_sca is not None, 'If zpt_plot=True, sci_sca must be provided.'
 
-            # savedir = os.path.join(lc_out_dir,f'figs/{oid}/zpt_plots')
-            # os.makedirs(savedir, exist_ok=True)
-            # savepath = os.path.join(savedir,f'zpt_stars_{band}_{sci_pointing}_{sci_sca}.png')
-            savepath = zpt_plot
+            savedir = self.ltcv_dir / f'figs/{oid}/zpt_plots'
+            savedir.mkdir(parents=True, exist_ok=True)
+            savepath = savedir / f'zpt_stars_{band}_{sci_pointing}_{sci_sca}.png'
 
             plt.figure(figsize=(8,8))
             yaxis = star_fit_mags + zpt - star_truth_mags
@@ -311,12 +310,14 @@ class Pipeline:
             plt.savefig(savepath,dpi=300,bbox_inches='tight')
             plt.close()
 
-            savepath = os.path.join(savedir,f'hist_truth-fit_{band}_{sci_pointing}_{sci_sca}.png')
-            plt.hist(star_truth_mags[zpt_mask] - star_fit_mags[zpt_mask])
-            plt.title(f'{band} {sci_pointing} {sci_sca}')
-            plt.xlabel('star_truth_mags[zpt_mask] - star_fit_mags[zpt_mask]')
-            plt.savefig(savepath,dpi=300,bbox_inches='tight')
-            plt.close()
+            self.logger.info(f'zpt debug plot saved to {savepath}')
+
+            # savepath = os.path.join(savedir,f'hist_truth-fit_{band}_{sci_pointing}_{sci_sca}.png')
+            # plt.hist(star_truth_mags[zpt_mask] - star_fit_mags[zpt_mask])
+            # plt.title(f'{band} {sci_pointing} {sci_sca}')
+            # plt.xlabel('star_truth_mags[zpt_mask] - star_fit_mags[zpt_mask]')
+            # plt.savefig(savepath,dpi=300,bbox_inches='tight')
+            # plt.close()
 
         return zpt
 
@@ -424,10 +425,11 @@ class Pipeline:
 
         results_tab = Table(self.results_dict)
         results_tab.sort('mjd')
-        results_savedir = self.ltcv_dir / str(self.object_id)
+        results_savedir = self.ltcv_dir / 'data' / str(self.object_id)
         results_savedir.mkdir( exist_ok=True, parents=True )
         results_savepath = results_savedir / f'{self.object_id}_{self.band}_all.csv'
         results_tab.write(results_savepath, format='csv', overwrite=True)
+        self.logger.info(f'Results saved to {results_savepath}')
 
 
 
