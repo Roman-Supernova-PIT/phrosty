@@ -499,6 +499,22 @@ class Pipeline:
 
 # ======================================================================
 
+def parse_slurm():
+    """
+    Turn a SLURM array ID into a band.
+    """
+    sys.path.append(os.getcwd())
+    taskID = int(os.environ["SLURM_ARRAY_TASK_ID"])
+
+    print("taskID:", taskID)
+
+    config = {1: "F184", 2: "H158", 3: "J129", 4: "K213", 5: "R062", 6: "Y106", 7: "Z087"}
+
+    band = config[taskID]
+    print('Band:', band)
+
+    return band
+
 def main():
     parser = argparse.ArgumentParser( 'phrosty pipeline' )
     parser.add_argument( '--oid', type=int, required=True, help="Object ID" )
@@ -518,7 +534,12 @@ def main():
                          help="Stop after this step; one of (see above)" )
     parser.add_argument( '--force-sky-subtract', action='store_true', default=False,
                          help='Redo sky subtraction even if the right file is sitting in the temp dir.' )
+    parser.add_argument( '--slurm-array', action='store_true', default=False, 
+                         help='If the job is a slurm array job, process band from SLURM_ARRAY_TASK_ID.' )
     args = parser.parse_args()
+
+    if args.slurm_array:
+        args.band = parse_slurm()
 
     science_images = []
     template_images = []
