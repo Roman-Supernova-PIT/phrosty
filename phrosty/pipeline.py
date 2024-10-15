@@ -520,7 +520,7 @@ def main():
     parser.add_argument( '--oid', type=int, required=True, help="Object ID" )
     parser.add_argument( '-r', '--ra', type=float, required=True, help="Object RA" )
     parser.add_argument( '-d', '--dec', type=float, required=True, help="Object Dec" )
-    parser.add_argument( '-b', '--band', type=str, required=True, help="Band: R062, Z087, Y106, J129, H158, F184, or K213" )
+    parser.add_argument( '-b', '--band', type=str, required=False, help="Band: R062, Z087, Y106, J129, H158, F184, or K213" )
     parser.add_argument( '-t', '--template-images', type=str, required=True,
                          help="Path to file with, per line, ( path_to_image, pointing, sca )" )
     parser.add_argument( '-s', '--science-images', type=str, required=True,
