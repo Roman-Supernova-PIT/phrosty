@@ -3,6 +3,7 @@ import pathlib
 import argparse
 import logging
 from multiprocessing import Pool
+from functools import partial
 
 import numpy as np
 import cupy as cp
@@ -108,14 +109,14 @@ class Pipeline:
         self.ra = ra
         self.dec = dec
         self.band = band
-        self.science_images = [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self ) for ppsm in science_images ]
-        self.template_images = [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self ) for ppsm in template_images ]
+        self.science_images = [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self ) for ppsm in science_images if self.band in ppsm[0] ]
+        self.template_images = [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self ) for ppsm in template_images if self.band in ppsm[0] ]
         self.ncpus = ncpus
         self.temp_dir = pathlib.Path(temp_dir )
         self.out_dir = pathlib.Path( out_dir )
         self.ltcv_dir = pathlib.Path( ltcv_dir ) if ltcv_dir is not None else self.out_dir
         self.nuke_temp_dir = nuke_temp_dir
-        self.force_sky_subtract=force_sky_subtract
+        self.force_sky_subtract = force_sky_subtract
 
         self.logger = set_logger( 'phrosty', 'phrosty' )
         self.logger.setLevel( logging.DEBUG if verbose else logging.INFO )
@@ -148,7 +149,7 @@ class Pipeline:
         if self.ncpus > 1:
             with Pool( self.ncpus ) as pool:
                 for img in all_imgs:
-                    callback_partial = partial( save_psf_path, all_imgs, imgkey )
+                    callback_partial = partial( img.save_psf_path, all_imgs, imgkey )
                     pool.apply_async( img.run_get_imsim_psf, (), {},
                                       img.safe_psf_path,
                                       lambda x: logger.error( f"get_imsim_psf subprocess failure: {x}" ) )
