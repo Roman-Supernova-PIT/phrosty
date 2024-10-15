@@ -149,7 +149,7 @@ class Pipeline:
         if self.ncpus > 1:
             with Pool( self.ncpus ) as pool:
                 for img in all_imgs:
-                    callback_partial = partial( img.save_psf_path, all_imgs, imgkey )
+                    callback_partial = partial( img.save_psf_path, all_imgs )
                     pool.apply_async( img.run_get_imsim_psf, (), {},
                                       img.safe_psf_path,
                                       lambda x: logger.error( f"get_imsim_psf subprocess failure: {x}" ) )
