@@ -2,6 +2,7 @@ import os
 import pathlib
 import argparse
 import logging
+from multiprocessing import Pool
 
 import numpy as np
 import cupy as cp
