@@ -109,8 +109,8 @@ class Pipeline:
         self.ra = ra
         self.dec = dec
         self.band = band
-        self.science_images = [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self ) for ppsm in science_images if self.band in ppsm[0] ]
-        self.template_images = [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self ) for ppsm in template_images if self.band in ppsm[0] ]
+        self.science_images = [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self ) for ppsm in science_images if self.band in ppsm[0].name ]
+        self.template_images = [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self ) for ppsm in template_images if self.band in ppsm[0].name ]
         self.ncpus = ncpus
         self.temp_dir = pathlib.Path(temp_dir )
         self.out_dir = pathlib.Path( out_dir )
