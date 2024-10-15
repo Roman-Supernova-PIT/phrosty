@@ -518,8 +518,8 @@ def parse_slurm():
 def main():
     parser = argparse.ArgumentParser( 'phrosty pipeline' )
     parser.add_argument( '--oid', type=int, required=True, help="Object ID" )
-    parser.add_argument( '-r', '--ra', type=float, required=True, help="Object RA" )
-    parser.add_argument( '-d', '--dec', type=float, required=True, help="Object Dec" )
+    parser.add_argument( '-r', '--ra', type=float, required=False, help="Object RA" )
+    parser.add_argument( '-d', '--dec', type=float, required=False, help="Object Dec" )
     parser.add_argument( '-b', '--band', type=str, required=False, help="Band: R062, Z087, Y106, J129, H158, F184, or K213" )
     parser.add_argument( '-t', '--template-images', type=str, required=True,
                          help="Path to file with, per line, ( path_to_image, pointing, sca )" )
@@ -534,12 +534,17 @@ def main():
                          help="Stop after this step; one of (see above)" )
     parser.add_argument( '--force-sky-subtract', action='store_true', default=False,
                          help='Redo sky subtraction even if the right file is sitting in the temp dir.' )
-    parser.add_argument( '--slurm-array', action='store_true', default=False, 
+    parser.add_argument( '--slurm_array', action='store_true', default=False, 
                          help='If the job is a slurm array job, process band from SLURM_ARRAY_TASK_ID.' )
+    parser.add_argument( '--ra_dec_from_oid', action='store_true', default=False,
+                         help='Retrieve ra, dec from the object ID.')
     args = parser.parse_args()
 
     if args.slurm_array:
         args.band = parse_slurm()
+
+    if args.ra_dec_from_oid:
+        args.ra, args.dec = get_transient_radec(oid)
 
     science_images = []
     template_images = []
