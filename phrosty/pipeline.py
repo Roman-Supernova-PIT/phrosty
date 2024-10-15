@@ -1,3 +1,5 @@
+import nvtx
+
 import os
 import pathlib
 import argparse
@@ -59,7 +61,7 @@ class Image:
     def save_sky_subtract_info( self, info ):
         self.skysub_path = info[0]
         self.detmask_path = info[1]
-        self.skyrms_path = info[2]
+        self.skyrms = info[2]
 
 
     def run_get_imsim_psf( self ):
@@ -151,7 +153,7 @@ class Pipeline:
                 for img in all_imgs:
                     callback_partial = partial( img.save_psf_path, all_imgs )
                     pool.apply_async( img.run_get_imsim_psf, (), {},
-                                      img.safe_psf_path,
+                                      img.save_psf_path,
                                       lambda x: logger.error( f"get_imsim_psf subprocess failure: {x}" ) )
                 pool.close()
                 pool.join()
@@ -412,7 +414,7 @@ class Pipeline:
         if self.ncpus > 1:
             with Pool( self.ncpus ) as pool:
                 for sci_image in self.science_images:
-                    for templ_imnge in self.template_images:
+                    for templ_image in self.template_images:
                         pool.apply_async( self.make_phot_info_dict, (sci_image, templ_image), {},
                                           self.add_to_results_dict,
                                           error_callback=lambda x: logger.error( "Make_phot_info_dict subprocess failure: {x}" )
@@ -447,23 +449,28 @@ class Pipeline:
         steps = steps[:stepdex+1]
 
         if 'sky_subtract' in steps:
-            self.sky_sub_all_images()
+            with nvtx.annotate( "skysub", color=0xff8888 ):
+                self.sky_sub_all_images()
 
         if 'get_psfs' in steps:
-            self.get_psfs()
+            with nvtx.annotate( "getpsfs", color=0xff8888 ):
+                self.get_psfs()
 
         for templ_image in self.template_images:
             for sci_image in self.science_images:
                 sfftifier = None
 
                 if 'align_and_preconvolve' in steps:
-                    sfftifier = self.align_and_pre_convolve( templ_image, sci_image )
+                    with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
+                        sfftifier = self.align_and_pre_convolve( templ_image, sci_image )
 
                 if 'subtract' in steps:
-                    sfftifier.sfft_subtraction()
+                    with nvtx.annotate( "subtraction", color=0x44ccff ):
+                        sfftifier.sfft_subtraction()
 
                 if 'find_decorrelation' in steps:
-                    sfftifier.find_decorrelation()
+                    with nvtx.annotate( "find_decor", color=0xcc44ff ):
+                        sfftifier.find_decorrelation()
 
                 if 'apply_decorrelation' in steps:
                     mess = f"{self.band}_{sci_image.pointing}_{sci_image.sca}_-_{self.band}_{templ_image.pointing}_{templ_image.sca}.fits"
@@ -473,31 +480,35 @@ class Pipeline:
                     for img, savepath, hdr in zip( [ sfftifier.PixA_DIFF_GPU, sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ],
                                                    [ decorr_diff_path,        decorr_zptimg_path,         decorr_psf_path ],
                                                    [ sfftifier.hdr_target,    sfftifier.hdr_target,       None ] ):
-                        decorimg = sfftifier.apply_decorrelation( img )
-                        fits.writeto( savepath, cp.asnumpy( decorimg ).T, header=hdr, overwrite=True )
+                        with nvtx.annotate( "apply_decor", color=0xccccff ):
+                            decorimg = sfftifier.apply_decorrelation( img )
+                        with nvtx.annotate( "writefits", color=0xff8888 ):
+                            fits.writeto( savepath, cp.asnumpy( decorimg ).T, header=hdr, overwrite=True )
                     sci_image.decorr_psf_path[ templ_image.image_name ]= decorr_psf_path
                     sci_image.decorr_zptimg_path[ templ_image.image_name ]= decorr_zptimg_path
                     sci_image.decorr_diff_path[ templ_image.image_name ]= decorr_diff_path
 
 
         if 'make_stamps' in steps:
-            for templ_image in self.template_images:
-                stamp_name = stampmaker( self.ra, self.dec, templ_image.image_path, shape=np.array([100,100]),
-                                         savedir=self.out_dir, savename=f"stamp_{templ_image.image_name}" )
-
-            for sci_image in self.science_images:
+            with nvtx.annotate( "make stamps", color=0xff8888 ):
                 for templ_image in self.template_images:
-                    zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
-                    diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
-                    stamp_name = stampmaker( self.ra, self.dec, zptname, shape=np.array([100,100]),
-                                             savedir=self.out_dir, savename=f"stamp_{zptname.name}" )
-                    sci_image.zpt_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
-                    stamp_name = stampmaker( self.ra, self.dec, diffname, shape=np.array([100,100]),
-                                             savedir=self.out_dir, savename=f"stamp_{diffname.name}" )
-                    sci_image.diff_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
+                    stamp_name = stampmaker( self.ra, self.dec, templ_image.image_path, shape=np.array([100,100]),
+                                             savedir=self.out_dir, savename=f"stamp_{templ_image.image_name}" )
+
+                for sci_image in self.science_images:
+                    for templ_image in self.template_images:
+                        zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
+                        diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
+                        stamp_name = stampmaker( self.ra, self.dec, zptname, shape=np.array([100,100]),
+                                                 savedir=self.out_dir, savename=f"stamp_{zptname.name}" )
+                        sci_image.zpt_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
+                        stamp_name = stampmaker( self.ra, self.dec, diffname, shape=np.array([100,100]),
+                                                 savedir=self.out_dir, savename=f"stamp_{diffname.name}" )
+                        sci_image.diff_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
 
         if 'make_lightcurve' in steps:
-            self.make_lightcurve()
+            with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
+                self.make_lightcurve()
 
 # ======================================================================
 
