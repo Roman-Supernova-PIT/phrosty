@@ -135,7 +135,7 @@ class Pipeline:
                 for img in all_imgs:
                     pool.apply_async( img.run_sky_subtract, (), {},
                                       callback=img.save_sky_subtract_info,
-                                      error_callback=lambda x: logger.error( f"Sky subtraction subprocess failure: {x}" ) )
+                                      error_callback=lambda x: self.logger.error( f"Sky subtraction subprocess failure: {x}" ) )
                 pool.close()
                 pool.join()
         else:
@@ -154,7 +154,7 @@ class Pipeline:
                     callback_partial = partial( img.save_psf_path, all_imgs )
                     pool.apply_async( img.run_get_imsim_psf, (), {},
                                       img.save_psf_path,
-                                      lambda x: logger.error( f"get_imsim_psf subprocess failure: {x}" ) )
+                                      lambda x: self.logger.error( f"get_imsim_psf subprocess failure: {x}" ) )
                 pool.close()
                 pool.join()
         else:
@@ -417,7 +417,7 @@ class Pipeline:
                     for templ_image in self.template_images:
                         pool.apply_async( self.make_phot_info_dict, (sci_image, templ_image), {},
                                           self.add_to_results_dict,
-                                          error_callback=lambda x: logger.error( "Make_phot_info_dict subprocess failure: {x}" )
+                                          error_callback=lambda x: self.logger.error( "Make_phot_info_dict subprocess failure: {x}" )
                                          )
                 pool.close()
                 pool.join()
