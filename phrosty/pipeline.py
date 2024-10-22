@@ -530,9 +530,11 @@ class Pipeline:
             with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
                 fits_writer_pool.close()
                 fits_writer_pool.join()
+            self.logger.info( f"...FITS writer processes done." )
 
 
         if 'make_stamps' in steps:
+            self.logger.info( "Making stamps" )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
                 for templ_image in self.template_images:
                     stamp_name = stampmaker( self.ra, self.dec, templ_image.image_path, shape=np.array([100,100]),
@@ -550,6 +552,7 @@ class Pipeline:
                         sci_image.diff_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
 
         if 'make_lightcurve' in steps:
+            self.logger.info( "Making lightcurve" )
             with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
                 self.make_lightcurve()
 
