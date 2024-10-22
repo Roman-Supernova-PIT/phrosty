@@ -4,6 +4,7 @@ import nvtx
 
 # IMPORTS Standard:
 import os
+import io
 import sys
 import numpy as np
 import cupy
@@ -77,12 +78,21 @@ def gz_and_ext(in_path,out_path):
     """
     Utility function that unzips the original file and turns it into a single-extension FITS file.
     """
-    with gzip.open(in_path,'rb') as f_in, open(out_path,'wb') as f_out:
-        shutil.copyfileobj(f_in,f_out)
+    # ****
+    # Remove this
+    import multiprocessing
+    # ****
 
-    with fits.open(out_path) as hdu:
+    bio = io.BytesIO()
+    with gzip.open(in_path,'rb') as f_in:
+        shutil.copyfileobj(f_in, bio)
+    bio.seek(0)
+
+    with fits.open(bio) as hdu:
         newhdu = fits.HDUList([fits.PrimaryHDU(data=hdu[1].data, header=hdu[0].header)])
+        _logger.debug( f"Process {multiprocessing.current_process().pid} Writing extracted HDU 1 to {out_path}..." )
         newhdu.writeto(out_path, overwrite=True)
+        _logger.debug( f"...process {multiprocessing.current_process().pid} done writing extracted HDU 1 to {out_path}." )
 
     return out_path
 

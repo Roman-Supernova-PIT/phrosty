@@ -4,6 +4,7 @@ import os
 import pathlib
 import argparse
 import logging
+import multiprocessing
 from multiprocessing import Pool
 from functools import partial
 
@@ -30,6 +31,7 @@ from galsim import roman
 class Image:
     def __init__( self, path, pointing, sca, mjd, pipeline ):
         self.pipeline = pipeline
+        self.logger = self.pipeline.logger
         self.image_path = pathlib.Path( path )
         self.image_name = self.image_path.name
         if self.image_name[-3:] == '.gz':
@@ -52,13 +54,19 @@ class Image:
         self.diff_stamp_path = {}
 
     def run_sky_subtract( self ):
-        self.skysub_path = self.pipeline.temp_dir / f"skysub_{self.image_name}"
-        self.detmask_path = self.pipeline.temp_dir / f"detmask_{self.image_name}"
-        self.skyrms = sky_subtract( self.image_path, self.skysub_path, self.detmask_path,
-                                    temp_dir=self.pipeline.temp_dir, force=self.pipeline.force_sky_subtract )
-        return ( self.skysub_path, self.detmask_path, self.skyrms )
+        try:
+            self.logger.debug( f"Process {multiprocessing.current_process().pid} run_sky_subtract {self.image_name}" )
+            self.skysub_path = self.pipeline.temp_dir / f"skysub_{self.image_name}"
+            self.detmask_path = self.pipeline.temp_dir / f"detmask_{self.image_name}"
+            self.skyrms = sky_subtract( self.image_path, self.skysub_path, self.detmask_path,
+                                        temp_dir=self.pipeline.temp_dir, force=self.pipeline.force_sky_subtract )
+            return ( self.skysub_path, self.detmask_path, self.skyrms )
+        except Exception as ex:
+            self.logger.error( f"Process {multiprocessing.current_process().pid} exception: {ex}" )
+            raise
 
     def save_sky_subtract_info( self, info ):
+        self.logger.debug( f"Saving sky_subtract info for path {info[0]}" )
         self.skysub_path = info[0]
         self.detmask_path = info[1]
         self.skyrms = info[2]
@@ -103,6 +111,9 @@ class Pipeline:
 
         """
 
+        self.logger = set_logger( 'phrosty', 'phrosty' )
+        self.logger.setLevel( logging.DEBUG if verbose else logging.INFO )
+
         if galsim_config_file is None:
             raise RuntimeError( "Gotta give me galsim_config_file" )
         self.galsim_config_file = galsim_config_file
@@ -120,9 +131,6 @@ class Pipeline:
         self.nuke_temp_dir = nuke_temp_dir
         self.force_sky_subtract = force_sky_subtract
 
-        self.logger = set_logger( 'phrosty', 'phrosty' )
-        self.logger.setLevel( logging.DEBUG if verbose else logging.INFO )
-
         if self.nuke_temp_dir:
             self.logger.warning( "nuke_temp_dir not implemented" )
 
@@ -130,12 +138,16 @@ class Pipeline:
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
+        def log_error( img, x ):
+            self.logger.error( f"Sky subtraction subprocess failure: {x} for image {img.image_path}" )
+
         if self.ncpus > 1:
             with Pool( self.ncpus ) as pool:
                 for img in all_imgs:
+
                     pool.apply_async( img.run_sky_subtract, (), {},
                                       callback=img.save_sky_subtract_info,
-                                      error_callback=lambda x: self.logger.error( f"Sky subtraction subprocess failure: {x}" ) )
+                                      error_callback=partial(log_error,img) )
                 pool.close()
                 pool.join()
         else:
@@ -449,26 +461,32 @@ class Pipeline:
         steps = steps[:stepdex+1]
 
         if 'sky_subtract' in steps:
+            self.logger.info( "Running sky subtraction" )
             with nvtx.annotate( "skysub", color=0xff8888 ):
                 self.sky_sub_all_images()
 
         if 'get_psfs' in steps:
+            self.logger.info( "Getting PSFs" )
             with nvtx.annotate( "getpsfs", color=0xff8888 ):
                 self.get_psfs()
 
         for templ_image in self.template_images:
             for sci_image in self.science_images:
+                self.logger.info( f"Processing {sci_image.image_name} minus {templ_image.image_name}" )
                 sfftifier = None
 
                 if 'align_and_preconvolve' in steps:
+                    self.logger.info( f"...align_and_preconvolve" )
                     with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
                         sfftifier = self.align_and_pre_convolve( templ_image, sci_image )
 
                 if 'subtract' in steps:
+                    self.logger.info( f"...subtract" )
                     with nvtx.annotate( "subtraction", color=0x44ccff ):
                         sfftifier.sfft_subtraction()
 
                 if 'find_decorrelation' in steps:
+                    self.logger.info( f"...find_decorrelation" )
                     with nvtx.annotate( "find_decor", color=0xcc44ff ):
                         sfftifier.find_decorrelation()
 
@@ -481,12 +499,16 @@ class Pipeline:
                                                    [ decorr_diff_path,        decorr_zptimg_path,         decorr_psf_path ],
                                                    [ sfftifier.hdr_target,    sfftifier.hdr_target,       None ] ):
                         with nvtx.annotate( "apply_decor", color=0xccccff ):
+                            self.logger.info( f"...apply_decor to {savepath}" )
                             decorimg = sfftifier.apply_decorrelation( img )
                         with nvtx.annotate( "writefits", color=0xff8888 ):
+                            self.logger.info( f"...writefits {savepath}" )
                             fits.writeto( savepath, cp.asnumpy( decorimg ).T, header=hdr, overwrite=True )
                     sci_image.decorr_psf_path[ templ_image.image_name ]= decorr_psf_path
                     sci_image.decorr_zptimg_path[ templ_image.image_name ]= decorr_zptimg_path
                     sci_image.decorr_diff_path[ templ_image.image_name ]= decorr_diff_path
+
+                    self.logger.info( f"DONE processing {sci_image.image_name} minus {templ_image.image_name}" )
 
 
         if 'make_stamps' in steps:
