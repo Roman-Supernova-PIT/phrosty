@@ -407,6 +407,28 @@ class Pipeline:
         for key, arr in self.results_dict.items():
             arr.append( one_pair[ key ] )
 
+    def save_stamp_paths( self, sci_image, templ_image, paths ):
+        sci_image.zpt_stamp_path[ templ_image.image_name ] = paths[0]
+        sci_image.diff_stamp_path[ templ_image.image_name ] = paths[1]
+
+    def do_stamps( self, sci_image, templ_image ):
+
+        zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
+        zpt_stampname = stampmaker( self.ra, self.dec, np.array([100,100]),
+                                    zptname, 
+                                    savedir=self.out_dir, 
+                                    savename=f"stamp_{zptname.name}" )
+
+        diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
+        diff_stampname = stampmaker( self.ra, self.dec, np.array([100,100]),
+                                 diffname, 
+                                 savedir=self.out_dir, 
+                                 savename=f"stamp_{diffname.name}" )
+
+        self.logger.info(f"Decorrelated stamp path: {pathlib.Path( diff_stampname )}")
+        self.logger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
+
+        return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname )
 
     def make_lightcurve( self ):
         self.logger.info( "Making lightcurve." )
@@ -530,26 +552,49 @@ class Pipeline:
             with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
                 fits_writer_pool.close()
                 fits_writer_pool.join()
-            self.logger.info( f"...FITS writer processes done." )
-
+            self.logger.info( f"...FITS writer processes done." )        
 
         if 'make_stamps' in steps:
-            self.logger.info( "Making stamps" )
+            self.logger.info( "Starting to make stamps..." )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
-                for templ_image in self.template_images:
-                    stamp_name = stampmaker( self.ra, self.dec, templ_image.image_path, shape=np.array([100,100]),
-                                             savedir=self.out_dir, savename=f"stamp_{templ_image.image_name}" )
+                if self.nwrite > 1:
+                    partialstamp = partial(stampmaker, self.ra, self.dec, np.array([100,100]))
+                    templstamp_args = ( (ti, self.out_dir, f'stamp_{ti}') for ti in self.template_images) # template path, savedir, savename
 
-                for sci_image in self.science_images:
+                    with Pool( self.nwrite ) as templ_stamp_pool:
+                        templ_stamp_pool.starmap_async( partialstamp, templstamp_args )
+                        templ_stamp_pool.close()
+                        templ_stamp_pool.join()
+
+                    with Pool( self.nwrite ) as sci_stamp_pool:
+                        for sci_image in self.science_images:
+                            for templ_image in self.template_images:
+                                pair = (sci_image, templ_image)
+                                sci_stamp_pool.apply_async( self.do_stamps, pair, {},
+                                                            callback = partial(self.save_stamp_paths,sci_image,templ_image),
+                                                            error_callback=partial( self.logger.error, "do_stamps subprocess failure: {x}" )
+                                                            )
+
+                        sci_stamp_pool.close()
+                        sci_stamp_pool.join()
+
+                else:
                     for templ_image in self.template_images:
-                        zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
-                        diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
-                        stamp_name = stampmaker( self.ra, self.dec, zptname, shape=np.array([100,100]),
-                                                 savedir=self.out_dir, savename=f"stamp_{zptname.name}" )
-                        sci_image.zpt_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
-                        stamp_name = stampmaker( self.ra, self.dec, diffname, shape=np.array([100,100]),
-                                                 savedir=self.out_dir, savename=f"stamp_{diffname.name}" )
-                        sci_image.diff_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
+                        stamp_name = stampmaker( self.ra, self.dec, np.array([100,100]), templ_image.image_path,
+                                                savedir=self.out_dir, savename=f"stamp_{templ_image.image_name}" )
+
+                    for sci_image in self.science_images:
+                        for templ_image in self.template_images:
+                            zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
+                            diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
+                            stamp_name = stampmaker( self.ra, self.dec, np.array([100,100]), zptname, 
+                                                    savedir=self.out_dir, savename=f"stamp_{zptname.name}" )
+                            sci_image.zpt_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
+                            stamp_name = stampmaker( self.ra, self.dec, np.array([100,100]), diffname, 
+                                                    savedir=self.out_dir, savename=f"stamp_{diffname.name}" )
+                            sci_image.diff_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
+
+            self.logger.info('...finished making stamps.')
 
         if 'make_lightcurve' in steps:
             self.logger.info( "Making lightcurve" )

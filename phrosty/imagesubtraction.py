@@ -363,7 +363,11 @@ def crossconvolve(sci_img_path, sci_psf_path,
 
     return savepaths
 
-def stampmaker(ra, dec, imgpath, savedir=None, savename=None, shape=np.array([1000,1000])):
+def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
+
+    """
+    Note: 'shape' must be a numpy array. e.g. np.array([100,100])
+    """
 
     if savedir is None:
         savedir = os.path.join(output_files_rootdir,'stamps')
