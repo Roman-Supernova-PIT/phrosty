@@ -45,7 +45,7 @@ from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
 
 # IMPORTS Internal:
 from phrosty.SpaceSFFTPurePack.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow, SpaceSFFT_CupyFlow_NVTX
-from phrosty.utils import _build_filepath, get_transient_radec, get_transient_mjd, get_fitsobj
+from phrosty.utils import _build_filepath, get_transient_radec, get_transient_mjd
 
 # Configure logger (Rob)
 _logger = logging.getLogger(f'phrosty')

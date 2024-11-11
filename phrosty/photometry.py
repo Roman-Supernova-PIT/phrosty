@@ -17,8 +17,6 @@ from photutils.psf import PSFPhotometry, FittableImageModel # EPSFBuilder, extra
 from photutils.background import LocalBackground, MMMBackground
 from galsim import roman
 
-# IMPORTS Internal:
-from .utils import get_object_instances, get_object_data
 
 """
 NOTE: This module assumes images have already had background subtracted. 
@@ -180,104 +178,104 @@ def psf_phot(scienceimage,psf,init_params,wcs=None,
     except NonFiniteValueError:
         print('fit_shape overlaps with edge of image, and therefore encloses NaNs! Photometry cancelled.')
 
-def crossmatch(pi,ti,seplimit=0.1):
-    """ Cross-match the truth files from each image (TI) to the corresponding photometry
-    file from that image (PI).
+# def crossmatch(pi,ti,seplimit=0.1):
+#     """ Cross-match the truth files from each image (TI) to the corresponding photometry
+#     file from that image (PI).
 
-    :param ti: Astropy table from a truth file ('Roman_TDS_index_{band}_{pointing}_{sca}.txt')
-    :type ti: Astropy table
-    :param pi: Astropy table from a photometry file generated from the image with the same band,
-                pointing, and sca as ti. 
-    :type pi: Astropy table
+#     :param ti: Astropy table from a truth file ('Roman_TDS_index_{band}_{pointing}_{sca}.txt')
+#     :type ti: Astropy table
+#     :param pi: Astropy table from a photometry file generated from the image with the same band,
+#                 pointing, and sca as ti. 
+#     :type pi: Astropy table
 
-    :return: Joined truth catalog and measured photometry catalog, 
-            so that the measured objects are correctly crossmatched
-            to their corresponding rows in the truth catalog. 
-    :rtype: astropy.table 
-    """
+#     :return: Joined truth catalog and measured photometry catalog, 
+#             so that the measured objects are correctly crossmatched
+#             to their corresponding rows in the truth catalog. 
+#     :rtype: astropy.table 
+#     """
 
-    if 'ra_truth' not in ti.colnames:
-        ti['ra'].name = 'ra_truth'
+#     if 'ra_truth' not in ti.colnames:
+#         ti['ra'].name = 'ra_truth'
     
-    if 'dec_truth' not in ti.colnames:
-        ti['dec'].name = 'dec_truth'
+#     if 'dec_truth' not in ti.colnames:
+#         ti['dec'].name = 'dec_truth'
 
-    if 'flux_truth' not in ti.colnames:
-        ti['flux'].name = 'flux_truth'
+#     if 'flux_truth' not in ti.colnames:
+#         ti['flux'].name = 'flux_truth'
 
-    if 'mag_truth' not in ti.colnames:
-        ti['mag'].name = 'mag_truth'
+#     if 'mag_truth' not in ti.colnames:
+#         ti['mag'].name = 'mag_truth'
 
-    tc = SkyCoord(ra=ti['ra_truth']*u.degree, dec=ti['dec_truth']*u.degree)
-    pc = SkyCoord(ra=pi['ra']*u.degree, dec=pi['dec']*u.degree)
-    ti_idx, pi_idx, angsep, dist3d = search_around_sky(tc,pc,seplimit=seplimit*(u.arcsec))
+#     tc = SkyCoord(ra=ti['ra_truth']*u.degree, dec=ti['dec_truth']*u.degree)
+#     pc = SkyCoord(ra=pi['ra']*u.degree, dec=pi['dec']*u.degree)
+#     ti_idx, pi_idx, angsep, dist3d = search_around_sky(tc,pc,seplimit=seplimit*(u.arcsec))
 
-    ti_reduced = ti[ti_idx]
-    pi_reduced = pi[pi_idx]
+#     ti_reduced = ti[ti_idx]
+#     pi_reduced = pi[pi_idx]
 
-    ti_pi_reduced = hstack([ti_reduced,pi_reduced], join_type='exact')
-    ti_x_pi = join(ti,ti_pi_reduced,join_type='outer')
+#     ti_pi_reduced = hstack([ti_reduced,pi_reduced], join_type='exact')
+#     ti_x_pi = join(ti,ti_pi_reduced,join_type='outer')
     
-    return ti_x_pi
+#     return ti_x_pi
 
-def convert_flux_to_mag(ti_x_pi, band, zpt=False):
-    """Convert all fluxes to magnitudes from the crossmatched table. 
+# def convert_flux_to_mag(ti_x_pi, band, zpt=False):
+#     """Convert all fluxes to magnitudes from the crossmatched table. 
 
-    :param ti_x_pi: Astropy table, directly output from photometry.crossmatch.
-    :type ti_x_pi: astropy.table.Table
-    :param band: Roman filter.
-    :type band: str
-    :param zpt: Set to True if you want to zeropoint the fit flux values from PSF photometry
-                to the truth catalog, as well as apply the galsim zeropoint to the truth magnitudes. Defaults to False.
-    :type zpt: bool, optional
-    :return: Input ti_x_pi with additional columns. 
-    :rtype: astropy.table.Table
+#     :param ti_x_pi: Astropy table, directly output from photometry.crossmatch.
+#     :type ti_x_pi: astropy.table.Table
+#     :param band: Roman filter.
+#     :type band: str
+#     :param zpt: Set to True if you want to zeropoint the fit flux values from PSF photometry
+#                 to the truth catalog, as well as apply the galsim zeropoint to the truth magnitudes. Defaults to False.
+#     :type zpt: bool, optional
+#     :return: Input ti_x_pi with additional columns. 
+#     :rtype: astropy.table.Table
 
-    """
+#     """
 
-    exptime = {'F184': 901.175,
-               'J129': 302.275,
-               'H158': 302.275,
-               'K213': 901.175,
-               'R062': 161.025,
-               'Y106': 302.275,
-               'Z087': 101.7}
+#     exptime = {'F184': 901.175,
+#                'J129': 302.275,
+#                'H158': 302.275,
+#                'K213': 901.175,
+#                'R062': 161.025,
+#                'Y106': 302.275,
+#                'Z087': 101.7}
 
-    ti_x_pi['mag_fit'] = -2.5*np.log10(ti_x_pi['flux_fit'])
-    ti_x_pi['mag_err'] = np.sqrt((1.09/ti_x_pi['flux_fit'])**2*ti_x_pi['flux_err']**2)
+#     ti_x_pi['mag_fit'] = -2.5*np.log10(ti_x_pi['flux_fit'])
+#     ti_x_pi['mag_err'] = np.sqrt((1.09/ti_x_pi['flux_fit'])**2*ti_x_pi['flux_err']**2)
 
-    if zpt:
-        ti_x_pi['zpt'] = np.zeros(len(ti_x_pi))
-        area_eff = roman.collecting_area
-        galsim_zp = roman.getBandpasses()[band].zeropoint
+#     if zpt:
+#         ti_x_pi['zpt'] = np.zeros(len(ti_x_pi))
+#         area_eff = roman.collecting_area
+#         galsim_zp = roman.getBandpasses()[band].zeropoint
 
-        ti_x_pi['truth_mag'] = -2.5*np.log10(ti_x_pi['flux_truth']) + 2.5*np.log10(exptime[band]*area_eff) + galsim_zp
+#         ti_x_pi['truth_mag'] = -2.5*np.log10(ti_x_pi['flux_truth']) + 2.5*np.log10(exptime[band]*area_eff) + galsim_zp
         
-        # This is going to be slow. Should parallelize. 
-        # First of all, looping through the entire crossmatched object list is inefficient and can be
-        # parallelized. Second of all, get_object_instances has a slow part in it that should also
-        # be parallelized. 
-        for i, row in enumerate(ti_x_pi):
-            print(row['object_id'], row['ra_truth'], row['dec_truth'])
-            objtab = get_object_instances(row['object_id'], row['ra_truth'], row['dec_truth'], bands=band)
-            objdata = get_object_data(row['object_id'], objtab)
-            objdata['mag_fit'] = -2.5*np.log10(objdata['flux_fit'])
-            mean_mag = np.nanmedian(objdata['mag_fit'])
-            zpt = row['mag_fit'] - mean_mag
-            # zpt = np.unique(objdata['mag_truth'] - mean_mag)
-            ti_x_pi['zpt'][i] = zpt
-            ti_x_pi['mag_fit'] += zpt 
+#         # This is going to be slow. Should parallelize. 
+#         # First of all, looping through the entire crossmatched object list is inefficient and can be
+#         # parallelized. Second of all, get_object_instances has a slow part in it that should also
+#         # be parallelized. 
+#         for i, row in enumerate(ti_x_pi):
+#             print(row['object_id'], row['ra_truth'], row['dec_truth'])
+#             objtab = get_object_instances(row['object_id'], row['ra_truth'], row['dec_truth'], bands=band)
+#             objdata = get_object_data(row['object_id'], objtab)
+#             objdata['mag_fit'] = -2.5*np.log10(objdata['flux_fit'])
+#             mean_mag = np.nanmedian(objdata['mag_fit'])
+#             zpt = row['mag_fit'] - mean_mag
+#             # zpt = np.unique(objdata['mag_truth'] - mean_mag)
+#             ti_x_pi['zpt'][i] = zpt
+#             ti_x_pi['mag_fit'] += zpt 
 
-    return ti_x_pi
+#     return ti_x_pi
 
-        #     if zpt == 'truth':
-#         ap_zpt_mask = np.logical_and(results_table[f'{self.band}_ap_mag']>-11, results_table[f'{self.band}_ap_mag']<-9)
-#         psf_zpt_mask = np.logical_and(results_table[f'{self.band}_psf_mag']>-11, results_table[f'{self.band}_psf_mag']<-9)
+#         #     if zpt == 'truth':
+# #         ap_zpt_mask = np.logical_and(results_table[f'{self.band}_ap_mag']>-11, results_table[f'{self.band}_ap_mag']<-9)
+# #         psf_zpt_mask = np.logical_and(results_table[f'{self.band}_psf_mag']>-11, results_table[f'{self.band}_psf_mag']<-9)
 
-#         truthmag = truth_table[self.band][self.footprint_mask]
-#         results_table[f'{self.band}_truth'] = truthmag
-#         ap_zpt = np.median(results_table[f'{self.band}_ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
-#         psf_zpt = np.median(results_table[f'{self.band}_psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
+# #         truthmag = truth_table[self.band][self.footprint_mask]
+# #         results_table[f'{self.band}_truth'] = truthmag
+# #         ap_zpt = np.median(results_table[f'{self.band}_ap_mag'][ap_zpt_mask] - truthmag[ap_zpt_mask])
+# #         psf_zpt = np.median(results_table[f'{self.band}_psf_mag'][psf_zpt_mask] - truthmag[psf_zpt_mask])
         
-#         results_table[f'{self.band}_ap_mag'] -= ap_zpt
-#         results_table[f'{self.band}_psf_mag'] -= psf_zpt
+# #         results_table[f'{self.band}_ap_mag'] -= ap_zpt
+# #         results_table[f'{self.band}_psf_mag'] -= psf_zpt
