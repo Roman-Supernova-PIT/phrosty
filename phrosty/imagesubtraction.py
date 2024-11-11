@@ -36,7 +36,7 @@ from sfft.utils.StampGenerator import Stamp_Generator
 from sfft.utils.pyAstroMatic.PYSWarp import PY_SWarp
 from sfft.utils.ReadWCS import Read_WCS
 from sfft.utils.ImageZoomRotate import Image_ZoomRotate
-# from sfft.utils.CudaResampling import Cuda_Resampling
+from sfft.utils.CudaResampling import Cuda_Resampling
 from sfft.utils.pyAstroMatic.PYSEx import PY_SEx
 from sfft.CustomizedPacket import Customized_Packet
 from sfft.utils.SkyLevelEstimator import SkyLevel_Estimator
