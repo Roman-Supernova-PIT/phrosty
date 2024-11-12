@@ -32,7 +32,10 @@ class Image:
     def __init__( self, path, pointing, sca, mjd, pipeline ):
         self.pipeline = pipeline
         self.logger = self.pipeline.logger
-        self.image_path = pathlib.Path( path )
+        self.sims_dir = pathlib.Path( os.getenv( 'SIMS_DIR', None ) )
+        if self.sims_dir is None:
+            raise ValueError( "Env var SIMS_DIR must be set" )
+        self.image_path = self.sims_dir / path
         self.image_name = self.image_path.name
         if self.image_name[-3:] == '.gz':
             self.image_name = self.image_name[:-3]
@@ -116,6 +119,7 @@ class Pipeline:
 
         self.logger = set_logger( 'phrosty', 'phrosty' )
         self.logger.setLevel( logging.DEBUG if verbose else logging.INFO )
+        self.sims_dir = pathlib.Path( os.getenv( 'SIMS_DIR', None ) )
 
         if galsim_config_file is None:
             raise RuntimeError( "Gotta give me galsim_config_file" )
@@ -377,9 +381,9 @@ class Pipeline:
 
             # TODO -- take this galsim-specific code out, move it to a separate module.  Define a general
             #  zeropointing interface, of which the galsim-speicifc one will be one instance
-            truthpath = os.path.join(os.getenv('SIMS_DIR'),
-                                     ( f'RomanTDS/truth/{self.band}/{sci_image.pointing}/'
-                                       f'Roman_TDS_index_{self.band}_{sci_image.pointing}_{sci_image.sca}.txt') )
+            truthpath = str( self.sims_dir /
+                             f'RomanTDS/truth/{self.band}/{sci_image.pointing}/'
+                             f'Roman_TDS_index_{self.band}_{sci_image.pointing}_{sci_image.sca}.txt' )
             stars = self.get_stars(truthpath)
             # Now, calculate the zero point based on those stars.
             zptimg_path = sci_image.decorr_zptimg_path[ templ_image.image_name ]
@@ -415,14 +419,14 @@ class Pipeline:
 
         zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
         zpt_stampname = stampmaker( self.ra, self.dec, np.array([100,100]),
-                                    zptname, 
-                                    savedir=self.out_dir, 
+                                    zptname,
+                                    savedir=self.out_dir,
                                     savename=f"stamp_{zptname.name}" )
 
         diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
         diff_stampname = stampmaker( self.ra, self.dec, np.array([100,100]),
-                                 diffname, 
-                                 savedir=self.out_dir, 
+                                 diffname,
+                                 savedir=self.out_dir,
                                  savename=f"stamp_{diffname.name}" )
 
         self.logger.info(f"Decorrelated stamp path: {pathlib.Path( diff_stampname )}")
@@ -552,7 +556,7 @@ class Pipeline:
             with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
                 fits_writer_pool.close()
                 fits_writer_pool.join()
-            self.logger.info( f"...FITS writer processes done." )        
+            self.logger.info( f"...FITS writer processes done." )
 
         if 'make_stamps' in steps:
             self.logger.info( "Starting to make stamps..." )
@@ -587,10 +591,10 @@ class Pipeline:
                         for templ_image in self.template_images:
                             zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
                             diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
-                            stamp_name = stampmaker( self.ra, self.dec, np.array([100,100]), zptname, 
+                            stamp_name = stampmaker( self.ra, self.dec, np.array([100,100]), zptname,
                                                     savedir=self.out_dir, savename=f"stamp_{zptname.name}" )
                             sci_image.zpt_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
-                            stamp_name = stampmaker( self.ra, self.dec, np.array([100,100]), diffname, 
+                            stamp_name = stampmaker( self.ra, self.dec, np.array([100,100]), diffname,
                                                     savedir=self.out_dir, savename=f"stamp_{diffname.name}" )
                             sci_image.diff_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
 
