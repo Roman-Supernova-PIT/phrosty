@@ -28,10 +28,10 @@ def test_utils_globals():
     assert set( tab.columns ) == {'ra', 'dec', 'filter'}
 
 
-def test_build_filepath():
-    band = 'R062'
-    pointing = 51235
-    sca = 11
+def test_build_filepath( test_dia_image ):
+    band = test_dia_image[ 'band' ]
+    pointing = test_dia_image[ 'pointing' ]
+    sca = test_dia_image[ 'sca' ]
 
     with pytest.raises( ValueError, match=r"filetype must be in \['image', 'truth', 'truthtxt'\]" ):
         _build_filepath( None, band, pointing, sca, 'foo' )
@@ -55,21 +55,22 @@ def test_get_roman_bands():
     assert phrosty.utils.get_roman_bands() == [ 'R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213' ]
 
 
-def test_read_truth_txt():
-    band = 'R062'
-    pointing = 51235
-    sca = 11
+def test_read_truth_txt( test_dia_image ):
+    band = test_dia_image[ 'band' ]
+    pointing = test_dia_image[ 'pointing' ]
+    sca = test_dia_image[ 'sca' ]
     truth = phrosty.utils.read_truth_txt( None, band, pointing, sca )
-    assert len(truth) == 24628
+    assert len(truth) == 25019
     assert set(truth.columns) == {'dec', 'ra', 'obj_type', 'flux', 'x', 'realized_flux', 'object_id', 'mag', 'y'}
 
 
-def test_radec_isin():
-    band = 'R062'
-    pointing = 35083
-    sca = 8
-    rain = 7.551093401915147
-    decin = -44.80718106491529
+def test_radec_isin( test_sn, test_dia_image ):
+    band = test_dia_image[ 'band' ]
+    pointing = test_dia_image[ 'pointing' ]
+    sca = test_dia_image[ 'sca' ]
+    rain = test_sn[ 'ra' ]
+    decin = test_sn[ 'dec' ]
+    # These next few are based on knowledge of what test_dia_image is
     raout = 7.4106
     decout = -44.7131
     rawayout = 8
@@ -80,10 +81,10 @@ def test_radec_isin():
     assert not phrosty.utils.radec_isin( rawayout, decwayout, path=None, band=band, pointing=pointing, sca=sca )
 
 
-def test_get_corners():
-    band = 'R062'
-    pointing = 35083
-    sca = 8
+def test_get_corners( test_dia_image ):
+    band = test_dia_image[ 'band' ]
+    pointing = test_dia_image[ 'pointing' ]
+    sca = test_dia_image[ 'sca' ]
 
     corners = phrosty.utils.get_corners( path=None, band=band, pointing=pointing, sca=sca )
     expected = ( np.array([  7.58004938, -44.71290687]),
@@ -96,47 +97,48 @@ def test_get_corners():
 # TEST _read_parquet?
 
 # This one also implicitly tests make_object_table
-def test_get_transient_radec():
-    trns = 20172782
-    coords = (7.551093401915147, -44.80718106491529)
+def test_get_transient_radec( test_sn ):
+    trns = test_sn[ 'oid' ]
+    coords = ( test_sn['ra'], test_sn['dec'] )
     assert phrosty.utils.get_transient_radec(trns) == pytest.approx( coords, abs=0.000028 )
 
 
-def test_get_transient_mjd():
-    trns = 20172782
-    endpoints = (62450.0, 62881.0)
+def test_get_transient_mjd( test_sn ):
+    trns = test_sn[ 'oid' ]
+    endpoints = (test_sn['mjd0'], test_sn['mjd1'])
     assert phrosty.utils.get_transient_mjd(trns) == pytest.approx( endpoints, abs=0.1 )
 
-def test_get_transient_zcmb():
-    oid = 20172782
-    zcmb = np.float32(0.3601)
+def test_get_transient_zcmb( test_sn ):
+    oid = test_sn[ 'oid' ]
+    zcmb = np.float32( test_sn['zcmb'] )
 
     tzcmb = get_transient_zcmb(oid)
 
     assert zcmb == pytest.approx( tzcmb, rel=1e-5 )
 
-def test_get_transient_peakmjd():
-    oid = 20172782
-    mjd = np.float32(62476.507812)
+def test_get_transient_peakmjd( test_sn ):
+    oid = test_sn[ 'oid' ]
+    mjd = np.float32( test_sn[ 'peakmjd' ] )
 
     tmjd = get_transient_peakmjd(oid)
 
     assert mjd == pytest.approx( tmjd, abs=0.001 )
 
 
-def test_get_transient_info():
-    oid = 20172782
-    coords = (7.551093401915147, -44.80718106491529, 62450.0, 62881.0)
+def test_get_transient_info( test_sn ):
+    oid = test_sn[ 'oid' ]
+    coords = (test_sn['ra'], test_sn['dec'], test_sn['mjd0'], test_sn['mjd1'])
     assert phrosty.utils.get_transient_info( oid ) == pytest.approx( coords, rel=1e-6 )
 
 
-def test_transient_in_or_out():
-    oid = 20172782
-    mjd0 = 62450.0
-    mjd1 = 62881.0
-    band = 'R062'
+def test_transient_in_or_out( test_sn, test_dia_image ):
+    oid = test_sn[ 'oid' ]
+    mjd0 = test_sn[ 'mjd0' ]
+    mjd1 = test_sn[ 'mjd1' ]
+    band = test_dia_image[ 'band' ]
 
     in_tab, out_tab = phrosty.utils.transient_in_or_out( oid, mjd0, mjd1, band )
+    # These numbers are based on the choice of object in test_sn
     assert len(in_tab) == 53
     assert len(out_tab) == 82
     assert set(in_tab.columns) == { 'filter', 'pointing', 'sca' }
