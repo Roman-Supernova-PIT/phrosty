@@ -79,7 +79,7 @@ class Image:
         psf_path = self.pipeline.temp_dir / f"psf_{self.image_name}"
         get_imsim_psf( self.image_path, self.pipeline.ra, self.pipeline.dec, self.pipeline.band,
                        self.pointing, self.sca,
-                       psf_path=psf_path, config_yaml_file=self.pipeline.galsim_config_file )
+                       size=201, psf_path=psf_path, config_yaml_file=self.pipeline.galsim_config_file, include_photonOps=True )
         return psf_path
 
     def save_psf_path( self, psf_path ):
