@@ -4,6 +4,7 @@ import os
 import pathlib
 import argparse
 import logging
+import multiprocessing
 from multiprocessing import Pool
 from functools import partial
 
@@ -30,7 +31,11 @@ from galsim import roman
 class Image:
     def __init__( self, path, pointing, sca, mjd, pipeline ):
         self.pipeline = pipeline
-        self.image_path = pathlib.Path( path )
+        self.logger = self.pipeline.logger
+        self.sims_dir = pathlib.Path( os.getenv( 'SIMS_DIR', None ) )
+        if self.sims_dir is None:
+            raise ValueError( "Env var SIMS_DIR must be set" )
+        self.image_path = self.sims_dir / path
         self.image_name = self.image_path.name
         if self.image_name[-3:] == '.gz':
             self.image_name = self.image_name[:-3]
@@ -52,13 +57,19 @@ class Image:
         self.diff_stamp_path = {}
 
     def run_sky_subtract( self ):
-        self.skysub_path = self.pipeline.temp_dir / f"skysub_{self.image_name}"
-        self.detmask_path = self.pipeline.temp_dir / f"detmask_{self.image_name}"
-        self.skyrms = sky_subtract( self.image_path, self.skysub_path, self.detmask_path,
-                                    temp_dir=self.pipeline.temp_dir, force=self.pipeline.force_sky_subtract )
-        return ( self.skysub_path, self.detmask_path, self.skyrms )
+        try:
+            self.logger.debug( f"Process {multiprocessing.current_process().pid} run_sky_subtract {self.image_name}" )
+            self.skysub_path = self.pipeline.temp_dir / f"skysub_{self.image_name}"
+            self.detmask_path = self.pipeline.temp_dir / f"detmask_{self.image_name}"
+            self.skyrms = sky_subtract( self.image_path, self.skysub_path, self.detmask_path,
+                                        temp_dir=self.pipeline.temp_dir, force=self.pipeline.force_sky_subtract )
+            return ( self.skysub_path, self.detmask_path, self.skyrms )
+        except Exception as ex:
+            self.logger.error( f"Process {multiprocessing.current_process().pid} exception: {ex}" )
+            raise
 
     def save_sky_subtract_info( self, info ):
+        self.logger.debug( f"Saving sky_subtract info for path {info[0]}" )
         self.skysub_path = info[0]
         self.detmask_path = info[1]
         self.skyrms = info[2]
@@ -76,7 +87,7 @@ class Image:
 
 
 class Pipeline:
-    def __init__( self, object_id, ra, dec, band, science_images, template_images, ncpus=1,
+    def __init__( self, object_id, ra, dec, band, science_images, template_images, nprocs=1, nwrite=5,
                   temp_dir='/phrosty_temp', out_dir='/dia_out_dir', ltcv_dir='/lc_out_dir', galsim_config_file=None,
                   force_sky_subtract=False, nuke_temp_dir=False, verbose=False ):
         """
@@ -96,12 +107,19 @@ class Pipeline:
            template_images: list of tuple
                ( path_to_image, pointing, sca )
 
-           ncpus: int, default 1
+           nprocs: int, default 1
              Number of cpus for the CPU multiprocessing segments of the pipeline.
              (GPU segments will run a single process.)
 
+           nwrite: int, default 5
+             Number of asynchronous FITS writer processes.
+
 
         """
+
+        self.logger = set_logger( 'phrosty', 'phrosty' )
+        self.logger.setLevel( logging.DEBUG if verbose else logging.INFO )
+        self.sims_dir = pathlib.Path( os.getenv( 'SIMS_DIR', None ) )
 
         if galsim_config_file is None:
             raise RuntimeError( "Gotta give me galsim_config_file" )
@@ -113,15 +131,13 @@ class Pipeline:
         self.band = band
         self.science_images = [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self ) for ppsm in science_images if self.band in ppsm[0].name ]
         self.template_images = [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self ) for ppsm in template_images if self.band in ppsm[0].name ]
-        self.ncpus = ncpus
+        self.nprocs = nprocs
+        self.nwrite = nwrite
         self.temp_dir = pathlib.Path(temp_dir )
         self.out_dir = pathlib.Path( out_dir )
         self.ltcv_dir = pathlib.Path( ltcv_dir ) if ltcv_dir is not None else self.out_dir
         self.nuke_temp_dir = nuke_temp_dir
         self.force_sky_subtract = force_sky_subtract
-
-        self.logger = set_logger( 'phrosty', 'phrosty' )
-        self.logger.setLevel( logging.DEBUG if verbose else logging.INFO )
 
         if self.nuke_temp_dir:
             self.logger.warning( "nuke_temp_dir not implemented" )
@@ -130,12 +146,16 @@ class Pipeline:
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
-        if self.ncpus > 1:
-            with Pool( self.ncpus ) as pool:
+        def log_error( img, x ):
+            self.logger.error( f"Sky subtraction subprocess failure: {x} for image {img.image_path}" )
+
+        if self.nprocs > 1:
+            with Pool( self.nprocs ) as pool:
                 for img in all_imgs:
+
                     pool.apply_async( img.run_sky_subtract, (), {},
                                       callback=img.save_sky_subtract_info,
-                                      error_callback=lambda x: self.logger.error( f"Sky subtraction subprocess failure: {x}" ) )
+                                      error_callback=partial(log_error,img) )
                 pool.close()
                 pool.join()
         else:
@@ -148,8 +168,8 @@ class Pipeline:
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
-        if self.ncpus > 1:
-            with Pool( self.ncpus ) as pool:
+        if self.nprocs > 1:
+            with Pool( self.nprocs ) as pool:
                 for img in all_imgs:
                     callback_partial = partial( img.save_psf_path, all_imgs )
                     pool.apply_async( img.run_get_imsim_psf, (), {},
@@ -361,9 +381,9 @@ class Pipeline:
 
             # TODO -- take this galsim-specific code out, move it to a separate module.  Define a general
             #  zeropointing interface, of which the galsim-speicifc one will be one instance
-            truthpath = os.path.join(os.getenv('SIMS_DIR'),
-                                     ( f'RomanTDS/truth/{self.band}/{sci_image.pointing}/'
-                                       f'Roman_TDS_index_{self.band}_{sci_image.pointing}_{sci_image.sca}.txt') )
+            truthpath = str( self.sims_dir /
+                             f'RomanTDS/truth/{self.band}/{sci_image.pointing}/'
+                             f'Roman_TDS_index_{self.band}_{sci_image.pointing}_{sci_image.sca}.txt' )
             stars = self.get_stars(truthpath)
             # Now, calculate the zero point based on those stars.
             zptimg_path = sci_image.decorr_zptimg_path[ templ_image.image_name ]
@@ -391,6 +411,28 @@ class Pipeline:
         for key, arr in self.results_dict.items():
             arr.append( one_pair[ key ] )
 
+    def save_stamp_paths( self, sci_image, templ_image, paths ):
+        sci_image.zpt_stamp_path[ templ_image.image_name ] = paths[0]
+        sci_image.diff_stamp_path[ templ_image.image_name ] = paths[1]
+
+    def do_stamps( self, sci_image, templ_image ):
+
+        zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
+        zpt_stampname = stampmaker( self.ra, self.dec, np.array([100,100]),
+                                    zptname,
+                                    savedir=self.out_dir,
+                                    savename=f"stamp_{zptname.name}" )
+
+        diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
+        diff_stampname = stampmaker( self.ra, self.dec, np.array([100,100]),
+                                 diffname,
+                                 savedir=self.out_dir,
+                                 savename=f"stamp_{diffname.name}" )
+
+        self.logger.info(f"Decorrelated stamp path: {pathlib.Path( diff_stampname )}")
+        self.logger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
+
+        return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname )
 
     def make_lightcurve( self ):
         self.logger.info( "Making lightcurve." )
@@ -411,8 +453,8 @@ class Pipeline:
             'mag_fit_err': [],
         }
 
-        if self.ncpus > 1:
-            with Pool( self.ncpus ) as pool:
+        if self.nprocs > 1:
+            with Pool( self.nprocs ) as pool:
                 for sci_image in self.science_images:
                     for templ_image in self.template_images:
                         pool.apply_async( self.make_phot_info_dict, (sci_image, templ_image), {},
@@ -435,7 +477,8 @@ class Pipeline:
         results_tab.write(results_savepath, format='csv', overwrite=True)
         self.logger.info(f'Results saved to {results_savepath}')
 
-
+    def write_fits_file( self, data, header, savepath ):
+        fits.writeto( savepath, data, header=header, overwrite=True )
 
     def __call__( self, through_step=None ):
         if through_step is None:
@@ -449,64 +492,116 @@ class Pipeline:
         steps = steps[:stepdex+1]
 
         if 'sky_subtract' in steps:
+            self.logger.info( "Running sky subtraction" )
             with nvtx.annotate( "skysub", color=0xff8888 ):
                 self.sky_sub_all_images()
 
         if 'get_psfs' in steps:
+            self.logger.info( "Getting PSFs" )
             with nvtx.annotate( "getpsfs", color=0xff8888 ):
                 self.get_psfs()
 
-        for templ_image in self.template_images:
-            for sci_image in self.science_images:
-                sfftifier = None
+        # Create a process pool to write fits files
+        with Pool( self.nwrite ) as fits_writer_pool:
 
-                if 'align_and_preconvolve' in steps:
-                    with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
-                        sfftifier = self.align_and_pre_convolve( templ_image, sci_image )
+            def log_fits_write_error( savepath, x ):
+                self.logger.error( f"Exception writing FITS file {savepath}: {x}" )
+                # raise?
 
-                if 'subtract' in steps:
-                    with nvtx.annotate( "subtraction", color=0x44ccff ):
-                        sfftifier.sfft_subtraction()
+            # Do the hardcore processing
 
-                if 'find_decorrelation' in steps:
-                    with nvtx.annotate( "find_decor", color=0xcc44ff ):
-                        sfftifier.find_decorrelation()
+            for templ_image in self.template_images:
+                for sci_image in self.science_images:
+                    self.logger.info( f"Processing {sci_image.image_name} minus {templ_image.image_name}" )
+                    sfftifier = None
 
-                if 'apply_decorrelation' in steps:
-                    mess = f"{self.band}_{sci_image.pointing}_{sci_image.sca}_-_{self.band}_{templ_image.pointing}_{templ_image.sca}.fits"
-                    decorr_psf_path = self.out_dir / f"decorr_psf_{mess}"
-                    decorr_zptimg_path = self.out_dir / f"decorr_zptimg_{mess}"
-                    decorr_diff_path = self.out_dir / f"decorr_diff_{mess}"
-                    for img, savepath, hdr in zip( [ sfftifier.PixA_DIFF_GPU, sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ],
-                                                   [ decorr_diff_path,        decorr_zptimg_path,         decorr_psf_path ],
-                                                   [ sfftifier.hdr_target,    sfftifier.hdr_target,       None ] ):
-                        with nvtx.annotate( "apply_decor", color=0xccccff ):
-                            decorimg = sfftifier.apply_decorrelation( img )
-                        with nvtx.annotate( "writefits", color=0xff8888 ):
-                            fits.writeto( savepath, cp.asnumpy( decorimg ).T, header=hdr, overwrite=True )
-                    sci_image.decorr_psf_path[ templ_image.image_name ]= decorr_psf_path
-                    sci_image.decorr_zptimg_path[ templ_image.image_name ]= decorr_zptimg_path
-                    sci_image.decorr_diff_path[ templ_image.image_name ]= decorr_diff_path
+                    if 'align_and_preconvolve' in steps:
+                        self.logger.info( f"...align_and_preconvolve" )
+                        with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
+                            sfftifier = self.align_and_pre_convolve( templ_image, sci_image )
 
+                    if 'subtract' in steps:
+                        self.logger.info( f"...subtract" )
+                        with nvtx.annotate( "subtraction", color=0x44ccff ):
+                            sfftifier.sfft_subtraction()
+
+                    if 'find_decorrelation' in steps:
+                        self.logger.info( f"...find_decorrelation" )
+                        with nvtx.annotate( "find_decor", color=0xcc44ff ):
+                            sfftifier.find_decorrelation()
+
+                    if 'apply_decorrelation' in steps:
+                        mess = f"{self.band}_{sci_image.pointing}_{sci_image.sca}_-_{self.band}_{templ_image.pointing}_{templ_image.sca}.fits"
+                        decorr_psf_path = self.out_dir / f"decorr_psf_{mess}"
+                        decorr_zptimg_path = self.out_dir / f"decorr_zptimg_{mess}"
+                        decorr_diff_path = self.out_dir / f"decorr_diff_{mess}"
+                        for img, savepath, hdr in zip( [ sfftifier.PixA_DIFF_GPU, sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ],
+                                                       [ decorr_diff_path,        decorr_zptimg_path,         decorr_psf_path ],
+                                                       [ sfftifier.hdr_target,    sfftifier.hdr_target,       None ] ):
+                            with nvtx.annotate( "apply_decor", color=0xccccff ):
+                                self.logger.info( f"...apply_decor to {savepath}" )
+                                decorimg = sfftifier.apply_decorrelation( img )
+                            with nvtx.annotate( "submit writefits", color=0xff8888 ):
+                                self.logger.info( f"...writefits {savepath}" )
+                                fits_writer_pool.apply_async( self.write_fits_file,
+                                                              ( cp.asnumpy( decorimg ).T, hdr, savepath ), {},
+                                                              error_callback=partial(log_fits_write_error, savepath) )
+                        sci_image.decorr_psf_path[ templ_image.image_name ]= decorr_psf_path
+                        sci_image.decorr_zptimg_path[ templ_image.image_name ]= decorr_zptimg_path
+                        sci_image.decorr_diff_path[ templ_image.image_name ]= decorr_diff_path
+
+                        self.logger.info( f"DONE processing {sci_image.image_name} minus {templ_image.image_name}" )
+
+            self.logger.info( f"Waiting for FITS writer processes to finish" )
+            with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
+                fits_writer_pool.close()
+                fits_writer_pool.join()
+            self.logger.info( f"...FITS writer processes done." )
 
         if 'make_stamps' in steps:
+            self.logger.info( "Starting to make stamps..." )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
-                for templ_image in self.template_images:
-                    stamp_name = stampmaker( self.ra, self.dec, templ_image.image_path, shape=np.array([100,100]),
-                                             savedir=self.out_dir, savename=f"stamp_{templ_image.image_name}" )
+                if self.nwrite > 1:
+                    partialstamp = partial(stampmaker, self.ra, self.dec, np.array([100,100]))
+                    templstamp_args = ( (ti, self.out_dir, f'stamp_{ti}') for ti in self.template_images) # template path, savedir, savename
 
-                for sci_image in self.science_images:
+                    with Pool( self.nwrite ) as templ_stamp_pool:
+                        templ_stamp_pool.starmap_async( partialstamp, templstamp_args )
+                        templ_stamp_pool.close()
+                        templ_stamp_pool.join()
+
+                    with Pool( self.nwrite ) as sci_stamp_pool:
+                        for sci_image in self.science_images:
+                            for templ_image in self.template_images:
+                                pair = (sci_image, templ_image)
+                                sci_stamp_pool.apply_async( self.do_stamps, pair, {},
+                                                            callback = partial(self.save_stamp_paths,sci_image,templ_image),
+                                                            error_callback=partial( self.logger.error, "do_stamps subprocess failure: {x}" )
+                                                            )
+
+                        sci_stamp_pool.close()
+                        sci_stamp_pool.join()
+
+                else:
                     for templ_image in self.template_images:
-                        zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
-                        diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
-                        stamp_name = stampmaker( self.ra, self.dec, zptname, shape=np.array([100,100]),
-                                                 savedir=self.out_dir, savename=f"stamp_{zptname.name}" )
-                        sci_image.zpt_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
-                        stamp_name = stampmaker( self.ra, self.dec, diffname, shape=np.array([100,100]),
-                                                 savedir=self.out_dir, savename=f"stamp_{diffname.name}" )
-                        sci_image.diff_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
+                        stamp_name = stampmaker( self.ra, self.dec, np.array([100,100]), templ_image.image_path,
+                                                savedir=self.out_dir, savename=f"stamp_{templ_image.image_name}" )
+
+                    for sci_image in self.science_images:
+                        for templ_image in self.template_images:
+                            zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
+                            diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
+                            stamp_name = stampmaker( self.ra, self.dec, np.array([100,100]), zptname,
+                                                    savedir=self.out_dir, savename=f"stamp_{zptname.name}" )
+                            sci_image.zpt_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
+                            stamp_name = stampmaker( self.ra, self.dec, np.array([100,100]), diffname,
+                                                    savedir=self.out_dir, savename=f"stamp_{diffname.name}" )
+                            sci_image.diff_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
+
+            self.logger.info('...finished making stamps.')
 
         if 'make_lightcurve' in steps:
+            self.logger.info( "Making lightcurve" )
             with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
                 self.make_lightcurve()
 
@@ -522,7 +617,8 @@ def main():
                          help="Path to file with, per line, ( path_to_image, pointing, sca )" )
     parser.add_argument( '-s', '--science-images', type=str, required=True,
                          help="Path to file with, per line, ( path_to_image, pointing, sca )" )
-    parser.add_argument( '-n', '--ncpus', type=int, default=1, help="Number of CPUs for CPU multiprocessing steps" )
+    parser.add_argument( '-p', '--nprocs', type=int, default=1, help="Number of process for multiprocessing steps (e.g. skysub)" )
+    parser.add_argument( '-w', '--nwrite', type=int, default=5, help="Number of parallel FITS writing processes" )
     parser.add_argument( '-v', '--verbose', action='store_true', default=False, help="Show debug log info" )
     parser.add_argument( '--out-dir', default="/dia_out_dir", help="Output dir, default /dia_out_dir" )
     parser.add_argument( '--ltcv-dir', default="/lc_out_dir", help="Output dir for lightcurves, default /lc_out_dir" )
@@ -549,7 +645,8 @@ def main():
     galsim_config = pathlib.Path( os.getenv("SN_INFO_DIR" ) ) / "tds.yaml"
 
     pipeline = Pipeline( args.oid, args.ra, args.dec, args.band, science_images, template_images,
-                         ncpus=args.ncpus, temp_dir=args.temp_dir, out_dir=args.out_dir, ltcv_dir=args.ltcv_dir,
+                         nprocs=args.nprocs, nwrite=args.nwrite,
+                         temp_dir=args.temp_dir, out_dir=args.out_dir, ltcv_dir=args.ltcv_dir,
                          galsim_config_file=galsim_config, force_sky_subtract=args.force_sky_subtract,
                          nuke_temp_dir=False, verbose=args.verbose )
     pipeline( args.through_step )

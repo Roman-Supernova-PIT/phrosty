@@ -1,5 +1,19 @@
 # phrosty
 
+## Running tests
+
+Tests depend on test data being where it's expected.  It needs to have
+the (full?) Roman data from the Roman-DESC / OpenUniverse sims.  Set the
+following env vars:
+
+* SIMS_DIR = OpenUniverse roman data  (on nersc: `/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data`)
+* SNANA_PQ_DIR = ... (on nersc: `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE`)
+* SNID_LC_DIR = ... (on nersc: `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal`)
+* SN_INFO_DIR = must be set to the path of tests/sn_info_dir (contains file tds.yaml)
+* DIA_OUT_DIR = a place to write stuff.  Suggest making a directory under tests and pointing at that
+* LC_OUT_DIR = a place to write stuff.  Suggest making a directory under tests and pointing at that
+
+
 ## NOTE: If you use this, do a git pull every day. I change this almost daily. 
 
 "phrosty": PHotometry for ROman Simulations protoTYpe.
