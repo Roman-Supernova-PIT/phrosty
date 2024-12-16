@@ -16,7 +16,7 @@ following env vars:
 
 ## NOTE: If you use this, do a git pull every day. I change this almost daily. 
 
-"phrosty": Photometry for ROman Simulations protoTYpe.
+"phrosty": PHotometry for ROman Simulations protoTYpe.
 
 Basic package for working with the Roman-DESC simulations, associated with Aldoroty et al. 2024 in prep. 
 

@@ -13,7 +13,6 @@ from astropy.table import Table
 
 # IMPORTS Internal:
 import phrosty.utils
-from phrosty.utils import get_mjd, get_transient_zcmb, get_transient_peakmjd, _build_filepath
 
 def test_utils_globals():
     assert pathlib.Path( phrosty.utils.rootdir ).is_dir()
@@ -34,20 +33,20 @@ def test_build_filepath( test_dia_image ):
     sca = test_dia_image[ 'sca' ]
 
     with pytest.raises( ValueError, match=r"filetype must be in \['image', 'truth', 'truthtxt'\]" ):
-        _build_filepath( None, band, pointing, sca, 'foo' )
+        phrosty.utils._build_filepath( None, band, pointing, sca, 'foo' )
 
     for args in [ [ None, None, pointing, sca, 'image' ],
                   [ None, band, None, sca, 'image' ],
                   [ None, band, pointing, None, 'image' ] ]:
         with pytest.raises( ValueError, match="You need to specify band" ):
-            _build_filepath( *args )
+            phrosty.utils._build_filepath( *args )
 
     types = [ 'image', 'truth', 'truthtxt' ]
     for typ in types:
-        fp = _build_filepath( None, band, pointing, sca, typ )
+        fp = phrosty.utils._build_filepath( None, band, pointing, sca, typ )
         assert re.search( f"^Roman_TDS_.*_{band}_{pointing}_{sca}", os.path.basename(fp) )
 
-    fp = _build_filepath( "/foo/bar", None, None, None, 'image' )
+    fp = phrosty.utils._build_filepath( "/foo/bar", None, None, None, 'image' )
     assert fp == '/foo/bar'
 
 
@@ -112,7 +111,7 @@ def test_get_transient_zcmb( test_sn ):
     oid = test_sn[ 'oid' ]
     zcmb = np.float32( test_sn['zcmb'] )
 
-    tzcmb = get_transient_zcmb(oid)
+    tzcmb = phrosty.utils.get_transient_zcmb(oid)
 
     assert zcmb == pytest.approx( tzcmb, rel=1e-5 )
 
@@ -120,7 +119,7 @@ def test_get_transient_peakmjd( test_sn ):
     oid = test_sn[ 'oid' ]
     mjd = np.float32( test_sn[ 'peakmjd' ] )
 
-    tmjd = get_transient_peakmjd(oid)
+    tmjd = phrosty.utils.get_transient_peakmjd(oid)
 
     assert mjd == pytest.approx( tmjd, abs=0.001 )
 
@@ -168,7 +167,7 @@ def test_get_mjd():
     with fits.open(test_path) as tp:
         tobseq = Table(tp[1].data)
     tmjd = float(tobseq['date'][int(pointing)])
-    mjd = get_mjd(pointing)
+    mjd = phrosty.utils.get_mjd(pointing)
 
     assert tmjd == mjd
 
@@ -198,6 +197,8 @@ def test_get_mjd_info():
 
 
 def test_get_exptime():
+    # These are the exposure times that were used in the OpenUniverse sims
+    # (See Troxel et al. 2025 <put in the ref here when it exists>)
     expected = {'F184': 901.175,
                 'J129': 302.275,
                 'H158': 302.275,

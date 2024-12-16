@@ -54,9 +54,10 @@ def _build_filepath(path, band, pointing, sca, filetype, rootdir=rootdir):
     :rtype: _type_
     """
 
-    # First, what kind of file are we looking for? 
-    if filetype not in ['image', 'truth', 'truthtxt']:
-        raise ValueError(f"filetype must be in ['image', 'truth', 'truthtxt'].")
+    # First, what kind of file are we looking for?
+    neededtypes = [ 'image', 'truth', 'truthtxt' ]
+    if filetype not in neededtypes:
+        raise ValueError(f"filetype must be in {neededtypes}.")
     elif filetype == 'image':
         subdir = 'RomanTDS/images/simple_model'
         prefix = 'simple_model'
@@ -114,10 +115,6 @@ def read_truth_txt(path=None, band=None, pointing=None, sca=None):
     truth = Table.from_pandas(truth_pd)
 
     return truth
-
-# def get_fitsobj(path=None,band=None,pointing=None,sca=None):
-#     imgpath = _build_filepath(path,band,pointing,sca,'image')
-#     return fits.open(imgpath)
 
 def radec_isin(ra,dec,path=None,band=None,pointing=None,sca=None):
     _imgpath = _build_filepath(path,band,pointing,sca,'image')
@@ -261,8 +258,7 @@ def transient_in_or_out(oid, start, end, band):
 
     Returns a tuple of astropy tables (images with the SN, images without the SN).
     """
-    elegant_racoons = make_object_table( oid )
-    tab = Table.from_pandas( elegant_racoons )
+    tab = Table.from_pandas( make_object_table( oid ) )
     
     tab.sort('pointing')
     tab = tab[tab['filter'] == band]
@@ -459,105 +455,6 @@ def get_exptime(band=None):
     else:
         return exptime
 
-# FUNCTION IS OBSOLETE.
-#
-# Delete it once we feel safe to do so.
-#
-# def _coord_transf(ra,dec):
-#     """
-#     Helper function for _sca_check and get_object_instances.get p
-#     Inputs must be in radians. 
-
-#     :return: Transformed x, y, z coordinates of given RA, dec. 
-#     :rtype: tuple  
-
-#     """
-#     x = np.cos(dec) * np.cos(ra)
-#     y = np.cos(dec) * np.sin(ra)
-#     z = np.sin(dec)
-
-#     return x,y,z
-
-# FUNCTION IS OBSOLETE.
-#
-# Delete it once we feel safe to do so.
-#
-# def _distance(x0,x1,y0,y1,z0,z1):
-#     """Distance formula. Helper function for _sca_check and get_object_instances. 
-
-#     :param x0: _description_
-#     :type x0: _type_
-#     :param x1: _description_
-#     :type x1: _type_
-#     :param y0: _description_
-#     :type y0: _type_
-#     :param y1: _description_
-#     :type y1: _type_
-#     :param z0: _description_
-#     :type z0: _type_
-#     :param z1: _description_
-#     :type z1: _type_
-#     :return: _description_
-#     :rtype: _type_
-#     """    
-#     return np.sqrt((x0 - x1)**2 + (y0 - y1)**2 + (z0 - z1)**2)
-
-# FUNCTION IS OBSOLETE.
-#
-# Delete it once we feel safe to do so.
-#
-# def _sca_check(sca_ra, sca_dec, oid_x, oid_y, oid_z):
-
-#     """
-#     This is a helper function for get_object_instances and is 
-#     not meant to be called directly. 
-
-#     :return: Indices of which specific SCAs contain a given object.
-#             Returns indices in columns, where the first column is 
-#             SCA-1 and the second is the pointing that these SCAs
-#             belong to. 
-#     :rtype: np.array
-    
-#     """
-#     # Each SCA is 0.11 arcsec/px and 4088 x 4088 px. 
-#     # So, at most, the object will be the distance between the
-#     # center coordinate and the corner of the SCA away from the 
-#     # center. 
-
-#     sca_ra = (sca_ra * u.deg).to(u.rad).value
-#     sca_dec = (sca_dec * u.deg).to(u.rad).value
-
-#     sca_halfsize = ((0.11 * 4088 / 2.) * u.arcsec).to(u.rad).value
-#     d_req = np.sqrt(2)*sca_halfsize
-
-#     sca_x, sca_y, sca_z = _coord_transf(sca_ra, sca_dec)
-
-#     d_actual = _distance(sca_x, oid_x, sca_y, oid_y, sca_z, oid_z)
-
-#     idx = np.stack(np.where(d_actual < d_req)).T
-
-#     return idx
-
-# FUNCTION IS OBSOLETE.
-#
-# Delete it once we feel safe to do so.
-#
-# def _obj_in(oid,df):
-#     """Helper function for get_object_instances. Tells you if
-#         a row in a table has the specified object ID.     
-
-#     :param oid: Unique object ID. 
-#     :type oid: int
-#     :param df: _description_
-#     :type df: _type_
-#     :return: _description_
-#     :rtype: boolean
-#     """    
-#     if int(oid) in df['object_id'].astype(int):
-#         return True
-#     else:
-#         return False    
-
 def transform_to_wcs(wcs, path=None, band=None, pointing=None, sca=None):
     """"
     Transform world coordinates in a truth file to a new WCS.
@@ -571,166 +468,3 @@ def transform_to_wcs(wcs, path=None, band=None, pointing=None, sca=None):
 
     return tab
 
-# FUNCTION IS OBSOLETE.
-#
-# Delete it once we feel safe to do so.
-#
-# def get_object_instances(ra,dec,oid=None,bands=get_roman_bands(),
-#                         pointings=np.arange(0,57365,1),
-#                         mjd_start=-np.inf,mjd_end=np.inf,
-#                         obseq_path=obseq_path,
-#                         obseq_radec_path=obseq_radec_path):
-
-#     """
-#     Retrieves all images that a unique object or set of coordinates is in. There are three steps to this, because
-#     I think it will make the code run faster:
-#     1. First cut (coarse): Check object's proximity to boresight coordinates for all pointings.
-#     2. Second cut (fine): Of the pointings that passed the first cut, check the proximity of the center
-#        of each individual SCA to the object's coordinates. If an object ID is not provided, this is the 
-#        final step. 
-#     3. Of the SCAs that passed the second cut, open each truth file and check if the object ID is in it. 
-
-#     RA/dec arguments should be in degrees, as they are in the obseq file. 
-
-#     :param ra: 
-#     :type ra: float
-#     :param dec:
-#     :type dec: float
-#     :param oid: If None, return table containing SCAs that contain the provided RA, dec. If an object ID is
-#                 provided in this field, this function checks each truth file associated with each image 
-#                 listed in the table it assembles to ensure that the particular object is present in those 
-#                 images. WARNING: This is slow. 
-#     :type oid: int or None, optional
-#     :param band: Filters to include in search. Default ['F184', 'H158', 'J129', 'K213', 'R062', 'Y106', 'Z087'].
-#     :type band: list or str, optional
-#     :param pointings: Limit search to particular pointings.  
-#     :type pointings: list or np.ndarray, optional
-#     :param mjd_start: Start MJD to include in search. 
-#     :type mjd_start: float, optional
-#     :param mjd_end: End MJD to include in search. 
-#     :type mjd_end: float, optional
-#     :return: Astropy table with columns filter, pointing, SCA identifying images that contain the input RA 
-#             and dec. If and object ID is provided in argument oid, this function checks each truth file associated 
-#             with each image listed in the table it assembles to ensure that the particular object is present in those 
-#             images. WARNING: This is slow. Note that if an object ID is not provided, the final list returned will
-#             contain some images where the provided RA and dec are slightly outside its bounds. This is because for
-#             speed, it takes the center of the SCA from the obseq files, and circumscribes a circle around the SCA for
-#             the search zone. 
-#     :rtype: astropy.table.Table
-#     """
-    
-#     with fits.open(obseq_path) as osp:
-#         obseq_orig = Table(osp[1].data)
-
-#     with fits.open(obseq_radec_path) as osradecp:
-#         obseq_radec_orig = Table(osradecp[1].data)
-
-#     pointing_idx = np.array(pointings)
-#     obseq = obseq_orig[pointing_idx]
-#     obseq_radec = obseq_radec_orig[pointing_idx]
-
-#     band_idx = np.where(np.in1d(obseq['filter'],bands))[0]
-#     obseq = obseq[band_idx]
-#     obseq_radec = obseq_radec[band_idx]
-#     pointing_idx = pointing_idx[band_idx]
-
-#     mjd_idx = np.where((obseq['date'] > mjd_start) & (obseq['date'] < mjd_end))[0]
-#     obseq = obseq[mjd_idx]
-#     obseq_radec = obseq_radec[mjd_idx]
-#     pointing_idx = pointing_idx[mjd_idx]
-
-#     ra_oid = (ra * u.deg).to(u.rad).value
-#     dec_oid = (dec * u.deg).to(u.rad).value
-
-#     x_oid, y_oid, z_oid = _coord_transf(ra_oid, dec_oid)
-
-#     ra_obseq = (obseq['ra'] * u.deg).to(u.rad).value 
-#     dec_obseq = (obseq['dec'] * u.deg).to(u.rad).value
-
-#     x, y, z = _coord_transf(np.array(ra_obseq), np.array(dec_obseq))
-
-#     d_actual = _distance(x, x_oid, y, y_oid, z, z_oid)
-#     d_req = np.sin(0.009/2.) # Why? Because in roman_imsim.telescope.near_pointing(), 
-#                              # this is the required distance. See where it says
-#                              # self.sbore2 = np.sin(max_rad_from_boresight/2.), and
-#                              # earlier, defines max_rad_from_boresight = 0.009 by default.
-#                              # This part of my code is also basically a copy of near_pointing. 
-
-#     distance_idx = np.where(d_actual/2. <= d_req)[0]
-#     idx_firstcut = pointing_idx[distance_idx]
-
-#     sca_tab = obseq_radec_orig[idx_firstcut]
-#     sca_tab_ra = np.array(sca_tab['ra'])
-#     sca_tab_dec = np.array(sca_tab['dec'])
-#     sca_tab_filter = np.array(sca_tab['filter'])
-
-#     sca_rd = np.array([sca_tab_ra,sca_tab_dec]).reshape((2,len(sca_tab),18)).T
-#     sca_check = _sca_check(sca_rd[:,:,0], sca_rd[:,:,1],x_oid,y_oid,z_oid)
-#     pointing_idx = sca_check[:,1]
-#     sca_idx = sca_check[:,0]
-
-#     secondcut_tab = Table([sca_tab_filter[pointing_idx], idx_firstcut[pointing_idx], sca_idx+1], names=('filter','pointing','sca'))
-
-#     # Now, make sure the provided RA, dec are actually in these images. 
-#     # This is slow because it opens each file for its WCS. 
-#     inimg = list(map(radec_isin, [ra]*len(secondcut_tab), [dec]*len(secondcut_tab), \
-#                     [None]*len(secondcut_tab), secondcut_tab['filter'], secondcut_tab['pointing'], secondcut_tab['sca']))
-
-#     thirdcut_tab = secondcut_tab[inimg]
-
-#     if oid is not None:
-#         # This part of the code is really slow because I'm opening files. 
-#         # Want to parallelize in future to speed up. 
-#         final_idx = []
-#         for i, row in enumerate(thirdcut_tab):
-#             df = read_truth_txt(band=row['filter'],pointing=row['pointing'],sca=row['sca'])
-#             if _obj_in(oid, df):
-#                 final_idx.append(i)
-#             del df
-
-#         tab = thirdcut_tab[final_idx]
-
-#     else:
-#         tab = thirdcut_tab
-
-#     return tab
-
-# FUNCTION IS OBSOLETE.
-#
-# Delete it once we feel safe to do so.
-#
-# def get_object_data(oid, metadata,
-#                     colnames=['object_id','ra','dec','mag_truth','flux_truth','flux_fit','flux_err'],
-#                     crossmatch_dir='/hpc/group/cosmology/lna18/roman_sim_imgs/Roman_Rubin_Sims_2024/preview/crossmatched_truth'):
-
-#     # NOTE: THESE PATHS HAVE NOT BEEN GENERALIZED. 
-
-#     """Retrieves all information from crossmatched photmetry files about a particular object, specified with its
-#     unique object ID. 
-
-#     :param oid: Object ID. 
-#     :type oid: int
-#     :param metadata: Output from get_object_instance. Table with filter, pointing, and SCA numbers for this
-#                     function to search through. 
-#     :type metadata: astropy.table
-#     :param colnames: The columns that this function should retrieve from the crossmatched photometry files.
-#     :type colnames: list, optional
-#     :return: Astropy table with all instances of argument oid found in the crossmatched photometry files
-#             that are present in the metadata table. 
-#     :rtype: astropy.table.Table
-
-#     """
-    
-#     object_tab = Table(names=colnames)
-#     for row in metadata:
-#         band = row['filter']
-#         p = row['pointing']
-#         sca = row['sca']
-
-#         filepath = pa.join(crossmatch_dir,f'{band}/{p}/Roman_TDS_xmatch_{band}_{p}_{sca}.txt')
-#         phot = Table.read(filepath, format='csv')
-#         object_row = phot[phot['object_id'] == int(oid)]
-#         object_row_reduced = object_row[colnames]
-#         object_tab = vstack([object_tab, object_row_reduced], join_type='exact')
-
-#     return object_tab
