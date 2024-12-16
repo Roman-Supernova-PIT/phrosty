@@ -20,7 +20,9 @@ from . import plotaesthetics
 
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'W146', 'K213']
 
-def showimage(path=None,band=None,pointing=None,sca=None,xycoords=None,box=False,boxsize=1000,data_ext=1,cmap='Greys', **kwargs):
+def showimage(path=None, band=None, pointing=None, sca=None,
+              xycoords=None, box=False, boxsize=1000, data_ext=1,
+              cmap='Greys', return_fig=False, **kwargs):
     """
     Quickly display an original RomanDESC image from either a filepath or a 
     filter, pointing, and SCA ID. 
@@ -48,7 +50,11 @@ def showimage(path=None,band=None,pointing=None,sca=None,xycoords=None,box=False
             ax.add_artist(rect)
 
     fig.colorbar(imgax, ax=ax)
-    plt.show()
+
+    if return_fig:
+        return fig
+    else:
+        plt.show()
     
 class MidpointNormalize(mpl.colors.Normalize):
     """Normalise the colorbar."""
@@ -60,8 +66,8 @@ class MidpointNormalize(mpl.colors.Normalize):
         x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
         return np.ma.masked_array(np.interp(value, x, y), np.isnan(value))
 
-def roman_sca_plot(data_array,sca_order,ptype='image',residual_plot=True,clabel=None,title=None,
-                   savefig=False,show_sca_id=False,savepath='roman_scas.png'):
+def roman_sca_plot(data_array, sca_order, ptype='image', cmap='Greys', residual_plot=True, clabel=None, title=None,
+                   return_fig=False, savefig=False, show_sca_id=False, savepath='roman_scas.png'):
     
     detector = plt.figure(figsize=(10,6),dpi=300)
     nrows, ncols = 55,91
@@ -87,9 +93,8 @@ def roman_sca_plot(data_array,sca_order,ptype='image',residual_plot=True,clabel=
     # Argument data_array should be an array of len(N SCAs) containing arrays:
     # fake_data = np.array([np.random.rand(14,14)]*len(axs))
     if ptype=='image':
-        vmin = np.nanmin(data_array.ravel())
-        vmax = np.nanmax(data_array.ravel())
-
+        vmin, vmax = ZScaleInterval().get_limits(data_array.ravel())
+                
     sortidx = sca_order.argsort()
     sca_order = sca_order[sortidx]
     data_array = data_array[sortidx]
@@ -99,17 +104,17 @@ def roman_sca_plot(data_array,sca_order,ptype='image',residual_plot=True,clabel=
         if ptype=='image':
             if residual_plot:
                 ends = np.nanmax(np.array([abs(vmin),abs(vmax)]))
-                im = axs[i].imshow(data_array[sca], cmap='seismic',
+                im = axs[i].imshow(data_array[sca], cmap=cmap,
                                        norm=MidpointNormalize(midpoint=0,vmin=-ends,vmax=ends))
             else:
-                im = axs[i].imshow(data_array[sca], cmap='plasma', vmin=vmin,vmax=vmax)
+                im = axs[i].imshow(data_array[sca], cmap=cmap, vmin=vmin,vmax=vmax)
         elif ptype=='scatter':
             axs[i].plot(data_array[sca][0],data_array[sca][1],marker='.',linestyle='',color='k',markersize=2)
             if residual_plot:
                 axs[i].axhline(0,color='k',linestyle='--')
             
         if show_sca_id:
-            axs[i].annotate(sca+1, xy=(0,2), fontsize=12)
+            axs[i].annotate(sca+1, xy=(0,1), fontsize=12)
     
     if ptype=='image':
         cbar_ax = detector.add_subplot(grid[:,-4:-1])
@@ -121,7 +126,10 @@ def roman_sca_plot(data_array,sca_order,ptype='image',residual_plot=True,clabel=
     if savefig:
         plt.savefig(savepath, dpi=300, bbox_inches='tight')
 
-    plt.show()
+    if return_fig:
+        return detector
+    else:
+        plt.show()
 
 def classification_contours(data, model,
                             cmap='Set3', 
