@@ -237,11 +237,18 @@ def run_resample(FITS_obj, FITS_targ, FITS_resamp):
 #     return rotate_angle
 
 def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
-                  psf_path=None, force=False, logger=None):
+                  psf_path=None, force=False, logger=None, **kwargs):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
     are centered on the image instead of at the corner.
+
+    kwargs match getPSF_Image args, listed here with their defaults:
+    pupil_bin=8,
+    sed=None,
+    oversampling_factor=1,
+    include_photonOps=False,
+    n_phot=1e6
 
     force parameter does not currently do anything.
     """
@@ -261,7 +268,7 @@ def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yam
     assert config_yaml_file is not None, "config_yaml_file is a required argument"
     config_path = config_yaml_file
     config = roman_utils(config_path,pointing,sca)
-    psf = config.getPSF_Image(size,x,y,oversampling_factor=1)
+    psf = config.getPSF_Image(size,x,y,**kwargs)
     psf.write( str(psf_path) )
 
 
