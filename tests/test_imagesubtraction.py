@@ -47,7 +47,7 @@ def test_sky_subtract( dia_out_dir ):
     finally:
         for f in ( in_path, skysub_path, detmask_path ):
             f.unlink( missing_ok=True )
-            
+
 
 def _check_resampled_image( templ, resamp ):
     with fits.open( templ ) as t, fits.open( resamp ) as r:
@@ -78,7 +78,7 @@ def _check_resampled_image( templ, resamp ):
 
         assert np.median( tdata ) == pytest.approx( np.median( rdata ), rel=0.02 )
         assert tdata.std() == pytest.approx( rdata.std(), rel=0.04 )
-            
+
 def test_run_resample( dia_out_dir, template_image_path, one_science_image_path ):
     sci = one_science_image_path
     templ = template_image_path
@@ -89,7 +89,7 @@ def test_run_resample( dia_out_dir, template_image_path, one_science_image_path 
         _check_resampled_image( templ, resamp )
     finally:
         resamp.unlink( missing_ok=True )
-    
+
 
 # def test_imalign(  dia_out_dir, template_image_path, one_science_image_path ):
 #     sci = dia_out_dir / "sci.fits"
@@ -106,7 +106,7 @@ def test_run_resample( dia_out_dir, template_image_path, one_science_image_path 
 #         phrosty.imagesubtraction.imalign( templ, sci, out_path=resamp )
 #         firsttime = time.perf_counter() - t0
 #         _check_resampled_image( templ, resamp )
-        
+
 #         # Rerun again with force false, it should be faster
 #         # This is a bit scary, because we're depending on the
 #         # filesystem being fast, and that may be bad, because
@@ -128,7 +128,7 @@ def test_run_resample( dia_out_dir, template_image_path, one_science_image_path 
 #         resamp.unlink( missing_ok=True )
 #         sci.unlink( missing_ok=True )
 #         templ.unlink( missing_ok=True )
-    
+
 
 def test_get_imsim_psf( sims_dir, sn_info_dir, dia_out_dir,  test_dia_image, test_sn, one_science_image_path ):
     impath = one_science_image_path
@@ -140,7 +140,7 @@ def test_get_imsim_psf( sims_dir, sn_info_dir, dia_out_dir,  test_dia_image, tes
     config_yaml = sn_info_dir / "tds.yaml"
     psf_path = dia_out_dir / "psf.fits"
     size = 201
-    
+
     phrosty.imagesubtraction.get_imsim_psf( impath, ra, dec, band, pointing, sca, size=size,
                                             config_yaml_file=config_yaml, psf_path=psf_path )
     with fits.open( psf_path ) as psf:
@@ -152,6 +152,40 @@ def test_get_imsim_psf( sims_dir, sn_info_dir, dia_out_dir,  test_dia_image, tes
             assert psf[0].data.sum() == pytest.approx( 2.33, abs=0.01 )
 
     # TODO test force and all that
+
+
+def test_get_imsim_psf_photonOps( sims_dir, sn_info_dir, dia_out_dir,
+                                  test_dia_image, test_sn, one_science_image_path ):
+    impath = one_science_image_path
+    ra = test_sn[ 'ra' ]
+    dec = test_sn[ 'dec' ]
+    band = test_dia_image[ 'band' ]
+    pointing = test_dia_image[ 'pointing' ]
+    sca = test_dia_image[ 'sca' ]
+    config_yaml = sn_info_dir / "tds.yaml"
+    psf_path = dia_out_dir / "psf.fits"
+    size = 201
+    photonOps = True
+    n_phot = 1e6
+    oversampling_factor = 1
+
+    phrosty.imagesubtraction.get_imsim_psf( impath, ra, dec, band, pointing, sca, size=size,
+                                            config_yaml_file=config_yaml, psf_path=psf_path,
+                                            include_photonOps=photonOps, n_phot=n_phot,
+                                            oversampling_factor=oversampling_factor )
+    with fits.open( psf_path ) as psf:
+        ctr = size // 2
+        # Center pixel should be way brighter, it's undersampled
+        # Photon shooting seems to blur out the PSF a bit, so the
+        # condition is center pixel is >8× neighbors, whereas it
+        # was 10x in the previous test.
+        for dx, dy in zip( [ -1, 1, 0, 0 ], [ 0, 0, -1, 1 ] ):
+            assert psf[0].data[ ctr, ctr ] > 3.* ( psf[0].data[ ctr+dx, ctr+dy ] )
+            # ...but it looks like it's normalized now!
+            assert psf[0].data.sum() == pytest.approx( 1.000, abs=0.002 )
+
+    # TODO test force and all that
+
 
 def test_stampmaker( dia_out_dir, test_dia_image, test_sn, one_science_image_path ):
     savedir = dia_out_dir
@@ -176,5 +210,5 @@ def test_stampmaker( dia_out_dir, test_dia_image, test_sn, one_science_image_pat
         if savepath is not None:
             savepath.unlink( missing_ok = True )
 
-    
-    
+
+
