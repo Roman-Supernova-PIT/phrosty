@@ -1,5 +1,7 @@
 # Running phrosty on Perlmutter
 
+Currently, this is primarily for internal development use of members of the Roman SN PIT.  You are welcome to try it if you aren't in the PIT, but at the moment we can't support you.  If you are in the PIT and have trouble with any of this, ping Rob Knop and Lauren Aldoroty in the `#photometry` channel on the Roman SNPIT Slack.
+
 ## Preparatory warning
 
 As of this writing, the `podman-hpc` installed on Perlmutter is broken.  Run
@@ -17,6 +19,12 @@ This example will use `podman-hpc` to run phrosty on Perlmutter.  You need to pu
 ```
 podman-hpc pull registry.nersc.gov/m4385/rknop/roman-snpit-dev:v0.0.1
 ```
+
+(If the pull fails with a permission error, try running
+```
+podman-hpc login reigstry.nersc.gov
+```
+with your usual NERSC username and password, and the redoing the pull.  Once you've logged in once on perlmutter, it will probably remember it for a long time, having written some credential file somewhere in your home directory, so this login step will not usually be necessary.  It may be that only Roman SN PIT members have access to the m4385 repository.  If you're in the PIT and this doesn't work, contact Rob Knop.  If you're not in the PIT and this doesn't work, try using the image `docker.io/rknop/roman-snpit-dev:v0.0.1`.)
 
 Verify that you got it with the command `podman-hpc images`, which should show (at least):
 ```
@@ -43,7 +51,7 @@ git checkout fixes_20241022
 cd ..
 ```
 
-(Note: you may prefer to clone `git@github.com:Roman-Supernova-PIT/sfft.git` instead of `https:...`.  If you use github with ssh keys, then you already probably know that you want to do this.  If not, don't worry about it.)
+This will pull down the Roman PITs version of the SFFT archive, and check out the specific branch that (as of this writing) we require.  Below, you will make this directory available inside the podman container you'll use to run Phrosty.  (Note: you may prefer to clone `git@github.com:Roman-Supernova-PIT/sfft.git` instead of `https:...`.  If you use github with ssh keys, then you already probably know that you want to do this.  If not, don't worry about it.)
 
 In the future, we will merge the changes we need back to the `master` branch of sfft, but for now, you need the `fixes_20241022` branch.
 
@@ -56,18 +64,18 @@ git checkout main
 cd ..
 ```
 
-(Again, you may prefer to clone `git@github.com:Roman-Supernova-PIT/phrosty.git`, but you will already know if you want to do that.)
+This will pull the actual phrosty code, including the pipeline you'll run.  This README file you're reading is within that repository (in `examples/perlmutter/README.md`).  The `git checkout main` is probably redundant, becuase it's likely to check that branch out by default.  (Again, you may prefer to clone `git@github.com:Roman-Supernova-PIT/phrosty.git`, but you will already know if you want to do that.)
 
 (ASIDE: while under code review, you actually need to checkout `rob_examples`, but that will change to `main`, and then we should remove this aside.)
 
 
 ### Locate existing directories
 
-*phrosty* currently reads data from the OpenUniverse sims.  On NERSC, you can find the necessary information at the following directories:
+*phrosty* currently reads data from the OpenUniverse sims.  On NERSC, you can find the necessary information at the following directories.  (The names in parentheses afterwards tell you which environment variables correspond to these directories.  You won't actually set these environment variables directly; that's handled in the shell scripts you'll run below.)
 
-* `/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data` ("sims dir")
-* `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE` ("snana_pq_dir")
-* `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal` ("snid_lc_dir")
+* `/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data` ("SIMS_DIR")
+* `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE` ("SNANA_PQ_DIR")
+* `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal` ("SNID_LC_DIR")
 
 ### Create needed directories
 
@@ -82,13 +90,17 @@ In addition, create a directory `phrosty_temp` somewhere underneath `$SCRATCH`, 
 
 ### Populate your sn_info_dir
 
-This is where you put information that *phrosty* needs to find information about the OpenUniverse sims, and about any supernova from that sim you want to run it on.  The first file you need is `tds.yaml`; copy that file from this directory (i.e. `phrosty/examples/perlmutter/tds.yaml`) into your `sn_info_dir`.  (This file is a modified version of the standard OpenUniverse sims file `/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS`, fixing some paths for our own purposes.)
+This is where you put information that *phrosty* needs to find information about the OpenUniverse sims, and about any supernova from that sim you want to run it on.  The first file you need is `tds.yaml`; copy that file from this directory (i.e. `phrosty/examples/perlmutter/tds.yaml`) into your `sn_info_dir`; when in the `sn_info_dir`, run:)
+```
+cp -p ../phrosty/examples/perlmutter/tds.yaml ./
+```
+(This file is a modified version of the standard OpenUniverse sims file `/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS`, fixing some paths for our own purposes.)
 
 ### Secure lists of images for your supernova.
 
 Pick a supernova to run on.  TODO: more information.
 
-For this example, we're going to run on the object with id 20172782.  In the example directory, you can find three `.csv` files that have information about the template and/or science images we're going to use:
+For this example, we're going to run on the object with id 20172782.  In the directory with this README file (i.e. `examples/perlmutter` under your `phrosty` checkout), you can find three `.csv` files that have information about the template and/or science images we're going to use:
 * `20172782_instances_templates_1.csv` — a single R-band template image
 * `20172782_instances_templates_10.csv` — 10 R-band template images
 * `20172782_instances_science.csv` — 54 science images
@@ -115,9 +127,13 @@ salloc -t 04:00:00 -A m4385 --constraint=gpu -q interactive
 ```
 after a minute or so, that should log you into one of the nodes with a session that will last 4 hours.  (This is overkill; if you know it won't be that long, shorten the time after the `-t` flag.)  You can verify that you're on a compute node by running `nvidia-smi`; you should see four different GPUs listed each with either 40MB or 80GB of memory, but no GPU processes running.
 
-Go to your "parent" directory
+cd into your "parent" directory.
 
-Copy the file `interactive_podman.sh` from this directory to your parent directory.  Look at this file.  You'll see number of `--mount` parameters.  Each of these takes a directory on the host machine (the `source`) and maps it to a directory inside the podman container (the `target`).  For example, you will see your phrosty checkout goes to `/phrosty` inside the container.  In addition, a bunch of environment variables are set so that *phrosty* will be able to find all of these directories inside the container.
+Copy the file `interactive_podman.sh` from `phrosty/examples/perlmtuter` to your parent directory:
+```
+cp -p phrosty/examples/perlmutter/interactive_podman.sh ./
+```
+Look at this file.  (There's no need to edit it; this is so you can see what's going on.)  You'll see number of `--mount` parameters.  Each of these takes a directory on the host machine (the `source`) and maps it to a directory inside the podman container (the `target`).  For example, you will see your phrosty checkout goes to `/phrosty` inside the container.  In addition, a bunch of environment variables are set so that *phrosty* will be able to find all of these directories inside the container.
 
 Now do
 ```
@@ -146,11 +162,11 @@ python phrosty/phrosty/pipeline.py \
   -b R062 \
   -t 20172782_instances_templates_1.csv \
   -s 20172782_instances_science_two_images.csv \
-  -p 4 \
-  -w 4
+  -p 3 \
+  -w 3
 ```
 
-(If you run with `.csv` files that have larger number of images, you probably want to pass a larger number to `-p`; this is a number of parallel CPU processes that will run at once, and is limited by how many CPUs and how much memory you have available.  The code will only run one GPU process at once.  You can also try increasing `-w`, but this is more limited by filesystem performance than the number of CPUs and the amount of memory you have available.)
+(If you run with `.csv` files that have larger number of images, you probably want to pass a larger number to `-p`; this is a number of parallel CPU processes that will run at once, and is limited by how many CPUs and how much memory you have available.  The code will only run one GPU process at once.  You can also try increasing `-w`, but this is more limited by filesystem performance than the number of CPUs and the amount of memory you have available.  We've set these both to 3 right now because there are only 3 files being processed (one template and two science images).  Empirically, on Perlmutter nodes, you can go up to something like `-p 15`; while there are (many) more CPUs than that, memory is the limiting factor.  Also, empirically, on Perlmutter, you can go up to something like `-w 5` before you reach the point of diminishing returns.  This is more variable, because whereas you have the node's CPUs to yourself, you're sharing the filesystem with the rest of the users of the system.)
 
 If all is well, you should see a final line that looks something like:
 ```
@@ -177,15 +193,15 @@ nsys profile \
   -b R062 \
   -t 20172782_instances_templates_1.csv \
   -s 20172782_instances_science_two_images.csv \
-  -p 4 \
-  -w 4
+  -p 3 \
+  -w 3
 ```
 
-_Ideally_, this would create a file `report1.nsys-rep`, but something about that is broken; I'm not sure what.  It does create a file `report1.qdstrm`, which you can then somehow somewhere else convert to a `.nsys-rep` file.  On a Linux system, if you've installed the `night-compute` and `nsight-systems` packages (see https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html), you can download the `.qdstrm` file to your system and run
+_Ideally_, this would create a file `report1.nsys-rep`, but something about that is broken; I'm not sure what.  It does create a file `report1.qdstrm`, which you can then somehow somewhere else convert to a `.nsys-rep` file.  On a Linux system, if you've installed the `nsight-compute` and `nsight-systems` packages (see https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html), you can download the `.qdstrm` file to your system and run
 ```
 /opt/nvidia/nsight-systems/2024.4.2/host-linux-x64/QdstrmImporter -i <name>.qdstrm
 ```
-where `<name>.qstrm` is the file you downloaded.  (Note that the directory may have something other than `2024.4.2` in it, depending on what version you've installed.  For best comptibility with the version of Nsight in the `v0.0.1` docker image, I recommend installing `nsight-compute-2024.3.1` and  `nsight-systems-2024.4.2`.)  This should produce a file `<name>.nsys-rep`.  Then, on your local desktop, run
+where `<name>.qstrm` is the file you downloaded.  (Note that the directory may have something other than `2024.4.2` in it, depending on what version you've installed.  For best comptibility with the version of Nsight in the `v0.0.1` docker image, I recommend trying to install something close to `nsight-compute-2024.3.1` and  `nsight-systems-2024.4.2`; exactly what is avialable seems to vary with time.)  This should produce a file `<name>.nsys-rep`.  Then, on your local desktop, run
 ```
 nsys-ui <name>.nsys-rep
 ```

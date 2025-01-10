@@ -14,12 +14,14 @@ Although SFFT works in both CPU and GPU environments, currently some of the code
 
 A number of standard python libraries are required, all of which may be installed from pip, including `numpy`, `scipy`, `astropy`, `scikit-image`, `cupy-cuda12x`, `pandas`, `requests`, `fitsio`, `pyarrow`, `fastparquet`, and (maybe?) `nvmath-python[cu12]`.  *Phrosty* also requires `galsim`, which may be installed from pip.
 
-*Phrosty* requires commit `74a9053` from `roman_imsim`, which may be git cloned from https://github.com/matroxel/roman_imsim.git.  (This is nominally `v2.0` of that archive, but as of this writing, there is both a branch and a tag `v2.0`, which confuses the `git archive` command.  Thus, we give you the specific commit.)
+*phrosty* requires commit `74a9053` from `roman_imsim`, which may be git cloned from `https://github.com/matroxel/roman_imsim.git`.  (This is nominally `v2.0` of that archive, but as of this writing, there is both a branch and a tag `v2.0`, which confuses the `git archive` command.  Thus, we give you the specific commit.)
 
 The fledgling/proposed Roman SNPIT docker environment at https://github.com/Roman-Supernova-PIT/snpit_docker_env provides a Dockerized environment that *phrosty* should be able to run in.  As of this writing, we're using version `v0.0.1` of that environment.  *phrosty* currently requires the (more bloated) dev environment, but we hope in the future to make it run with the regular environment.  (NOTE: this environment will be deprecated in the near future, in favor of a Docker environment created under https://github.com/Roman-Supernova-PIT/environment.  Once that is available, this README will be updated.)  You can pull this docker image from the following locations:
 
 * `docker.io/rknop/roman-snpit-dev:v0.0.1`
 * `registry.nersc.gov/m4385/rknop/roman-snpit-dev:v0.0.1`
+
+(For an example of actually running phrosty in this dockerized environment, see `examples/perlmutter/README.md`.)
 
 ### Manual installs
 
@@ -43,6 +45,7 @@ For now, see the one extant example below.
 
 ## Examples
 
+Currently, these examples are intended for members of the Roman SN PIT.  Anybody may try them, but since we're early in development, we can't support non-PIT members yet.  Members of the PIT, if you have any issues running phrosty, ping Rob Knop and Lauren Aldoroty in the `#photometry` channel on the SN PIT Slack.
 
 ### NERSC/Perlmutter
 
