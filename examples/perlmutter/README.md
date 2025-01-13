@@ -51,7 +51,7 @@ git checkout fixes_20241022
 cd ..
 ```
 
-This will pull down the Roman PITs version of the SFFT archive, and check out the specific branch that (as of this writing) we require.  Below, you will make this directory available inside the podman container you'll use to run Phrosty.  (Note: you may prefer to clone `git@github.com:Roman-Supernova-PIT/sfft.git` instead of `https:...`.  If you use github with ssh keys, then you already probably know that you want to do this.  If not, don't worry about it.)
+This will pull down the Roman PITs version of the SFFT archive, and check out the specific branch that (as of this writing) we require.  Below, you will make this directory available inside the podman container you'll use to run *phrosty*.  (Note: you may prefer to clone `git@github.com:Roman-Supernova-PIT/sfft.git` instead of `https:...`.  If you use github with ssh keys, then you already probably know that you want to do this.  If not, don't worry about it.)
 
 In the future, we will merge the changes we need back to the `master` branch of sfft, but for now, you need the `fixes_20241022` branch.
 
