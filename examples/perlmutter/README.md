@@ -22,7 +22,7 @@ podman-hpc pull registry.nersc.gov/m4385/rknop/roman-snpit-dev:v0.0.1
 
 (If the pull fails with a permission error, try running
 ```
-podman-hpc login reigstry.nersc.gov
+podman-hpc login registry.nersc.gov
 ```
 with your usual NERSC username and password, and the redoing the pull.  Once you've logged in once on perlmutter, it will probably remember it for a long time, having written some credential file somewhere in your home directory, so this login step will not usually be necessary.  It may be that only Roman SN PIT members have access to the m4385 repository.  If you're in the PIT and this doesn't work, contact Rob Knop.  If you're not in the PIT and this doesn't work, try using the image `docker.io/rknop/roman-snpit-dev:v0.0.1`.)
 
