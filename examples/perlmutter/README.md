@@ -247,7 +247,7 @@ If look look at the bottom of the script, you will see that the number of parall
 
 Once you've are satisfied with your job script, submit it with
 ```
-sbatch 20172782_test_2csi1temp.sh
+sbatch 20172782_2csi1temp.sh
 ```
 (replacing the argument with the actual name of your script).  If all is well, you should see an output something like:
 ```
