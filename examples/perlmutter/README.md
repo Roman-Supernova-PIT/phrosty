@@ -40,6 +40,8 @@ podman-hpc system reset
 to delete all of your podman images and contexts.  Then try pulling the image again.
 
 
+<a name="parentdirectory"></a>
+
 ### Pick a place to work
 
 Work in one of two places.  You make yourself a subdirectory underneath `/pscratch/sd/<u>/<username>`, where `<username>` is your NERSC username and `<u>` is the first letter of your username.  (You can get to this directory with `cd $SCRATCH`; this is your top-level scratch directory, and NERSC sets the `SCRATCH` environment variable to point to it.)  Alternatively, you can create yourself a subdirectory somewhere underneath `/global/cfs/cdirs/m4385/users`.  This is the shared SNPIT space on the NERSC community file system, so if you're going to work there, be aware that you're using up our shared file allocation.  At the moment, that's not a worry.
@@ -223,7 +225,7 @@ to look at the profile.
 
 For reference, see [the NERSC documentation on running jobs on Perlmutter](https://docs.nersc.gov/systems/perlmutter/running-jobs/).
 
-You need to [set up your enviroment](#settingupenvironment) the same way you would for an interactive job.  You want to be working in the directory where you cloned the `phrosty` and `sfft` archives.
+You need to [set up your enviroment](#settingupenvironment) the same way you would for an interactive job.  You want to be working in your [parent directory](#parentdirectory) (the directory where you cloned the `phrosty` and `sfft` archives).
 
 ### Creating a job script
 
