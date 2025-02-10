@@ -2,6 +2,8 @@
 
 Currently, this is primarily for internal development use of members of the Roman SN PIT.  You are welcome to try it if you aren't in the PIT, but at the moment we can't support you.  If you are in the PIT and have trouble with any of this, ping Rob Knop and Lauren Aldoroty in the `#photometry` channel on the Roman SNPIT Slack.
 
+<a name="settingupenvironment"><a>
+
 ## Set up environment.
 
 ### podman image
@@ -221,9 +223,13 @@ to look at the profile.
 
 For reference, see [the NERSC documentation on running jobs on Perlmutter](https://docs.nersc.gov/systems/perlmutter/running-jobs/).
 
+You need to [set up your enviroment](#settingupenvironment) the same way you would for an interactive job.  You want to be working in the directory where you cloned the `phrosty` and `sfft` archives.
+
 ### Creating a job script
 
 To submit a job to a batch queue, you need to write a slrum script, which is just a shell script with some directives in the comments at the top.  An example script may be found in the file `20172782_2sci1templ.sh` in the same directory where this `README.md` file exists.  If you look at this script, you will see that it contains mostly a combination of the `podman-hpc` and `python phrosty/phrosty/pipeline.py` commands above under "running interactively".  Instead of starting a shell with `/bin/bash`, the `podman-hpc` command just runs the job directly.  It also adds a `-w /home` flag so it will be working in the right location.
+
+Copy this script to the directory where you are working, and edit it if necessary.
 
 You can adjust this job for whatever OpenUniverse candidate and images you want to run by editing the values of the `--oid`, `-r`, `-d`, `-b`, `-t`, and `-s` flags passed to `python phrosty/phrosty/pipeline.py`.  (The meanings of these flags are documented by `python phrosty/phrosty/pipeline.py --help`.  See [secure lists of images for your supernova](#securelistsofimagesforyoursupernova) above.)
 
