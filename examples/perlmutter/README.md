@@ -272,7 +272,7 @@ sacct -j <jobid>
 sacct -j <jobid> -o jobid,jobname,maxvmsize,reqmem,cputime --units=G
 seff <jobid>
 ```
-(For more things you can pass to `sacct`, see [its documentation](https://slurm.schedmd.com/sacct.html).  For all of those, `<jobid>` is the ID of your job on the slurm system.  While the job is still running you can see that job id in the left column of the output of `squeue --me`.  After your job is over, you can look at the output file.  Assuming you used the example slurm script from this directory, you should see the jobid near the top of the output file.
+(For more things you can pass to `sacct`, see [its documentation](https://slurm.schedmd.com/sacct.html).)  For all of those, `<jobid>` is the ID of your job on the slurm system.  While the job is still running you can see that job id in the left column of the output of `squeue --me`.  After your job is over, you can look at the output file.  Assuming you used the example slurm script from this directory, you should see the jobid near the top of the output file.
 
 
 ### Checking job results
