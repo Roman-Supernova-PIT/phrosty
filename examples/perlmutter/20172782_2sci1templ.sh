@@ -24,7 +24,7 @@ podman-hpc run --gpu \
     --mount type=bind,source=$SCRATCH/phrosty_temp,target=/phrosty_temp \
     --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/sims_dir \
     --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/snana_pq_dir \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=snid_lc_dir \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/snid_lc_dir \
     --env PYTHONPATH=/roman_imsim:/phrosty:/sfft \
     --env OPENBLAS_NUM_THREADS=1 \
     --env MKL_NUM_THREADS=1 \
