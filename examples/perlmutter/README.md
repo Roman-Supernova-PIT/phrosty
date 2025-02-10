@@ -136,7 +136,7 @@ after a minute or so, that should log you into one of the nodes with a session t
 
 cd into your "parent" directory.
 
-Copy the file `interactive_podman.sh` from `phrosty/examples/perlmtuter` to your parent directory:
+Copy the file `interactive_podman.sh` from `phrosty/examples/perlmutter` to your parent directory:
 ```
 cp -p phrosty/examples/perlmutter/interactive_podman.sh ./
 ```
