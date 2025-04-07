@@ -89,11 +89,11 @@ def psf_phot(scienceimage,psf,init_params,wcs=None,
     if 'flux' not in init_params.colnames:
         init_params.rename_column('aperture_sum','flux')
 
-    if forced_phot == True:
+    if forced_phot is True:
         print('x, y are fixed!')
         psf.x_0.fixed = True
         psf.y_0.fixed = True
-    elif forced_phot == False:
+    elif forced_phot is False:
         print('x, y are fitting parameters!')
         psf.x_0.fixed = False
         psf.x_0.fixed = False
