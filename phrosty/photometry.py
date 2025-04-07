@@ -93,6 +93,10 @@ def psf_phot(scienceimage,psf,init_params,wcs=None,
         print('x, y are fixed!')
         psf.x_0.fixed = True
         psf.y_0.fixed = True
+    else:
+        print('x, y are fitting parameters!')
+        psf.x_0.fixed = False
+        psf.x_0.fixed = False
 
     try: 
         bkgfunc = LocalBackground(15,25,MMMBackground())
