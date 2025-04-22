@@ -86,8 +86,8 @@ def psf_phot(scienceimage,psf,init_params,wcs=None,
     # mean, median, stddev = sigma_clipped_stats(scienceimage)
     # daofind = DAOStarFinder(fwhm=fwhm,threshold = 5.*(stddev))
 
-    if 'flux' not in init_params.colnames:
-        init_params.rename_column('aperture_sum','flux')
+    if 'flux_init' not in init_params.colnames:
+        raise Exception('Astropy table passed to kwarg init_params must contain column \"flux_init\".')
 
     if forced_phot:
         print('x, y are fixed!')
