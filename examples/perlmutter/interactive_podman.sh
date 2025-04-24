@@ -19,8 +19,8 @@ podman-hpc run --gpu \
     --env VECLIB_MAXIMUM_THREADS=1 \
     --env SIMS_DIR=/sims_dir \
     --env SNANA_PQ_DIR=/snana_pq_dir \
-    --env SN_INFO_DIR=sn_info_dir \
-    --env DIA_OUT_DIR=dia_out_dir \
+    --env SN_INFO_DIR=/sn_info_dir \
+    --env DIA_OUT_DIR=/dia_out_dir \
     --env TERM=xterm \
     -it \
     registry.nersc.gov/m4385/rknop/roman-snpit-dev:v0.0.1 \
