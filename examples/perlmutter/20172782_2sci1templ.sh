@@ -25,6 +25,7 @@ podman-hpc run --gpu \
     --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/sims_dir \
     --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/snana_pq_dir \
     --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/snid_lc_dir \
+    --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
     --env PYTHONPATH=/roman_imsim:/phrosty:/sfft \
     --env OPENBLAS_NUM_THREADS=1 \
     --env MKL_NUM_THREADS=1 \
@@ -38,7 +39,7 @@ podman-hpc run --gpu \
     --env TERM=xterm \
     -w /home \
     -it \
-    registry.nersc.gov/m4385/rknop/roman-snpit-dev:v0.0.1 \
+    registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev \
     python phrosty/phrosty/pipeline.py \
       --oid 20172782 \
       -r 7.551093401915147 \

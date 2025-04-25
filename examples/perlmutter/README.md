@@ -10,7 +10,7 @@ Currently, this is primarily for internal development use of members of the Roma
 
 This example will use `podman-hpc` to run phrosty on Perlmutter.  You need to pull the Docker image with:
 ```
-podman-hpc pull registry.nersc.gov/m4385/rknop/roman-snpit-dev:v0.0.1
+podman-hpc pull registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev
 ```
 Note: do _not_ run `podman-hpc image pull ...`.  That will superficially seem to work, but will skip a step that gets run when you just do `podman-hpc pull ...`.
 
@@ -18,16 +18,16 @@ Note: do _not_ run `podman-hpc image pull ...`.  That will superficially seem to
 ```
 podman-hpc login registry.nersc.gov
 ```
-with your usual NERSC username and password, and the redoing the pull.  Once you've logged in once on perlmutter, it will probably remember it for a long time, having written some credential file somewhere in your home directory, so this login step will not usually be necessary.  It may be that only Roman SN PIT members have access to the m4385 repository.  If you're in the PIT and this doesn't work, contact Rob Knop.  If you're not in the PIT and this doesn't work, try using the image `docker.io/rknop/roman-snpit-dev:v0.0.1`.)
+with your usual NERSC username and password, and the redoing the pull.  Once you've logged in once on perlmutter, it will probably remember it for a long time, having written some credential file somewhere in your home directory, so this login step will not usually be necessary.  It may be that only Roman SN PIT members have access to the m4385 repository.  If you're in the PIT and this doesn't work, contact Rob Knop.  If you're not in the PIT and this doesn't work, try using the image `docker.io/rknop/roman-snpit-env:cuda-dev`.)
 
 Verify that you got it with the command `podman-hpc images`, which should show (at least):
 ```
-REPOSITORY                                      TAG         IMAGE ID      CREATED      SIZE        R/O
-registry.nersc.gov/m4385/rknop/roman-snpit-dev  v0.0.1      22f0c5ffe9ba  2 weeks ago  13.3 GB     false
-registry.nersc.gov/m4385/rknop/roman-snpit-dev  v0.0.1      22f0c5ffe9ba  2 weeks ago  13.3 GB     true
+REPOSITORY                                      TAG         IMAGE ID      CREATED            SIZE        R/O
+registry.nersc.gov/m4385/rknop/roman-snpit-env  cuda-dev    07db212294db  About an hour ago  10.7 GB     false
+registry.nersc.gov/m4385/rknop/roman-snpit-env  cuda-dev    07db212294db  About an hour ago  10.7 GB     true
 ```
 
-(The Image ID may not match exactly, and of course the Created time will probably be different.)  The `R/O false` version is the image you pulled directly, and will only be available on the login node where you ran the pull.  More important is the `R/O true` (the readonly, or "squashed", image).  This one should be available on all login nodes and all compute nodes.  (You can verify this by running `podman-hpc images` on another login node; you should see only the `R/O true` image there.)
+(The Image ID may not match exactly, and of course the Created time will be larger.)  The `R/O false` version is the image you pulled directly, and will only be available on the login node where you ran the pull.  More important is the `R/O true` (the readonly, or "squashed", image).  This one should be available on all login nodes and all compute nodes.  (You can verify this by running `podman-hpc images` on another login node; you should see only the `R/O true` image there.)
 
 If you've pulled images before, and you're now working on a new login node, you will only see the `R/O=true` image.  That's the only image you really need, so in that case there's no need to pull the image again.
 
@@ -72,8 +72,6 @@ cd ..
 ```
 
 This will pull the actual phrosty code, including the pipeline you'll run.  This README file you're reading is within that repository (in `examples/perlmutter/README.md`).  The `git checkout main` is probably redundant, becuase it's likely to check that branch out by default.  (Again, you may prefer to clone `git@github.com:Roman-Supernova-PIT/phrosty.git`, but you will already know if you want to do that.)
-
-(ASIDE: while under code review, you actually need to checkout `rob_examples`, but that will change to `main`, and then we should remove this aside.)
 
 
 ### Locate existing directories
