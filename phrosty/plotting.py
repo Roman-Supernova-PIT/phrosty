@@ -67,7 +67,7 @@ class MidpointNormalize(mpl.colors.Normalize):
         return np.ma.masked_array(np.interp(value, x, y), np.isnan(value))
 
 def roman_sca_plot(data_array, sca_order, ptype='image', cmap='Greys', residual_plot=True, clabel=None, title=None,
-                   return_fig=False, savefig=False, show_sca_id=False, savepath='roman_scas.png'):
+                   vlims = None, return_fig=False, savefig=False, show_sca_id=False, savepath='roman_scas.png'):
     
     detector = plt.figure(figsize=(10,6),dpi=300)
     nrows, ncols = 55,91
@@ -93,8 +93,11 @@ def roman_sca_plot(data_array, sca_order, ptype='image', cmap='Greys', residual_
     # Argument data_array should be an array of len(N SCAs) containing arrays:
     # fake_data = np.array([np.random.rand(14,14)]*len(axs))
     if ptype=='image':
-        vmin, vmax = ZScaleInterval().get_limits(data_array.ravel())
-                
+        if vlims is None:
+            vmin, vmax = ZScaleInterval().get_limits(data_array.ravel())
+        else:
+            vmin, vmax = vlims
+
     sortidx = sca_order.argsort()
     sca_order = sca_order[sortidx]
     data_array = data_array[sortidx]
