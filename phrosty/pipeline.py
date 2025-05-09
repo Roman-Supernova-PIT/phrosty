@@ -235,6 +235,7 @@ class Pipeline:
 
         forcecoords = Table([[float(pxcoords[0])], [float(pxcoords[1])]], names=["x", "y"])
         init = ap_phot(img, forcecoords, ap_r=ap_r)
+        init['flux_init'] = init['aperture_sum']
         final = psf_phot(img, psf, init, forced_phot=True)
 
         flux = final['flux_fit'][0]
@@ -295,6 +296,7 @@ class Pipeline:
 
         # First, need to do photometry on the stars.
         init_params = ap_phot(zptimg, stars, ap_r=ap_r)
+        init_params['flux_init'] = init_params['aperture_sum']
         final_params = psf_phot(zptimg, psf, init_params, forced_phot=True)
 
         # Do not need to cross match. Can just merge tables because they
