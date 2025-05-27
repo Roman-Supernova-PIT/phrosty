@@ -1,7 +1,7 @@
 Difference imaging forced photometry pipeline
 =============================================
 
-phrosty: **PHotometry for ROman Simulations protoTYpe.**
+phrosty: **PHotometry for ROman with SFFT for tYpe Ia supernovae**
 
 Aldoroty, L.,  *et al.*, 2025, in prep
 
