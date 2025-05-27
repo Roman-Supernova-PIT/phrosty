@@ -16,8 +16,7 @@ Although SFFT works in both CPU and GPU environments, currently some of the code
 
 A number of standard python libraries are required, all of which may be installed from pip, including ``numpy``, ``scipy``, ``astropy``, ``scikit-image``, ``cupy-cuda12x``, ``pandas``, ``requests``, ``fitsio``, ``pyarrow``, ``fastparquet``, and (maybe?) ``nvmath-python[cu12]``.  *Phrosty* also requires ``galsim``, which may be installed from pip.
 
-*phrosty* requires commit ``74a9053`` (*warning*: this may be out of
-date) from ``roman_imsim``, which may be git cloned from ``https://github.com/matroxel/roman_imsim.git``.  (This is nominally ``v2.0`` of that archive, but as of this writing, there is both a branch and a tag ``v2.0``, which confuses the ``git archive`` command.  Thus, we give you the specific commit.)
+*phrosty* requires commit the ``roman_imsim`` package, which may be git cloned from ``https://github.com/matroxel/roman_imsim.git``.  As of this writing, we use the ``main`` branch of ``roman_imsim``.  Hopefully it will not evolve in a way that breaks what we do....
 
 *phrosty* should run in the `roman snpit environment <https://github.com/Roman-Supernova-PIT/environment>`_.  In particular, it should run in the docker image created from that environment.  That environment is curretly heavily under development (just like *phrosty*), so exactly which version of the environment works will vary with time.  As of this writing, you can pull the latest version of the docker image from either of:
 
