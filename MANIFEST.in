@@ -4,6 +4,7 @@
 prune build
 prune docs/_build
 prune docs/api
+prune phrosty/tests
 global-exclude *.pyc *.o
 prune phrosty/_version.py
 include LICENSE
