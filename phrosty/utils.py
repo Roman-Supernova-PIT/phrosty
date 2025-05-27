@@ -1,4 +1,4 @@
-# IMPORTS Standard:
+<# IMPORTS Standard:
 import os
 import os.path as pa
 import sys
@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import warnings
 from glob import glob
-import logging
 import requests
 
 # IMPORTS Astro:
@@ -17,6 +16,9 @@ import astropy.wcs.wcs
 from astropy.wcs.utils import skycoord_to_pixel
 from astropy.table import Table, vstack
 from astropy import units as u
+
+# IMPORTS snpit
+from snpit_utils.logger import SNLogger
 
 # Set environment variable so this works:
 # Note: on DCC, this should be '/cwork/mat90/RomanDESC_sims_2024/' 
@@ -163,15 +165,14 @@ def _read_parquet( file ):
     global _parquet_cache
 
     if file not in _parquet_cache:
-        logger = set_logger( "read_parquet", "read_parquet" )
-        logger.info( f"**** Reading parquet file {file}" )
+        SNLogger.info( f"**** Reading parquet file {file}" )
         _parquet_cache[file] = pd.read_parquet( file )
 
         totm = 0
         for f, df in _parquet_cache.items():
             totm += df.memory_usage(index=True).sum()
         
-        logger.info( f"**** Done reading parquet file {file}; cache using {totm/1024/1024} MiB" )
+        SNLogger.info( f"**** Done reading parquet file {file}; cache using {totm/1024/1024} MiB" )
     return _parquet_cache[ file ]
 
 
@@ -180,8 +181,6 @@ def get_transient_radec(oid):
     Retrieve RA, dec of a transient based on its object ID. 
     """
 
-    logger = set_logger( "get_transient_info", "get_transient_radec" )
-    
     oid = int(oid)
     file_list = glob(snana_pq_path)
     for file in file_list:
@@ -239,13 +238,11 @@ def get_transient_info(oid):
     Retrieve RA, Dec, MJD start, MJD end for specified object ID.  
     """
 
-    logger = set_logger( "get_transient_info", "get_transient_info" )
-
-    logger.info( "*** calling get_transient_radec" )
+    SNLogger.info( "*** calling get_transient_radec" )
     RA, DEC = get_transient_radec(oid)
-    logger.info( "*** calling get_transient_mjd" )
+    SNLogger.info( "*** calling get_transient_mjd" )
     start, end = get_transient_mjd(oid)
-    logger.info( "*** Done with get_transient_info" )
+    SNLogger.info( "*** Done with get_transient_info" )
 
     return RA, DEC, start, end
 
@@ -272,17 +269,6 @@ def transient_in_or_out(oid, start, end, band):
     out_tab = tab[out_rows]
 
     return in_tab, out_tab
-
-def set_logger(proc,name):
-    # Configure logger (Rob)
-    logger = logging.getLogger(f'{name}_{proc}')
-    if not logger.hasHandlers():
-        log_out = logging.StreamHandler(sys.stderr)
-        formatter = logging.Formatter(f'[%(asctime)s - {proc} - %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-        log_out.setFormatter(formatter)
-        logger.addHandler(log_out)
-        logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
-    return logger
 
 def get_templates(oid, band, infodir, n_templates=1, returntype='list', verbose=False):
     """

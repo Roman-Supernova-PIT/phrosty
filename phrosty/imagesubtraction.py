@@ -12,7 +12,6 @@ import cupyx.scipy
 import gzip
 import shutil
 import pathlib
-import logging
 import matplotlib.pyplot as plt
 import tracemalloc
 import json
@@ -48,16 +47,6 @@ from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
 from phrosty.SpaceSFFTPurePack.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow, SpaceSFFT_CupyFlow_NVTX
 from phrosty.utils import _build_filepath, get_transient_radec, get_transient_mjd
 
-# Configure logger (Rob)
-_logger = logging.getLogger(f'phrosty')
-if not _logger.hasHandlers():
-    log_out = logging.StreamHandler(sys.stderr)
-    formatter = logging.Formatter(f'[%(asctime)s - %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    log_out.setFormatter(formatter)
-    _logger.addHandler(log_out)
-    _logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
-
-
 """
 This module was written with significant contributions from
 Dr. Lei Hu (https://github.com/thomasvrussell/), and relies on his
@@ -91,9 +80,10 @@ def gz_and_ext(in_path,out_path):
 
     with fits.open(bio) as hdu:
         newhdu = fits.HDUList([fits.PrimaryHDU(data=hdu[1].data, header=hdu[0].header)])
-        _logger.debug( f"Process {multiprocessing.current_process().pid} Writing extracted HDU 1 to {out_path}..." )
+        SNLogger.debug( f"Process {multiprocessing.current_process().pid} Writing extracted HDU 1 to {out_path}..." )
         newhdu.writeto(out_path, overwrite=True)
-        _logger.debug( f"...process {multiprocessing.current_process().pid} done writing extracted HDU 1 to {out_path}." )
+        SNLogger.debug( f"...process {multiprocessing.current_process().pid} done writing "
+                        f"extracted HDU 1 to {out_path}." )
 
     return out_path
 
@@ -206,7 +196,7 @@ def run_resample(FITS_obj, FITS_targ, FITS_resamp):
 #     if do_align:
 #         check_and_mkdir(outdir)
 
-#         _logger.debug( "Using Cuda_Resampling.CR to resample image" )
+#         SNLogger.debug( "Using Cuda_Resampling.CR to resample image" )
 
 #         # Cuda_Resampling.CR( sci_path, template_path, output_path, METHOD="BILINEAR" )
 #         run_resample( sci_path, template_path, output_path )
@@ -238,7 +228,7 @@ def run_resample(FITS_obj, FITS_targ, FITS_resamp):
 #     return rotate_angle
 
 def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
-                  psf_path=None, force=False, logger=None, **kwargs):
+                  psf_path=None, force=False, **kwargs):
 
     """
     Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
@@ -256,8 +246,6 @@ def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yam
 
     if psf_path is None:
         raise ValueError( "psf_path can't be None" )
-
-    logger = _logger if logger is None else logger
 
     # Get WCS of the image you need the PSF for.
     with fits.open( image_path ) as hdu:
@@ -426,14 +414,14 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
 #     # BAD IDEA : we were reading masks from different images
 #     #   (unaligned template, convolved neither.)
 #     # fname = os.path.join( output_files_rootdir, f'detect_mask/{os.path.basename(imgpath)}.npy' )
-#     # _logger.info( f"Trying to load detection mask from {fname}" )
+#     # SNLogger.info( f"Trying to load detection mask from {fname}" )
 #     # bkg_mask = np.load( fname )
 
 #     return bkg_mask
 
 # def difference(scipath, refpath,
 #                out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0,
-#                ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False, logger=None):
+#                ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False ):
 
 #     tracemalloc.start()
 
@@ -480,7 +468,7 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
 #                 hdu.writeto(msavepath, overwrite=True)
 
 #         size,peak = tracemalloc.get_traced_memory()
-#         logger.debug(f'MEMORY IN imagesubtraction.difference() BEFORE Customized_Packet.CP: size = {size}, peak = {peak}')
+#         SNLogger.debug(f'MEMORY IN imagesubtraction.difference() BEFORE Customized_Packet.CP: size = {size}, peak = {peak}')
 #         tracemalloc.reset_peak()
 
 #         # Do SFFT subtraction
@@ -489,10 +477,10 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
 #                                  ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
 #                                  KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
 #                                  BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-#                                  NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
+#                                  NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
 
 #         size,peak = tracemalloc.get_traced_memory()
-#         logger.debug(f'MEMORY IN imagesubtraction.difference() AFTER Customized_Packet.CP: size = {size}, peak = {peak}')
+#         SNLogger.debug(f'MEMORY IN imagesubtraction.difference() AFTER Customized_Packet.CP: size = {size}, peak = {peak}')
 #         tracemalloc.reset_peak()
 
 #     elif skip_subtract and verbose:

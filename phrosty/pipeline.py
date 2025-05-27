@@ -22,7 +22,8 @@ import astropy.units
 
 from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
 
-from phrosty.utils import set_logger, read_truth_txt, get_exptime
+from snpit_utils.logger import SNLogger
+from phrosty.utils import read_truth_txt, get_exptime
 from phrosty.imagesubtraction import sky_subtract, get_imsim_psf, stampmaker
 from phrosty.photometry import ap_phot, psfmodel, psf_phot
 
@@ -31,7 +32,6 @@ from galsim import roman
 class Image:
     def __init__( self, path, pointing, sca, mjd, pipeline ):
         self.pipeline = pipeline
-        self.logger = self.pipeline.logger
         self.sims_dir = pathlib.Path( os.getenv( 'SIMS_DIR', None ) )
         if self.sims_dir is None:
             raise ValueError( "Env var SIMS_DIR must be set" )
@@ -58,18 +58,18 @@ class Image:
 
     def run_sky_subtract( self ):
         try:
-            self.logger.debug( f"Process {multiprocessing.current_process().pid} run_sky_subtract {self.image_name}" )
+            SNLogger.debug( f"Process {multiprocessing.current_process().pid} run_sky_subtract {self.image_name}" )
             self.skysub_path = self.pipeline.temp_dir / f"skysub_{self.image_name}"
             self.detmask_path = self.pipeline.temp_dir / f"detmask_{self.image_name}"
             self.skyrms = sky_subtract( self.image_path, self.skysub_path, self.detmask_path,
                                         temp_dir=self.pipeline.temp_dir, force=self.pipeline.force_sky_subtract )
             return ( self.skysub_path, self.detmask_path, self.skyrms )
         except Exception as ex:
-            self.logger.error( f"Process {multiprocessing.current_process().pid} exception: {ex}" )
+            SNLogger.error( f"Process {multiprocessing.current_process().pid} exception: {ex}" )
             raise
 
     def save_sky_subtract_info( self, info ):
-        self.logger.debug( f"Saving sky_subtract info for path {info[0]}" )
+        SNLogger.debug( f"Saving sky_subtract info for path {info[0]}" )
         self.skysub_path = info[0]
         self.detmask_path = info[1]
         self.skyrms = info[2]
@@ -117,8 +117,7 @@ class Pipeline:
 
         """
 
-        self.logger = set_logger( 'phrosty', 'phrosty' )
-        self.logger.setLevel( logging.DEBUG if verbose else logging.INFO )
+        SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.sims_dir = pathlib.Path( os.getenv( 'SIMS_DIR', None ) )
 
         if galsim_config_file is None:
@@ -140,14 +139,14 @@ class Pipeline:
         self.force_sky_subtract = force_sky_subtract
 
         if self.nuke_temp_dir:
-            self.logger.warning( "nuke_temp_dir not implemented" )
+            SNLogger.warning( "nuke_temp_dir not implemented" )
 
     def sky_sub_all_images( self ):
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
         def log_error( img, x ):
-            self.logger.error( f"Sky subtraction subprocess failure: {x} for image {img.image_path}" )
+            SNLogger.error( f"Sky subtraction subprocess failure: {x} for image {img.image_path}" )
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
@@ -174,7 +173,7 @@ class Pipeline:
                     callback_partial = partial( img.save_psf_path, all_imgs )
                     pool.apply_async( img.run_get_imsim_psf, (), {},
                                       img.save_psf_path,
-                                      lambda x: self.logger.error( f"get_imsim_psf subprocess failure: {x}" ) )
+                                      lambda x: SNLogger.error( f"get_imsim_psf subprocess failure: {x}" ) )
                 pool.close()
                 pool.join()
         else:
@@ -336,7 +335,7 @@ class Pipeline:
             plt.savefig(savepath,dpi=300,bbox_inches='tight')
             plt.close()
 
-            self.logger.info(f'zpt debug plot saved to {savepath}')
+            SNLogger.info(f'zpt debug plot saved to {savepath}')
 
             # savepath = os.path.join(savedir,f'hist_truth-fit_{band}_{sci_pointing}_{sci_sca}.png')
             # plt.hist(star_truth_mags[zpt_mask] - star_fit_mags[zpt_mask])
@@ -399,7 +398,7 @@ class Pipeline:
             results_dict['success'] = True
 
         else:
-            self.logger.warning( f"Post-processed image files for {self.band}_{sci_image.pointing}_{sci_image.sca}-"
+            SNLogger.warning( f"Post-processed image files for {self.band}_{sci_image.pointing}_{sci_image.sca}-"
                                  f"{self.band}_{templ_image.pointing}_{templ_image.sca} do not exist.  Skipping." )
             results_dict['zpt'] = np.nan
             results_dict['flux_fit'] = np.nan
@@ -431,13 +430,13 @@ class Pipeline:
                                  savedir=self.out_dir,
                                  savename=f"stamp_{diffname.name}" )
 
-        self.logger.info(f"Decorrelated stamp path: {pathlib.Path( diff_stampname )}")
-        self.logger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
+        SNLogger.info(f"Decorrelated stamp path: {pathlib.Path( diff_stampname )}")
+        SNLogger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
 
         return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname )
 
     def make_lightcurve( self ):
-        self.logger.info( "Making lightcurve." )
+        SNLogger.info( "Making lightcurve." )
 
         self.results_dict = {
             'ra': [],
@@ -461,13 +460,13 @@ class Pipeline:
                     for templ_image in self.template_images:
                         pool.apply_async( self.make_phot_info_dict, (sci_image, templ_image), {},
                                           self.add_to_results_dict,
-                                          error_callback=lambda x: self.logger.error( f"make_phot_info_dict subprocess failure: {x}" )
+                                          error_callback=lambda x: SNLogger.error( f"make_phot_info_dict subprocess failure: {x}" )
                                          )
                 pool.close()
                 pool.join()
         else:
             for i, sci_image in enumerate( self.science_images ):
-                self.logger.debug( f"Doing science image {i} of {len(self.science_images)}" )
+                SNLogger.debug( f"Doing science image {i} of {len(self.science_images)}" )
                 for templ_image in self.template_images:
                     self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
 
@@ -477,7 +476,7 @@ class Pipeline:
         results_savedir.mkdir( exist_ok=True, parents=True )
         results_savepath = results_savedir / f'{self.object_id}_{self.band}_all.csv'
         results_tab.write(results_savepath, format='csv', overwrite=True)
-        self.logger.info(f'Results saved to {results_savepath}')
+        SNLogger.info(f'Results saved to {results_savepath}')
 
     def write_fits_file( self, data, header, savepath ):
         fits.writeto( savepath, data, header=header, overwrite=True )
@@ -494,12 +493,12 @@ class Pipeline:
         steps = steps[:stepdex+1]
 
         if 'sky_subtract' in steps:
-            self.logger.info( "Running sky subtraction" )
+            SNLogger.info( "Running sky subtraction" )
             with nvtx.annotate( "skysub", color=0xff8888 ):
                 self.sky_sub_all_images()
 
         if 'get_psfs' in steps:
-            self.logger.info( "Getting PSFs" )
+            SNLogger.info( "Getting PSFs" )
             with nvtx.annotate( "getpsfs", color=0xff8888 ):
                 self.get_psfs()
 
@@ -507,28 +506,28 @@ class Pipeline:
         with Pool( self.nwrite ) as fits_writer_pool:
 
             def log_fits_write_error( savepath, x ):
-                self.logger.error( f"Exception writing FITS file {savepath}: {x}" )
+                SNLogger.error( f"Exception writing FITS file {savepath}: {x}" )
                 # raise?
 
             # Do the hardcore processing
 
             for templ_image in self.template_images:
                 for sci_image in self.science_images:
-                    self.logger.info( f"Processing {sci_image.image_name} minus {templ_image.image_name}" )
+                    SNLogger.info( f"Processing {sci_image.image_name} minus {templ_image.image_name}" )
                     sfftifier = None
 
                     if 'align_and_preconvolve' in steps:
-                        self.logger.info( f"...align_and_preconvolve" )
+                        SNLogger.info( f"...align_and_preconvolve" )
                         with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
                             sfftifier = self.align_and_pre_convolve( templ_image, sci_image )
 
                     if 'subtract' in steps:
-                        self.logger.info( f"...subtract" )
+                        SNLogger.info( f"...subtract" )
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
                             sfftifier.sfft_subtraction()
 
                     if 'find_decorrelation' in steps:
-                        self.logger.info( f"...find_decorrelation" )
+                        SNLogger.info( f"...find_decorrelation" )
                         with nvtx.annotate( "find_decor", color=0xcc44ff ):
                             sfftifier.find_decorrelation()
 
@@ -541,10 +540,10 @@ class Pipeline:
                                                        [ decorr_diff_path,        decorr_zptimg_path,         decorr_psf_path ],
                                                        [ sfftifier.hdr_target,    sfftifier.hdr_target,       None ] ):
                             with nvtx.annotate( "apply_decor", color=0xccccff ):
-                                self.logger.info( f"...apply_decor to {savepath}" )
+                                SNLogger.info( f"...apply_decor to {savepath}" )
                                 decorimg = sfftifier.apply_decorrelation( img )
                             with nvtx.annotate( "submit writefits", color=0xff8888 ):
-                                self.logger.info( f"...writefits {savepath}" )
+                                SNLogger.info( f"...writefits {savepath}" )
                                 fits_writer_pool.apply_async( self.write_fits_file,
                                                               ( cp.asnumpy( decorimg ).T, hdr, savepath ), {},
                                                               error_callback=partial(log_fits_write_error, savepath) )
@@ -552,16 +551,16 @@ class Pipeline:
                         sci_image.decorr_zptimg_path[ templ_image.image_name ]= decorr_zptimg_path
                         sci_image.decorr_diff_path[ templ_image.image_name ]= decorr_diff_path
 
-                        self.logger.info( f"DONE processing {sci_image.image_name} minus {templ_image.image_name}" )
+                        SNLogger.info( f"DONE processing {sci_image.image_name} minus {templ_image.image_name}" )
 
-            self.logger.info( f"Waiting for FITS writer processes to finish" )
+            SNLogger.info( f"Waiting for FITS writer processes to finish" )
             with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
                 fits_writer_pool.close()
                 fits_writer_pool.join()
-            self.logger.info( f"...FITS writer processes done." )
+            SNLogger.info( f"...FITS writer processes done." )
 
         if 'make_stamps' in steps:
-            self.logger.info( "Starting to make stamps..." )
+            SNLogger.info( "Starting to make stamps..." )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
                 if self.nwrite > 1:
                     partialstamp = partial(stampmaker, self.ra, self.dec, np.array([100,100]))
@@ -578,7 +577,7 @@ class Pipeline:
                                 pair = (sci_image, templ_image)
                                 sci_stamp_pool.apply_async( self.do_stamps, pair, {},
                                                             callback = partial(self.save_stamp_paths,sci_image,templ_image),
-                                                            error_callback=partial( self.logger.error, "do_stamps subprocess failure: {x}" )
+                                                            error_callback=partial( SNLogger.error, "do_stamps subprocess failure: {x}" )
                                                             )
 
                         sci_stamp_pool.close()
@@ -600,10 +599,10 @@ class Pipeline:
                                                     savedir=self.out_dir, savename=f"stamp_{diffname.name}" )
                             sci_image.diff_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
 
-            self.logger.info('...finished making stamps.')
+            SNLogger.info('...finished making stamps.')
 
         if 'make_lightcurve' in steps:
-            self.logger.info( "Making lightcurve" )
+            SNLogger.info( "Making lightcurve" )
             with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
                 self.make_lightcurve()
 
