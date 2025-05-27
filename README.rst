@@ -63,6 +63,7 @@ Running tests
 -------------
 
 The tests need to be run within an environment where *phrosty* will run properly.  At the moment, the only environment we've successfully used this with is the Docker environment described in the NERSC/Perlmutter environment above.  Follow that example through running ``bash interactive_podman.sh``.  Then, instead of doing what the example says, run::
+
   cd /home/phrosty/tests
   export DIA_OUT_DIR=../../dia_out_dir
   export SN_INFO_DIR=../../sn_info_dir
