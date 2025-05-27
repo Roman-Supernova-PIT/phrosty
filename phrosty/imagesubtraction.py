@@ -27,6 +27,7 @@ import astropy.units as u
 from astropy.wcs import WCS
 from astropy.convolution import convolve_fft
 from astropy.visualization import ZScaleInterval
+# import galsim
 from galsim import PositionD
 
 # IMPORTS SFFT:
@@ -268,6 +269,14 @@ def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yam
     assert config_yaml_file is not None, "config_yaml_file is a required argument"
     config_path = config_yaml_file
     config = roman_utils(config_path,pointing,sca)
+    #### TEMP TEST
+    #### Want to see if this is the source of non-reproducible results
+    # For the future: if we adapt the snpit_utils config system,
+    #   we could set a config variable that is the seed, and if
+    #   it's not None, set the seed here.  For now, we aceept
+    #   the variance in our tests.
+    # config.rng = galsim.BaseDeviate(12345)
+    #### END OF TEMP TEST
     psf = config.getPSF_Image(size,x,y,**kwargs)
     psf.write( str(psf_path) )
 

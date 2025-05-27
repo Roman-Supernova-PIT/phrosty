@@ -1,0 +1,34 @@
+# needs pull_request_target to label forks
+documentation:
+  - changed-files:
+    - all-globs-to-any-file: ['*.rst', '!CHANGES.rst', '!licenses/LICENSE']
+    - any-glob-to-any-file:
+      - 'docs/**/*'
+      - '*.md'
+      - '.readthedocs.yaml'
+      - 'CITATION.cff'
+
+installation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'pyproject.toml'
+      - 'setup.*'
+      - 'requirements*.txt'
+      - 'MANIFEST.in'
+
+# --------------------------------------- testing ---------------------------------------
+
+automation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/**'
+      - '.bandit.yaml'
+      - '.codecov.yml'
+
+testing:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/tests/**'
+      - '.github/workflows/*ci*.yml'
+      - 'conftest.py'
+      - 'tox.ini'

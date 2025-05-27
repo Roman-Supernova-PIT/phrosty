@@ -1,0 +1,2 @@
+# add words to ignore for spelling
+# https://github.com/codespell-project/codespell

@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software in your work, please cite it using the following metadata."
+authors:
+- name: "Lauren Aldoroty et al."
+  orcid: "https://orcid.org/0000-0003-0183-451X"
+title: phrosty
+version: 0.0
+doi: TBD
+date-released: 
+url: "https://github.com/Roman-Supernova-PIT/phrosty"
