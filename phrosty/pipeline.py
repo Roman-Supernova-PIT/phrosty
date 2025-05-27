@@ -662,7 +662,7 @@ def main():
                          temp_dir=args.temp_dir, out_dir=args.out_dir, ltcv_dir=args.ltcv_dir,
                          galsim_config_file=galsim_config, force_sky_subtract=args.force_sky_subtract,
                          nuke_temp_dir=False, verbose=args.verbose )
-    pipeline( args.through_step ) 
+    pipeline( args.through_step )
 
 
 # ======================================================================
