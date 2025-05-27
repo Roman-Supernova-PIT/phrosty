@@ -26,11 +26,13 @@ date) from ``roman_imsim``, which may be git cloned from ``https://github.com/ma
 
 (For an example of actually running phrosty in this dockerized environment, see ``examples/perlmutter/README.md``.)
 
-### Manual installs
+Manual installs
+---------------
 
 Not included in the docker image described above is SFFT— because, as of this writing, the version used with phrosty was under development.  SFFT must be separately cloned from git@github.com:Roman-Supernova-PIT/sfft.git, the directory to which you clone that archive must by in your ``PYTHONPATH``.  As of this writing, *phrosty* requires the ``fixes_20241022`` branch, though hopefully we will get that branch merged back to the ``master`` branch.  See "Examples" below for samples of this in action.
 
-### Necessary directories data files
+Necessary directories data files
+--------------------------------
 
 Currently, *phrosty* depends on the following environment variables to find data:
 
@@ -40,17 +42,20 @@ Currently, *phrosty* depends on the following environment variables to find data
 * ``DIA_OUT_DIR`` : A directory where difference images (and psfs and other associated images) will be written.
 
 
-## Running the code
+Running the code
+----------------
 
 TODO.
 
 For now, see the one extant example below.
 
-## Examples
+Examples
+--------
 
 Currently, these examples are intended for members of the Roman SN PIT.  Anybody may try them, but since we're early in development, we can't support non-PIT members yet.  Members of the PIT, if you have any issues running phrosty, ping Rob Knop and Lauren Aldoroty in the ``#photometry`` channel on the SN PIT Slack.
 
-### NERSC/Perlmutter
+NERSC/Perlmutter
+****************
 
 An example running *phrosty* on an interactive node, and on a slurm-allocated node, on Perlmutter at NERSC may be found in the examples/perlmutter directory.
 
@@ -64,7 +69,8 @@ The tests need to be run within an environment where *phrosty* will run properly
 
 TODO: we need to clean this up and make the test environment more self-contained.
 
-## Plotting lightcurves
+Plotting lightcurves
+--------------------
 
 TODO.
 
