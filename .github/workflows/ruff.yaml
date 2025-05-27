@@ -19,5 +19,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          src: "/home/runner/work/phrosty"
+          src: "./"
       - uses: astral-sh/ruff-action@v3
