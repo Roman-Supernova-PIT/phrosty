@@ -1,0 +1,35 @@
+{
+  "template": "/home/raknop/roman/package-template",
+  "commit": "8dd697cb99ede8451cdf622ecd00923c1786fd28",
+  "checkout": "u/rknop/docs",
+  "context": {
+    "cookiecutter": {
+      "package_name": "phrosty",
+      "module_name": "phrosty",
+      "github_snpit_repo_name": "phrosty",
+      "short_description": "Difference imaging forced photometry pipeline",
+      "author_name": "Lauren Aldoroty",
+      "author_email": "laurenaldoroty@gmail.com",
+      "github_username": "laldoroty",
+      "minimum_python_version": "3.11",
+      "use_compiled_extensions": "n",
+      "include_example_code": "n",
+      "include_github_workflows": "y",
+      "_project_url": "https://github.com/Roman-Supernova-PIT",
+      "_pit_github_org": "Roman-Supernova-PIT",
+      "_pit_name": "Roman Supernove Project Infrastructure Team",
+      "_sphinx_theme": "alabaster",
+      "_parent_project": "",
+      "install_requires": "",
+      "_copy_without_render": [
+        "docs/_templates",
+        "docs/_static",
+        ".github/workflows",
+        ".github/"
+      ],
+      "_template": "/home/raknop/roman/package-template",
+      "_commit": "8dd697cb99ede8451cdf622ecd00923c1786fd28"
+    }
+  },
+  "directory": null
+}

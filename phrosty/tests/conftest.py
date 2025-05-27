@@ -1,6 +1,9 @@
+import pytest # noqa: F401
 import os
-import pytest
 import pathlib
+
+import tox # noqa: F401
+from tox.pytest import init_fixture # noqa: F401
 
 import phrosty.imagesubtraction
 

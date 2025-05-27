@@ -1,0 +1,202 @@
+[project]
+name = "phrosty"
+description = "Difference imaging forced photometry pipeline"
+requires-python = ">=3.11"
+dynamic = ["version"]
+authors = [{ name = "Roman Supernove Project Infrastructure Team"}]
+
+maintainers = [
+ {name = "Lauren Aldoroty", email = "laurenaldoroty@gmail.com"}
+ ]
+classifiers = [
+  # How mature is this project? Common values are
+  #   3 - Alpha
+  #   4 - Beta
+  #   5 - Production/Stable
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python"
+]
+dependencies = [
+  "towncrier",
+  "setuptools_scm",
+  "cruft",
+  "coverage",
+  
+]
+license-files = ["LICENSE"]
+
+
+[project.readme]
+file = "README.rst"
+content-type = "text/x-rst"
+
+
+
+
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-doctestplus",
+    "pytest-cov",
+    "requests",
+    "tox",
+    "devpi_process"
+]
+docs = [
+    "sphinx",
+    "sphinx-automodapi",
+    "matplotlib",
+    "sphinx",
+    "tomli",
+    "graphviz"
+]
+
+
+[project.urls]
+repository = "https://github.com/Roman-Supernova-PIT"
+
+
+
+[build-system]
+requires = [
+  "setuptools>=62.1",
+  "setuptools_scm[tomli]>=6.2",
+  "wheel",
+  "numpy>=1.26",
+
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+namespaces = false
+include = [
+"phrosty*"
+]
+
+[tool.setuptools_scm]
+# can be empty if no extra settings are needed, presence enables setuptools-scm
+version_file = "phrosty/_version.py"
+
+[tool.pytest.ini_options]
+testpaths = [
+  "phrosty",
+  "docs",
+]
+doctest_plus = "enabled"
+doctest_rst = "enabled"
+text_file_format = "rst"
+addopts = "--doctest-rst"
+
+[tool.coverage.run]
+omit = [
+ "phrosty/__init*",
+ "phrosty/conftest.py",
+ "phrosty/*setup_package*",
+ "phrosty/tests/*",
+ "phrosty/*/tests/*",
+ "phrosty/extern/*",
+ "phrosty/_version*",
+ "*/phrosty/__init*",
+ "*/phrosty/conftest.py",
+ "*/phrosty/*setup_package*",
+ "*/phrosty/tests/*",
+ "*/phrosty/*/tests/*",
+ "*/phrosty/extern/*",
+ "*/phrosty/_version*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  # Have to re-enable the standard pragma
+  "pragma: no cover",
+  # Don't complain about packages we have installed
+  "except ImportError",
+  # Don't complain if tests don't hit assertions
+  "raise AssertionError",
+  "raise NotImplementedError",
+  # Don't complain about script hooks
+  "def main(.*):",
+  # Ignore branches that don't pertain to this version of Python
+  "pragma: py{ignore_python_version}",
+  # Don't complain about IPython completion helper
+  "def _ipython_key_completions_",
+  # typing.TYPE_CHECKING is False at runtime
+  "if TYPE_CHECKING:",
+  # Ignore typing overloads
+  "@overload",
+]
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+exclude = [
+    ".git",
+    ".github",
+    ".ruff_cache",
+    ".vscode",
+    "__pypackages__",
+    "docs",
+]
+
+
+[tool.ruff.lint]
+preview = true
+select = [ 'F', 'E101', 'E111', 'E112', 'E113', 'E115', 'E117',
+           'E204', 'E223', 'E224', 'E242', 'E265', 'E273', 'E274', 'E275',
+           'E301', 'E302', 'E305', 'E306', 'E401', 'E501', 'E502', 'E703',
+           'E711', 'E713', 'E714', 'E72', 'E74',
+           'W19', 'W29', 'W39', 'W605',
+           'N804', 'N805', 'N807',
+           'D206', 'D300', 'D301',
+           'UP010', 'UP011', 'UP012', 'UP013', 'UP014', 'UP017', 'UP018', 'UP019',
+           'UP02', 'UP030', 'UP031', 'UP033', 'UP034', 'UP035', 'UP036',
+           'UP037', 'UP039', 'UP04',
+           'PLE0100', 'PLE0101', 'PLE0116',
+           'NPY',
+           'RUF018',
+           'E301', 'E302', 'E306', 'W505', 'D200', 'D212', 'RUF021' ]
+
+
+[tool.towncrier]
+# Where you want your news files to come out, filename=`NEWS.rst` is the default.
+# This can be .rst or .md, towncrier's default template works with both.
+filename = "CHANGES.rst"
+directory = "changes"
+package = "phrosty"
+package_dir = "phrosty"
+title_format = "{version} ({project_date})"
+ignore = [".gitkeep"]
+wrap = true
+issue_format = "`#{issue} <https://github.com/Roman-Supernova-PIT/phrosty/issues/{issue}>`_"
+
+[[tool.towncrier.type]]
+directory = "/"
+name = "General"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "docs"
+name = "Documentation"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "bugfix"
+name = "Bugfixes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "feature"
+name = "New Features"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "phrosty"
+name = "phrosty"
+showcontent = true
+
+

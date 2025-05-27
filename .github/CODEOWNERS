@@ -1,0 +1,9 @@
+# automatically requests pull request reviews for files matching the given pattern; the last match takes precendence. Make sure the software-admin team has write on your repo
+
+*       @laldoroty @Roman-Supernova-Pit/software-admins
+
+# maintainers, add specifics of what you want to maintain for your package
+# the software-admins should remain owners of everything as above
+
+/docs/** @laldoroty
+/changes/** @laldoroty

@@ -1,0 +1,27 @@
+name: "Deploy Package Documentation to Pages"
+
+on:
+  push:
+    branches: [main] # branch to trigger deployment
+
+  workflow_dispatch:
+
+jobs:
+  pages:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - id: deployment
+      uses: sphinx-notes/pages@23ef64097ef9b00d8f71e978bc518ee32ca98651  # v3.2
+      with:
+        publish: false
+        documentation_path: ./docs
+        pyproject_extras: docs
+    - uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e  # v4.0.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ${{ steps.deployment.outputs.artifact }} 
+        publish_branch: gh-pages  # default: gh-pages
+        commit_message: ${{ github.event.head_commit.message }}
+

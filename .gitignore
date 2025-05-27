@@ -1,9 +1,15 @@
+# Emacs backup files
+**~
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-# LNA 20200711
-tests/__pycache__/
+.DS_Store
+.project
+.pydevproject
+.vscode
+*code-workspace
 
 # C extensions
 *.so
@@ -23,10 +29,12 @@ sdist/
 var/
 wheels/
 share/python-wheels/
+pip-wheel-metadata/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
+phrosty/_version.py
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -45,6 +53,7 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+.tmp/
 nosetests.xml
 coverage.xml
 *.cover
@@ -79,6 +88,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*/.ipynb_checkpoints/*.ipynb
 
 # IPython
 profile_default/
@@ -160,6 +170,3 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-
-# Emacs backup files
-**~

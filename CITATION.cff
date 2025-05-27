@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software in your work, please cite it using the following metadata."
+authors:
+- family-names: "Sosey"
+  given-names: "Megan"
+  orcid: "https://orcid.org/0000-0002-4206-6492"
+title: phrosty
+version: 0.0
+doi: 
+date-released: 
+url: "https://github.com/Roman-Supernova-PIT/phrosty"

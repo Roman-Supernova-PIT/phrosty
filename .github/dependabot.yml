@@ -1,0 +1,38 @@
+name: "Dependabot Checks"
+version: 2
+updates:
+
+# maintain dependencies for pip
+# this should help with pyproject.toml
+- package-ecosystem: pip
+  directory: "/"
+  target-branch: "main"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  reviewers:
+    - "laldoroty"
+  allow:
+    - dependency-type: direct
+    - dependency-type: indirect
+  commit-message:
+    prefix: "fix: "
+  labels:
+    - "CI/CD"
+
+# maintain dependencies for github-actions
+- package-ecosystem: "github-actions"
+  directory: ".github/workflows"
+  target-branch: "main"
+  reviewers:
+    - "laldoroty"
+  schedule:
+    interval: monthly
+  commit-message:
+    prefix: "fix: "
+  labels:
+    - "CI/CD"
+  groups:
+      actions:
+        patterns:
+          - "*"

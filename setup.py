@@ -1,6 +1,4 @@
-from setuptools import setup, find_packages
+#!/usr/bin/env python
+from setuptools import setup
 
-setup(name='phrosty',
-        version='v0.0.0',
-        packages=find_packages(),
-        include_package_data=True)
+setup()
