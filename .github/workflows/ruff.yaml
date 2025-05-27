@@ -21,3 +21,4 @@ jobs:
       - uses: astral-sh/ruff-action@v3
         with:
           src: "/home/runner/work/phrosty"
+      - run: ruff check
