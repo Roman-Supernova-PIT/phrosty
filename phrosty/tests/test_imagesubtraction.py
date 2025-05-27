@@ -25,6 +25,7 @@ def test_gz_and_ext( dia_out_dir, compressed_template_image_path ):
         out_path.unlink( missing_ok=True )
 
 
+@pytest.mark.skipif( not os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
 def test_sky_subtract( dia_out_dir ):
     in_path = dia_out_dir / "random.fits"
     skysub_path = dia_out_dir / "skysub.fits"
@@ -79,6 +80,7 @@ def _check_resampled_image( templ, resamp ):
         assert np.median( tdata ) == pytest.approx( np.median( rdata ), rel=0.02 )
         assert tdata.std() == pytest.approx( rdata.std(), rel=0.04 )
 
+@pytest.mark.skipif( not os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
 def test_run_resample( dia_out_dir, template_image_path, one_science_image_path ):
     sci = one_science_image_path
     templ = template_image_path
@@ -188,6 +190,7 @@ def test_get_imsim_psf_photonOps( sims_dir, sn_info_dir, dia_out_dir,
     # TODO test force and all that
 
 
+@pytest.mark.skipif( not os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
 def test_stampmaker( dia_out_dir, test_dia_image, test_sn, one_science_image_path ):
     savedir = dia_out_dir
     savename = 'stamp.fits'
