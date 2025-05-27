@@ -59,7 +59,8 @@ NERSC/Perlmutter
 
 An example running *phrosty* on an interactive node, and on a slurm-allocated node, on Perlmutter at NERSC may be found in the examples/perlmutter directory.
 
-## Running tests
+Running tests
+-------------
 
 The tests need to be run within an environment where *phrosty* will run properly.  At the moment, the only environment we've successfully used this with is the Docker environment described in the NERSC/Perlmutter environment above.  Follow that example through running ``bash interactive_podman.sh``.  Then, instead of doing what the example says, run::
   cd /home/phrosty/tests
