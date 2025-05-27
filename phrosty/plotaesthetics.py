@@ -1,9 +1,10 @@
-import matplotlib as mpl
 from matplotlib import rcParams
+
 
 def update_rcParams(key, val):
     if key in rcParams:
         rcParams[key] = val
+
 
 update_rcParams('font.size', 20)
 update_rcParams('font.family', 'serif')

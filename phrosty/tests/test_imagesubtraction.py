@@ -1,7 +1,6 @@
 import os
 import pathlib
 import pytest
-import time
 
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -11,6 +10,7 @@ import phrosty.imagesubtraction
 
 import numpy as np
 import numpy.random as random
+
 
 def test_gz_and_ext( dia_out_dir, compressed_template_image_path ):
     out_path = dia_out_dir / "gunzipped.fits"
@@ -79,6 +79,7 @@ def _check_resampled_image( templ, resamp ):
 
         assert np.median( tdata ) == pytest.approx( np.median( rdata ), rel=0.02 )
         assert tdata.std() == pytest.approx( rdata.std(), rel=0.04 )
+
 
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
 def test_run_resample( dia_out_dir, template_image_path, one_science_image_path ):
@@ -222,6 +223,3 @@ def test_stampmaker( dia_out_dir, test_dia_image, test_sn, one_science_image_pat
     finally:
         if savepath is not None:
             savepath.unlink( missing_ok = True )
-
-
-

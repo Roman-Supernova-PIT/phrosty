@@ -17,5 +17,5 @@ except PackageNotFoundError:
 # from .utils import *
 # from .imagesubtraction import *
 # from .nn2 import *
-# # This is broken: 
+# # This is broken:
 # # from .sourcedetection import *

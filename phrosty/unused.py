@@ -1,3 +1,5 @@
+# ruff: noqa
+
 # These are things that may be out of date and may no longer work as is,
 # but we may need to use something like them at some point in the
 # future.

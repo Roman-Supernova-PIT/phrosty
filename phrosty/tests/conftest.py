@@ -9,25 +9,31 @@ import phrosty.imagesubtraction
 
 direc = pathlib.Path( __file__ ).parent
 
+
 @pytest.fixture( scope='session' )
 def dia_out_dir():
     return pathlib.Path( os.getenv( "DIA_OUT_DIR", "/dia_out_dir" ) )
+
 
 @pytest.fixture( scope='session' )
 def sims_dir():
     return pathlib.Path( os.getenv( "SIMS_DIR", "/sims_dir" ) )
 
+
 @pytest.fixture( scope='session' )
 def sn_info_dir():
     return pathlib.Path( os.getenv( "SN_INFO_DIR", direc / "sn_info_dir" ) )
+
 
 @pytest.fixture( scope='session' )
 def template_csv():
     return direc / "20172782_instances_templates_1.csv"
 
+
 @pytest.fixture( scope='session' )
 def two_science_csv():
     return direc / "20172782_instances_science_two_images.csv"
+
 
 @pytest.fixture( scope='session' )
 def test_dia_image():
@@ -38,6 +44,7 @@ def test_dia_image():
              'mjd': 62455.174,
              'band': 'R062'
             }
+
 
 @pytest.fixture( scope='session' )
 def test_sn():
@@ -50,7 +57,7 @@ def test_sn():
              'zcmb': 0.3601,
              'peakmjd': 62476.507812
             }
-             
+
 
 @pytest.fixture( scope='session' )
 def compressed_template_image_path( sims_dir, template_csv ):
@@ -59,6 +66,7 @@ def compressed_template_image_path( sims_dir, template_csv ):
         img, point, sca, mjd = line.split()
 
     return sims_dir / img
+
 
 @pytest.fixture( scope='session' )
 def one_compressed_science_image_path( sims_dir, two_science_csv ):
@@ -79,7 +87,8 @@ def template_image_path( compressed_template_image_path, dia_out_dir ):
 
     finally:
         out_path.unlink( missing_ok=True )
-    
+
+
 @pytest.fixture( scope='session' )
 def one_science_image_path( one_compressed_science_image_path, dia_out_dir ):
     out_path = dia_out_dir / "sci.fits"
