@@ -1,6 +1,7 @@
 import nvtx
 
 import os
+import re
 import pathlib
 import argparse
 import logging
@@ -25,6 +26,8 @@ from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
 
 from snpit_utils.logger import SNLogger
 from snpit_utils.config import Config
+from snappl.psf import ou24PSF
+from snappl.image import OpenUniverse2024FITSImage
 from phrosty.utils import read_truth_txt, get_exptime
 from phrosty.imagesubtraction import sky_subtract, get_imsim_psf, stampmaker
 from phrosty.photometry import ap_phot, psfmodel, psf_phot
@@ -35,13 +38,15 @@ from galsim import roman
 class PipelineImage:
     """Holds a snappl.image.Image, with some other stuff the pipeline needs."""
 
-    def __init__( self, image, pointing, pipeline ):
+    def __init__( self, imagepath, pointing, sca ):
         """Create a PipelineImage
 
         Parameters:
         -----------
-           image : snappl.image.Image
-              In reality, it's probably a non-abstract subclass of snappl.image.Image.
+           imagepath : str or Path
+              A path to the image.  This will be passed on to an Image
+              subclass constructor; which subclass depends on the config
+              option photometry.phrosty.image_type
 
            pointing : str or int
               An identifier of the pointing of this image.  Used e.g. to pull PSFs.
@@ -51,9 +56,16 @@ class PipelineImage:
 
         """
         # self.psf is a object of a subclass of snappl.psf.PSF
-        self.psf = None
         self.config = Config.get()
         self.temp_dir = pathlib.path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+
+        if self.config.value( 'photometry.phrosty.image_type' ) == 'ou2024fits':
+            self.image = OpenUniverse2024FITSImage( imagepath, None, sca )
+        else:
+            raise RuntimeError( "At the moment, phrosty only works with ou2024fits images. "
+                                "We hope this will change soon." )
+
+        self.pointing = pointing
         
         self.decorr_psf_path = {}
         self.decorr_zptimg_path = {}
@@ -61,45 +73,26 @@ class PipelineImage:
         self.zpt_stamp_path = {}
         self.diff_stamp_path = {}
 
+        self.skysub_path = None
+        self.detmas_path = None
+        self.skyrms = None
+        self.psfobj = None
+        self.psf_data = None
 
     def run_sky_subtract( self ):
+        # Eventually, we may not want to save the sky subtracted image, but keep
+        #   it in memory.  (Reduce I/O.)  Will require SFFT changes.
         try:
-            SNLogger.debug( f"Process {multiprocessing.current_process().pid} run_sky_subtract {self.image_name}" )
-            self.skysub_path = self.pipeline.temp_dir / f"skysub_{self.image_name}"
-            self.detmask_path = self.pipeline.temp_dir / f"detmask_{self.image_name}"
-            self.skyrms = sky_subtract( self.image_path, self.skysub_path, self.detmask_path,
-                                        temp_dir=self.pipeline.temp_dir, force=self.pipeline.force_sky_subtract )
+            SNLogger.multiprocessing_replace()
+            SNLogger.debug( f"run_sky_subtract on {self.image.name}" )
+            self.skysub_path = self.temp_dir / f"skysub_{self.image.name}"
+            self.detmask_path = self.temp_dir / f"detmask_{self.image.name}"
+            self.skyrms = sky_subtract( self.image.path, self.skysub_path, self.detmask_path, temp_dir=self.temp_dir,
+                                        force=self.config.value( 'photometry.phrosty.force_sky_subtract' ) )
             return ( self.skysub_path, self.detmask_path, self.skyrms )
         except Exception as ex:
-            SNLogger.error( f"Process {multiprocessing.current_process().pid} exception: {ex}" )
+            SNLogger.exception( ex )
             raise
-
-
-        def run_sky_subtract( self ):
-        
-
-        
-class Image:
-    def __init__( self, path, pointing, sca, mjd, pipeline ):
-        self.pipeline = pipeline
-        self.sims_dir = pathlib.Path( os.getenv( 'SIMS_DIR', None ) )
-        if self.sims_dir is None:
-            raise ValueError( "Env var SIMS_DIR must be set" )
-        self.image_path = self.sims_dir / path
-        self.image_name = self.image_path.name
-        if self.image_name[-3:] == '.gz':
-            self.image_name = self.image_name[:-3]
-        if self.image_name[-5:] != '.fits':
-            raise ValueError( f"Image name {self.image_name} doesn't end in .fits, I don't know how to cope." )
-        self.basename = self.image_name[:-5]
-        self.pointing = pointing
-        self.sca = sca
-        self.mjd = mjd
-        self.psf_path = None
-        self.detect_mask_path = None
-        self.skyrms = None
-        self.skysub_path = None
-
 
     def save_sky_subtract_info( self, info ):
         SNLogger.debug( f"Saving sky_subtract info for path {info[0]}" )
@@ -107,23 +100,24 @@ class Image:
         self.detmask_path = info[1]
         self.skyrms = info[2]
 
-
-    def run_get_imsim_psf( self ):
-        psf_path = self.pipeline.temp_dir / f"psf_{self.image_name}"
-        get_imsim_psf( self.image_path, self.pipeline.ra, self.pipeline.dec, self.pipeline.band,
-                       self.pointing, self.sca,
-                       size=201, psf_path=psf_path, config_yaml_file=self.pipeline.galsim_config_file,
-                       include_photonOps=True )
-        return psf_path
-
-    def save_psf_path( self, psf_path ):
-        self.psf_path = psf_path
+    def get_psf( self, ra, dec ):
+        if self.psfobj is None:
+            if  psftype == 'ou24psf':
+                self.psfobj = ou24PSF( self.pointing, self.image.sca, incldue_photonOps=True )
+            else:
+                raise ValueError( "Unsupported psf type {psftype}" )
+            
+        wcs = self.image.get_wcs()
+        x, y = wcs.world_to_pixel( ra, dec )
+        return self.psfobj.get_stamp( x, y )
+        
+    def save_psf_data( self, psf_data ):
+        self.psf_data = psf_data
 
 
 class Pipeline:
     def __init__( self, object_id, ra, dec, band, science_images, template_images, nprocs=1, nwrite=5,
-                  temp_dir='/phrosty_temp', out_dir='/dia_out_dir', ltcv_dir='/lc_out_dir', galsim_config_file=None,
-                  force_sky_subtract=False, nuke_temp_dir=False, verbose=False ):
+                  nuke_temp_dir=False, verbose=False ):
         """Create the a pipeline object.
 
         Parameters
@@ -155,30 +149,24 @@ class Pipeline:
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.sims_dir = pathlib.Path( os.getenv( 'SIMS_DIR', None ) )
 
-        if galsim_config_file is None:
-            raise RuntimeError( "Gotta give me galsim_config_file" )
-        self.galsim_config_file = galsim_config_file
-
         self.object_id = object_id
         self.ra = ra
         self.dec = dec
         self.band = band
-        self.science_images = ( [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self )
-                                  for ppsm in science_images if self.band in ppsm[0].name ] )
-        self.template_images = ( [ Image( ppsm[0], ppsm[1], ppsm[2], ppsm[3], self )
-                                   for ppsm in template_images if self.band in ppsm[0].name ] )
+        self.science_images = ( [ PipelineImage( ppsmb[0], ppsmb[1], ppsmb[2] )
+                                  for ppsmb in science_images if ppsmb[4] == self.band ] )
+        self.template_images = ( [ PipelineImage( ppsmb[0], ppsmb[1], ppsmb[2] )
+                                   for ppsmb in template_images if ppsmb[4] == self.band ] )
         self.nprocs = nprocs
         self.nwrite = nwrite
-        self.temp_dir = pathlib.Path(temp_dir )
-        self.out_dir = pathlib.Path( out_dir )
-        self.ltcv_dir = pathlib.Path( ltcv_dir ) if ltcv_dir is not None else self.out_dir
         self.nuke_temp_dir = nuke_temp_dir
-        self.force_sky_subtract = force_sky_subtract
-
         if self.nuke_temp_dir:
             SNLogger.warning( "nuke_temp_dir not implemented" )
 
+
     def sky_sub_all_images( self ):
+        # Currently, this writes out a bunch of FITS files.  Further refactoring needed
+        #   to support more general image types.
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
@@ -208,16 +196,14 @@ class Pipeline:
             with Pool( self.nprocs ) as pool:
                 for img in all_imgs:
                     # callback_partial = partial( img.save_psf_path, all_imgs )
-                    pool.apply_async( img.run_get_imsim_psf, (), {},
-                                      img.save_psf_path,
-                                      lambda x: SNLogger.error( f"get_imsim_psf subprocess failure: {x}" ) )
+                    pool.apply_async( img.get_psf, (), {},
+                                      img.save_psf_data,
+                                      lambda x: SNLogger.error( f"get_psf subprocess failure: {x}" ) )
                 pool.close()
                 pool.join()
         else:
             for img in all_imgs:
-                img.save_psf_path( img.run_get_imsim_psf() )
-
-
+                img.save_psf_data( img.get_psf() )
 
 
     def align_and_pre_convolve(self, templ_image, sci_image ):
@@ -323,6 +309,15 @@ class Pipeline:
 
     def get_zpt(self, zptimg, psf, band, stars, ap_r=4, ap_phot_only=False,
                 zpt_plot=None, oid=None, sci_pointing=None, sci_sca=None):
+
+        # TODO : Need to move this code all over into snappl Image.  It sounds like
+        #   for Roman images we may have to do our own zeropoints (which is what
+        #   is happening here), but for actual Roman we're going to use
+        #   calibration information we get from elsewhere, so we don't want to bake
+        #   doing the calibration into the pipeline as we do here.
+        #
+        # Also Issue #70
+        
         """Get the zeropoint based on the stars."""
 
         # First, need to do photometry on the stars.
@@ -678,14 +673,12 @@ def main():
     for infile, imlist in zip( [ args.science_images, args.template_images ],
                                [ science_images, template_images ] ):
         with open( infile ) as ifp:
+            hdrline = ifp.readline()
+            if not re.search( hdrline, "^\s*path\s+pointing\s+sca\s+mjd\s+band\s*$" ):
+                raise ValueError( f"First line of list file {infile} didn't match what was expected." )
             for line in ifp:
-                # WARNING: hardcoded header format
-                if 'path pointing sca mjd' not in line:
-                    img, point, sca, mjd = line.split()
-                    imlist.append( ( pathlib.Path(img), int(point), int(sca), float(mjd) ) )
-
-    # WARNING, hardcoded, fix this later
-    galsim_config = pathlib.Path( os.getenv("SN_INFO_DIR" ) ) / "tds.yaml"
+                img, point, sca, mjd, band = line.split()
+                imlist.append( ( pathlib.Path(img), int(point), int(sca), float(mjd), band ) )
 
     pipeline = Pipeline( args.oid, args.ra, args.dec, args.band, science_images, template_images,
                          nprocs=args.nprocs, nwrite=args.nwrite,
