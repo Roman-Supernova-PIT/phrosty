@@ -1,3 +1,6 @@
+# ruff: noqa
+# (Skip ruff, this is deprecated anyway!)
+
 # IMPORTS Standard:
 import numpy as np
 import matplotlib.pyplot as plt

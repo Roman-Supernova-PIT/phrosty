@@ -5,11 +5,12 @@ import numpy as np
 from sfft.utils.ReadWCS import Read_WCS
 
 __last_update__ = "2024-09-22"
-__author__ = "Lei Hu <leihu@andrew.cmu.edu> & Shu Liu <shl159@pitt.edu>"
+__author__ = "Lei Hu <leihu@andrew.cmu.edu> & Shu Liu <shl159@pitt.edu>"  # noqa: F841
+
 
 class Cupy_WCS_Transform:
     def __init__(self):
-        __author__ = "Shu Liu <shl159@pitt.edu> & Lei Hu <leihu@andrew.cmu.edu>"
+        __author__ = "Shu Liu <shl159@pitt.edu> & Lei Hu <leihu@andrew.cmu.edu>"  # noqa: F841
         return None
 
     def read_cd_wcs(self, hdr_wcs, CDKEY="CD"):
@@ -29,7 +30,7 @@ class Cupy_WCS_Transform:
         LONPOLE = float(hdr_wcs["LONPOLE"])
 
         KEYDICT = {
-            "N0": N0, "N1": N1, 
+            "N0": N0, "N1": N1,
             "CRPIX1": CRPIX1, "CRPIX2": CRPIX2,
             "CRVAL1": CRVAL1, "CRVAL2": CRVAL2,
             "LONPOLE": LONPOLE
@@ -41,10 +42,10 @@ class Cupy_WCS_Transform:
         CD2_2 = hdr_wcs[f"{CDKEY}2_2"]
 
         CD_GPU = cp.array([
-            [CD1_1, CD1_2], 
+            [CD1_1, CD1_2],
             [CD2_1, CD2_2]
         ], dtype=cp.float64)
-        
+
         return KEYDICT, CD_GPU
 
     def read_sip_wcs(self, hdr_wcs, CDKEY="CD"):
@@ -60,16 +61,16 @@ class Cupy_WCS_Transform:
 
         CRVAL1 = float(hdr_wcs["CRVAL1"])
         CRVAL2 = float(hdr_wcs["CRVAL2"])
-        
+
         LONPOLE = float(hdr_wcs["LONPOLE"])
 
         A_ORDER = int(hdr_wcs["A_ORDER"])
         B_ORDER = int(hdr_wcs["B_ORDER"])
 
         KEYDICT = {
-            "N0": N0, "N1": N1, 
+            "N0": N0, "N1": N1,
             "CRPIX1": CRPIX1, "CRPIX2": CRPIX2,
-            "CRVAL1": CRVAL1, "CRVAL2": CRVAL2, 
+            "CRVAL1": CRVAL1, "CRVAL2": CRVAL2,
             "LONPOLE": LONPOLE,
             "A_ORDER": A_ORDER, "B_ORDER": B_ORDER
         }
@@ -80,7 +81,7 @@ class Cupy_WCS_Transform:
         CD2_2 = hdr_wcs[f"{CDKEY}2_2"]
 
         CD_GPU = cp.array([
-            [CD1_1, CD1_2], 
+            [CD1_1, CD1_2],
             [CD2_1, CD2_2]
         ], dtype=cp.float64)
 
@@ -92,20 +93,20 @@ class Cupy_WCS_Transform:
                 keyword = f"A_{p}_{q}"
                 if keyword in hdr_wcs:
                     A_SIP_GPU[p, q] = hdr_wcs[keyword]
-        
+
         for p in range(B_ORDER + 1):
             for q in range(0, B_ORDER - p + 1):
                 keyword = f"B_{p}_{q}"
                 if keyword in hdr_wcs:
                     B_SIP_GPU[p, q] = hdr_wcs[keyword]
-        
+
         return KEYDICT, CD_GPU, A_SIP_GPU, B_SIP_GPU
 
     def cd_transform(self, IMAGE_X_GPU, IMAGE_Y_GPU, CD_GPU):
         """CD matrix transformation from image to world"""
         WORLD_X_GPU, WORLD_Y_GPU = cp.matmul(CD_GPU, cp.array([IMAGE_X_GPU, IMAGE_Y_GPU]))
         return WORLD_X_GPU, WORLD_Y_GPU
-    
+
     def cd_transform_inv(self, WORLD_X_GPU, WORLD_Y_GPU, CD_GPU):
         """CD matrix transformation from world to image"""
         # CD_inv_GPU = cp.linalg.inv(CD_GPU)
@@ -113,7 +114,7 @@ class Cupy_WCS_Transform:
             cp.array([[CD_GPU[1, 1], -CD_GPU[0, 1]], [-CD_GPU[1, 0], CD_GPU[0, 0]]])
         IMAGE_X_GPU, IMAGE_Y_GPU = cp.matmul(CD_inv_GPU, cp.array([WORLD_X_GPU, WORLD_Y_GPU]))
         return IMAGE_X_GPU, IMAGE_Y_GPU
-    
+
     def sip_forward_transform(self, u_GPU, v_GPU, A_SIP_GPU, B_SIP_GPU):
         """Forward SIP transformation from (u, v) to (U, V)"""
         A_ORDER = A_SIP_GPU.shape[0] - 1
@@ -121,7 +122,7 @@ class Cupy_WCS_Transform:
         for p in range(A_ORDER + 1):
             for q in range(A_ORDER - p + 1):
                 U_GPU += A_SIP_GPU[p, q] * u_GPU**p * v_GPU**q
-            
+
         B_ORDER = B_SIP_GPU.shape[0] - 1
         V_GPU = v_GPU + cp.zeros_like(v_GPU)
         for p in range(B_ORDER + 1):
@@ -163,29 +164,30 @@ class Cupy_WCS_Transform:
         v_GPU = cp.random.uniform(0.5, N1+0.5, NSAMP, dtype=cp.float64) - CRPIX2
         return u_GPU, v_GPU
 
+
 class Cupy_Resampling:
     def __init__(self, RESAMP_METHOD="BILINEAR", VERBOSE_LEVEL=2):
-        __author__ = "Lei Hu <leihu@andrew.cmu.edu>"
+        __author__ = "Lei Hu <leihu@andrew.cmu.edu>"  # noqa: F841
         self.RESAMP_METHOD = RESAMP_METHOD
         self.VERBOSE_LEVEL = VERBOSE_LEVEL
         return None
-    
+
     def spherical_transformation(self, x_GPU, y_GPU, alpha_p, delta_p, phi_p):
         """Spherical transformation (Spherical projection & Spherical coordinate rotation) using Cupy"""
         # NOTE: we assumpe all variables are in radians!
-        
+
         # * Spherical projection (x, y) > (phi, theta)
         phi_GPU = cp.arctan2(x_GPU, -y_GPU)
         theta_GPU = cp.arctan(1./cp.sqrt(x_GPU**2 + y_GPU**2))
 
         # * Spherical coordinate rotation (phi, theta) > (alpha, delta)
         delta_GPU = cp.arcsin(
-            cp.sin(theta_GPU) * cp.sin(delta_p) + \
-            cp.cos(theta_GPU) * cp.cos(delta_p) * cp.cos((phi_GPU - phi_p))
+            cp.sin(theta_GPU) * cp.sin(delta_p) +
+            cp.cos(theta_GPU) * cp.cos(delta_p) * cp.cos(phi_GPU - phi_p)
         )
-        
-        COS_TERM_GPU = (cp.sin(theta_GPU) * cp.cos(delta_p) - \
-            cp.cos(theta_GPU) * cp.sin(delta_p) * cp.cos(phi_GPU - phi_p)) / cp.cos(delta_GPU)
+
+        COS_TERM_GPU = (cp.sin(theta_GPU) * cp.cos(delta_p) -
+                        cp.cos(theta_GPU) * cp.sin(delta_p) * cp.cos(phi_GPU - phi_p)) / cp.cos(delta_GPU)
         SIN_TERM_GPU = - cp.cos(theta_GPU) * cp.sin(phi_GPU - phi_p) / cp.cos(delta_GPU)
         alpha_GPU = alpha_p + cp.arctan2(SIN_TERM_GPU, COS_TERM_GPU)
 
@@ -194,12 +196,12 @@ class Cupy_Resampling:
     def inverse_spherical_transformation(self, alpha_GPU, delta_GPU, alpha_p, delta_p, phi_p):
         """Inverse Spherical transformation (Spherical projection & Spherical coordinate rotation) using Cupy"""
         # NOTE: we assumpe all variables are in radians!
-        
+
         # * Inverse Spherical coordinate rotation (alpha, delta) > (phi, theta)
-        theta_GPU = cp.arcsin(cp.sin(delta_GPU) * cp.sin(delta_p) + \
+        theta_GPU = cp.arcsin(cp.sin(delta_GPU) * cp.sin(delta_p) +
             cp.cos(delta_GPU) * cp.cos(delta_p) * cp.cos(alpha_GPU - alpha_p))
 
-        COS_TERM_GPU = (cp.sin(delta_GPU) * cp.cos(delta_p) - \
+        COS_TERM_GPU = (cp.sin(delta_GPU) * cp.cos(delta_p) -
             cp.cos(delta_GPU) * cp.sin(delta_p) * cp.cos(alpha_GPU - alpha_p)) / cp.cos(theta_GPU)
         SIN_TERM_GPU = - cp.cos(delta_GPU) * cp.sin(alpha_GPU - alpha_p) / cp.cos(theta_GPU)
         phi_GPU = phi_p + cp.arctan2(SIN_TERM_GPU, COS_TERM_GPU)
@@ -213,15 +215,15 @@ class Cupy_Resampling:
 
     def resamp_projection_sip(self, hdr_obj, hdr_targ, CDKEY="CD", NSAMP=1024, RANDOM_SEED=10086):
         """Project the target pixel centers to the object frame using Cupy for TAN-SIP WCS"""
-        NTX = int(hdr_targ["NAXIS1"]) 
+        NTX = int(hdr_targ["NAXIS1"])
         NTY = int(hdr_targ["NAXIS2"])
 
         XX_targ_GPU, YY_targ_GPU = cp.meshgrid(
-            cp.arange(0, NTX) + 1., 
-            cp.arange(0, NTY) + 1., 
+            cp.arange(0, NTX) + 1.,
+            cp.arange(0, NTY) + 1.,
             indexing='ij'
         )
-        
+
         CWT = Cupy_WCS_Transform()
         if True:
             # read header | target
@@ -229,23 +231,23 @@ class Cupy_Resampling:
             CRPIX1_targ, CRPIX2_targ = KEYDICT["CRPIX1"], KEYDICT["CRPIX2"]
             CRVAL1_targ, CRVAL2_targ = KEYDICT["CRVAL1"], KEYDICT["CRVAL2"]
             LONPOLE_targ = KEYDICT["LONPOLE"]
-            
+
             # forward transformation 0: (p1, p2) > (u, v) | target
             u_GPU, v_GPU = XX_targ_GPU.flatten() - CRPIX1_targ, YY_targ_GPU.flatten() - CRPIX2_targ
-            
+
             # forward transformation 1: (u, v) > (x, y) | target
             U_GPU, V_GPU = CWT.sip_forward_transform(u_GPU=u_GPU, v_GPU=v_GPU, A_SIP_GPU=A_SIP_GPU, B_SIP_GPU=B_SIP_GPU)
             x_GPU, y_GPU = CWT.cd_transform(IMAGE_X_GPU=U_GPU, IMAGE_Y_GPU=V_GPU, CD_GPU=CD_GPU)
 
             # forward transformation 2 & 3 to sky: (x, y) > (phi, theta) > (alpha, delta) | target
             ra_GPU, dec_GPU = self.spherical_transformation(
-                x_GPU=cp.deg2rad(x_GPU), 
-                y_GPU=cp.deg2rad(y_GPU), 
-                alpha_p=cp.deg2rad(CRVAL1_targ), 
+                x_GPU=cp.deg2rad(x_GPU),
+                y_GPU=cp.deg2rad(y_GPU),
+                alpha_p=cp.deg2rad(CRVAL1_targ),
                 delta_p=cp.deg2rad(CRVAL2_targ),
                 phi_p=cp.deg2rad(LONPOLE_targ)
             )   # in radians!
-        
+
         if True:
             # read header | object
             KEYDICT, CD_GPU, A_SIP_GPU, B_SIP_GPU = CWT.read_sip_wcs(hdr_wcs=hdr_obj, CDKEY=CDKEY)
@@ -255,9 +257,9 @@ class Cupy_Resampling:
 
             # inverse transformation 3 & 2: (alpha, delta) > (phi, theta) > (x, y) | object
             x_GPU, y_GPU = self.inverse_spherical_transformation(
-                alpha_GPU=ra_GPU, 
-                delta_GPU=dec_GPU, 
-                alpha_p=cp.deg2rad(CRVAL1_obj), 
+                alpha_GPU=ra_GPU,
+                delta_GPU=dec_GPU,
+                alpha_p=cp.deg2rad(CRVAL1_obj),
                 delta_p=cp.deg2rad(CRVAL2_obj),
                 phi_p=cp.deg2rad(LONPOLE_obj)
             )   # in radians!
@@ -265,8 +267,8 @@ class Cupy_Resampling:
             # inverse transformation 1: (x, y) > (u, v) | object
             # inverse CD transformation
             U_GPU, V_GPU = CWT.cd_transform_inv(
-                WORLD_X_GPU=cp.rad2deg(x_GPU), 
-                WORLD_Y_GPU=cp.rad2deg(y_GPU), 
+                WORLD_X_GPU=cp.rad2deg(x_GPU),
+                WORLD_Y_GPU=cp.rad2deg(y_GPU),
                 CD_GPU=CD_GPU
             )
 
@@ -275,14 +277,15 @@ class Cupy_Resampling:
                 N0, N1 = KEYDICT["N0"], KEYDICT["N1"]
                 CRPIX1, CRPIX2 = KEYDICT["CRPIX1"], KEYDICT["CRPIX2"]
                 A_ORDER, B_ORDER = KEYDICT["A_ORDER"], KEYDICT["B_ORDER"]
-                
+
                 # sampling random coordinates
-                u_GPU, v_GPU = CWT.random_coord_sampling(N0=N0, N1=N1, 
+                u_GPU, v_GPU = CWT.random_coord_sampling(N0=N0, N1=N1,
                     CRPIX1=CRPIX1, CRPIX2=CRPIX2, NSAMP=NSAMP, RANDOM_SEED=RANDOM_SEED)
-                
+
                 # fit polynomial form backward transformation | object
-                U_GPU, V_GPU = CWT.sip_forward_transform(u_GPU=u_GPU, v_GPU=v_GPU, A_SIP_GPU=A_SIP_GPU, B_SIP_GPU=B_SIP_GPU)
-                AP_lstsq_GPU, BP_lstsq_GPU = CWT.lstsq_sip_backward_transform(u_GPU=u_GPU, v_GPU=v_GPU, 
+                U_GPU, V_GPU = CWT.sip_forward_transform(u_GPU=u_GPU, v_GPU=v_GPU,
+                                                         A_SIP_GPU=A_SIP_GPU, B_SIP_GPU=B_SIP_GPU)
+                AP_lstsq_GPU, BP_lstsq_GPU = CWT.lstsq_sip_backward_transform(u_GPU=u_GPU, v_GPU=v_GPU,
                     U_GPU=U_GPU, V_GPU=V_GPU, A_ORDER=A_ORDER, B_ORDER=B_ORDER)[2:4]
                 return AP_lstsq_GPU, BP_lstsq_GPU
 
@@ -294,7 +297,7 @@ class Cupy_Resampling:
             FP_UV_GPU = CWT.sip_backward_matrix(U_GPU=U_GPU, V_GPU=V_GPU, ORDER=KEYDICT["A_ORDER"])
             GP_UV_GPU = CWT.sip_backward_matrix(U_GPU=U_GPU, V_GPU=V_GPU, ORDER=KEYDICT["B_ORDER"])
 
-            u_GPU, v_GPU = CWT.sip_backward_transform(U_GPU=U_GPU, V_GPU=V_GPU, 
+            u_GPU, v_GPU = CWT.sip_backward_transform(U_GPU=U_GPU, V_GPU=V_GPU,
                 FP_UV_GPU=FP_UV_GPU, GP_UV_GPU=GP_UV_GPU, AP_GPU=AP_lstsq_GPU, BP_GPU=BP_lstsq_GPU)
 
             # inverse transformation 0: (u, v) > (p1, p2) | object
@@ -308,11 +311,11 @@ class Cupy_Resampling:
         # * read object WCS and target WCS
         w_obj = Read_WCS.RW(hdr=hdr_obj, VERBOSE_LEVEL=self.VERBOSE_LEVEL)
         w_targ = Read_WCS.RW(hdr=hdr_targ, VERBOSE_LEVEL=self.VERBOSE_LEVEL)
-        
+
         # * maaping target pixel centers to the object frame
-        NTX = int(hdr_targ["NAXIS1"]) 
+        NTX = int(hdr_targ["NAXIS1"])
         NTY = int(hdr_targ["NAXIS2"])
-        
+
         XX_targ, YY_targ = np.meshgrid(np.arange(0, NTX)+1., np.arange(0, NTY)+1., indexing='ij')
         XY_targ = np.array([XX_targ.flatten(), YY_targ.flatten()]).T
         XY_proj = w_obj.all_world2pix(w_targ.all_pix2world(XY_targ, 1), 1)
@@ -349,12 +352,12 @@ class Cupy_Resampling:
         CMAX = (math.floor(YY_proj_GPU.max().item()) - 1) + KERHW[1]
         CPAD = (-np.min([CMIN, 0]), np.max([CMAX - (NOY - 1), 0]))
 
-        PAD_WIDTH = (RPAD, CPAD)    
+        PAD_WIDTH = (RPAD, CPAD)
         PixA_Eobj_GPU = cp.pad(PixA_obj_GPU, PAD_WIDTH, mode='constant', constant_values=PAD_FILL_VALUE)
         if NAN_FILL_VALUE is not None:
             PixA_Eobj_GPU[cp.isnan(PixA_Eobj_GPU)] = NAN_FILL_VALUE
         NEOX, NEOY = PixA_Eobj_GPU.shape
-        
+
         XX_Eproj_GPU = XX_proj_GPU + PAD_WIDTH[0][0]
         YY_Eproj_GPU = YY_proj_GPU + PAD_WIDTH[1][0]
 
@@ -364,7 +367,7 @@ class Cupy_Resampling:
         CMIN_E = (math.floor(YY_Eproj_GPU.min().item()) - 1) - KERHW[1]
         CMAX_E = (math.floor(YY_Eproj_GPU.max().item()) - 1) + KERHW[1]
 
-        assert RMIN_E >= 0 and CMIN_E >= 0 
+        assert RMIN_E >= 0 and CMIN_E >= 0
         assert RMAX_E < NEOX and CMAX_E < NEOY
 
         EProjDict = {}
@@ -382,7 +385,7 @@ class Cupy_Resampling:
         EProjDict["YY_Eproj_GPU"] = YY_Eproj_GPU
 
         return PixA_Eobj_GPU, EProjDict
-    
+
     def resampling(self, PixA_Eobj_GPU, EProjDict, PIXEL_SCALE_FACTOR=1., THREAD_PER_BLOCK=8, USE_SHARED_MEMORY=False):
         """Resampling the object frame to the target frame using Cupy"""
         NTX = EProjDict["NTX"]
@@ -390,7 +393,7 @@ class Cupy_Resampling:
 
         NEOX = EProjDict["NEOX"]
         NEOY = EProjDict["NEOY"]
-        KERHW = EProjDict["KERHW"]
+        # KERHW = EProjDict["KERHW"]
 
         XX_Eproj_GPU = EProjDict["XX_Eproj_GPU"]
         YY_Eproj_GPU = EProjDict["YY_Eproj_GPU"]
@@ -412,10 +415,11 @@ class Cupy_Resampling:
             # input: PixA_Eobj | (NEOX, NEOY)
             # input: XX_Eproj, YY_Eproj | (NTX, NTY)
             # output: PixA_resamp | (NTX, NTY)
-            
+
             _refdict = {'NTX': NTX, 'NTY': NTY, 'NEOX': NEOX, 'NEOY': NEOY}
             _funcstr = r"""
-            extern "C" __global__ void kmain(double XX_Eproj_GPU[%(NTX)s][%(NTY)s], double YY_Eproj_GPU[%(NTX)s][%(NTY)s], 
+            extern "C" __global__ void kmain(double XX_Eproj_GPU[%(NTX)s][%(NTY)s],
+                double YY_Eproj_GPU[%(NTX)s][%(NTY)s],
                 double PixA_Eobj_GPU[%(NEOX)s][%(NEOY)s], double PixA_resamp_GPU[%(NTX)s][%(NTY)s])
             {
                 int ROW = blockIdx.x*blockDim.x+threadIdx.x;
@@ -427,7 +431,7 @@ class Cupy_Resampling:
                 int NEOY = %(NEOY)s;
 
                 if (ROW < NTX && COL < NTY) {
-                
+
                     double x = XX_Eproj_GPU[ROW][COL];
                     double y = YY_Eproj_GPU[ROW][COL];
 
@@ -436,7 +440,7 @@ class Cupy_Resampling:
                     int r2 = r1 + 1;
                     int c2 = c1 + 1;
 
-                    double dx = x - floor(x); 
+                    double dx = x - floor(x);
                     double dy = y - floor(y);
 
                     double w11 = (1-dx) * (1-dy);
@@ -444,32 +448,33 @@ class Cupy_Resampling:
                     double w21 = dx * (1-dy);
                     double w22 = dx * dy;
 
-                    PixA_resamp_GPU[ROW][COL] = w11 * PixA_Eobj_GPU[r1][c1] + w12 * PixA_Eobj_GPU[r1][c2] + 
+                    PixA_resamp_GPU[ROW][COL] = w11 * PixA_Eobj_GPU[r1][c1] + w12 * PixA_Eobj_GPU[r1][c2] +
                         w21 * PixA_Eobj_GPU[r2][c1] + w22 * PixA_Eobj_GPU[r2][c2];
                 }
             }
             """
             _code = _funcstr % _refdict
-            _module = cp.RawModule(code=_code, backend=u'nvcc', translate_cucomplex=False)
+            _module = cp.RawModule(code=_code, backend=r'nvcc', translate_cucomplex=False)
             resamp_func = _module.get_function('kmain')
-            
+
             t0 = time.time()
             resamp_func(args=(XX_Eproj_GPU, YY_Eproj_GPU, PixA_Eobj_GPU, PixA_resamp_GPU), block=TpB_PIX, grid=BpG_PIX)
             PixA_resamp_GPU *= PIXEL_SCALE_FACTOR
-            
+
             if self.VERBOSE_LEVEL in [1, 2]:
                 print('MeLOn CheckPoint: Cuda resampling takes [%.6f s]' %(time.time() - t0))
 
         return PixA_resamp_GPU
 
+
 class Cupy_ZoomRotate:
     @staticmethod
-    def CZR(PixA_obj_GPU, ZOOM_SCALE_X=1., ZOOM_SCALE_Y=1., OUTSIZE_PARIRY_X='UNCHANGED', OUTSIZE_PARIRY_Y='UNCHANGED', \
-        PATTERN_ROTATE_ANGLE=0.0, RESAMP_METHOD='BILINEAR', PAD_FILL_VALUE=0., NAN_FILL_VALUE=0., \
+    def CZR(PixA_obj_GPU, ZOOM_SCALE_X=1., ZOOM_SCALE_Y=1., OUTSIZE_PARIRY_X='UNCHANGED', OUTSIZE_PARIRY_Y='UNCHANGED',
+        PATTERN_ROTATE_ANGLE=0.0, RESAMP_METHOD='BILINEAR', PAD_FILL_VALUE=0., NAN_FILL_VALUE=0.,
         THREAD_PER_BLOCK=8, USE_SHARED_MEMORY=False, VERBOSE_LEVEL=2):
         """ Zoom and rotate an image using Cupy """
-        __author__ = "Lei Hu <leihu@andrew.cmu.edu>"
-        
+        __author__ = "Lei Hu <leihu@andrew.cmu.edu>" # noqa: F841
+
         # check inputs
         assert ZOOM_SCALE_X > 0.0
         assert ZOOM_SCALE_Y > 0.0
@@ -500,7 +505,7 @@ class Cupy_ZoomRotate:
 
             ALPHA_INV = cp.deg2rad(-PATTERN_ROTATE_ANGLE)
             ROTMAT_INV_GPU = cp.array([
-                [cp.cos(ALPHA_INV), -cp.sin(ALPHA_INV)], 
+                [cp.cos(ALPHA_INV), -cp.sin(ALPHA_INV)],
                 [cp.sin(ALPHA_INV), cp.cos(ALPHA_INV)]
             ])
 
@@ -509,12 +514,12 @@ class Cupy_ZoomRotate:
                 X_ROTATED_GPU - CRPIX1_ZOOMED,
                 Y_ROTATED_GPU - CRPIX2_ZOOMED
             ])
-            
+
             COORD_ZOOMED_GPU = cp.dot(ROTMAT_INV_GPU, COORD_ROTATED_GPU)
             COORD_ZOOMED_GPU[0, :] += CRPIX1_ZOOMED
             COORD_ZOOMED_GPU[1, :] += CRPIX2_ZOOMED
             X_ZOOMED_GPU, Y_ZOOMED_GPU = COORD_ZOOMED_GPU
-            
+
             # * frame transform from zoomed to original
             OFFSET_X = ZOOM_SCALE_X * (0.5 + NAXIS1_ZOOMED / 2.0) - (0.5 + NAXIS1_ORI / 2.0)
             OFFSET_Y = ZOOM_SCALE_Y * (0.5 + NAXIS2_ZOOMED / 2.0) - (0.5 + NAXIS2_ORI / 2.0)
@@ -525,12 +530,13 @@ class Cupy_ZoomRotate:
             return X_ORI_GPU, Y_ORI_GPU
 
         XX_targ_GPU, YY_targ_GPU = cp.meshgrid(
-            cp.arange(0, NAXIS1_ZOOMED) + 1., 
-            cp.arange(0, NAXIS2_ZOOMED) + 1., 
+            cp.arange(0, NAXIS1_ZOOMED) + 1.,
+            cp.arange(0, NAXIS2_ZOOMED) + 1.,
             indexing='ij'
         )
 
-        X_ORI_GPU, Y_ORI_GPU = BACKWARD_TRANSFORM(X_ROTATED_GPU=XX_targ_GPU.flatten(), Y_ROTATED_GPU=YY_targ_GPU.flatten())
+        X_ORI_GPU, Y_ORI_GPU = BACKWARD_TRANSFORM(X_ROTATED_GPU=XX_targ_GPU.flatten(),
+                                                  Y_ROTATED_GPU=YY_targ_GPU.flatten())
         XX_proj_GPU = X_ORI_GPU.reshape((NAXIS1_ZOOMED, NAXIS2_ZOOMED))
         YY_proj_GPU = Y_ORI_GPU.reshape((NAXIS1_ZOOMED, NAXIS2_ZOOMED))
 
@@ -539,10 +545,10 @@ class Cupy_ZoomRotate:
             XX_proj_GPU=XX_proj_GPU, YY_proj_GPU=YY_proj_GPU, PixA_obj_GPU=PixA_obj_GPU,
             PAD_FILL_VALUE=PAD_FILL_VALUE, NAN_FILL_VALUE=NAN_FILL_VALUE
         )
-        
+
         PIXEL_SCALE_FACTOR = ZOOM_SCALE_X * ZOOM_SCALE_Y
         PixA_resamp_GPU = GWR.resampling(
-            PixA_Eobj_GPU=PixA_Eobj_GPU, EProjDict=EProjDict, PIXEL_SCALE_FACTOR=PIXEL_SCALE_FACTOR, 
+            PixA_Eobj_GPU=PixA_Eobj_GPU, EProjDict=EProjDict, PIXEL_SCALE_FACTOR=PIXEL_SCALE_FACTOR,
             THREAD_PER_BLOCK=THREAD_PER_BLOCK, USE_SHARED_MEMORY=USE_SHARED_MEMORY
         )
 

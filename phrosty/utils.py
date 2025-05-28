@@ -1,12 +1,10 @@
 # IMPORTS Standard:
 import os
 import os.path as pa
-import sys
 import numpy as np
 import pandas as pd
 import warnings
 from glob import glob
-import logging
 import requests
 
 # IMPORTS Astro:
@@ -15,24 +13,28 @@ from astropy.io import fits
 from astropy.wcs import WCS, FITSFixedWarning
 import astropy.wcs.wcs
 from astropy.wcs.utils import skycoord_to_pixel
-from astropy.table import Table, vstack
+from astropy.table import Table
 from astropy import units as u
 
+# IMPORTS snpit
+from snpit_utils.logger import SNLogger
+
 # Set environment variable so this works:
-# Note: on DCC, this should be '/cwork/mat90/RomanDESC_sims_2024/' 
-# It's the path to the location of the RomanTDS folder in the RomanDESC sims. 
+# Note: on DCC, this should be '/cwork/mat90/RomanDESC_sims_2024/'
+# It's the path to the location of the RomanTDS folder in the RomanDESC sims.
 rootdir = os.getenv('SIMS_DIR', None)
 assert rootdir is not None, 'You need to set SIMS_DIR as an environment variable.'
 
 snana_pq_dir = os.getenv('SNANA_PQ_DIR', None)
 assert snana_pq_dir is not None, 'You need to set SNANA_PQ_DIR as an environment variable.'
-snana_pq_path = os.path.join(snana_pq_dir,'snana_*.parquet')
+snana_pq_path = os.path.join(snana_pq_dir, 'snana_*.parquet')
 
-obseq_path = os.path.join(rootdir,'RomanTDS/Roman_TDS_obseq_11_6_23.fits')
-obseq_radec_path = os.path.join(rootdir,'RomanTDS/Roman_TDS_obseq_11_6_23_radec.fits')
+obseq_path = os.path.join(rootdir, 'RomanTDS/Roman_TDS_obseq_11_6_23.fits')
+obseq_radec_path = os.path.join(rootdir, 'RomanTDS/Roman_TDS_obseq_11_6_23_radec.fits')
 
-# The FITSFixedWarning is consequenceless and it will get thrown every single time you deal with a WCS. 
-warnings.simplefilter('ignore',category=FITSFixedWarning)
+# The FITSFixedWarning is consequenceless and it will get thrown every single time you deal with a WCS.
+warnings.simplefilter('ignore', category=FITSFixedWarning)
+
 
 def _build_filepath(path, band, pointing, sca, filetype, rootdir=rootdir):
     """_summary_
@@ -71,30 +73,33 @@ def _build_filepath(path, band, pointing, sca, filetype, rootdir=rootdir):
         prefix = 'index'
         extension = 'txt'
 
-    # Did you already provide a path? 
+    # Did you already provide a path?
     if path is not None:
         return path
     elif (band is None) or (pointing is None) or (sca is None):
         raise ValueError('You need to specify band, pointing, and sca if you do not provide a full filepath.')
     elif (band is not None) and (pointing is not None) and (sca is not None):
-        path = pa.join(rootdir,subdir,band,str(pointing),f'Roman_TDS_{prefix}_{band}_{str(pointing)}_{str(sca)}.{extension}')
-        return path 
+        path = pa.join(rootdir, subdir, band, str(pointing),
+                       f'Roman_TDS_{prefix}_{band}_{str(pointing)}_{str(sca)}.{extension}')
+        return path
 
     elif (path is None) and (band is None) and (pointing is None) and (sca is None):
         raise ValueError('You need to provide either the full image path, or the band, pointing, and SCA.')
 
+
 def get_roman_bands():
-    """
-    :return: List of bands included in the Roman-DESC TDS simulations. 
+    """Get roman passbands.
+
+   :return: List of bands included in the Roman-DESC TDS simulations.
     :rtype: list
-    """    
+    """
     return ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213']
 
-def read_truth_txt(path=None, band=None, pointing=None, sca=None):
-    """
-    Reads in the txt versions of the truth files as convenient astropy tables. 
 
-    :param truthpath: Path to txt catalog version of truth file. If you do not 
+def read_truth_txt(path=None, band=None, pointing=None, sca=None):
+    """Reads in the txt versions of the truth files as convenient astropy tables.
+
+    :param truthpath: Path to txt catalog version of truth file. If you do not
                         provide this, you need to specify the arguments
                         band, pointing, and sca.
     :type truthpath: str, optional
@@ -103,8 +108,8 @@ def read_truth_txt(path=None, band=None, pointing=None, sca=None):
     :param pointing: Pointing ID. If you do not provide this, you need to provide truthpath.
     :type pointing: str, optional
     :param sca: SCA ID. If you do not provide this, you need to provide truthpath.
-    :type sca: str, optional 
-    :return: Astropy table with contents of the specified catalog txt file. 
+    :type sca: str, optional
+    :return: Astropy table with contents of the specified catalog txt file.
     :rtype: astropy.table.Table
 
     """
@@ -116,25 +121,27 @@ def read_truth_txt(path=None, band=None, pointing=None, sca=None):
 
     return truth
 
-def radec_isin(ra,dec,path=None,band=None,pointing=None,sca=None):
-    _imgpath = _build_filepath(path,band,pointing,sca,'image')
+
+def radec_isin(ra, dec, path=None, band=None, pointing=None, sca=None):
+    _imgpath = _build_filepath(path, band, pointing, sca, 'image')
     with fits.open(_imgpath) as hdu:
         wcs = WCS(hdu[1].header)
     worldcoords = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     try:
-        x, y = skycoord_to_pixel(worldcoords,wcs)
+        x, y = skycoord_to_pixel(worldcoords, wcs)
     except astropy.wcs.wcs.NoConvergence:
         return False
-    pxradec = np.array([x,y])
-    if np.logical_or(any(pxradec < 0), any(pxradec > 4088)): 
+    pxradec = np.array([x, y])
+    if np.logical_or(any(pxradec < 0), any(pxradec > 4088)):
         res = False
     else:
         res = True
 
     return res
 
-def get_corners(path=None,band=None,pointing=None,sca=None):
-    """Retrieves the RA, dec of the corners of the specified SCA in degrees. 
+
+def get_corners(path=None, band=None, pointing=None, sca=None):
+    """Retrieves the RA, dec of the corners of the specified SCA in degrees.
 
     :param band: Roman filter.
     :type band: str
@@ -143,13 +150,13 @@ def get_corners(path=None,band=None,pointing=None,sca=None):
     :param sca: SCA ID.
     :type sca: str
     :return: Tuple containing four numpy arrays, each with the RA and dec of the corner
-            of the specified image in degrees. 
+            of the specified image in degrees.
     :rtype: tuple
-    """    
-    _imgpath = _build_filepath(path,band,pointing,sca,'image')
+    """
+    _imgpath = _build_filepath(path, band, pointing, sca, 'image')
     with fits.open(_imgpath) as hdu:
         wcs = WCS(hdu[1].header)
-    corners = [[0,0],[0,4088],[4088,0],[4088,4088]]
+    corners = [[0, 0], [0, 4088], [4088, 0], [4088, 4088]]
     wcs_corners = wcs.pixel_to_world_values(corners)
 
     return wcs_corners
@@ -159,29 +166,25 @@ def get_corners(path=None,band=None,pointing=None,sca=None):
 # TODO write something to clear this out
 _parquet_cache = {}
 
+
 def _read_parquet( file ):
     global _parquet_cache
 
     if file not in _parquet_cache:
-        logger = set_logger( "read_parquet", "read_parquet" )
-        logger.info( f"**** Reading parquet file {file}" )
+        SNLogger.info( f"**** Reading parquet file {file}" )
         _parquet_cache[file] = pd.read_parquet( file )
 
         totm = 0
         for f, df in _parquet_cache.items():
             totm += df.memory_usage(index=True).sum()
-        
-        logger.info( f"**** Done reading parquet file {file}; cache using {totm/1024/1024} MiB" )
+
+        SNLogger.info( f"**** Done reading parquet file {file}; cache using {totm/1024/1024} MiB" )
     return _parquet_cache[ file ]
 
 
 def get_transient_radec(oid):
-    """
-    Retrieve RA, dec of a transient based on its object ID. 
-    """
+    """Retrieve RA, dec of a transient based on its object ID."""
 
-    logger = set_logger( "get_transient_info", "get_transient_radec" )
-    
     oid = int(oid)
     file_list = glob(snana_pq_path)
     for file in file_list:
@@ -192,10 +195,9 @@ def get_transient_radec(oid):
             dec = df[df['id'] == oid]['dec'].values[0]
     return ra, dec
 
+
 def get_transient_mjd(oid):
-    """
-    Retrieve start and end dates of a transient based on its object ID. 
-    """
+    """Retrieve start and end dates of a transient based on its object ID."""
     oid = int(oid)
     file_list = glob(snana_pq_path)
     for file in file_list:
@@ -204,12 +206,11 @@ def get_transient_mjd(oid):
         if len(df[df['id'] == oid]) != 0:
             start = df[df['id'] == oid]['start_mjd'].values[0]
             end = df[df['id'] == oid]['end_mjd'].values[0]
-    return start, end 
+    return start, end
+
 
 def get_transient_zcmb(oid):
-    """
-    Retrieve z_CMB of a transient based on its object ID. 
-    """
+    """Retrieve z_CMB of a transient based on its object ID."""
     oid = int(oid)
     file_list = glob(snana_pq_path)
     for file in file_list:
@@ -220,10 +221,9 @@ def get_transient_zcmb(oid):
 
     return z
 
+
 def get_transient_peakmjd(oid):
-    """
-    Retrieve z of a transient based on its object ID. 
-    """
+    """Retrieve z of a transient based on its object ID."""
     oid = int(oid)
     file_list = glob(snana_pq_path)
     for file in file_list:
@@ -234,65 +234,52 @@ def get_transient_peakmjd(oid):
 
     return mjd
 
+
 def get_transient_info(oid):
-    """
-    Retrieve RA, Dec, MJD start, MJD end for specified object ID.  
-    """
+    """Retrieve RA, Dec, MJD start, MJD end for specified object ID."""
 
-    logger = set_logger( "get_transient_info", "get_transient_info" )
-
-    logger.info( "*** calling get_transient_radec" )
+    SNLogger.info( "*** calling get_transient_radec" )
     RA, DEC = get_transient_radec(oid)
-    logger.info( "*** calling get_transient_mjd" )
+    SNLogger.info( "*** calling get_transient_mjd" )
     start, end = get_transient_mjd(oid)
-    logger.info( "*** Done with get_transient_info" )
+    SNLogger.info( "*** Done with get_transient_info" )
 
     return RA, DEC, start, end
 
-def transient_in_or_out(oid, start, end, band):
-    """
-    Retrieve pointings that contain and do not contain the specified SN,
-    per the truth files by MJD. 
 
-    transient_info_filepath is the output of make_object_table. 
+def transient_in_or_out(oid, start, end, band):
+    """Retrieve pointings that contain and do not contain the specified SN, per the truth files by MJD.
+
+    transient_info_filepath is the output of make_object_table.
 
     Returns a tuple of astropy tables (images with the SN, images without the SN).
     """
     tab = Table.from_pandas( make_object_table( oid ) )
-    
+
     tab.sort('pointing')
     tab = tab[tab['filter'] == band]
 
-    in_all = get_mjd_info(start,end)
-    in_rows = np.where(np.isin(tab['pointing'],in_all['pointing']))[0]
+    in_all = get_mjd_info(start, end)
+    in_rows = np.where(np.isin(tab['pointing'], in_all['pointing']))[0]
     in_tab = tab[in_rows]
 
-    out_all = get_mjd_info(start,end,return_inverse=True)
-    out_rows = np.where(np.isin(tab['pointing'],out_all['pointing']))[0]
+    out_all = get_mjd_info(start, end, return_inverse=True)
+    out_rows = np.where(np.isin(tab['pointing'], out_all['pointing']))[0]
     out_tab = tab[out_rows]
 
     return in_tab, out_tab
 
-def set_logger(proc,name):
-    # Configure logger (Rob)
-    logger = logging.getLogger(f'{name}_{proc}')
-    if not logger.hasHandlers():
-        log_out = logging.StreamHandler(sys.stderr)
-        formatter = logging.Formatter(f'[%(asctime)s - {proc} - %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-        log_out.setFormatter(formatter)
-        logger.addHandler(log_out)
-        logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
-    return logger
 
 def get_templates(oid, band, infodir, n_templates=1, returntype='list', verbose=False):
-    """
-    Get template images, i.e., which images for a given OID do not actually contain the
+    """Get template images.
+
+    Template images are those images for a given OID do not actually contain the
     transient but do contain the RA/dec coordinates.
     """
-    ra,dec,start,end = get_transient_info(oid)
+    ra, dec, start, end = get_transient_info(oid)
 
-    filepath = os.path.join(infodir,f'{oid}/{oid}_instances.csv')
-    in_tab,out_tab = transient_in_or_out(oid,start,end,band,transient_info_filepath=filepath)
+    filepath = os.path.join(infodir, f'{oid}/{oid}_instances.csv')
+    in_tab, out_tab = transient_in_or_out(oid, start, end, band, transient_info_filepath=filepath)
 
     template_tab = out_tab[:n_templates]
     if verbose:
@@ -300,53 +287,55 @@ def get_templates(oid, band, infodir, n_templates=1, returntype='list', verbose=
         print(template_tab)
 
     if returntype == 'list':
-        template_list = [dict(zip(template_tab.colnames,row)) for row in template_tab]
+        template_list = [dict(zip(template_tab.colnames, row)) for row in template_tab]
 
         return template_list
     elif returntype == 'table':
         return template_tab
 
-def get_science(oid,band,infodir,returntype='list',verbose=False):
-    """
-    Get science images, i.e., which images for a given OID actually contain the
+
+def get_science(oid, band, infodir, returntype='list', verbose=False):
+    """Get science images.
+
+    Science images are those images for a given OID actually contain the
     transient and also contain the RA/dec coordinates.
     """
 
-    ra,dec,start,end = get_transient_info(oid)
+    ra, dec, start, end = get_transient_info(oid)
 
-    filepath = os.path.join(infodir,f'{oid}/{oid}_instances.csv')
-    in_tab,out_tab = transient_in_or_out(oid,start,end,band,transient_info_filepath=filepath)
+    filepath = os.path.join(infodir, f'{oid}/{oid}_instances.csv')
+    in_tab, out_tab = transient_in_or_out(oid, start, end, band, transient_info_filepath=filepath)
 
     if verbose:
         print('The science images are:')
         print(in_tab)
-        
+
     if returntype == 'list':
-        science_list = [dict(zip(in_tab.colnames,row)) for row in in_tab]
-        
+        science_list = [dict(zip(in_tab.colnames, row)) for row in in_tab]
+
         return science_list
 
     elif returntype == 'table':
         return in_tab
 
+
 def make_object_table(oid):
 
-    ra,dec = get_transient_radec(oid)
-    
+    ra, dec = get_transient_radec(oid)
+
     server_url = 'https://roman-desc-simdex.lbl.gov'
     req = requests.Session()
-    result = req.post(f'{server_url}/findromanimages/containing=({ra},{dec})')
+    result = req.post(f'{server_url}/findromanimages/containing=({ra}, {dec})')
     if result.status_code != 200:
         raise RuntimeError(f"Got status code {result.status_code}\n{result.text}")
-    
-    objs = pd.DataFrame(result.json())[['filter','pointing','sca']]
+
+    objs = pd.DataFrame(result.json())[['filter', 'pointing', 'sca']]
     return objs
 
-def get_mjd_limits(obseq_path=obseq_path): 
-    """
-    Retrive the earliest and latest MJD in the simulations.
-    """
-    
+
+def get_mjd_limits(obseq_path=obseq_path):
+    """Retrive the earliest and latest MJD in the simulations."""
+
     with fits.open(obseq_path) as obs:
         obseq = Table(obs[1].data)
 
@@ -355,10 +344,9 @@ def get_mjd_limits(obseq_path=obseq_path):
 
     return start, end
 
+
 def get_radec_limits(obseq_path=obseq_path):
-    """
-    Retrieve RA, dec limits (boresight coordinates).
-    """
+    """Retrieve RA, dec limits (boresight coordinates)."""
     with fits.open(obseq_path) as obs:
         obseq = Table(obs[1].data)
 
@@ -368,20 +356,19 @@ def get_radec_limits(obseq_path=obseq_path):
     dec_min = min(obseq['dec'])
     dec_max = max(obseq['dec'])
 
-    return {'ra': [ra_min,ra_max], 'dec': [dec_min, dec_max]}
+    return {'ra': [ra_min, ra_max], 'dec': [dec_min, dec_max]}
 
 
-def get_mjd(pointing,obseq_path=obseq_path):
-    """
-    Retrieve MJD of a given pointing. 
+def get_mjd(pointing, obseq_path=obseq_path):
+    """Retrieve MJD of a given pointing.
 
-    :param pointing: Pointing ID. 
+    :param pointing: Pointing ID.
     :type pointing: int
     :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.
     :type obseq_path: str, optional
-    :return: MJD of specified pointing. 
+    :return: MJD of specified pointing.
     :rtype: float
-    """    
+    """
 
     with fits.open(obseq_path) as obs:
         obseq = Table(obs[1].data)
@@ -389,43 +376,44 @@ def get_mjd(pointing,obseq_path=obseq_path):
 
     return mjd
 
-def pointings_near_mjd(mjd,window=3,obseq_path=obseq_path):
-    """
-    Retrieve pointings near given MJD.
+
+def pointings_near_mjd(mjd, window=3, obseq_path=obseq_path):
+    """Retrieve pointings near given MJD.
 
     :param mjd: Central MJD to search around.
     :type mjd: float
-    :param window: Number of days around central MJD to include in search. 
+    :param window: Number of days around central MJD to include in search.
     :type window: float
     :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.
     :type obseq_path: str, optional
-    :return: Pointings within specified MJD range. 
+    :return: Pointings within specified MJD range.
     :rtype: list
-    """ 
+    """
 
     with fits.open(obseq_path) as obs:
         obseq = Table(obs[1].data)
 
     pointings = np.where(np.logical_and(obseq['date'] < mjd + window, obseq['date'] > mjd - window))[0]
-    return pointings 
+    return pointings
 
-def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,return_inverse=False,obseq_path=obseq_path):
-    """
-    Get all pointings and corresponding filters between two MJDs.
-    Returns an astropy table with columns 'filter' and 'pointing'. 
+
+def get_mjd_info(mjd_start=-np.inf, mjd_end=np.inf, return_inverse=False, obseq_path=obseq_path):
+    """Get all pointings and corresponding filters between two MJDs.
+
+    Returns an astropy table with columns 'filter' and 'pointing'.
     Does not return an 'sca' column because every sca belonging to a
-    given pointing satisfies an MJD requirement. 
+    given pointing satisfies an MJD requirement.
 
     :param mjd_start: Start MJD, defaults to -np.inf
     :type mjd_start: float, optional
     :param mjd_end: End MJD, defaults to np.inf
     :type mjd_end: float, optional
-    :param return_inverse: If true, returns all pointings outside the MJD range specified instead of inside. 
+    :param return_inverse: If true, returns all pointings outside the MJD range specified instead of inside.
     :type return_inverse: bool
     :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.
     :type obseq_path: str, optional
     :return: Astropy table with pointing numbers and corresponding filters that satisfy the
-            MJD requirements. 
+            MJD requirements.
     :rtype: astropy.table.Table
     """
     with fits.open(obseq_path) as obs:
@@ -436,9 +424,10 @@ def get_mjd_info(mjd_start=-np.inf,mjd_end=np.inf,return_inverse=False,obseq_pat
     elif return_inverse:
         mjd_idx = np.where(~((obseq['date'] > float(mjd_start)) & (obseq['date'] < float(mjd_end))))[0]
 
-    mjd_tab = Table([obseq['filter'][mjd_idx], mjd_idx], names=('filter','pointing'))
+    mjd_tab = Table([obseq['filter'][mjd_idx], mjd_idx], names=('filter', 'pointing'))
 
     return mjd_tab
+
 
 def get_exptime(band=None):
 
@@ -455,10 +444,11 @@ def get_exptime(band=None):
     else:
         return exptime
 
+
 def transform_to_wcs(wcs, path=None, band=None, pointing=None, sca=None):
-    """"
-    Transform world coordinates in a truth file to a new WCS.
-    Outputs pixel coordinates for the transformed coordinates.  
+    """"Transform world coordinates in a truth file to a new WCS.
+
+    Outputs pixel coordinates for the transformed coordinates.
     input wcs is an astropy wcs object.
     """
     truthtab = read_truth_txt(path=path, band=band, pointing=pointing, sca=sca)
@@ -467,4 +457,3 @@ def transform_to_wcs(wcs, path=None, band=None, pointing=None, sca=None):
     tab = Table([x, y], names=['x', 'y'])
 
     return tab
-

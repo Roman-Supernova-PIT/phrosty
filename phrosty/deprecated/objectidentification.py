@@ -1,3 +1,6 @@
+# ruff: noqa
+# (Skip ruff, this is deprecated anyway!)
+
 # IMPORTS Standard:
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, confusion_matrix, ConfusionMatrixDisplay, recall_score

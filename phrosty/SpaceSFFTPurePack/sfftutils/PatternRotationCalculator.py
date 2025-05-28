@@ -5,6 +5,7 @@ __last_update__ = "2024-09-22"
 __author__ = "Lei Hu <leihu@andrew.cmu.edu>"
 __version__ = "v1.6.1"
 
+
 class PatternRotation_Calculator:
     @staticmethod
     def PRC(hdr_obj, hdr_targ):
@@ -21,7 +22,7 @@ class PatternRotation_Calculator:
         def calculate_rotate_angle(vector_ref, vector_obj):
             rad = np.arctan2(np.cross(vector_ref, vector_obj), np.dot(vector_ref, vector_obj))
             rotate_angle = np.rad2deg(rad)
-            if rotate_angle < 0.0: rotate_angle += 360.0 
+            if rotate_angle < 0.0: rotate_angle += 360.0
             return rotate_angle
 
         _phdr = hdr_obj

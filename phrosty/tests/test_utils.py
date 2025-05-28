@@ -14,6 +14,7 @@ from astropy.table import Table
 # IMPORTS Internal:
 import phrosty.utils
 
+
 def test_utils_globals():
     assert pathlib.Path( phrosty.utils.rootdir ).is_dir()
     assert pathlib.Path( phrosty.utils.snana_pq_dir ).is_dir()
@@ -90,10 +91,11 @@ def test_get_corners( test_dia_image ):
                  np.array([  7.5896352 , -44.83369681]),
                  np.array([  7.4075831 , -44.71566849]),
                  np.array([  7.4168088 , -44.83647236]) )
-    assert( np.all( np.abs(c-e) < 0.00028 ) for c, e in zip( corners, expected ) )
+    assert np.all( np.abs(c-e) < 0.00028 for c, e in zip( corners, expected ) )
 
 
 # TEST _read_parquet?
+
 
 # This one also implicitly tests make_object_table
 def test_get_transient_radec( test_sn ):
@@ -107,6 +109,7 @@ def test_get_transient_mjd( test_sn ):
     endpoints = (test_sn['mjd0'], test_sn['mjd1'])
     assert phrosty.utils.get_transient_mjd(trns) == pytest.approx( endpoints, abs=0.1 )
 
+
 def test_get_transient_zcmb( test_sn ):
     oid = test_sn[ 'oid' ]
     zcmb = np.float32( test_sn['zcmb'] )
@@ -114,6 +117,7 @@ def test_get_transient_zcmb( test_sn ):
     tzcmb = phrosty.utils.get_transient_zcmb(oid)
 
     assert zcmb == pytest.approx( tzcmb, rel=1e-5 )
+
 
 def test_get_transient_peakmjd( test_sn ):
     oid = test_sn[ 'oid' ]
@@ -143,17 +147,21 @@ def test_transient_in_or_out( test_sn, test_dia_image ):
     assert set(in_tab.columns) == { 'filter', 'pointing', 'sca' }
     assert set(out_tab.columns) == { 'filter', 'pointing', 'sca' }
 
+
 @pytest.mark.skip( reason="Not used in pipeline.py, test is a TODO" )
 def test_get_templates():
     assert False
+
 
 @pytest.mark.skip( reason="Not used in pipeline.py, test is a TODO" )
 def test_get_science():
     assert False
 
+
 def test_get_mjd_limits():
     start, end = phrosty.utils.get_mjd_limits()
     assert ( start, end ) == pytest.approx( (62000.02139, 63563.0579), abs=0.1 )
+
 
 def test_get_radec_limits():
     val = phrosty.utils.get_radec_limits()
@@ -186,6 +194,7 @@ def test_pointings_near_mjd():
 
     ptgs = phrosty.utils.pointings_near_mjd( 10000 )
     assert len(ptgs) == 0
+
 
 def test_get_mjd_info():
     mjd0 = 62000.04011 - 3

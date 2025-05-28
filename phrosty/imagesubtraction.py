@@ -5,19 +5,11 @@ import nvtx
 # IMPORTS Standard:
 import os
 import io
-import sys
 import numpy as np
 import cupy
-import cupyx.scipy
 import gzip
 import shutil
 import pathlib
-import logging
-import matplotlib.pyplot as plt
-import tracemalloc
-import json
-
-from numba import cuda
 
 # IMPORTS Astro:
 from astropy.io import fits
@@ -25,38 +17,15 @@ from astropy.coordinates import SkyCoord
 from astropy.wcs.utils import skycoord_to_pixel
 import astropy.units as u
 from astropy.wcs import WCS
-from astropy.convolution import convolve_fft
-from astropy.visualization import ZScaleInterval
-# import galsim
-from galsim import PositionD
 
 # IMPORTS SFFT:
 from roman_imsim.utils import roman_utils
 from sfft.utils.SExSkySubtract import SEx_SkySubtract
 from sfft.utils.StampGenerator import Stamp_Generator
-from sfft.utils.pyAstroMatic.PYSWarp import PY_SWarp
-from sfft.utils.ReadWCS import Read_WCS
-from sfft.utils.ImageZoomRotate import Image_ZoomRotate
 from sfft.utils.CudaResampling import Cuda_Resampling
-from sfft.utils.pyAstroMatic.PYSEx import PY_SEx
-from sfft.CustomizedPacket import Customized_Packet
-from sfft.utils.SkyLevelEstimator import SkyLevel_Estimator
-from sfft.utils.SFFTSolutionReader import Realize_MatchingKernel
-from sfft.utils.DeCorrelationCalculator import DeCorrelation_Calculator
 
-# IMPORTS Internal:
-from phrosty.SpaceSFFTPurePack.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow, SpaceSFFT_CupyFlow_NVTX
-from phrosty.utils import _build_filepath, get_transient_radec, get_transient_mjd
-
-# Configure logger (Rob)
-_logger = logging.getLogger(f'phrosty')
-if not _logger.hasHandlers():
-    log_out = logging.StreamHandler(sys.stderr)
-    formatter = logging.Formatter(f'[%(asctime)s - %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    log_out.setFormatter(formatter)
-    _logger.addHandler(log_out)
-    _logger.setLevel(logging.DEBUG) # ERROR, WARNING, INFO, or DEBUG (in that order by increasing detail)
-
+# IMPORTS internal
+from snpit_utils.logger import SNLogger
 
 """
 This module was written with significant contributions from
@@ -67,37 +36,37 @@ SFFT image subtraction package (https://github.com/thomasvrussell/sfft).
 output_files_rootdir = os.getenv('DIA_OUT_DIR', None)
 assert output_files_rootdir is not None, 'You need to set DIA_OUT_DIR as an environment variable.'
 
+
 def check_and_mkdir(dirname):
-    """
-    Utility function for checking if a directory exists, and if not,
-    makes that directory.
-    """
+    """Utility function for checking if a directory exists, and if not, makes that directory."""
     if not os.path.exists(dirname):
         os.mkdir(dirname)
 
-def gz_and_ext(in_path,out_path):
-    """
-    Utility function that unzips the original file and turns it into a single-extension FITS file.
-    """
+
+def gz_and_ext(in_path, out_path):
+    """Utility function that unzips the original file and turns it into a single-extension FITS file."""
     # ****
     # Remove this
     import multiprocessing
     # ****
 
     bio = io.BytesIO()
-    with gzip.open(in_path,'rb') as f_in:
+    with gzip.open(in_path, 'rb') as f_in:
         shutil.copyfileobj(f_in, bio)
     bio.seek(0)
 
     with fits.open(bio) as hdu:
         newhdu = fits.HDUList([fits.PrimaryHDU(data=hdu[1].data, header=hdu[0].header)])
-        _logger.debug( f"Process {multiprocessing.current_process().pid} Writing extracted HDU 1 to {out_path}..." )
+        SNLogger.debug( f"Process {multiprocessing.current_process().pid} Writing extracted HDU 1 to {out_path}..." )
         newhdu.writeto(out_path, overwrite=True)
-        _logger.debug( f"...process {multiprocessing.current_process().pid} done writing extracted HDU 1 to {out_path}." )
+        SNLogger.debug( f"...process {multiprocessing.current_process().pid} done writing "
+                        f"extracted HDU 1 to {out_path}." )
 
     return out_path
 
-# def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir, force=False, verbose=False):
+
+# def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir,
+#                  force=False, verbose=False):
 def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp"), force=False ):
     """Subtracts background, found with Source Extractor.
 
@@ -133,7 +102,7 @@ def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp")
             skyrms = hdul[0].header['SKYRMS']
         return skyrms
 
-    do_skysub = force or ( ( not force ) and ( not skysubpath.is_file() ) and ( detmaskpath.is_file() ) )
+    # do_skysub = force or ( ( not force ) and ( not skysubpath.is_file() ) and ( detmaskpath.is_file() ) )
 
     if inpath.name[-3:] == '.gz':
         decompressed_path = temp_dir / inpath.name[:-3]
@@ -162,24 +131,26 @@ def run_resample(FITS_obj, FITS_targ, FITS_resamp):
     hdr_targ = fits.getheader(FITS_targ, ext=0)
 
     PixA_obj = fits.getdata(FITS_obj, ext=0).T
-    PixA_targ = fits.getdata(FITS_targ, ext=0).T
+    # PixA_targ = fits.getdata(FITS_targ, ext=0).T
 
     if not PixA_obj.flags['C_CONTIGUOUS']:
         PixA_obj = np.ascontiguousarray(PixA_obj, np.float64)
         PixA_obj_GPU = cupy.array(PixA_obj)
     else: PixA_obj_GPU = cupy.array(PixA_obj.astype(np.float64))
 
-    if not PixA_targ.flags['C_CONTIGUOUS']:
-        PixA_targ = np.ascontiguousarray(PixA_targ, np.float64)
-        PixA_targ_GPU = cupy.array(PixA_targ)
-    else: PixA_targ_GPU = cupy.array(PixA_targ.astype(np.float64))
+    # if not PixA_targ.flags['C_CONTIGUOUS']:
+    #     PixA_targ = np.ascontiguousarray(PixA_targ, np.float64)
+    #     PixA_targ_GPU = cupy.array(PixA_targ)
+    # else:
+    #     PixA_targ_GPU = cupy.array(PixA_targ.astype(np.float64))
 
     with nvtx.annotate( "Cuda_Resampling", color=0xdddd00 ):
         CR = Cuda_Resampling(RESAMP_METHOD='BILINEAR', VERBOSE_LEVEL=1)
     with nvtx.annotate( "CR.projection_sip", color=0xbbbb00 ):
         XX_proj_GPU, YY_proj_GPU = CR.projection_sip(hdr_obj, hdr_targ, Nsamp=1024, RANDOM_SEED=10086)
     with nvtx.annotate( "CR.frame_extension", color=0x999900 ):
-        PixA_Eobj_GPU, EProjDict = CR.frame_extension(XX_proj_GPU=XX_proj_GPU, YY_proj_GPU=YY_proj_GPU, PixA_obj_GPU=PixA_obj_GPU)
+        PixA_Eobj_GPU, EProjDict = CR.frame_extension(XX_proj_GPU=XX_proj_GPU, YY_proj_GPU=YY_proj_GPU,
+                                                      PixA_obj_GPU=PixA_obj_GPU)
     with nvtx.annotate( "CR.resampling", color=0x777700 ):
         PixA_resamp = cupy.asnumpy(CR.resampling(PixA_Eobj_GPU=PixA_Eobj_GPU, EProjDict=EProjDict))
 
@@ -206,7 +177,7 @@ def run_resample(FITS_obj, FITS_targ, FITS_resamp):
 #     if do_align:
 #         check_and_mkdir(outdir)
 
-#         _logger.debug( "Using Cuda_Resampling.CR to resample image" )
+#         SNLogger.debug( "Using Cuda_Resampling.CR to resample image" )
 
 #         # Cuda_Resampling.CR( sci_path, template_path, output_path, METHOD="BILINEAR" )
 #         run_resample( sci_path, template_path, output_path )
@@ -237,12 +208,14 @@ def run_resample(FITS_obj, FITS_targ, FITS_resamp):
 #         rotate_angle += 360.0
 #     return rotate_angle
 
-def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
-                  psf_path=None, force=False, logger=None, **kwargs):
 
-    """
-    Retrieve the PSF from roman_imsim/galsim, and transform the WCS so that CRPIX and CRVAL
-    are centered on the image instead of at the corner.
+def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
+                  psf_path=None, force=False, **kwargs):
+
+    """Retrieve the PSF from roman_imsim/galsim.
+
+    Transform the WCS so that CRPIX and CRVAL are centered on the image
+    instead of at the corner.
 
     kwargs match getPSF_Image args, listed here with their defaults:
     pupil_bin=8,
@@ -252,23 +225,22 @@ def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yam
     n_phot=1e6
 
     force parameter does not currently do anything.
+
     """
 
     if psf_path is None:
         raise ValueError( "psf_path can't be None" )
 
-    logger = _logger if logger is None else logger
-
     # Get WCS of the image you need the PSF for.
     with fits.open( image_path ) as hdu:
         wcs = WCS(hdu[0].header)
     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-    x,y = wcs.world_to_pixel(coord)
+    x, y = wcs.world_to_pixel(coord)
 
     # Get PSF at specified ra, dec.
     assert config_yaml_file is not None, "config_yaml_file is a required argument"
     config_path = config_yaml_file
-    config = roman_utils(config_path,pointing,sca)
+    config = roman_utils(config_path, pointing, sca)
     #### TEMP TEST
     #### Want to see if this is the source of non-reproducible results
     # For the future: if we adapt the snpit_utils config system,
@@ -277,7 +249,7 @@ def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yam
     #   the variance in our tests.
     # config.rng = galsim.BaseDeviate(12345)
     #### END OF TEMP TEST
-    psf = config.getPSF_Image(size,x,y,**kwargs)
+    psf = config.getPSF_Image(size, x, y, **kwargs)
     psf.write( str(psf_path) )
 
 
@@ -379,20 +351,21 @@ def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yam
 
 #     return savepaths
 
-def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
 
-    """
+def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
+    """Make stamps.
+
     Note: 'shape' must be a numpy array. e.g. np.array([100,100])
     """
 
     if savedir is None:
-        savedir = os.path.join(output_files_rootdir,'stamps')
+        savedir = os.path.join(output_files_rootdir, 'stamps')
         check_and_mkdir(savedir)
 
     if savename is None:
         savename = f'stamp_{os.path.basename(imgpath)}.fits'
 
-    savepath = os.path.join(savedir,savename)
+    savepath = os.path.join(savedir, savename)
 
     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     with fits.open(imgpath) as hdu:
@@ -400,12 +373,13 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
         wcs = WCS(hdu[hdun].header)
 
     x, y = skycoord_to_pixel(coord, wcs)
-    pxradec = np.array([[x,y]])
+    pxradec = np.array([[x, y]])
 
     Stamp_Generator.SG(FITS_obj=imgpath, EXTINDEX=hdun, COORD=pxradec, COORD_TYPE='IMAGE',
                        STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=savepath)
 
     return savepath
+
 
 # def bkg_mask(imgpath):
 #     """
@@ -426,14 +400,14 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
 #     # BAD IDEA : we were reading masks from different images
 #     #   (unaligned template, convolved neither.)
 #     # fname = os.path.join( output_files_rootdir, f'detect_mask/{os.path.basename(imgpath)}.npy' )
-#     # _logger.info( f"Trying to load detection mask from {fname}" )
+#     # SNLogger.info( f"Trying to load detection mask from {fname}" )
 #     # bkg_mask = np.load( fname )
 
 #     return bkg_mask
 
 # def difference(scipath, refpath,
 #                out_path=output_files_rootdir, savename=None, ForceConv='REF', GKerHW=9, KerPolyOrder=2, BGPolyOrder=0,
-#                ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False, logger=None):
+#                ConstPhotRatio=True, backend='Numpy', cudadevice='0', nCPUthreads=1, force=False, verbose=False ):
 
 #     tracemalloc.start()
 
@@ -480,19 +454,22 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
 #                 hdu.writeto(msavepath, overwrite=True)
 
 #         size,peak = tracemalloc.get_traced_memory()
-#         logger.debug(f'MEMORY IN imagesubtraction.difference() BEFORE Customized_Packet.CP: size = {size}, peak = {peak}')
+#         SNLogger.debug(f'MEMORY IN imagesubtraction.difference() BEFORE Customized_Packet.CP: '
+#                        f'size = {size}, peak = {peak}')
 #         tracemalloc.reset_peak()
 
 #         # Do SFFT subtraction
 #         with nvtx.annotate( "Customized_Packet.CP", color=0x44ff44 ):
-#             Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath, FITS_mSCI=sci_masked_savepath, \
-#                                  ForceConv=ForceConv, GKerHW=GKerHW, FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath, \
-#                                  KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio, \
-#                                  BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice, \
-#                                  NUM_CPU_THREADS_4SUBTRACT=nCPUthreads,logger=logger)
+#             Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath,
+#                                  FITS_mSCI=sci_masked_savepath, ForceConv=ForceConv, GKerHW=GKerHW,
+#                                  FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath,
+#                                  KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio,
+#                                  BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice,
+#                                  NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)
 
 #         size,peak = tracemalloc.get_traced_memory()
-#         logger.debug(f'MEMORY IN imagesubtraction.difference() AFTER Customized_Packet.CP: size = {size}, peak = {peak}')
+#         SNLogger.debug(f'MEMORY IN imagesubtraction.difference() AFTER Customized_Packet.CP: '
+#                        f'size = {size}, peak = {peak}')
 #         tracemalloc.reset_peak()
 
 #     elif skip_subtract and verbose:
