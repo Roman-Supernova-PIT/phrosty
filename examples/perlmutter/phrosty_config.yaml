@@ -1,0 +1,12 @@
+photometry:
+  phrosty:
+    paths:
+      temp_dir: /phrosty_temp
+      sn_info_dir: /sn_info_dir
+      dia_out_dir: /dia_out_dir
+      sims_dir: /sims_dir
+      snana_pq_dir: /snana_pq_dir
+      snid_lc_dir: /snid_lc_dir
+    image_type: ou2024fits
+    psf_type: galsim
+    

@@ -24,6 +24,7 @@ import astropy.units as u
 from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
 
 from snpit_utils.logger import SNLogger
+from snpit_utils.config import Config
 from phrosty.utils import read_truth_txt, get_exptime
 from phrosty.imagesubtraction import sky_subtract, get_imsim_psf, stampmaker
 from phrosty.photometry import ap_phot, psfmodel, psf_phot
@@ -31,7 +32,53 @@ from phrosty.photometry import ap_phot, psfmodel, psf_phot
 from galsim import roman
 
 
-# Todo: rename this to PipelineImage or some such to avoid confusion with snappl.image.Image
+class PipelineImage:
+    """Holds a snappl.image.Image, with some other stuff the pipeline needs."""
+
+    def __init__( self, image, pointing, pipeline ):
+        """Create a PipelineImage
+
+        Parameters:
+        -----------
+           image : snappl.image.Image
+              In reality, it's probably a non-abstract subclass of snappl.image.Image.
+
+           pointing : str or int
+              An identifier of the pointing of this image.  Used e.g. to pull PSFs.
+
+           pipeline : phrosty.pipeline.Pipeline
+              The pipeline that owns this image.
+
+        """
+        # self.psf is a object of a subclass of snappl.psf.PSF
+        self.psf = None
+        self.config = Config.get()
+        self.temp_dir = pathlib.path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+        
+        self.decorr_psf_path = {}
+        self.decorr_zptimg_path = {}
+        self.decorr_diff_path = {}
+        self.zpt_stamp_path = {}
+        self.diff_stamp_path = {}
+
+
+    def run_sky_subtract( self ):
+        try:
+            SNLogger.debug( f"Process {multiprocessing.current_process().pid} run_sky_subtract {self.image_name}" )
+            self.skysub_path = self.pipeline.temp_dir / f"skysub_{self.image_name}"
+            self.detmask_path = self.pipeline.temp_dir / f"detmask_{self.image_name}"
+            self.skyrms = sky_subtract( self.image_path, self.skysub_path, self.detmask_path,
+                                        temp_dir=self.pipeline.temp_dir, force=self.pipeline.force_sky_subtract )
+            return ( self.skysub_path, self.detmask_path, self.skyrms )
+        except Exception as ex:
+            SNLogger.error( f"Process {multiprocessing.current_process().pid} exception: {ex}" )
+            raise
+
+
+        def run_sky_subtract( self ):
+        
+
+        
 class Image:
     def __init__( self, path, pointing, sca, mjd, pipeline ):
         self.pipeline = pipeline
@@ -53,23 +100,6 @@ class Image:
         self.skyrms = None
         self.skysub_path = None
 
-        self.decorr_psf_path = {}
-        self.decorr_zptimg_path = {}
-        self.decorr_diff_path = {}
-        self.zpt_stamp_path = {}
-        self.diff_stamp_path = {}
-
-    def run_sky_subtract( self ):
-        try:
-            SNLogger.debug( f"Process {multiprocessing.current_process().pid} run_sky_subtract {self.image_name}" )
-            self.skysub_path = self.pipeline.temp_dir / f"skysub_{self.image_name}"
-            self.detmask_path = self.pipeline.temp_dir / f"detmask_{self.image_name}"
-            self.skyrms = sky_subtract( self.image_path, self.skysub_path, self.detmask_path,
-                                        temp_dir=self.pipeline.temp_dir, force=self.pipeline.force_sky_subtract )
-            return ( self.skysub_path, self.detmask_path, self.skyrms )
-        except Exception as ex:
-            SNLogger.error( f"Process {multiprocessing.current_process().pid} exception: {ex}" )
-            raise
 
     def save_sky_subtract_info( self, info ):
         SNLogger.debug( f"Saving sky_subtract info for path {info[0]}" )
