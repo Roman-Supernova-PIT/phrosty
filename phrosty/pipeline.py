@@ -26,10 +26,10 @@ from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
 
 from snpit_utils.logger import SNLogger
 from snpit_utils.config import Config
-from snappl.psf import ou24PSF
+from snappl.psf import PSF
 from snappl.image import OpenUniverse2024FITSImage
 from phrosty.utils import read_truth_txt, get_exptime
-from phrosty.imagesubtraction import sky_subtract, get_imsim_psf, stampmaker
+from phrosty.imagesubtraction import sky_subtract, stampmaker
 from phrosty.photometry import ap_phot, psfmodel, psf_phot
 
 from galsim import roman
@@ -57,7 +57,7 @@ class PipelineImage:
         """
         # self.psf is a object of a subclass of snappl.psf.PSF
         self.config = Config.get()
-        self.temp_dir = pathlib.path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+        self.temp_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
 
         if self.config.value( 'photometry.phrosty.image_type' ) == 'ou2024fits':
             self.image = OpenUniverse2024FITSImage( imagepath, None, sca )
@@ -66,7 +66,7 @@ class PipelineImage:
                                 "We hope this will change soon." )
 
         self.pointing = pointing
-        
+
         self.decorr_psf_path = {}
         self.decorr_zptimg_path = {}
         self.decorr_diff_path = {}
@@ -89,6 +89,7 @@ class PipelineImage:
             self.detmask_path = self.temp_dir / f"detmask_{self.image.name}"
             self.skyrms = sky_subtract( self.image.path, self.skysub_path, self.detmask_path, temp_dir=self.temp_dir,
                                         force=self.config.value( 'photometry.phrosty.force_sky_subtract' ) )
+            SNLogger.debug( f"...done running sky subtraction on {self.image.name}" )
             return ( self.skysub_path, self.detmask_path, self.skyrms )
         except Exception as ex:
             SNLogger.exception( ex )
@@ -100,24 +101,47 @@ class PipelineImage:
         self.detmask_path = info[1]
         self.skyrms = info[2]
 
-    def get_psf( self, ra, dec ):
+    def get_psf( self, ra, dec, dump_file=False ):
+        """Get the at the right spot on the image.
+
+        Parameters
+        ----------
+          ra, dec : float
+             The coordinates in decimal degrees where we want the PSFD.
+
+          dump_file : bool
+             If True, write out the psf as a FITS file in dia_out_dir
+             (for diagnostic purposes; these files are not read again
+             interally by the pipeline).
+
+        """
+
+        # TODO: right now snappl.psf.PSF.get_psf_object just
+        #   passes the keyword arguments on to whatever makes
+        #   the psf... and it's different for each type of
+        #   PSF.  We need to fix that... somehow....
+
         if self.psfobj is None:
-            if  psftype == 'ou24psf':
-                self.psfobj = ou24PSF( self.pointing, self.image.sca, incldue_photonOps=True )
-            else:
-                raise ValueError( "Unsupported psf type {psftype}" )
-            
+            psftype = self.config.value( 'photometry.phrosty.psf.type' )
+            self.psfobj = PSF.get_psf_object( psftype, pointing=self.pointing, sca=self.image.sca )
+
         wcs = self.image.get_wcs()
         x, y = wcs.world_to_pixel( ra, dec )
-        return self.psfobj.get_stamp( x, y )
-        
-    def save_psf_data( self, psf_data ):
+        stamp = self.psfobj.get_stamp( x, y )
+        if dump_file:
+            outfile = pathlib.Path( self.config.value( "photometry.phrosty.paths.dia_out_dir" ) )
+            outfile = outfile / f"psf_{self.image.name}.fits"
+            fits.writeto( outfile, stamp, overwrite=True )
+        return stamp
+
+    def keep_psf_data( self, psf_data ):
         self.psf_data = psf_data
 
 
 class Pipeline:
     def __init__( self, object_id, ra, dec, band, science_images, template_images, nprocs=1, nwrite=5,
                   nuke_temp_dir=False, verbose=False ):
+
         """Create the a pipeline object.
 
         Parameters
@@ -147,15 +171,16 @@ class Pipeline:
         """
 
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
-        self.sims_dir = pathlib.Path( os.getenv( 'SIMS_DIR', None ) )
+        self.config = Config.get()
+        self.image_base_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.image_base_dir' ) )
 
         self.object_id = object_id
         self.ra = ra
         self.dec = dec
         self.band = band
-        self.science_images = ( [ PipelineImage( ppsmb[0], ppsmb[1], ppsmb[2] )
+        self.science_images = ( [ PipelineImage( self.image_base_dir / ppsmb[0], ppsmb[1], ppsmb[2] )
                                   for ppsmb in science_images if ppsmb[4] == self.band ] )
-        self.template_images = ( [ PipelineImage( ppsmb[0], ppsmb[1], ppsmb[2] )
+        self.template_images = ( [ PipelineImage( self.image_base_dir / ppsmb[0], ppsmb[1], ppsmb[2] )
                                    for ppsmb in template_images if ppsmb[4] == self.band ] )
         self.nprocs = nprocs
         self.nwrite = nwrite
@@ -171,7 +196,7 @@ class Pipeline:
         all_imgs.extend( self.template_images )
 
         def log_error( img, x ):
-            SNLogger.error( f"Sky subtraction subprocess failure: {x} for image {img.image_path}" )
+            SNLogger.error( f"Sky subtraction subprocess failure: {x} for image {img.image.path}" )
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
@@ -196,14 +221,14 @@ class Pipeline:
             with Pool( self.nprocs ) as pool:
                 for img in all_imgs:
                     # callback_partial = partial( img.save_psf_path, all_imgs )
-                    pool.apply_async( img.get_psf, (), {},
-                                      img.save_psf_data,
+                    pool.apply_async( img.get_psf, (self.ra, self.dec), {},
+                                      img.keep_psf_data,
                                       lambda x: SNLogger.error( f"get_psf subprocess failure: {x}" ) )
                 pool.close()
                 pool.join()
         else:
             for img in all_imgs:
-                img.save_psf_data( img.get_psf() )
+                img.keep_psf_data( img.get_psf() )
 
 
     def align_and_pre_convolve(self, templ_image, sci_image ):
@@ -225,12 +250,15 @@ class Pipeline:
         with fits.open( templ_image.skysub_path ) as hdul:
             hdr_templ = hdul[0].header
             data_templ = cp.array( np.ascontiguousarray(hdul[0].data.T), dtype=cp.float64 )
-
-        with fits.open( sci_image.psf_path ) as hdul:
-            sci_psf = cp.array( np.ascontiguousarray( hdul[0].data.T ), dtype=cp.float64 )
-
-        with fits.open( templ_image.psf_path ) as hdul:
-            templ_psf = cp.array( np.ascontiguousarray( hdul[0].data.T ), dtype=cp.float64 )
+            
+        # THINK -- previously we were transposing when reading from FITS
+        #   files that the PSF creation routines wrote.  Now the psf
+        #   creation rutines just return the data.  Do we need
+        #   to transpose?  Figure this out!  (Also make sure this
+        #   isn't a galsim-specific thing!)  Search for THOUGHT
+        #   REQUIRED in sanppl/snappl/psf.py
+        sci_psf = cp.array( sci_image.psf_datak, dtype=cp.float64 )
+        templ_psf = cp.array( templ_image.psf_data, dtype=cp.float64 )
 
         with fits.open( sci_image.detmask_path ) as hdul:
             sci_detmask = cp.array( np.ascontiguousarray( hdul[0].data.T ) )
@@ -317,7 +345,7 @@ class Pipeline:
         #   doing the calibration into the pipeline as we do here.
         #
         # Also Issue #70
-        
+
         """Get the zeropoint based on the stars."""
 
         # First, need to do photometry on the stars.
@@ -375,11 +403,11 @@ class Pipeline:
 
     def make_phot_info_dict( self, sci_image, templ_image, ap_r=4 ):
         # Do photometry on stamp because it will read faster
-        diff_img_stamp_path = sci_image.diff_stamp_path[ templ_image.image_name ]
+        diff_img_stamp_path = sci_image.diff_stamp_path[ templ_image.image.name ]
 
         results_dict = {}
-        results_dict['sci_name'] = sci_image.image_name
-        results_dict['templ_name'] = templ_image.image_name
+        results_dict['sci_name'] = sci_image.image.name
+        results_dict['templ_name'] = templ_image.image.name
         results_dict['success'] = False
         results_dict['ra'] = self.ra
         results_dict['dec'] = self.dec
@@ -397,7 +425,7 @@ class Pipeline:
                 wcs = WCS(diff_hdu[0].header)
 
             # Load in the decorrelated PSF.
-            psfpath = sci_image.decorr_psf_path[ templ_image.image_name ]
+            psfpath = sci_image.decorr_psf_path[ templ_image.image.name ]
             with fits.open( psfpath ) as hdu:
                 psf = psfmodel( hdu[0].data )
             coord = SkyCoord(ra=self.ra * u.deg, dec=self.dec * u.deg)
@@ -409,12 +437,12 @@ class Pipeline:
 
             # TODO -- take this galsim-specific code out, move it to a separate module.  Define a general
             #  zeropointing interface, of which the galsim-speicifc one will be one instance
-            truthpath = str( self.sims_dir /
+            truthpath = str( self.image_base_dir /
                              f'RomanTDS/truth/{self.band}/{sci_image.pointing}/'
                              f'Roman_TDS_index_{self.band}_{sci_image.pointing}_{sci_image.sca}.txt' )
             stars = self.get_stars(truthpath)
             # Now, calculate the zero point based on those stars.
-            zptimg_path = sci_image.decorr_zptimg_path[ templ_image.image_name ]
+            zptimg_path = sci_image.decorr_zptimg_path[ templ_image.image.name ]
             with fits.open(zptimg_path) as hdu:
                 zptimg = hdu[0].data
             zpt = self.get_zpt(zptimg, psf, self.band, stars, oid=self.object_id,
@@ -440,18 +468,18 @@ class Pipeline:
             arr.append( one_pair[ key ] )
 
     def save_stamp_paths( self, sci_image, templ_image, paths ):
-        sci_image.zpt_stamp_path[ templ_image.image_name ] = paths[0]
-        sci_image.diff_stamp_path[ templ_image.image_name ] = paths[1]
+        sci_image.zpt_stamp_path[ templ_image.image.name ] = paths[0]
+        sci_image.diff_stamp_path[ templ_image.image.name ] = paths[1]
 
     def do_stamps( self, sci_image, templ_image ):
 
-        zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
+        zptname = sci_image.decorr_zptimg_path[ templ_image.image.name ]
         zpt_stampname = stampmaker( self.ra, self.dec, np.array([100, 100]),
                                     zptname,
                                     savedir=self.out_dir,
                                     savename=f"stamp_{zptname.name}" )
 
-        diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
+        diffname = sci_image.decorr_diff_path[ templ_image.image.name ]
         diff_stampname = stampmaker( self.ra, self.dec, np.array([100, 100]),
                                  diffname,
                                  savedir=self.out_dir,
@@ -541,7 +569,7 @@ class Pipeline:
 
             for templ_image in self.template_images:
                 for sci_image in self.science_images:
-                    SNLogger.info( f"Processing {sci_image.image_name} minus {templ_image.image_name}" )
+                    SNLogger.info( f"Processing {sci_image.image.name} minus {templ_image.image.name}" )
                     sfftifier = None
 
                     if 'align_and_preconvolve' in steps:
@@ -578,11 +606,11 @@ class Pipeline:
                                 fits_writer_pool.apply_async( self.write_fits_file,
                                                               ( cp.asnumpy( decorimg ).T, hdr, savepath ), {},
                                                               error_callback=partial(log_fits_write_error, savepath) )
-                        sci_image.decorr_psf_path[ templ_image.image_name ]= decorr_psf_path
-                        sci_image.decorr_zptimg_path[ templ_image.image_name ]= decorr_zptimg_path
-                        sci_image.decorr_diff_path[ templ_image.image_name ]= decorr_diff_path
+                        sci_image.decorr_psf_path[ templ_image.image.name ]= decorr_psf_path
+                        sci_image.decorr_zptimg_path[ templ_image.image.name ]= decorr_zptimg_path
+                        sci_image.decorr_diff_path[ templ_image.image.name ]= decorr_diff_path
 
-                        SNLogger.info( f"DONE processing {sci_image.image_name} minus {templ_image.image_name}" )
+                        SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
 
             SNLogger.info( "Waiting for FITS writer processes to finish" )
             with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
@@ -620,18 +648,18 @@ class Pipeline:
                 else:
                     for templ_image in self.template_images:
                         stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), templ_image.image_path,
-                                                savedir=self.out_dir, savename=f"stamp_{templ_image.image_name}" )
+                                                savedir=self.out_dir, savename=f"stamp_{templ_image.image.name}" )
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
-                            zptname = sci_image.decorr_zptimg_path[ templ_image.image_name ]
-                            diffname = sci_image.decorr_diff_path[ templ_image.image_name ]
+                            zptname = sci_image.decorr_zptimg_path[ templ_image.image.name ]
+                            diffname = sci_image.decorr_diff_path[ templ_image.image.name ]
                             stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), zptname,
                                                     savedir=self.out_dir, savename=f"stamp_{zptname.name}" )
-                            sci_image.zpt_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
+                            sci_image.zpt_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
                             stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), diffname,
                                                     savedir=self.out_dir, savename=f"stamp_{diffname.name}" )
-                            sci_image.diff_stamp_path[ templ_image.image_name ] = pathlib.Path( stamp_name )
+                            sci_image.diff_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
 
             SNLogger.info('...finished making stamps.')
 
@@ -644,7 +672,17 @@ class Pipeline:
                 # ======================================================================
 
 def main():
-    parser = argparse.ArgumentParser( 'phrosty pipeline' )
+    # Run one arg pass just to get the config file, so we can augment
+    #   the full arg parser later with config options
+    configparser = argparse.ArgumentParser( add_help=False )
+    configparser.add_argument( '-c', '--config-file', required=True, help="Location of the .yaml config file" )
+    args, leftovers = configparser.parse_known_args()
+
+    cfg = Config.get( args.config_file, setdefault=True )
+    
+    parser = argparse.ArgumentParser()
+    # Put in the config_file argument, even though it will never be found, so it shows up in help
+    parser.add_argument( '-c', '--config-file', help="Location of the .yaml config file" )
     parser.add_argument( '--oid', type=int, required=True, help="Object ID" )
     parser.add_argument( '-r', '--ra', type=float, required=True, help="Object RA" )
     parser.add_argument( '-d', '--dec', type=float, required=True, help="Object Dec" )
@@ -658,15 +696,12 @@ def main():
                          help="Number of process for multiprocessing steps (e.g. skysub)" )
     parser.add_argument( '-w', '--nwrite', type=int, default=5, help="Number of parallel FITS writing processes" )
     parser.add_argument( '-v', '--verbose', action='store_true', default=False, help="Show debug log info" )
-    parser.add_argument( '--out-dir', default="/dia_out_dir", help="Output dir, default /dia_out_dir" )
-    parser.add_argument( '--ltcv-dir', default="/lc_out_dir", help="Output dir for lightcurves, default /lc_out_dir" )
-    parser.add_argument( '--temp-dir', default="/phrosty_temp", help="Temporary working dir, default /phrosty_temp" )
     parser.add_argument( '--through-step', default='make_lightcurve',
                          help="Stop after this step; one of (see above)" )
-    parser.add_argument( '--force-sky-subtract', action='store_true', default=False,
-                         help='Redo sky subtraction even if the right file is sitting in the temp dir.' )
 
-    args = parser.parse_args()
+    cfg.augment_argparse( parser )
+    args = parser.parse_args( leftovers )
+    cfg.parse_args( args )
 
     science_images = []
     template_images = []
@@ -674,17 +709,14 @@ def main():
                                [ science_images, template_images ] ):
         with open( infile ) as ifp:
             hdrline = ifp.readline()
-            if not re.search( hdrline, "^\s*path\s+pointing\s+sca\s+mjd\s+band\s*$" ):
+            if not re.search( "^\s*path\s+pointing\s+sca\s+mjd\s+band\s*$", hdrline ):
                 raise ValueError( f"First line of list file {infile} didn't match what was expected." )
             for line in ifp:
                 img, point, sca, mjd, band = line.split()
                 imlist.append( ( pathlib.Path(img), int(point), int(sca), float(mjd), band ) )
 
     pipeline = Pipeline( args.oid, args.ra, args.dec, args.band, science_images, template_images,
-                         nprocs=args.nprocs, nwrite=args.nwrite,
-                         temp_dir=args.temp_dir, out_dir=args.out_dir, ltcv_dir=args.ltcv_dir,
-                         galsim_config_file=galsim_config, force_sky_subtract=args.force_sky_subtract,
-                         nuke_temp_dir=False, verbose=args.verbose )
+                         nprocs=args.nprocs, nwrite=args.nwrite, nuke_temp_dir=False, verbose=args.verbose )
     pipeline( args.through_step )
 
 

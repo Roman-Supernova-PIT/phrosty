@@ -11,11 +11,9 @@ photometry:
       temp_dir: /phrosty_temp
       sn_info_dir: /sn_info_dir
       dia_out_dir: /dia_out_dir
-      sims_dir: /sims_dir
+      image_base_dir: /sims_dir
       snana_pq_dir: /snana_pq_dir
       snid_lc_dir: /snid_lc_dir
 
     psf:
-      type: ou24psf
-      galsim:
-        config_file: 
+      type: ou24PSF
