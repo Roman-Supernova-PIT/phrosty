@@ -79,14 +79,26 @@ class PipelineImage:
         self.psfobj = None
         self.psf_data = None
 
-    def run_sky_subtract( self ):
+    def run_sky_subtract( self, mp=True ):
         # Eventually, we may not want to save the sky subtracted image, but keep
         #   it in memory.  (Reduce I/O.)  Will require SFFT changes.
+        #   (This may not be practical, as it will increase memory usage a *lot*.
+        #   We may still need to write files.)
         try:
-            SNLogger.multiprocessing_replace()
-            SNLogger.debug( f"run_sky_subtract on {self.image.name}" )
-            self.skysub_path = self.temp_dir / f"skysub_{self.image.name}"
-            self.detmask_path = self.temp_dir / f"detmask_{self.image.name}"
+            imname = self.image.name
+            # HACK ALERT : we're stripping the .gz off of the end of filenames
+            #   if they have them, and making sure filenames end in .fits,
+            #   because that's what SFFT needs.  This can go away if we
+            #   refactor to pass data.
+            if imname[-3:] == '.gz':
+                imname = imname[:-3]
+            if imname[-5:] != '.fits':
+                imname = f'{imname}.fits'
+            if mp:
+                SNLogger.multiprocessing_replace()
+            SNLogger.debug( f"run_sky_subtract on {imname}" )
+            self.skysub_path = self.temp_dir / f"skysub_{imname}"
+            self.detmask_path = self.temp_dir / f"detmask_{imname}"
             self.skyrms = sky_subtract( self.image.path, self.skysub_path, self.detmask_path, temp_dir=self.temp_dir,
                                         force=self.config.value( 'photometry.phrosty.force_sky_subtract' ) )
             SNLogger.debug( f"...done running sky subtraction on {self.image.name}" )
@@ -173,6 +185,8 @@ class Pipeline:
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.config = Config.get()
         self.image_base_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.image_base_dir' ) )
+        self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
+        self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
 
         self.object_id = object_id
         self.ra = ra
@@ -209,7 +223,7 @@ class Pipeline:
                 pool.join()
         else:
             for img in all_imgs:
-                img.save_sky_subtract_info( img.run_sky_subtract() )
+                img.save_sky_subtract_info( img.run_sky_subtract( mp=False ) )
 
 
 
@@ -228,7 +242,7 @@ class Pipeline:
                 pool.join()
         else:
             for img in all_imgs:
-                img.keep_psf_data( img.get_psf() )
+                img.keep_psf_data( img.get_psf(self.ra, self.dec) )
 
 
     def align_and_pre_convolve(self, templ_image, sci_image ):
@@ -257,7 +271,8 @@ class Pipeline:
         #   to transpose?  Figure this out!  (Also make sure this
         #   isn't a galsim-specific thing!)  Search for THOUGHT
         #   REQUIRED in sanppl/snappl/psf.py
-        sci_psf = cp.array( sci_image.psf_datak, dtype=cp.float64 )
+        # ----> I think this is a SFFT thing, not a galsim thing!  THINK THINK THINK
+        sci_psf = cp.array( sci_image.psf_data, dtype=cp.float64 )
         templ_psf = cp.array( templ_image.psf_data, dtype=cp.float64 )
 
         with fits.open( sci_image.detmask_path ) as hdul:
@@ -411,12 +426,12 @@ class Pipeline:
         results_dict['success'] = False
         results_dict['ra'] = self.ra
         results_dict['dec'] = self.dec
-        results_dict['mjd'] = sci_image.mjd
+        results_dict['mjd'] = sci_image.image.mjd
         results_dict['filter'] = self.band
         results_dict['pointing'] = sci_image.pointing
-        results_dict['sca'] = sci_image.sca
+        results_dict['sca'] = sci_image.image.sca
         results_dict['template_pointing'] = templ_image.pointing
-        results_dict['template_sca'] = templ_image.sca
+        results_dict['template_sca'] = templ_image.image.sca
 
         if diff_img_stamp_path.is_file():
             # Load in the difference image stamp.
@@ -439,22 +454,22 @@ class Pipeline:
             #  zeropointing interface, of which the galsim-speicifc one will be one instance
             truthpath = str( self.image_base_dir /
                              f'RomanTDS/truth/{self.band}/{sci_image.pointing}/'
-                             f'Roman_TDS_index_{self.band}_{sci_image.pointing}_{sci_image.sca}.txt' )
+                             f'Roman_TDS_index_{self.band}_{sci_image.pointing}_{sci_image.image.sca}.txt' )
             stars = self.get_stars(truthpath)
             # Now, calculate the zero point based on those stars.
             zptimg_path = sci_image.decorr_zptimg_path[ templ_image.image.name ]
             with fits.open(zptimg_path) as hdu:
                 zptimg = hdu[0].data
             zpt = self.get_zpt(zptimg, psf, self.band, stars, oid=self.object_id,
-                               sci_pointing=sci_image.pointing, sci_sca=sci_image.sca)
+                               sci_pointing=sci_image.pointing, sci_sca=sci_image.image.sca)
 
             # Add additional info to the results dictionary so it can be merged into a nice file later.
             results_dict['zpt'] = zpt
             results_dict['success'] = True
 
         else:
-            SNLogger.warning( f"Post-processed image files for {self.band}_{sci_image.pointing}_{sci_image.sca}-"
-                                 f"{self.band}_{templ_image.pointing}_{templ_image.sca} do not exist.  Skipping." )
+            SNLogger.warning( f"Post-processed image files for {self.band}_{sci_image.pointing}_{sci_image.image.sca}-"
+                                 f"{self.band}_{templ_image.pointing}_{templ_image.image.sca} do not exist.  Skipping." )
             results_dict['zpt'] = np.nan
             results_dict['flux_fit'] = np.nan
             results_dict['flux_fit_err'] = np.nan
@@ -476,13 +491,13 @@ class Pipeline:
         zptname = sci_image.decorr_zptimg_path[ templ_image.image.name ]
         zpt_stampname = stampmaker( self.ra, self.dec, np.array([100, 100]),
                                     zptname,
-                                    savedir=self.out_dir,
+                                    savedir=self.dia_out_dir,
                                     savename=f"stamp_{zptname.name}" )
 
         diffname = sci_image.decorr_diff_path[ templ_image.image.name ]
         diff_stampname = stampmaker( self.ra, self.dec, np.array([100, 100]),
                                  diffname,
-                                 savedir=self.out_dir,
+                                 savedir=self.dia_out_dir,
                                  savename=f"stamp_{diffname.name}" )
 
         SNLogger.info(f"Decorrelated stamp path: {pathlib.Path( diff_stampname )}")
@@ -588,11 +603,11 @@ class Pipeline:
                             sfftifier.find_decorrelation()
 
                     if 'apply_decorrelation' in steps:
-                        mess = ( f"{self.band}_{sci_image.pointing}_{sci_image.sca}_-"
-                                 f"_{self.band}_{templ_image.pointing}_{templ_image.sca}.fits" )
-                        decorr_psf_path = self.out_dir / f"decorr_psf_{mess}"
-                        decorr_zptimg_path = self.out_dir / f"decorr_zptimg_{mess}"
-                        decorr_diff_path = self.out_dir / f"decorr_diff_{mess}"
+                        mess = ( f"{self.band}_{sci_image.pointing}_{sci_image.image.sca}_-"
+                                 f"_{self.band}_{templ_image.pointing}_{templ_image.image.sca}.fits" )
+                        decorr_psf_path = self.dia_out_dir / f"decorr_psf_{mess}"
+                        decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
+                        decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
                         for img, savepath, hdr in zip(
                                 [ sfftifier.PixA_DIFF_GPU, sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ],
                                 [ decorr_diff_path,        decorr_zptimg_path,         decorr_psf_path ],
@@ -624,7 +639,7 @@ class Pipeline:
                 if self.nwrite > 1:
                     partialstamp = partial(stampmaker, self.ra, self.dec, np.array([100, 100]))
                     # template path, savedir, savename
-                    templstamp_args = ( (ti, self.out_dir, f'stamp_{ti}') for ti in self.template_images)
+                    templstamp_args = ( (ti, self.dia_out_dir, f'stamp_{ti}') for ti in self.template_images)
 
                     with Pool( self.nwrite ) as templ_stamp_pool:
                         templ_stamp_pool.starmap_async( partialstamp, templstamp_args )
@@ -647,18 +662,18 @@ class Pipeline:
 
                 else:
                     for templ_image in self.template_images:
-                        stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), templ_image.image_path,
-                                                savedir=self.out_dir, savename=f"stamp_{templ_image.image.name}" )
+                        stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), templ_image.image.path,
+                                                savedir=self.dia_out_dir, savename=f"stamp_{templ_image.image.name}" )
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
                             zptname = sci_image.decorr_zptimg_path[ templ_image.image.name ]
                             diffname = sci_image.decorr_diff_path[ templ_image.image.name ]
                             stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), zptname,
-                                                    savedir=self.out_dir, savename=f"stamp_{zptname.name}" )
+                                                    savedir=self.dia_out_dir, savename=f"stamp_{zptname.name}" )
                             sci_image.zpt_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
                             stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), diffname,
-                                                    savedir=self.out_dir, savename=f"stamp_{diffname.name}" )
+                                                    savedir=self.dia_out_dir, savename=f"stamp_{diffname.name}" )
                             sci_image.diff_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
 
             SNLogger.info('...finished making stamps.')

@@ -14,6 +14,7 @@ photometry:
       image_base_dir: /sims_dir
       snana_pq_dir: /snana_pq_dir
       snid_lc_dir: /snid_lc_dir
+      ltcv_dir: /lc_out_dir
 
     psf:
       type: ou24PSF
