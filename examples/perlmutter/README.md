@@ -48,20 +48,6 @@ Work in one of two places.  You make yourself a subdirectory underneath `/pscrat
 
 I'm going to call the place you've picked to work your "parent" directory.
 
-### Get sfft
-
-In your parent directory, do
-```
-git clone https://github.com/Roman-Supernova-PIT/sfft.git
-cd sfft
-git checkout fixes_20241022
-cd ..
-```
-
-This will pull down the Roman PITs version of the SFFT archive, and check out the specific branch that (as of this writing) we require.  Below, you will make this directory available inside the podman container you'll use to run *phrosty*.  (Note: you may prefer to clone `git@github.com:Roman-Supernova-PIT/sfft.git` instead of `https:...`.  If you use github with ssh keys, then you already probably know that you want to do this.  If not, don't worry about it.)
-
-In the future, we will merge the changes we need back to the `master` branch of sfft, but for now, you need the `fixes_20241022` branch.
-
 ### Get phrosty
 
 ```
@@ -71,7 +57,7 @@ git checkout main
 cd ..
 ```
 
-This will pull the actual phrosty code, including the pipeline you'll run.  This README file you're reading is within that repository (in `examples/perlmutter/README.md`).  The `git checkout main` is probably redundant, becuase it's likely to check that branch out by default.  (Again, you may prefer to clone `git@github.com:Roman-Supernova-PIT/phrosty.git`, but you will already know if you want to do that.)
+This will pull the actual phrosty code, including the pipeline you'll run.  This README file you're reading is within that repository (in `examples/perlmutter/README.md`).  The `git checkout main` is probably redundant, becuase it's likely to check that branch out by default.  (Again, you may prefer to clone `git@github.com:Roman-Supernova-PIT/phrosty.git`, but you will already know if you want to do that.)  The last `cd ..` puts you back in your parent directory.
 
 
 ### Locate existing directories
@@ -91,13 +77,14 @@ You need to make the following directories.  (They don't have to have exactly th
 * `lc_out_dir`
 
 In addition, create a directory `phrosty_temp` somewhere underneath `$SCRATCH`, e.g.:
-```mkdir $SCRATCH/phrosty_temp```. (The further examples below will assume that this is where you made it.)
+```mkdir $SCRATCH/phrosty_temp```
+(The further examples below will assume that this is where you made it.)
 
 ### Populate your sn_info_dir
 
 This is where you put information that *phrosty* needs to find information about the OpenUniverse sims, and about any supernova from that sim you want to run it on.  The first file you need is `tds.yaml`; copy that file from this directory (i.e. `phrosty/examples/perlmutter/tds.yaml`) into your `sn_info_dir`; when in the `sn_info_dir`, run:)
 ```
-cp -p ../phrosty/examples/perlmutter/tds.yaml ./
+cp -p phrosty/examples/perlmutter/tds.yaml ./
 ```
 (This file is a modified version of the standard OpenUniverse sims file `/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS`, fixing some paths for our own purposes.)
 
@@ -122,7 +109,7 @@ If you look at these `.csv` files, there are four pieces of information on each 
 * The pointing of the image
 * The SCA on which the supernova is present for this pointing
 * The MJD of the pointing
-
+* The band (filter) of the exposure
 
 ## Running interactively
 
@@ -134,13 +121,13 @@ salloc -t 04:00:00 -A m4385 --constraint=gpu -q interactive
 ```
 after a minute or so, that should log you into one of the nodes with a session that will last 4 hours.  (This is overkill; if you know it won't be that long, shorten the time after the `-t` flag.)  You can verify that you're on a compute node by running `nvidia-smi`; you should see four different GPUs listed each with either 40MB or 80GB of memory, but no GPU processes running.
 
-cd into your "parent" directory.
+cd into your "parent" directory (if you're not there already).
 
-Copy the file `interactive_podman.sh` from `phrosty/examples/perlmutter` to your parent directory:
+Copy the files `interactive_podman.sh` and `phrosty_config.yaml` from `phrosty/examples/perlmutter` to your parent directory:
 ```
-cp -p phrosty/examples/perlmutter/interactive_podman.sh ./
+cp -p phrosty/examples/perlmutter/interactive_podman.sh phrosty_config.yaml ./
 ```
-Look at this file.  (There's no need to edit it; this is so you can see what's going on.)  You'll see number of `--mount` parameters.  Each of these takes a directory on the host machine (the `source`) and maps it to a directory inside the podman container (the `target`).  For example, you will see your phrosty checkout goes to `/phrosty` inside the container.  In addition, a bunch of environment variables are set so that *phrosty* will be able to find all of these directories inside the container.
+Look at the `.sh` file.  (There's no need to edit it; this is so you can see what's going on.)  You'll see number of `--mount` parameters.  Each of these takes a directory on the host machine (the `source`) and maps it to a directory inside the podman container (the `target`).  For example, you will see your phrosty checkout goes to `/phrosty` inside the container.  In addition, a bunch of environment variables are set so that *phrosty* will be able to find all of these directories inside the container.
 
 Now do
 ```
@@ -163,6 +150,7 @@ to see how it works, and to see what the various parameters you can specify are.
 Run this on your example lightcurve with:
 ```
 python phrosty/phrosty/pipeline.py \
+  -c phrosty_config.yaml \
   --oid 20172782 \
   -r 7.551093401915147 \
   -d -44.80718106491529 \
@@ -195,6 +183,7 @@ nsys profile \
   --python-sampling=true \
   --trace=cuda,nvtx,cublas,cusparse,cudnn,cudla,cusolver,opengl,openacc,openmp,osrt,mpi,nvvideo,vulkan,python-gil \
   python phrosty/phrosty/pipeline.py \
+  -c phrosty_config.yaml \
   --oid 20172782 \
   -r 7.551093401915147 \
   -d -44.80718106491529 \
