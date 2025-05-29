@@ -19,7 +19,6 @@ import astropy.units as u
 from astropy.wcs import WCS
 
 # IMPORTS SFFT:
-from roman_imsim.utils import roman_utils
 from sfft.utils.SExSkySubtract import SEx_SkySubtract
 from sfft.utils.StampGenerator import Stamp_Generator
 from sfft.utils.CudaResampling import Cuda_Resampling
@@ -319,7 +318,7 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
 
     if savedir is None:
         cfg = Config.get()
-        savedir = pathlib.Path( cfg.value( 'photometry.phrosty.paths.dia_out_dir' ) ) / stamps
+        savedir = pathlib.Path( cfg.value( 'photometry.phrosty.paths.dia_out_dir' ) ) / "stamps"
     else:
         savedir = pathlib.Path( savedir )
     savedir.mkdir( parents=True, exist_ok=True )

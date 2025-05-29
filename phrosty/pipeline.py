@@ -1,11 +1,9 @@
 import nvtx
 
-import os
 import re
 import pathlib
 import argparse
 import logging
-import multiprocessing
 from multiprocessing import Pool
 from functools import partial
 
@@ -264,7 +262,7 @@ class Pipeline:
         with fits.open( templ_image.skysub_path ) as hdul:
             hdr_templ = hdul[0].header
             data_templ = cp.array( np.ascontiguousarray(hdul[0].data.T), dtype=cp.float64 )
-            
+
         # THINK -- previously we were transposing when reading from FITS
         #   files that the PSF creation routines wrote.  Now the psf
         #   creation rutines just return the data.  Do we need
@@ -468,8 +466,10 @@ class Pipeline:
             results_dict['success'] = True
 
         else:
-            SNLogger.warning( f"Post-processed image files for {self.band}_{sci_image.pointing}_{sci_image.image.sca}-"
-                                 f"{self.band}_{templ_image.pointing}_{templ_image.image.sca} do not exist.  Skipping." )
+            SNLogger.warning( f"Post-processed image files for "
+                              f"{self.band}_{sci_image.pointing}_{sci_image.image.sca}-"
+                              f"{self.band}_{templ_image.pointing}_{templ_image.image.sca} "
+                              f"do not exist.  Skipping." )
             results_dict['zpt'] = np.nan
             results_dict['flux_fit'] = np.nan
             results_dict['flux_fit_err'] = np.nan
@@ -694,7 +694,7 @@ def main():
     args, leftovers = configparser.parse_known_args()
 
     cfg = Config.get( args.config_file, setdefault=True )
-    
+
     parser = argparse.ArgumentParser()
     # Put in the config_file argument, even though it will never be found, so it shows up in help
     parser.add_argument( '-c', '--config-file', help="Location of the .yaml config file" )
@@ -724,7 +724,7 @@ def main():
                                [ science_images, template_images ] ):
         with open( infile ) as ifp:
             hdrline = ifp.readline()
-            if not re.search( "^\s*path\s+pointing\s+sca\s+mjd\s+band\s*$", hdrline ):
+            if not re.search( r"^\s*path\s+pointing\s+sca\s+mjd\s+band\s*$", hdrline ):
                 raise ValueError( f"First line of list file {infile} didn't match what was expected." )
             for line in ifp:
                 img, point, sca, mjd, band = line.split()
