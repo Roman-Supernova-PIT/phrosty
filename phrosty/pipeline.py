@@ -263,15 +263,8 @@ class Pipeline:
             hdr_templ = hdul[0].header
             data_templ = cp.array( np.ascontiguousarray(hdul[0].data.T), dtype=cp.float64 )
 
-        # THINK -- previously we were transposing when reading from FITS
-        #   files that the PSF creation routines wrote.  Now the psf
-        #   creation rutines just return the data.  Do we need
-        #   to transpose?  Figure this out!  (Also make sure this
-        #   isn't a galsim-specific thing!)  Search for THOUGHT
-        #   REQUIRED in sanppl/snappl/psf.py
-        # ----> I think this is a SFFT thing, not a galsim thing!  THINK THINK THINK
-        sci_psf = cp.array( sci_image.psf_data, dtype=cp.float64 )
-        templ_psf = cp.array( templ_image.psf_data, dtype=cp.float64 )
+        sci_psf = cp.array( sci_image.psf_data, dtype=cp.float64 ).T
+        templ_psf = cp.array( templ_image.psf_data, dtype=cp.float64 ).T
 
         with fits.open( sci_image.detmask_path ) as hdul:
             sci_detmask = cp.array( np.ascontiguousarray( hdul[0].data.T ) )
