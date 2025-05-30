@@ -1,0 +1,20 @@
+ou24psf:
+  config_file: /sn_info_dir/tds.yaml
+
+photometry:
+  phrosty:
+
+    image_type: ou2024fits
+    force_sky_subtract: true
+
+    paths:
+      temp_dir: /phrosty_temp
+      sn_info_dir: /sn_info_dir
+      dia_out_dir: /dia_out_dir
+      image_base_dir: /sims_dir
+      snana_pq_dir: /snana_pq_dir
+      snid_lc_dir: /snid_lc_dir
+      ltcv_dir: /lc_out_dir
+
+    psf:
+      type: ou24PSF

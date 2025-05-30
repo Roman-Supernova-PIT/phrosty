@@ -3,7 +3,6 @@
 podman-hpc run --gpu \
     --mount type=bind,source=$PWD,target=/home \
     --mount type=bind,source=$PWD/phrosty,target=/phrosty \
-    --mount type=bind,source=$PWD/sfft,target=/sfft \
     --mount type=bind,source=$PWD/sn_info_dir,target=/sn_info_dir \
     --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
     --mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir \
@@ -20,8 +19,6 @@ podman-hpc run --gpu \
     --env VECLIB_MAXIMUM_THREADS=1 \
     --env SIMS_DIR=/sims_dir \
     --env SNANA_PQ_DIR=/snana_pq_dir \
-    --env SN_INFO_DIR=/sn_info_dir \
-    --env DIA_OUT_DIR=/dia_out_dir \
     --env TERM=xterm \
     -it \
     registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev \

@@ -19,13 +19,13 @@ import astropy.units as u
 from astropy.wcs import WCS
 
 # IMPORTS SFFT:
-from roman_imsim.utils import roman_utils
 from sfft.utils.SExSkySubtract import SEx_SkySubtract
 from sfft.utils.StampGenerator import Stamp_Generator
 from sfft.utils.CudaResampling import Cuda_Resampling
 
 # IMPORTS internal
 from snpit_utils.logger import SNLogger
+from snpit_utils.config import Config
 
 """
 This module was written with significant contributions from
@@ -33,14 +33,14 @@ Dr. Lei Hu (https://github.com/thomasvrussell/), and relies on his
 SFFT image subtraction package (https://github.com/thomasvrussell/sfft).
 """
 
-output_files_rootdir = os.getenv('DIA_OUT_DIR', None)
-assert output_files_rootdir is not None, 'You need to set DIA_OUT_DIR as an environment variable.'
+# output_files_rootdir = os.getenv('DIA_OUT_DIR', None)
+# assert output_files_rootdir is not None, 'You need to set DIA_OUT_DIR as an environment variable.'
 
 
-def check_and_mkdir(dirname):
-    """Utility function for checking if a directory exists, and if not, makes that directory."""
-    if not os.path.exists(dirname):
-        os.mkdir(dirname)
+# def check_and_mkdir(dirname):
+#     """Utility function for checking if a directory exists, and if not, makes that directory."""
+#     if not os.path.exists(dirname):
+#         os.mkdir(dirname)
 
 
 def gz_and_ext(in_path, out_path):
@@ -111,6 +111,7 @@ def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp")
         decompressed_path = inpath
 
 
+    SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
     ( SKYDIP, SKYPEAK, PixA_skysub,
       PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path,
                                                     FITS_skysub=skysubpath,
@@ -121,6 +122,7 @@ def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp")
                                                     DETECT_THRESH=1.5, DETECT_MINAREA=5,
                                                     DETECT_MAXAREA=0,
                                                     VERBOSE_LEVEL=2, MDIR=None)
+    SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
 
     return np.median( PixA_skyrms )
 
@@ -207,50 +209,6 @@ def run_resample(FITS_obj, FITS_targ, FITS_resamp):
 #     if rotate_angle < 0.0:
 #         rotate_angle += 360.0
 #     return rotate_angle
-
-
-def get_imsim_psf(image_path, ra, dec, band, pointing, sca, size=201, config_yaml_file=None,
-                  psf_path=None, force=False, **kwargs):
-
-    """Retrieve the PSF from roman_imsim/galsim.
-
-    Transform the WCS so that CRPIX and CRVAL are centered on the image
-    instead of at the corner.
-
-    kwargs match getPSF_Image args, listed here with their defaults:
-    pupil_bin=8,
-    sed=None,
-    oversampling_factor=1,
-    include_photonOps=False,
-    n_phot=1e6
-
-    force parameter does not currently do anything.
-
-    """
-
-    if psf_path is None:
-        raise ValueError( "psf_path can't be None" )
-
-    # Get WCS of the image you need the PSF for.
-    with fits.open( image_path ) as hdu:
-        wcs = WCS(hdu[0].header)
-    coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-    x, y = wcs.world_to_pixel(coord)
-
-    # Get PSF at specified ra, dec.
-    assert config_yaml_file is not None, "config_yaml_file is a required argument"
-    config_path = config_yaml_file
-    config = roman_utils(config_path, pointing, sca)
-    #### TEMP TEST
-    #### Want to see if this is the source of non-reproducible results
-    # For the future: if we adapt the snpit_utils config system,
-    #   we could set a config variable that is the seed, and if
-    #   it's not None, set the seed here.  For now, we aceept
-    #   the variance in our tests.
-    # config.rng = galsim.BaseDeviate(12345)
-    #### END OF TEMP TEST
-    psf = config.getPSF_Image(size, x, y, **kwargs)
-    psf.write( str(psf_path) )
 
 
 # def rotate_psf(ra,dec,psf,target,savename=None,force=False,verbose=False):
@@ -359,13 +317,16 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
     """
 
     if savedir is None:
-        savedir = os.path.join(output_files_rootdir, 'stamps')
-        check_and_mkdir(savedir)
+        cfg = Config.get()
+        savedir = pathlib.Path( cfg.value( 'photometry.phrosty.paths.dia_out_dir' ) ) / "stamps"
+    else:
+        savedir = pathlib.Path( savedir )
+    savedir.mkdir( parents=True, exist_ok=True )
 
     if savename is None:
         savename = f'stamp_{os.path.basename(imgpath)}.fits'
 
-    savepath = os.path.join(savedir, savename)
+    savepath = savedir / savename
 
     coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
     with fits.open(imgpath) as hdu:
@@ -375,8 +336,9 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
     x, y = skycoord_to_pixel(coord, wcs)
     pxradec = np.array([[x, y]])
 
+    # TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()
     Stamp_Generator.SG(FITS_obj=imgpath, EXTINDEX=hdun, COORD=pxradec, COORD_TYPE='IMAGE',
-                       STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=savepath)
+                       STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=str(savepath))
 
     return savepath
 

@@ -133,71 +133,72 @@ def test_run_resample( dia_out_dir, template_image_path, one_science_image_path 
 #         templ.unlink( missing_ok=True )
 
 
-def test_get_imsim_psf( sims_dir, sn_info_dir, dia_out_dir,  test_dia_image, test_sn, one_science_image_path ):
-    impath = one_science_image_path
-    ra = test_sn[ 'ra' ]
-    dec = test_sn[ 'dec' ]
-    band = test_dia_image[ 'band' ]
-    pointing = test_dia_image[ 'pointing' ]
-    sca = test_dia_image[ 'sca' ]
-    config_yaml = sn_info_dir / "tds.yaml"
-    psf_path = dia_out_dir / "psf.fits"
-    size = 201
+# TODO : move these next two tests to effective test a test of snappl's ou24PSF.get_stamp
+# def test_get_imsim_psf( sims_dir, sn_info_dir, dia_out_dir,  test_dia_image, test_sn, one_science_image_path ):
+#     impath = one_science_image_path
+#     ra = test_sn[ 'ra' ]
+#     dec = test_sn[ 'dec' ]
+#     band = test_dia_image[ 'band' ]
+#     pointing = test_dia_image[ 'pointing' ]
+#     sca = test_dia_image[ 'sca' ]
+#     config_yaml = sn_info_dir / "tds.yaml"
+#     psf_path = dia_out_dir / "psf.fits"
+#     size = 201
 
-    phrosty.imagesubtraction.get_imsim_psf( impath, ra, dec, band, pointing, sca, size=size,
-                                            config_yaml_file=config_yaml, psf_path=psf_path )
-    with fits.open( psf_path ) as psf:
-        ctr = size // 2
-        # Center pixel should be way brighter, it's undersampled
-        for dx, dy in zip( [ -1, 1, 0, 0 ], [ 0, 0, -1, 1 ] ):
-            assert psf[0].data[ ctr, ctr ] > 10.* ( psf[0].data[ ctr+dx, ctr+dy ] )
-            # OMG the PSF isn't normalized, I hope we deal with this right
-            assert psf[0].data.sum() == pytest.approx( 2.33, abs=0.01 )
+#     phrosty.imagesubtraction.get_imsim_psf( impath, ra, dec, band, pointing, sca, size=size,
+#                                             config_yaml_file=config_yaml, psf_path=psf_path )
+#     with fits.open( psf_path ) as psf:
+#         ctr = size // 2
+#         # Center pixel should be way brighter, it's undersampled
+#         for dx, dy in zip( [ -1, 1, 0, 0 ], [ 0, 0, -1, 1 ] ):
+#             assert psf[0].data[ ctr, ctr ] > 10.* ( psf[0].data[ ctr+dx, ctr+dy ] )
+#             # OMG the PSF isn't normalized, I hope we deal with this right
+#             assert psf[0].data.sum() == pytest.approx( 2.33, abs=0.01 )
 
-    # TODO test force and all that
+#     # TODO test force and all that
 
 
-def test_get_imsim_psf_photonOps( sims_dir, sn_info_dir, dia_out_dir,
-                                  test_dia_image, test_sn, one_science_image_path ):
-    impath = one_science_image_path
-    ra = test_sn[ 'ra' ]
-    dec = test_sn[ 'dec' ]
-    band = test_dia_image[ 'band' ]
-    pointing = test_dia_image[ 'pointing' ]
-    sca = test_dia_image[ 'sca' ]
-    config_yaml = sn_info_dir / "tds.yaml"
-    psf_path = dia_out_dir / "psf.fits"
-    size = 201
-    photonOps = True
-    n_phot = 1e6
-    oversampling_factor = 1
+# def test_get_imsim_psf_photonOps( sims_dir, sn_info_dir, dia_out_dir,
+#                                   test_dia_image, test_sn, one_science_image_path ):
+#     impath = one_science_image_path
+#     ra = test_sn[ 'ra' ]
+#     dec = test_sn[ 'dec' ]
+#     band = test_dia_image[ 'band' ]
+#     pointing = test_dia_image[ 'pointing' ]
+#     sca = test_dia_image[ 'sca' ]
+#     config_yaml = sn_info_dir / "tds.yaml"
+#     psf_path = dia_out_dir / "psf.fits"
+#     size = 201
+#     photonOps = True
+#     n_phot = 1e6
+#     oversampling_factor = 1
 
-    phrosty.imagesubtraction.get_imsim_psf( impath, ra, dec, band, pointing, sca, size=size,
-                                            config_yaml_file=config_yaml, psf_path=psf_path,
-                                            include_photonOps=photonOps, n_phot=n_phot,
-                                            oversampling_factor=oversampling_factor )
-    with fits.open( psf_path ) as psf:
-        ctr = size // 2
-        # Center pixel should be way brighter, it's undersampled
-        # Photon shooting seems to blur out the PSF a bit, so the
-        # condition is center pixel is >8× neighbors, whereas it
-        # was 10x in the previous test.
-        for dx, dy in zip( [ -1, 1, 0, 0 ], [ 0, 0, -1, 1 ] ):
-            assert psf[0].data[ ctr, ctr ] > 3.* ( psf[0].data[ ctr+dx, ctr+dy ] )
-            # ...but it looks like it's normalized now!
-            # ...or is it?  It's about .21% away from 1.
-            # ...it's different very time, because the photonOps
-            #    uses an RNG.  Until such a time as we have
-            #    an argument to seed that, we will need
-            #    to accept that sometimes this test passes,
-            #    sometimes it fails.  (The fact that
-            #    it varies by up to half a percent makes
-            #    me scared that we aren't using enough photons,
-            #    but, then, long term we aren't going to use
-            #    galsim psfs anyway.)
-            assert psf[0].data.sum() == pytest.approx( 1.000, abs=0.005 )
+#     phrosty.imagesubtraction.get_imsim_psf( impath, ra, dec, band, pointing, sca, size=size,
+#                                             config_yaml_file=config_yaml, psf_path=psf_path,
+#                                             include_photonOps=photonOps, n_phot=n_phot,
+#                                             oversampling_factor=oversampling_factor )
+#     with fits.open( psf_path ) as psf:
+#         ctr = size // 2
+#         # Center pixel should be way brighter, it's undersampled
+#         # Photon shooting seems to blur out the PSF a bit, so the
+#         # condition is center pixel is >8× neighbors, whereas it
+#         # was 10x in the previous test.
+#         for dx, dy in zip( [ -1, 1, 0, 0 ], [ 0, 0, -1, 1 ] ):
+#             assert psf[0].data[ ctr, ctr ] > 3.* ( psf[0].data[ ctr+dx, ctr+dy ] )
+#             # ...but it looks like it's normalized now!
+#             # ...or is it?  It's about .21% away from 1.
+#             # ...it's different very time, because the photonOps
+#             #    uses an RNG.  Until such a time as we have
+#             #    an argument to seed that, we will need
+#             #    to accept that sometimes this test passes,
+#             #    sometimes it fails.  (The fact that
+#             #    it varies by up to half a percent makes
+#             #    me scared that we aren't using enough photons,
+#             #    but, then, long term we aren't going to use
+#             #    galsim psfs anyway.)
+#             assert psf[0].data.sum() == pytest.approx( 1.000, abs=0.005 )
 
-    # TODO test force and all that
+#     # TODO test force and all that
 
 
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")

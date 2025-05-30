@@ -1,11 +1,11 @@
-path pointing sca mjd
-/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/6/Roman_TDS_simple_model_R062_6_17.fits.gz 6 17 62000.04011
-/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/1928/Roman_TDS_simple_model_R062_1928_10.fits.gz 1928 10 62025.0294
-/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/2314/Roman_TDS_simple_model_R062_2314_6.fits.gz 2314 6 62030.0321
-/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/2319/Roman_TDS_simple_model_R062_2319_8.fits.gz 2319 8 62030.0481
-/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/2709/Roman_TDS_simple_model_R062_2709_7.fits.gz 2709 7 62035.0642
-/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/3089/Roman_TDS_simple_model_R062_3089_17.fits.gz 3089 17 62040.0481
-/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/3094/Roman_TDS_simple_model_R062_3094_10.fits.gz 3094 10 62040.0642
-/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/4264/Roman_TDS_simple_model_R062_4264_7.fits.gz 4264 7 62055.1123
-/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/5044/Roman_TDS_simple_model_R062_5044_9.fits.gz 5044 9 62065.1444
-/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/5429/Roman_TDS_simple_model_R062_5429_4.fits.gz 5429 4 62070.1444
+path pointing sca mjd band
+/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/6/Roman_TDS_simple_model_R062_6_17.fits.gz 6 17 62000.04011 R062
+/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/1928/Roman_TDS_simple_model_R062_1928_10.fits.gz 1928 10 62025.0294 R062
+/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/2314/Roman_TDS_simple_model_R062_2314_6.fits.gz 2314 6 62030.0321 R062
+/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/2319/Roman_TDS_simple_model_R062_2319_8.fits.gz 2319 8 62030.0481 R062
+/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/2709/Roman_TDS_simple_model_R062_2709_7.fits.gz 2709 7 62035.0642 R062
+/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/3089/Roman_TDS_simple_model_R062_3089_17.fits.gz 3089 17 62040.0481 R062
+/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/3094/Roman_TDS_simple_model_R062_3094_10.fits.gz 3094 10 62040.0642 R062
+/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/4264/Roman_TDS_simple_model_R062_4264_7.fits.gz 4264 7 62055.1123 R062
+/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/5044/Roman_TDS_simple_model_R062_5044_9.fits.gz 5044 9 62065.1444 R062
+/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/R062/5429/Roman_TDS_simple_model_R062_5429_4.fits.gz 5429 4 62070.1444 R062
