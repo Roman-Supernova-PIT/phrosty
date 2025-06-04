@@ -1,0 +1,1 @@
+Make sure PSF cupy arrays are C_CONTIGUOUS when sending to sfft
