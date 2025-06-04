@@ -263,8 +263,8 @@ class Pipeline:
             hdr_templ = hdul[0].header
             data_templ = cp.array( np.ascontiguousarray(hdul[0].data.T), dtype=cp.float64 )
 
-        sci_psf = cp.array( sci_image.psf_data, dtype=cp.float64 ).T
-        templ_psf = cp.array( templ_image.psf_data, dtype=cp.float64 ).T
+        sci_psf = cp.ascontiguousarray( cp.array( sci_image.psf_data.T, dtype=cp.float64 ) )
+        templ_psf = cp.ascontiguousarray( cp.array( templ_image.psf_data.T, dtype=cp.float64 ) )
 
         with fits.open( sci_image.detmask_path ) as hdul:
             sci_detmask = cp.array( np.ascontiguousarray( hdul[0].data.T ) )
