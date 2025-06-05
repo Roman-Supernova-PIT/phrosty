@@ -30,7 +30,9 @@ from snappl.psf import PSF
 from snpit_utils.config import Config
 from snpit_utils.logger import SNLogger
 
+
 class PipelineImage:
+
     """Holds a snappl.image.Image, with some other stuff the pipeline needs."""
 
     def __init__( self, imagepath, pointing, sca ):
@@ -646,22 +648,22 @@ class Pipeline:
                         # names because LNA thinks it's important that we keep track of which images
                         # have been convolved with which. Because also then if you use the same template
                         # image more than once, it gets overwritten. Also, [:-8] and [:-3] assume that
-                        # image.image.name ends in fits.gz. 
+                        # image.image.name ends in fits.gz.
 
-                        # TODO: Include score and variance images. Include multiprocessing. 
+                        # TODO: Include score and variance images. Include multiprocessing.
                         write_filepaths = {'aligned': [['img',
                                                         templ_image.image.name,
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_GPU),
                                                         sfftifier.hdr_target],
-                                                    ['psf', 
-                                                        templ_image.image.name, 
-                                                        cp.asnumpy(sfftifier.PSF_resamp_object_GPU), 
+                                                       ['psf',
+                                                        templ_image.image.name,
+                                                        cp.asnumpy(sfftifier.PSF_resamp_object_GPU),
                                                         sfftifier.hdr_target],
-                                                    ['detmask', 
+                                                       ['detmask',
                                                         sci_image.image.name,
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_DMASK_GPU),
                                                         sfftifier.hdr_target]
-                                                    ],
+                                                      ],
                                         'convolved': [['img',
                                                         f'{sci_image.image.name[:-8]}_{templ_image.image.name[:-3]}',
                                                         cp.asnumpy(sfftifier.PixA_Ctarget_GPU),
@@ -669,14 +671,14 @@ class Pipeline:
                                                         ['img',
                                                         f'{templ_image.image.name[:-8]}_{sci_image.image.name[:-3]}',
                                                         cp.asnumpy(sfftifier.PixA_Cresamp_object_GPU),
-                                                        sfftifier.hdr_target]                                
+                                                        sfftifier.hdr_target]
                                                         ],
                                         'decorr': [['kernel',
-                                                        sci_image.image.name,
-                                                        cp.asnumpy(sfftifier.FKDECO_GPU),
-                                                        sfftifier.hdr_target]
-                                                    ]    
-                                        } 
+                                                     sci_image.image.name,
+                                                     cp.asnumpy(sfftifier.FKDECO_GPU),
+                                                     sfftifier.hdr_target]
+                                                    ]
+                                          }
                         # Write the aligned images
                         for key in write_filepaths.keys():
                             for (imgtype, name, data, header) in write_filepaths[key]:
@@ -684,7 +686,7 @@ class Pipeline:
                                 self.write_fits_file( data, header, savepath=savepath)
 
                         SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
-            
+
             SNLogger.info( "Waiting for FITS writer processes to finish" )
             with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
                 fits_writer_pool.close()
