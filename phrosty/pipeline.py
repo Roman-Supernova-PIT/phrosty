@@ -648,7 +648,7 @@ class Pipeline:
                         # image more than once, it gets overwritten. Also, [:-8] and [:-3] assume that
                         # image.image.name ends in fits.gz. 
 
-                        # TODO: Include score and variance images. 
+                        # TODO: Include score and variance images. Include multiprocessing. 
                         write_filepaths = {'aligned': [['img',
                                                         templ_image.image.name,
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_GPU),
