@@ -68,15 +68,18 @@ class PipelineImage:
         self.pointing = pointing
 
         # Intermediate files
-        self.skysub_path = None
-        self.detmask_path = None
-        self.crossconv_sci_path = None
-        self.crossconv_temp_path = None
-        self.aligned_sci_path = None
-        self.aligned_temp_path = None
-        self.decorr_kernel_path = None
-        self.input_sci_psf_path = None
-        self.input_temp_psf_path = None
+        if self.keep_intermediate:
+            self.skysub_path = None
+            self.detmask_path = None
+            self.input_sci_psf_path = None
+            self.input_templ_psf_path = None
+            self.aligned_sci_img_path = None
+            self.aligned_templ_img_path = None
+            self.aligned_sci_psf_path = None
+            self.aligned_templ_psf_path = None
+            self.crossconv_sci_path = None
+            self.crossconv_templ_path = None
+            self.decorr_kernel_path = None
 
         # Always save and output these
         self.decorr_psf_path = {}
@@ -241,7 +244,6 @@ class Pipeline:
         else:
             for img in all_imgs:
                 img.save_sky_subtract_info( img.run_sky_subtract( mp=False ) )
-
 
 
     def get_psfs( self ):
@@ -633,12 +635,56 @@ class Pipeline:
                                 fits_writer_pool.apply_async( self.write_fits_file,
                                                               ( cp.asnumpy( decorimg ).T, hdr, savepath ), {},
                                                               error_callback=partial(log_fits_write_error, savepath) )
-                        sci_image.decorr_psf_path[ templ_image.image.name ]= decorr_psf_path
-                        sci_image.decorr_zptimg_path[ templ_image.image.name ]= decorr_zptimg_path
-                        sci_image.decorr_diff_path[ templ_image.image.name ]= decorr_diff_path
+                        sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
+                        sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
+                        sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
+
+                    if self.keep_intermediate:
+                        # Each key is the file prefix addition.
+                        # Each list has [descriptive filetype, image file name, data, header].
+                        # The 'convolved' images have that [:-8] in their image file name and combined
+                        # names because LNA thinks it's important that we keep track of which images
+                        # have been convolved with which. Because also then if you use the same template
+                        # image more than once, it gets overwritten. Also, [:-8] and [:-3] assume that
+                        # image.image.name ends in fits.gz. 
+
+                        # TODO: Include score and variance images. 
+                        write_filepaths = {'aligned': [['img',
+                                                        templ_image.image.name,
+                                                        cp.asnumpy(sfftifier.PixA_resamp_object_GPU),
+                                                        sfftifier.hdr_target],
+                                                    ['psf', 
+                                                        templ_image.image.name, 
+                                                        cp.asnumpy(sfftifier.PSF_resamp_object_GPU), 
+                                                        sfftifier.hdr_target],
+                                                    ['detmask', 
+                                                        sci_image.image.name,
+                                                        cp.asnumpy(sfftifier.PixA_resamp_object_DMASK_GPU),
+                                                        sfftifier.hdr_target]
+                                                    ],
+                                        'convolved': [['img',
+                                                        f'{sci_image.image.name[:-8]}_{templ_image.image.name[:-3]}',
+                                                        cp.asnumpy(sfftifier.PixA_Ctarget_GPU),
+                                                        sfftifier.hdr_target],
+                                                        ['img',
+                                                        f'{templ_image.image.name[:-8]}_{sci_image.image.name[:-3]}',
+                                                        cp.asnumpy(sfftifier.PixA_Cresamp_object_GPU),
+                                                        sfftifier.hdr_target]                                
+                                                        ],
+                                        'decorr': [['kernel',
+                                                        sci_image.image.name,
+                                                        cp.asnumpy(sfftifier.FKDECO_GPU),
+                                                        sfftifier.hdr_target]
+                                                    ]    
+                                        } 
+                        # Write the aligned images
+                        for key in write_filepaths.keys():
+                            for (imgtype, name, data, header) in write_filepaths[key]:
+                                savepath = self.dia_out_dir / f'{key}_{imgtype}_{name}'
+                                self.write_fits_file( data, header, savepath=savepath)
 
                         SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
-
+            
             SNLogger.info( "Waiting for FITS writer processes to finish" )
             with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
                 fits_writer_pool.close()
