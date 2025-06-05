@@ -1,0 +1,9 @@
+Added ability to output the following intermediate files:
+- Sky-subtracted science and template
+- Cross-convolved science and template
+- Science and template input PSFs
+- Science and template detection masks
+- Aligned template image
+- Aligned template PSF
+- Aligned template detection mask
+- Decorrelation kernel
