@@ -56,10 +56,11 @@ class PipelineImage:
         self.config = Config.get()
         self.temp_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
-        if not self.keep_intermediate:
+        if self.keep_intermediate:
+            self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
+        elif not self.keep_intermediate:
             self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
-        elif self.keep_intermediate:
-            self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
+
 
         if self.config.value( 'photometry.phrosty.image_type' ) == 'ou2024fits':
             self.image = OpenUniverse2024FITSImage( imagepath, None, sca )
@@ -71,6 +72,7 @@ class PipelineImage:
 
         # Intermediate files
         if self.keep_intermediate:
+            # Set to None. The path gets defined later on. 
             self.skysub_path = None
             self.detmask_path = None
             self.input_sci_psf_path = None
@@ -90,7 +92,7 @@ class PipelineImage:
         self.zpt_stamp_path = {}
         self.diff_stamp_path = {}
 
-        # Used internally, held in-memory
+        # Held in memory
         self.skyrms = None
         self.psfobj = None
         self.psf_data = None
@@ -130,7 +132,7 @@ class PipelineImage:
         self.detmask_path = info[1]
         self.skyrms = info[2]
 
-    def get_psf( self, ra, dec, dump_file=False ):
+    def get_psf( self, ra, dec, save_file=False ):
         """Get the at the right spot on the image.
 
         Parameters
@@ -138,7 +140,7 @@ class PipelineImage:
           ra, dec : float
              The coordinates in decimal degrees where we want the PSFD.
 
-          dump_file : bool
+          save_file : bool
              If True, write out the psf as a FITS file in dia_out_dir
              (for diagnostic purposes; these files are not read again
              interally by the pipeline).
@@ -151,7 +153,7 @@ class PipelineImage:
         #   PSF.  We need to fix that... somehow....
 
         if self.keep_intermediate:
-            dump_file = True
+            save_file = True
 
         if self.psfobj is None:
             psftype = self.config.value( 'photometry.phrosty.psf.type' )
@@ -160,7 +162,7 @@ class PipelineImage:
         wcs = self.image.get_wcs()
         x, y = wcs.world_to_pixel( ra, dec )
         stamp = self.psfobj.get_stamp( x, y )
-        if dump_file:
+        if save_file:
             outfile = pathlib.Path( self.config.value( "photometry.phrosty.paths.dia_out_dir" ) )
             outfile = outfile / f"psf_{self.image.name}.fits"
             fits.writeto( outfile, stamp, overwrite=True )
@@ -206,6 +208,7 @@ class Pipeline:
         self.config = Config.get()
         self.image_base_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.image_base_dir' ) )
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
+        self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
         self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
 
         self.object_id = object_id
@@ -651,6 +654,8 @@ class Pipeline:
                         # image.image.name ends in fits.gz.
 
                         # TODO: Include score and variance images. Include multiprocessing.
+                        # In the future, we may want to write these things right after they happen
+                        # instead of saving it all for the end of the SFFT stuff. 
                         write_filepaths = {'aligned': [['img',
                                                         templ_image.image.name,
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_GPU),
@@ -682,7 +687,7 @@ class Pipeline:
                         # Write the aligned images
                         for key in write_filepaths.keys():
                             for (imgtype, name, data, header) in write_filepaths[key]:
-                                savepath = self.dia_out_dir / f'{key}_{imgtype}_{name}'
+                                savepath = self.scratch_dir / f'{key}_{imgtype}_{name}'
                                 self.write_fits_file( data, header, savepath=savepath)
 
                         SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
