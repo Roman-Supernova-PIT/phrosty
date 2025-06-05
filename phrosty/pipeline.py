@@ -1,37 +1,34 @@
-import nvtx
-
-import re
-import pathlib
+# Imports STANDARD
 import argparse
-import logging
-from multiprocessing import Pool
-from functools import partial
-
-import numpy as np
 import cupy as cp
-
+from functools import partial
+import logging
 import matplotlib.pyplot as plt
+from multiprocessing import Pool
+import numpy as np
+import nvtx
+import pathlib
+import re
 
+# Imports ASTRO
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
 import astropy.table
 from astropy.table import Table
-from astropy.wcs import WCS
-from astropy.coordinates import SkyCoord
-from astropy.wcs.utils import skycoord_to_pixel
 import astropy.units as u
-
-from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
-
-from snpit_utils.logger import SNLogger
-from snpit_utils.config import Config
-from snappl.psf import PSF
-from snappl.image import OpenUniverse2024FITSImage
-from phrosty.utils import read_truth_txt, get_exptime
-from phrosty.imagesubtraction import sky_subtract, stampmaker
-from phrosty.photometry import ap_phot, psfmodel, psf_phot
-
+from astropy.wcs import WCS
+from astropy.wcs.utils import skycoord_to_pixel
 from galsim import roman
 
+# Imports INTERNAL
+from phrosty.imagesubtraction import sky_subtract, stampmaker
+from phrosty.photometry import ap_phot, psfmodel, psf_phot
+from phrosty.utils import get_exptime, read_truth_txt
+from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
+from snappl.image import OpenUniverse2024FITSImage
+from snappl.psf import PSF
+from snpit_utils.config import Config
+from snpit_utils.logger import SNLogger
 
 class PipelineImage:
     """Holds a snappl.image.Image, with some other stuff the pipeline needs."""
@@ -56,6 +53,11 @@ class PipelineImage:
         # self.psf is a object of a subclass of snappl.psf.PSF
         self.config = Config.get()
         self.temp_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+        self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
+        if not self.keep_intermediate:
+            self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+        elif self.keep_intermediate:
+            self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
 
         if self.config.value( 'photometry.phrosty.image_type' ) == 'ou2024fits':
             self.image = OpenUniverse2024FITSImage( imagepath, None, sca )
@@ -65,14 +67,25 @@ class PipelineImage:
 
         self.pointing = pointing
 
+        # Intermediate files
+        self.skysub_path = None
+        self.detmask_path = None
+        self.crossconv_sci_path = None
+        self.crossconv_temp_path = None
+        self.aligned_sci_path = None
+        self.aligned_temp_path = None
+        self.decorr_kernel_path = None
+        self.input_sci_psf_path = None
+        self.input_temp_psf_path = None
+
+        # Always save and output these
         self.decorr_psf_path = {}
         self.decorr_zptimg_path = {}
         self.decorr_diff_path = {}
         self.zpt_stamp_path = {}
         self.diff_stamp_path = {}
 
-        self.skysub_path = None
-        self.detmas_path = None
+        # Used internally, held in-memory
         self.skyrms = None
         self.psfobj = None
         self.psf_data = None
@@ -95,9 +108,10 @@ class PipelineImage:
             if mp:
                 SNLogger.multiprocessing_replace()
             SNLogger.debug( f"run_sky_subtract on {imname}" )
-            self.skysub_path = self.temp_dir / f"skysub_{imname}"
-            self.detmask_path = self.temp_dir / f"detmask_{imname}"
-            self.skyrms = sky_subtract( self.image.path, self.skysub_path, self.detmask_path, temp_dir=self.temp_dir,
+
+            self.skysub_path = self.save_dir / f"skysub_{imname}"
+            self.detmask_path = self.save_dir / f"detmask_{imname}"
+            self.skyrms = sky_subtract( self.image.path, self.skysub_path, self.detmask_path, temp_dir=self.save_dir,
                                         force=self.config.value( 'photometry.phrosty.force_sky_subtract' ) )
             SNLogger.debug( f"...done running sky subtraction on {self.image.name}" )
             return ( self.skysub_path, self.detmask_path, self.skyrms )
@@ -130,6 +144,9 @@ class PipelineImage:
         #   passes the keyword arguments on to whatever makes
         #   the psf... and it's different for each type of
         #   PSF.  We need to fix that... somehow....
+
+        if self.keep_intermediate:
+            dump_file = True
 
         if self.psfobj is None:
             psftype = self.config.value( 'photometry.phrosty.psf.type' )
@@ -199,6 +216,8 @@ class Pipeline:
         self.nuke_temp_dir = nuke_temp_dir
         if self.nuke_temp_dir:
             SNLogger.warning( "nuke_temp_dir not implemented" )
+
+        self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
 
 
     def sky_sub_all_images( self ):
@@ -489,9 +508,9 @@ class Pipeline:
 
         diffname = sci_image.decorr_diff_path[ templ_image.image.name ]
         diff_stampname = stampmaker( self.ra, self.dec, np.array([100, 100]),
-                                 diffname,
-                                 savedir=self.dia_out_dir,
-                                 savename=f"stamp_{diffname.name}" )
+                                     diffname,
+                                     savedir=self.dia_out_dir,
+                                     savename=f"stamp_{diffname.name}" )
 
         SNLogger.info(f"Decorrelated stamp path: {pathlib.Path( diff_stampname )}")
         SNLogger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
