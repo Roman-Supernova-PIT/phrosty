@@ -1,39 +1,38 @@
-import nvtx
-
-import re
-import pathlib
+# Imports STANDARD
 import argparse
-import logging
-from multiprocessing import Pool
-from functools import partial
-
-import numpy as np
 import cupy as cp
-
+from functools import partial
+import logging
 import matplotlib.pyplot as plt
+from multiprocessing import Pool
+import numpy as np
+import nvtx
+import pathlib
+import re
 
+# Imports ASTRO
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
 import astropy.table
 from astropy.table import Table
-from astropy.wcs import WCS
-from astropy.coordinates import SkyCoord
-from astropy.wcs.utils import skycoord_to_pixel
 import astropy.units as u
+from astropy.wcs import WCS
+from astropy.wcs.utils import skycoord_to_pixel
+from galsim import roman
 
-from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
-
-from snpit_utils.logger import SNLogger
-from snpit_utils.config import Config
-from snappl.psf import PSF
-from snappl.image import OpenUniverse2024FITSImage
-from phrosty.utils import read_truth_txt, get_exptime
+# Imports INTERNAL
 from phrosty.imagesubtraction import sky_subtract, stampmaker
 from phrosty.photometry import ap_phot, psfmodel, psf_phot
-
-from galsim import roman
+from phrosty.utils import get_exptime, read_truth_txt
+from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
+from snappl.image import OpenUniverse2024FITSImage
+from snappl.psf import PSF
+from snpit_utils.config import Config
+from snpit_utils.logger import SNLogger
 
 
 class PipelineImage:
+
     """Holds a snappl.image.Image, with some other stuff the pipeline needs."""
 
     def __init__( self, imagepath, pointing, sca ):
@@ -56,6 +55,11 @@ class PipelineImage:
         # self.psf is a object of a subclass of snappl.psf.PSF
         self.config = Config.get()
         self.temp_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+        self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
+        if self.keep_intermediate:
+            self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
+        elif not self.keep_intermediate:
+            self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
 
         if self.config.value( 'photometry.phrosty.image_type' ) == 'ou2024fits':
             self.image = OpenUniverse2024FITSImage( imagepath, None, sca )
@@ -65,14 +69,31 @@ class PipelineImage:
 
         self.pointing = pointing
 
+        # Intermediate files
+        if self.keep_intermediate:
+            # Set to None. The path gets defined later on.
+            # They have to be defined here in __init__ so that they exist
+            # and are accessible in later functions.
+            self.skysub_path = None
+            self.detmask_path = None
+            self.input_sci_psf_path = None
+            self.input_templ_psf_path = None
+            self.aligned_sci_img_path = None
+            self.aligned_templ_img_path = None
+            self.aligned_sci_psf_path = None
+            self.aligned_templ_psf_path = None
+            self.crossconv_sci_path = None
+            self.crossconv_templ_path = None
+            self.decorr_kernel_path = None
+
+        # Always save and output these
         self.decorr_psf_path = {}
         self.decorr_zptimg_path = {}
         self.decorr_diff_path = {}
         self.zpt_stamp_path = {}
         self.diff_stamp_path = {}
 
-        self.skysub_path = None
-        self.detmas_path = None
+        # Held in memory
         self.skyrms = None
         self.psfobj = None
         self.psf_data = None
@@ -95,9 +116,10 @@ class PipelineImage:
             if mp:
                 SNLogger.multiprocessing_replace()
             SNLogger.debug( f"run_sky_subtract on {imname}" )
-            self.skysub_path = self.temp_dir / f"skysub_{imname}"
-            self.detmask_path = self.temp_dir / f"detmask_{imname}"
-            self.skyrms = sky_subtract( self.image.path, self.skysub_path, self.detmask_path, temp_dir=self.temp_dir,
+
+            self.skysub_path = self.save_dir / f"skysub_{imname}"
+            self.detmask_path = self.save_dir / f"detmask_{imname}"
+            self.skyrms = sky_subtract( self.image.path, self.skysub_path, self.detmask_path, temp_dir=self.save_dir,
                                         force=self.config.value( 'photometry.phrosty.force_sky_subtract' ) )
             SNLogger.debug( f"...done running sky subtraction on {self.image.name}" )
             return ( self.skysub_path, self.detmask_path, self.skyrms )
@@ -111,18 +133,13 @@ class PipelineImage:
         self.detmask_path = info[1]
         self.skyrms = info[2]
 
-    def get_psf( self, ra, dec, dump_file=False ):
+    def get_psf( self, ra, dec ):
         """Get the at the right spot on the image.
 
         Parameters
         ----------
           ra, dec : float
-             The coordinates in decimal degrees where we want the PSFD.
-
-          dump_file : bool
-             If True, write out the psf as a FITS file in dia_out_dir
-             (for diagnostic purposes; these files are not read again
-             interally by the pipeline).
+             The coordinates in decimal degrees where we want the PSF.
 
         """
 
@@ -138,10 +155,10 @@ class PipelineImage:
         wcs = self.image.get_wcs()
         x, y = wcs.world_to_pixel( ra, dec )
         stamp = self.psfobj.get_stamp( x, y )
-        if dump_file:
-            outfile = pathlib.Path( self.config.value( "photometry.phrosty.paths.dia_out_dir" ) )
-            outfile = outfile / f"psf_{self.image.name}.fits"
+        if self.keep_intermediate:
+            outfile = self.save_dir / f"psf_{self.image.name}.fits"
             fits.writeto( outfile, stamp, overwrite=True )
+
         return stamp
 
     def keep_psf_data( self, psf_data ):
@@ -184,6 +201,7 @@ class Pipeline:
         self.config = Config.get()
         self.image_base_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.image_base_dir' ) )
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
+        self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
         self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
 
         self.object_id = object_id
@@ -199,6 +217,8 @@ class Pipeline:
         self.nuke_temp_dir = nuke_temp_dir
         if self.nuke_temp_dir:
             SNLogger.warning( "nuke_temp_dir not implemented" )
+
+        self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
 
 
     def sky_sub_all_images( self ):
@@ -222,7 +242,6 @@ class Pipeline:
         else:
             for img in all_imgs:
                 img.save_sky_subtract_info( img.run_sky_subtract( mp=False ) )
-
 
 
     def get_psfs( self ):
@@ -489,9 +508,9 @@ class Pipeline:
 
         diffname = sci_image.decorr_diff_path[ templ_image.image.name ]
         diff_stampname = stampmaker( self.ra, self.dec, np.array([100, 100]),
-                                 diffname,
-                                 savedir=self.dia_out_dir,
-                                 savename=f"stamp_{diffname.name}" )
+                                     diffname,
+                                     savedir=self.dia_out_dir,
+                                     savename=f"stamp_{diffname.name}" )
 
         SNLogger.info(f"Decorrelated stamp path: {pathlib.Path( diff_stampname )}")
         SNLogger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
@@ -614,9 +633,69 @@ class Pipeline:
                                 fits_writer_pool.apply_async( self.write_fits_file,
                                                               ( cp.asnumpy( decorimg ).T, hdr, savepath ), {},
                                                               error_callback=partial(log_fits_write_error, savepath) )
-                        sci_image.decorr_psf_path[ templ_image.image.name ]= decorr_psf_path
-                        sci_image.decorr_zptimg_path[ templ_image.image.name ]= decorr_zptimg_path
-                        sci_image.decorr_diff_path[ templ_image.image.name ]= decorr_diff_path
+                        sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
+                        sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
+                        sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
+
+                    if self.keep_intermediate:
+                        # Each key is the file prefix addition.
+                        # Each list has [descriptive filetype, image file name, data, header].
+                        # The 'convolved' images have that [:-8] in their image file name and combined
+                        # names because LNA thinks it's important that we keep track of which images
+                        # have been convolved with which. Because also then if you use the same template
+                        # image more than once, it gets overwritten.
+
+                        # TODO: Include variance images. Include multiprocessing.
+                        # In the future, we may want to write these things right after they happen
+                        # instead of saving it all for the end of the SFFT stuff.
+
+                        # HACK ALERT : we're stripping the .gz off of the end of filenames
+                        #   if they have them, and making sure filenames end in .fits,
+                        #   because that's what SFFT needs.  This can go away if we
+                        #   refactor.
+                        if sci_image.image.name[-3:] == '.gz':
+                            conv_sci_name = str( pathlib.Path( sci_image.image.name ).stem )
+                        if sci_image.image.name[-5:] != '.fits':
+                            conv_sci_name = f'{sci_image.image.name}.fits'
+
+                        if templ_image.image.name[-3:] == '.gz':
+                            conv_templ_name = str( pathlib.Path( templ_image.image.name ).stem )
+                        if templ_image.image.name[-5:] != '.fits':
+                            conv_templ_name = f'{templ_image.image.name}.fits'
+
+                        write_filepaths = {'aligned': [['img',
+                                                        templ_image.image.name,
+                                                        cp.asnumpy(sfftifier.PixA_resamp_object_GPU),
+                                                        sfftifier.hdr_target],
+                                                       ['psf',
+                                                        templ_image.image.name,
+                                                        cp.asnumpy(sfftifier.PSF_resamp_object_GPU),
+                                                        sfftifier.hdr_target],
+                                                       ['detmask',
+                                                        sci_image.image.name,
+                                                        cp.asnumpy(sfftifier.PixA_resamp_object_DMASK_GPU),
+                                                        sfftifier.hdr_target]
+                                                      ],
+                                           'convolved': [['img',
+                                                         f'{conv_sci_name[:-5]}_{conv_templ_name}',
+                                                         cp.asnumpy(sfftifier.PixA_Ctarget_GPU),
+                                                         sfftifier.hdr_target],
+                                                         ['img',
+                                                         f'{conv_templ_name[:-5]}_{conv_sci_name}',
+                                                         cp.asnumpy(sfftifier.PixA_Cresamp_object_GPU),
+                                                         sfftifier.hdr_target]
+                                                        ],
+                                           'decorr':   [['kernel',
+                                                        sci_image.image.name,
+                                                        cp.asnumpy(sfftifier.FKDECO_GPU),
+                                                        sfftifier.hdr_target]
+                                                       ]
+                                          }
+                        # Write the aligned images
+                        for key in write_filepaths.keys():
+                            for (imgtype, name, data, header) in write_filepaths[key]:
+                                savepath = self.scratch_dir / f'{key}_{imgtype}_{name}'
+                                self.write_fits_file( data, header, savepath=savepath )
 
                         SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
 
@@ -656,17 +735,17 @@ class Pipeline:
                 else:
                     for templ_image in self.template_images:
                         stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), templ_image.image.path,
-                                                savedir=self.dia_out_dir, savename=f"stamp_{templ_image.image.name}" )
+                                                 savedir=self.dia_out_dir, savename=f"stamp_{templ_image.image.name}" )
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
                             zptname = sci_image.decorr_zptimg_path[ templ_image.image.name ]
                             diffname = sci_image.decorr_diff_path[ templ_image.image.name ]
                             stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), zptname,
-                                                    savedir=self.dia_out_dir, savename=f"stamp_{zptname.name}" )
+                                                     savedir=self.dia_out_dir, savename=f"stamp_{zptname.name}" )
                             sci_image.zpt_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
                             stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), diffname,
-                                                    savedir=self.dia_out_dir, savename=f"stamp_{diffname.name}" )
+                                                     savedir=self.dia_out_dir, savename=f"stamp_{diffname.name}" )
                             sci_image.diff_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
 
             SNLogger.info('...finished making stamps.')

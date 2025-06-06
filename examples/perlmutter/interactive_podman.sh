@@ -3,6 +3,7 @@
 podman-hpc run --gpu \
     --mount type=bind,source=$PWD,target=/home \
     --mount type=bind,source=$PWD/phrosty,target=/phrosty \
+    --mount type=bind,source=$SCRATCH/phrosty_intermediate,target=/scratch \
     --mount type=bind,source=$PWD/sn_info_dir,target=/sn_info_dir \
     --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
     --mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir \
