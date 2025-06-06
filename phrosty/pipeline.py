@@ -72,6 +72,8 @@ class PipelineImage:
         # Intermediate files
         if self.keep_intermediate:
             # Set to None. The path gets defined later on.
+            # They have to be defined here in __init__ so that they exist
+            # and are accessible in later functions.
             self.skysub_path = None
             self.detmask_path = None
             self.input_sci_psf_path = None
@@ -643,7 +645,7 @@ class Pipeline:
                         # have been convolved with which. Because also then if you use the same template
                         # image more than once, it gets overwritten.
 
-                        # TODO: Include score and variance images. Include multiprocessing.
+                        # TODO: Include variance images. Include multiprocessing.
                         # In the future, we may want to write these things right after they happen
                         # instead of saving it all for the end of the SFFT stuff.
 
@@ -693,7 +695,7 @@ class Pipeline:
                         for key in write_filepaths.keys():
                             for (imgtype, name, data, header) in write_filepaths[key]:
                                 savepath = self.scratch_dir / f'{key}_{imgtype}_{name}'
-                                self.write_fits_file( data, header, savepath=savepath)
+                                self.write_fits_file( data, header, savepath=savepath )
 
                         SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
 
