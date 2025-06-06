@@ -61,7 +61,6 @@ class PipelineImage:
         elif not self.keep_intermediate:
             self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
 
-
         if self.config.value( 'photometry.phrosty.image_type' ) == 'ou2024fits':
             self.image = OpenUniverse2024FITSImage( imagepath, None, sca )
         else:
@@ -72,7 +71,7 @@ class PipelineImage:
 
         # Intermediate files
         if self.keep_intermediate:
-            # Set to None. The path gets defined later on. 
+            # Set to None. The path gets defined later on.
             self.skysub_path = None
             self.detmask_path = None
             self.input_sci_psf_path = None
@@ -132,7 +131,7 @@ class PipelineImage:
         self.detmask_path = info[1]
         self.skyrms = info[2]
 
-    def get_psf( self, ra, dec, save_file=False ):
+    def get_psf( self, ra, dec ):
         """Get the at the right spot on the image.
 
         Parameters
@@ -152,9 +151,6 @@ class PipelineImage:
         #   the psf... and it's different for each type of
         #   PSF.  We need to fix that... somehow....
 
-        if self.keep_intermediate:
-            save_file = True
-
         if self.psfobj is None:
             psftype = self.config.value( 'photometry.phrosty.psf.type' )
             self.psfobj = PSF.get_psf_object( psftype, pointing=self.pointing, sca=self.image.sca )
@@ -162,10 +158,10 @@ class PipelineImage:
         wcs = self.image.get_wcs()
         x, y = wcs.world_to_pixel( ra, dec )
         stamp = self.psfobj.get_stamp( x, y )
-        if save_file:
-            outfile = pathlib.Path( self.config.value( "photometry.phrosty.paths.dia_out_dir" ) )
-            outfile = outfile / f"psf_{self.image.name}.fits"
+        if self.keep_intermediate:
+            outfile = self.save_dir / f"psf_{self.image.name}.fits"
             fits.writeto( outfile, stamp, overwrite=True )
+
         return stamp
 
     def keep_psf_data( self, psf_data ):
@@ -650,12 +646,26 @@ class Pipeline:
                         # The 'convolved' images have that [:-8] in their image file name and combined
                         # names because LNA thinks it's important that we keep track of which images
                         # have been convolved with which. Because also then if you use the same template
-                        # image more than once, it gets overwritten. Also, [:-8] and [:-3] assume that
-                        # image.image.name ends in fits.gz.
+                        # image more than once, it gets overwritten.
 
                         # TODO: Include score and variance images. Include multiprocessing.
                         # In the future, we may want to write these things right after they happen
-                        # instead of saving it all for the end of the SFFT stuff. 
+                        # instead of saving it all for the end of the SFFT stuff.
+
+                        # HACK ALERT : we're stripping the .gz off of the end of filenames
+                        #   if they have them, and making sure filenames end in .fits,
+                        #   because that's what SFFT needs.  This can go away if we
+                        #   refactor.
+                        if sci_image.image.name[-3:] == '.gz':
+                            conv_sci_name = str( pathlib.Path( sci_image.image.name ).stem )
+                        if sci_image.image.name[-5:] != '.fits':
+                            conv_sci_name = f'{sci_image.image.name}.fits'
+
+                        if templ_image.image.name[-3:] == '.gz':
+                            conv_templ_name = str( pathlib.Path( templ_image.image.name ).stem )
+                        if templ_image.image.name[-5:] != '.fits':
+                            conv_templ_name = f'{templ_image.image.name}.fits'
+
                         write_filepaths = {'aligned': [['img',
                                                         templ_image.image.name,
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_GPU),
@@ -669,20 +679,20 @@ class Pipeline:
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_DMASK_GPU),
                                                         sfftifier.hdr_target]
                                                       ],
-                                        'convolved': [['img',
-                                                        f'{sci_image.image.name[:-8]}_{templ_image.image.name[:-3]}',
-                                                        cp.asnumpy(sfftifier.PixA_Ctarget_GPU),
-                                                        sfftifier.hdr_target],
-                                                        ['img',
-                                                        f'{templ_image.image.name[:-8]}_{sci_image.image.name[:-3]}',
-                                                        cp.asnumpy(sfftifier.PixA_Cresamp_object_GPU),
-                                                        sfftifier.hdr_target]
+                                           'convolved': [['img',
+                                                         f'{conv_sci_name[:-5]}_{conv_templ_name}',
+                                                         cp.asnumpy(sfftifier.PixA_Ctarget_GPU),
+                                                         sfftifier.hdr_target],
+                                                         ['img',
+                                                         f'{conv_templ_name[:-5]}_{conv_sci_name}',
+                                                         cp.asnumpy(sfftifier.PixA_Cresamp_object_GPU),
+                                                         sfftifier.hdr_target]
                                                         ],
-                                        'decorr': [['kernel',
-                                                     sci_image.image.name,
-                                                     cp.asnumpy(sfftifier.FKDECO_GPU),
-                                                     sfftifier.hdr_target]
-                                                    ]
+                                           'decorr':   [['kernel',
+                                                        sci_image.image.name,
+                                                        cp.asnumpy(sfftifier.FKDECO_GPU),
+                                                        sfftifier.hdr_target]
+                                                       ]
                                           }
                         # Write the aligned images
                         for key in write_filepaths.keys():
@@ -728,17 +738,17 @@ class Pipeline:
                 else:
                     for templ_image in self.template_images:
                         stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), templ_image.image.path,
-                                                savedir=self.dia_out_dir, savename=f"stamp_{templ_image.image.name}" )
+                                                 savedir=self.dia_out_dir, savename=f"stamp_{templ_image.image.name}" )
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
                             zptname = sci_image.decorr_zptimg_path[ templ_image.image.name ]
                             diffname = sci_image.decorr_diff_path[ templ_image.image.name ]
                             stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), zptname,
-                                                    savedir=self.dia_out_dir, savename=f"stamp_{zptname.name}" )
+                                                     savedir=self.dia_out_dir, savename=f"stamp_{zptname.name}" )
                             sci_image.zpt_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
                             stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), diffname,
-                                                    savedir=self.dia_out_dir, savename=f"stamp_{diffname.name}" )
+                                                     savedir=self.dia_out_dir, savename=f"stamp_{diffname.name}" )
                             sci_image.diff_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
 
             SNLogger.info('...finished making stamps.')
