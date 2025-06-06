@@ -137,12 +137,7 @@ class PipelineImage:
         Parameters
         ----------
           ra, dec : float
-             The coordinates in decimal degrees where we want the PSFD.
-
-          save_file : bool
-             If True, write out the psf as a FITS file in dia_out_dir
-             (for diagnostic purposes; these files are not read again
-             interally by the pipeline).
+             The coordinates in decimal degrees where we want the PSF.
 
         """
 
