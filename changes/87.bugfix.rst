@@ -1,0 +1,1 @@
+Add difference image output (pre-decorrelation, so it is still an intermediate file)
