@@ -116,7 +116,7 @@ class PipelineImage:
                 imname = f'{imname}.fits'
             # Hey Rob--the below is broken. The pipeline runs with mp if I use the
             # example science image file from examples/perlmutter, but not if I use
-            # my own file. If I run with one process, my own file runs. 
+            # my own file. If I run with one process, my own file runs.
             # if mp:
             #     SNLogger.multiprocessing_replace()
             SNLogger.debug( f"run_sky_subtract on {imname}" )
@@ -301,7 +301,7 @@ class Pipeline:
             hdr_sci, hdr_templ,
             sci_image.skyrms, templ_image.skyrms,
             data_sci, data_templ,
-            cp.zeros((4088,4088)), cp.zeros((4088,4088)),  # Replace with variance
+            cp.zeros((4088, 4088)), cp.zeros((4088, 4088)),  # Replace with variance
             sci_detmask, templ_detmask,
             sci_psf, templ_psf
         )
