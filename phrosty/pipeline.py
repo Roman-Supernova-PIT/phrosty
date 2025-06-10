@@ -35,7 +35,7 @@ class PipelineImage:
 
     """Holds a snappl.image.Image, with some other stuff the pipeline needs."""
 
-    def __init__( self, imagepath, pointing, sca ):
+    def __init__( self, imagepath, pointing, sca, pipeline ):
         """Create a PipelineImage
 
         Parameters:
@@ -68,6 +68,7 @@ class PipelineImage:
                                 "We hope this will change soon." )
 
         self.pointing = pointing
+        self.band = pipeline.band
 
         # Intermediate files
         if self.keep_intermediate:
@@ -113,8 +114,11 @@ class PipelineImage:
                 imname = imname[:-3]
             if imname[-5:] != '.fits':
                 imname = f'{imname}.fits'
-            if mp:
-                SNLogger.multiprocessing_replace()
+            # Hey Rob--the below is broken. The pipeline runs with mp if I use the
+            # example science image file from examples/perlmutter, but not if I use
+            # my own file. If I run with one process, my own file runs. 
+            # if mp:
+            #     SNLogger.multiprocessing_replace()
             SNLogger.debug( f"run_sky_subtract on {imname}" )
 
             self.skysub_path = self.save_dir / f"skysub_{imname}"
@@ -148,12 +152,14 @@ class PipelineImage:
         #   the psf... and it's different for each type of
         #   PSF.  We need to fix that... somehow....
 
-        if self.psfobj is None:
-            psftype = self.config.value( 'photometry.phrosty.psf.type' )
-            self.psfobj = PSF.get_psf_object( psftype, pointing=self.pointing, sca=self.image.sca )
-
         wcs = self.image.get_wcs()
         x, y = wcs.world_to_pixel( ra, dec )
+
+        if self.psfobj is None:
+            psftype = self.config.value( 'photometry.phrosty.psf.type' )
+            self.psfobj = PSF.get_psf_object( psftype, band=self.band, pointing=self.pointing, sca=self.image.sca,
+                                              x=x, y=y )
+
         stamp = self.psfobj.get_stamp( x, y )
         if self.keep_intermediate:
             outfile = self.save_dir / f"psf_{self.image.name}.fits"
@@ -208,9 +214,9 @@ class Pipeline:
         self.ra = ra
         self.dec = dec
         self.band = band
-        self.science_images = ( [ PipelineImage( self.image_base_dir / ppsmb[0], ppsmb[1], ppsmb[2] )
+        self.science_images = ( [ PipelineImage( self.image_base_dir / ppsmb[0], ppsmb[1], ppsmb[2], self )
                                   for ppsmb in science_images if ppsmb[4] == self.band ] )
-        self.template_images = ( [ PipelineImage( self.image_base_dir / ppsmb[0], ppsmb[1], ppsmb[2] )
+        self.template_images = ( [ PipelineImage( self.image_base_dir / ppsmb[0], ppsmb[1], ppsmb[2], self )
                                    for ppsmb in template_images if ppsmb[4] == self.band ] )
         self.nprocs = nprocs
         self.nwrite = nwrite
@@ -295,6 +301,7 @@ class Pipeline:
             hdr_sci, hdr_templ,
             sci_image.skyrms, templ_image.skyrms,
             data_sci, data_templ,
+            cp.zeros((4088,4088)), cp.zeros((4088,4088)),  # Replace with variance
             sci_detmask, templ_detmask,
             sci_psf, templ_psf
         )
