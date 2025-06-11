@@ -85,6 +85,7 @@ class PipelineImage:
             self.aligned_templ_psf_path = None
             self.crossconv_sci_path = None
             self.crossconv_templ_path = None
+            self.diff_path = None
             self.decorr_kernel_path = None
 
         # Always save and output these
@@ -692,6 +693,11 @@ class Pipeline:
                                                          cp.asnumpy(sfftifier.PixA_Cresamp_object_GPU),
                                                          sfftifier.hdr_target]
                                                         ],
+                                           'diff':     [['img',
+                                                        f'{conv_sci_name[:-5]}_{conv_templ_name}',
+                                                        cp.asnumpy(sfftifier.PixA_DIFF_GPU),
+                                                        sfftifier.hdr_target]
+                                                       ],
                                            'decorr':   [['kernel',
                                                         sci_image.image.name,
                                                         cp.asnumpy(sfftifier.FKDECO_GPU),
