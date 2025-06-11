@@ -76,9 +76,13 @@ You need to make the following directories.  (They don't have to have exactly th
 * `dia_out_dir`
 * `lc_out_dir`
 
-In addition, create a directory `phrosty_temp` somewhere underneath `$SCRATCH`, e.g.:
-```mkdir $SCRATCH/phrosty_temp```
-(The further examples below will assume that this is where you made it.)
+In addition, create a directories `phrosty_temp` and `phrosty_intermediate` somewhere underneath `$SCRATCH`, e.g.:
+```
+mkdir $SCRATCH/phrosty_temp
+mkdir $SCRATCH/phrosty_intermediate
+```
+
+(The further examples below will assume that this is where you made them.)
 
 ### Populate your sn_info_dir
 
