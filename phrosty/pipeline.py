@@ -512,6 +512,7 @@ class Pipeline:
     def save_stamp_paths( self, sci_image, templ_image, paths ):
         sci_image.zpt_stamp_path[ templ_image.image.name ] = paths[0]
         sci_image.diff_stamp_path[ templ_image.image.name ] = paths[1]
+        sci_image.diff_var_stamp_path[ templ_image.image.name ] = paths[2]
 
     def do_stamps( self, sci_image, templ_image ):
 
@@ -527,10 +528,17 @@ class Pipeline:
                                      savedir=self.dia_out_dir,
                                      savename=f"stamp_{diffname.name}" )
 
-        SNLogger.info(f"Decorrelated stamp path: {pathlib.Path( diff_stampname )}")
-        SNLogger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
+        diffvarname = sci_image.diff_var_path[ templ_image.image.name ]
+        diffvar_stampname = stampmaker( self.ra, self.dec, np.array([100, 100]),
+                                        diffvarname,
+                                        savedir=self.dia_out_dir,
+                                        savename=f"stamp_{diffvarname.name}" )
 
-        return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname )
+        SNLogger.info(f"Decorrelated diff stamp path: {pathlib.Path( diff_stampname )}")
+        SNLogger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
+        SNLogger.info(f"Decorrelated diff variance stamp path: {pathlib.Path( diffvar_stampname )}")
+
+        return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname ), pathlib.Path( diffvar_stampname )
 
     def make_lightcurve( self ):
         SNLogger.info( "Making lightcurve." )
@@ -740,11 +748,11 @@ class Pipeline:
         if 'make_stamps' in steps:
             SNLogger.info( "Starting to make stamps..." )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
-                if self.nwrite > 1:
-                    partialstamp = partial(stampmaker, self.ra, self.dec, np.array([100, 100]))
-                    # template path, savedir, savename
-                    templstamp_args = ( (ti, self.dia_out_dir, f'stamp_{ti}') for ti in self.template_images)
+                partialstamp = partial(stampmaker, self.ra, self.dec, np.array([100, 100]))
+                # template path, savedir, savename
+                templstamp_args = ( (ti.image.path, self.dia_out_dir, f'stamp_{str(ti.image.name)}') for ti in self.template_images)
 
+                if self.nwrite > 1:
                     with Pool( self.nwrite ) as templ_stamp_pool:
                         templ_stamp_pool.starmap_async( partialstamp, templstamp_args )
                         templ_stamp_pool.close()
@@ -765,28 +773,14 @@ class Pipeline:
                         sci_stamp_pool.join()
 
                 else:
-                    for templ_image in self.template_images:
-                        stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), templ_image.image.path,
-                                                 savedir=self.dia_out_dir, savename=f"stamp_{templ_image.image.name}" )
+                    for tsargs in templstamp_args:
+                        partialstamp(*tsargs)
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
-                            zptname = sci_image.decorr_zptimg_path[ templ_image.image.name ]
-                            diffname = sci_image.decorr_diff_path[ templ_image.image.name ]
-                            varname = sci_image.diff_var_path[ templ_image.image.name ]
-
-                            stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), zptname,
-                                                     savedir=self.dia_out_dir, savename=f"stamp_{zptname.name}" )
-                            sci_image.zpt_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
-
-                            stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), diffname,
-                                                     savedir=self.dia_out_dir, savename=f"stamp_{diffname.name}" )
-                            sci_image.diff_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
-
-                            stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), varname,
-                                                     savedir=self.dia_out_dir, savename=f"stamp_{varname.name}")
-                            sci_image.diff_var_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
-
+                            
+                            stamp_paths = self.do_stamps( sci_image, templ_image)
+                            self.save_stamp_paths( sci_image, templ_image, stamp_paths )
 
             SNLogger.info('...finished making stamps.')
 
