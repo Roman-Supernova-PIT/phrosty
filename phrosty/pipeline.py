@@ -79,9 +79,8 @@ class PipelineImage:
             self.detmask_path = None
             self.input_sci_psf_path = None
             self.input_templ_psf_path = None
-            self.aligned_sci_img_path = None
             self.aligned_templ_img_path = None
-            self.aligned_sci_psf_path = None
+            self.aligned_templ_var_path = None
             self.aligned_templ_psf_path = None
             self.crossconv_sci_path = None
             self.crossconv_templ_path = None
@@ -93,6 +92,8 @@ class PipelineImage:
         self.decorr_zptimg_path = {}
         self.decorr_diff_path = {}
         self.zpt_stamp_path = {}
+        self.diff_var_path = {}
+        self.diff_var_stamp_path = {}
         self.diff_stamp_path = {}
 
         # Held in memory
@@ -302,22 +303,23 @@ class Pipeline:
             hdr_sci, hdr_templ,
             sci_image.skyrms, templ_image.skyrms,
             data_sci, data_templ,
-            cp.zeros((4088, 4088)), cp.zeros((4088, 4088)),  # Replace with variance
+            cp.array( sci_image.image.noise ), cp.array( templ_image.image.noise ),
             sci_detmask, templ_detmask,
             sci_psf, templ_psf
         )
+        
         sfftifier.resampling_image_mask_psf()
         sfftifier.cross_convolution()
 
         return sfftifier
 
-    def phot_at_coords( self, img, psf, pxcoords=(50, 50), ap_r=4 ):
+    def phot_at_coords( self, img, err, psf, pxcoords=(50, 50), ap_r=4 ):
         """Do photometry at forced set of pixel coordinates."""
 
         forcecoords = Table([[float(pxcoords[0])], [float(pxcoords[1])]], names=["x", "y"])
         init = ap_phot(img, forcecoords, ap_r=ap_r)
         init['flux_init'] = init['aperture_sum']
-        final = psf_phot(img, psf, init, forced_phot=True)
+        final = psf_phot(img, err, psf, init, forced_phot=True)
 
         flux = final['flux_fit'][0]
         flux_err = final['flux_err'][0]
@@ -368,7 +370,7 @@ class Pipeline:
 
         return {'exptime': exptime, 'area_eff': area_eff, 'gs_zpt': gs_zpt}
 
-    def get_zpt(self, zptimg, psf, band, stars, ap_r=4, ap_phot_only=False,
+    def get_zpt(self, zptimg, err, psf, band, stars, ap_r=4, ap_phot_only=False,
                 zpt_plot=None, oid=None, sci_pointing=None, sci_sca=None):
 
         # TODO : Need to move this code all over into snappl Image.  It sounds like
@@ -384,7 +386,7 @@ class Pipeline:
         # First, need to do photometry on the stars.
         init_params = ap_phot(zptimg, stars, ap_r=ap_r)
         init_params['flux_init'] = init_params['aperture_sum']
-        final_params = psf_phot(zptimg, psf, init_params, forced_phot=True)
+        final_params = psf_phot(zptimg, err, psf, init_params, forced_phot=True)
 
         # Do not need to cross match. Can just merge tables because they
         # will be in the same order.
@@ -437,6 +439,7 @@ class Pipeline:
     def make_phot_info_dict( self, sci_image, templ_image, ap_r=4 ):
         # Do photometry on stamp because it will read faster
         diff_img_stamp_path = sci_image.diff_stamp_path[ templ_image.image.name ]
+        diff_img_var_stamp_path = sci_image.diff_var_stamp_path[ templ_image.image.name ]
 
         results_dict = {}
         results_dict['sci_name'] = sci_image.image.name
@@ -457,13 +460,16 @@ class Pipeline:
                 diffimg = diff_hdu[0].data
                 wcs = WCS(diff_hdu[0].header)
 
+            with fits.open( diff_img_var_stamp_path ) as var_hdu:
+                err = np.sqrt( var_hdu[0].data )
+
             # Load in the decorrelated PSF.
             psfpath = sci_image.decorr_psf_path[ templ_image.image.name ]
             with fits.open( psfpath ) as hdu:
                 psf = psfmodel( hdu[0].data )
             coord = SkyCoord(ra=self.ra * u.deg, dec=self.dec * u.deg)
             pxcoords = skycoord_to_pixel(coord, wcs)
-            results_dict.update( self.phot_at_coords(diffimg, psf, pxcoords=pxcoords, ap_r=ap_r) )
+            results_dict.update( self.phot_at_coords(diffimg, err, psf, pxcoords=pxcoords, ap_r=ap_r) )
 
             # Get the zero point from the decorrelated, convolved science image.
             # First, get the table of known stars.
@@ -478,7 +484,8 @@ class Pipeline:
             zptimg_path = sci_image.decorr_zptimg_path[ templ_image.image.name ]
             with fits.open(zptimg_path) as hdu:
                 zptimg = hdu[0].data
-            zpt = self.get_zpt(zptimg, psf, self.band, stars, oid=self.object_id,
+
+            zpt = self.get_zpt(zptimg, sci_image.image.noise, psf, self.band, stars, oid=self.object_id,
                                sci_pointing=sci_image.pointing, sci_sca=sci_image.image.sca)
 
             # Add additional info to the results dictionary so it can be merged into a nice file later.
@@ -622,6 +629,13 @@ class Pipeline:
                         with nvtx.annotate( "find_decor", color=0xcc44ff ):
                             sfftifier.find_decorrelation()
 
+                        SNLogger.info( "...generate variance image" )
+                        with nvtx.annotate( "variance", color=0x44ccff ):
+                            diff_var = sfftifier.create_variance_image()
+                            mess = ( f"{self.band}_{sci_image.pointing}_{sci_image.image.sca}_-"
+                                     f"_{self.band}_{templ_image.pointing}_{templ_image.image.sca}.fits" )
+                            diff_var_path = self.dia_out_dir / f"diff_var_{mess}"
+
                     if 'apply_decorrelation' in steps:
                         mess = ( f"{self.band}_{sci_image.pointing}_{sci_image.image.sca}_-"
                                  f"_{self.band}_{templ_image.pointing}_{templ_image.image.sca}.fits" )
@@ -629,9 +643,9 @@ class Pipeline:
                         decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
                         decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
                         for img, savepath, hdr in zip(
-                                [ sfftifier.PixA_DIFF_GPU, sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ],
-                                [ decorr_diff_path,        decorr_zptimg_path,         decorr_psf_path ],
-                                [ sfftifier.hdr_target,    sfftifier.hdr_target,       None ]
+                                [ sfftifier.PixA_DIFF_GPU, diff_var,                   sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ],
+                                [ decorr_diff_path,        diff_var_path,              decorr_zptimg_path,         decorr_psf_path ],
+                                [ sfftifier.hdr_target,    sfftifier.hdr_target,       sfftifier.hdr_target,       None ]
                         ):
                             with nvtx.annotate( "apply_decor", color=0xccccff ):
                                 SNLogger.info( f"...apply_decor to {savepath}" )
@@ -644,6 +658,7 @@ class Pipeline:
                         sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
                         sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
                         sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
+                        sci_image.diff_var_path[ templ_image.image.name ] = diff_var_path
 
                     if self.keep_intermediate:
                         # Each key is the file prefix addition.
@@ -675,6 +690,10 @@ class Pipeline:
                                                         templ_image.image.name,
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_GPU),
                                                         sfftifier.hdr_target],
+                                                        ['var',
+                                                         templ_image.image.name,
+                                                         cp.asnumpy(sfftifier.PixA_resamp_objectVar_GPU),
+                                                         sfftifier.hdr_target],
                                                        ['psf',
                                                         templ_image.image.name,
                                                         cp.asnumpy(sfftifier.PSF_resamp_object_GPU),
@@ -683,7 +702,7 @@ class Pipeline:
                                                         sci_image.image.name,
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_DMASK_GPU),
                                                         sfftifier.hdr_target]
-                                                      ],
+                                                       ],
                                            'convolved': [['img',
                                                          f'{conv_sci_name[:-5]}_{conv_templ_name}',
                                                          cp.asnumpy(sfftifier.PixA_Ctarget_GPU),
@@ -754,12 +773,20 @@ class Pipeline:
                         for templ_image in self.template_images:
                             zptname = sci_image.decorr_zptimg_path[ templ_image.image.name ]
                             diffname = sci_image.decorr_diff_path[ templ_image.image.name ]
+                            varname = sci_image.diff_var_path[ templ_image.image.name ]
+
                             stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), zptname,
                                                      savedir=self.dia_out_dir, savename=f"stamp_{zptname.name}" )
                             sci_image.zpt_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
+
                             stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), diffname,
                                                      savedir=self.dia_out_dir, savename=f"stamp_{diffname.name}" )
                             sci_image.diff_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
+
+                            stamp_name = stampmaker( self.ra, self.dec, np.array([100, 100]), varname,
+                                                     savedir=self.dia_out_dir, savename=f"stamp_{varname.name}")
+                            sci_image.diff_var_stamp_path[ templ_image.image.name ] = pathlib.Path( stamp_name )
+
 
             SNLogger.info('...finished making stamps.')
 
