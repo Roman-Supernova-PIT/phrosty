@@ -1,0 +1,1 @@
+Incorporate noise image into photometry.
