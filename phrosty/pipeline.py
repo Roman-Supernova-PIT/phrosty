@@ -307,7 +307,7 @@ class Pipeline:
             sci_detmask, templ_detmask,
             sci_psf, templ_psf
         )
-        
+
         sfftifier.resampling_image_mask_psf()
         sfftifier.cross_convolution()
 
@@ -651,9 +651,12 @@ class Pipeline:
                         decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
                         decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
                         for img, savepath, hdr in zip(
-                                [ sfftifier.PixA_DIFF_GPU, diff_var,                   sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ],
-                                [ decorr_diff_path,        diff_var_path,              decorr_zptimg_path,         decorr_psf_path ],
-                                [ sfftifier.hdr_target,    sfftifier.hdr_target,       sfftifier.hdr_target,       None ]
+                                [ sfftifier.PixA_DIFF_GPU,    diff_var,
+                                  sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ],
+                                [ decorr_diff_path,           diff_var_path,
+                                  decorr_zptimg_path,         decorr_psf_path ],
+                                [ sfftifier.hdr_target,       sfftifier.hdr_target,
+                                  sfftifier.hdr_target,       None ]
                         ):
                             with nvtx.annotate( "apply_decor", color=0xccccff ):
                                 SNLogger.info( f"...apply_decor to {savepath}" )
@@ -750,7 +753,8 @@ class Pipeline:
             with nvtx.annotate( "make stamps", color=0xff8888 ):
                 partialstamp = partial(stampmaker, self.ra, self.dec, np.array([100, 100]))
                 # template path, savedir, savename
-                templstamp_args = ( (ti.image.path, self.dia_out_dir, f'stamp_{str(ti.image.name)}') for ti in self.template_images)
+                templstamp_args = ( (ti.image.path, self.dia_out_dir, f'stamp_{str(ti.image.name)}')
+                                     for ti in self.template_images )
 
                 if self.nwrite > 1:
                     with Pool( self.nwrite ) as templ_stamp_pool:
@@ -778,7 +782,7 @@ class Pipeline:
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
-                            
+
                             stamp_paths = self.do_stamps( sci_image, templ_image)
                             self.save_stamp_paths( sci_image, templ_image, stamp_paths )
 
