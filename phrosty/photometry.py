@@ -74,7 +74,7 @@ def psfmodel(psfimg):
     return psf
 
 
-def psf_phot(scienceimage, error, psf, init_params, wcs=None,
+def psf_phot(scienceimage, noise, psf, init_params, wcs=None,
              forced_phot=True, fwhm=3.0, fit_shape=(5, 5),
              oversampling=3, maxiters=10):
 
@@ -96,7 +96,7 @@ def psf_phot(scienceimage, error, psf, init_params, wcs=None,
     try:
         bkgfunc = LocalBackground(15, 25, MMMBackground())
         psfphot = PSFPhotometry(psf, fit_shape, localbkg_estimator=bkgfunc)
-        psf_results = psfphot(scienceimage, error=error, init_params=init_params)
+        psf_results = psfphot(scienceimage, error=noise, init_params=init_params)
 
         if wcs is not None:
             init_radec = wcs.pixel_to_world(psf_results['x_init'], psf_results['y_init'])

@@ -650,14 +650,15 @@ class Pipeline:
                         decorr_psf_path = self.dia_out_dir / f"decorr_psf_{mess}"
                         decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
                         decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
-                        for img, savepath, hdr in zip(
-                                [ sfftifier.PixA_DIFF_GPU,    diff_var,
-                                  sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ],
-                                [ decorr_diff_path,           diff_var_path,
-                                  decorr_zptimg_path,         decorr_psf_path ],
-                                [ sfftifier.hdr_target,       sfftifier.hdr_target,
-                                  sfftifier.hdr_target,       None ]
-                        ):
+
+                        images =    [ sfftifier.PixA_DIFF_GPU,    diff_var,
+                                      sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ]
+                        savepaths = [ decorr_diff_path,           diff_var_path,
+                                      decorr_zptimg_path,         decorr_psf_path ]
+                        headers =   [ sfftifier.hdr_target,       sfftifier.hdr_target,
+                                      sfftifier.hdr_target,       None ]
+
+                        for img, savepath, hdr in zip( images, savepaths, headers ):
                             with nvtx.annotate( "apply_decor", color=0xccccff ):
                                 SNLogger.info( f"...apply_decor to {savepath}" )
                                 decorimg = sfftifier.apply_decorrelation( img )
@@ -782,7 +783,6 @@ class Pipeline:
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
-
                             stamp_paths = self.do_stamps( sci_image, templ_image)
                             self.save_stamp_paths( sci_image, templ_image, stamp_paths )
 
