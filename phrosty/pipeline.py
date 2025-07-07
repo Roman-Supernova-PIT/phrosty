@@ -761,7 +761,8 @@ class Pipeline:
 
                     SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
                     if self.mem_trace:
-                        SNLogger.info( f"After a science image, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
+                        SNLogger.info( f"After a science image, memory usage = \
+                                         {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
                     sci_image.free()
 
@@ -822,7 +823,8 @@ class Pipeline:
                 self.make_lightcurve()
 
         if self.mem_trace:
-            SNLogger.info( f"After make lightcurve, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
+            SNLogger.info( f"After make lightcurve, memory usage = \
+                            {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
                 # ======================================================================
 
