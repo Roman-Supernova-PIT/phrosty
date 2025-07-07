@@ -7,6 +7,7 @@ photometry:
     image_type: ou2024fits
     force_sky_subtract: true
     keep_intermediate: true
+    mem_trace: false
 
     paths:
       scratch_dir: /scratch
