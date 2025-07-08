@@ -180,7 +180,7 @@ class PipelineImage:
 
 class Pipeline:
     def __init__( self, object_id, ra, dec, band, science_images, template_images, nprocs=1, nwrite=5,
-                  nuke_temp_dir=False, verbose=False ):
+                  verbose=False ):
 
         """Create the a pipeline object.
 
@@ -227,11 +227,9 @@ class Pipeline:
                                    for ppsmb in template_images if ppsmb[4] == self.band ] )
         self.nprocs = nprocs
         self.nwrite = nwrite
-        self.nuke_temp_dir = nuke_temp_dir
-        if self.nuke_temp_dir:
-            SNLogger.warning( "nuke_temp_dir not implemented" )
 
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
+        self.nuke_temp_dir = self.config.value( 'photometry.phrosty.nuke_temp_dir' )
         self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
 
 
@@ -874,7 +872,7 @@ def main():
                 imlist.append( ( pathlib.Path(img), int(point), int(sca), float(mjd), band ) )
 
     pipeline = Pipeline( args.oid, args.ra, args.dec, args.band, science_images, template_images,
-                         nprocs=args.nprocs, nwrite=args.nwrite, nuke_temp_dir=False, verbose=args.verbose )
+                         nprocs=args.nprocs, nwrite=args.nwrite, verbose=args.verbose )
     pipeline( args.through_step )
 
 

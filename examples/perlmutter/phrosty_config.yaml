@@ -7,6 +7,7 @@ photometry:
     image_type: ou2024fits
     force_sky_subtract: true
     keep_intermediate: true
+    nuke_temp_dir: false
     mem_trace: false
 
     paths:
