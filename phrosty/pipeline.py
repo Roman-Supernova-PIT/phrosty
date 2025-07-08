@@ -9,6 +9,7 @@ import numpy as np
 import nvtx
 import pathlib
 import re
+import shutil
 import tracemalloc
 
 # Imports ASTRO
@@ -215,6 +216,7 @@ class Pipeline:
         self.image_base_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.image_base_dir' ) )
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
         self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
+        self.temp_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
         self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
 
         self.object_id = object_id
@@ -591,6 +593,19 @@ class Pipeline:
     def write_fits_file( self, data, header, savepath ):
         fits.writeto( savepath, data, header=header, overwrite=True )
 
+    def clear_contents( self, dir ):
+        for f in self.dir.iterdir():
+            try:
+                if f.is_dir():
+                    shutil.rmtree( f )
+                else:
+                    f.unlink()
+
+            except:
+                print( f'Oops! Deleting {f} from {dir} did not work.' )
+
+
+
     def __call__( self, through_step=None ):
         if self.mem_trace:
             tracemalloc.start()
@@ -823,6 +838,9 @@ class Pipeline:
         if self.mem_trace:
             SNLogger.info( f"After make_lightcurve, memory usage = \
                             {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
+
+        if self.nuke_temp_dir:
+            self.clear_contents( self.temp_dir )
 
                 # ======================================================================
 
