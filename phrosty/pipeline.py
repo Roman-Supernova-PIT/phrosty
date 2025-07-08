@@ -9,6 +9,7 @@ import numpy as np
 import nvtx
 import pathlib
 import re
+import tracemalloc
 
 # Imports ASTRO
 from astropy.coordinates import SkyCoord
@@ -172,6 +173,10 @@ class PipelineImage:
     def keep_psf_data( self, psf_data ):
         self.psf_data = psf_data
 
+    def free( self ):
+        """Try to free memory.  More might be done here."""
+        self.image.free()
+
 
 class Pipeline:
     def __init__( self, object_id, ra, dec, band, science_images, template_images, nprocs=1, nwrite=5,
@@ -227,6 +232,7 @@ class Pipeline:
             SNLogger.warning( "nuke_temp_dir not implemented" )
 
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
+        self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
 
 
     def sky_sub_all_images( self ):
@@ -588,6 +594,11 @@ class Pipeline:
         fits.writeto( savepath, data, header=header, overwrite=True )
 
     def __call__( self, through_step=None ):
+        if self.mem_trace:
+            tracemalloc.start()
+            tracemalloc.reset_peak()
+
+
         if through_step is None:
             through_step = 'make_lightcurve'
 
@@ -603,10 +614,16 @@ class Pipeline:
             with nvtx.annotate( "skysub", color=0xff8888 ):
                 self.sky_sub_all_images()
 
+        if self.mem_trace:
+            SNLogger.info( f"After sky_subtract, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
+
         if 'get_psfs' in steps:
             SNLogger.info( "Getting PSFs" )
             with nvtx.annotate( "getpsfs", color=0xff8888 ):
                 self.get_psfs()
+
+        if self.mem_trace:
+            SNLogger.info( f"After get_psfs, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
         # Create a process pool to write fits files
         with Pool( self.nwrite ) as fits_writer_pool:
@@ -741,7 +758,16 @@ class Pipeline:
                                 savepath = self.scratch_dir / f'{key}_{imgtype}_{name}'
                                 self.write_fits_file( data, header, savepath=savepath )
 
-                        SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
+                    SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
+                    if self.mem_trace:
+                        SNLogger.info( f"After preprocessing, subtracting, and postprocessing \
+                                        a science image, memory usage = \
+                                         {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
+
+                    sci_image.free()
+
+                SNLogger.info( f"DONE with all science images for template {templ_image.image.name}" )
+                templ_image.free()
 
             SNLogger.info( "Waiting for FITS writer processes to finish" )
             with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
@@ -788,13 +814,20 @@ class Pipeline:
 
             SNLogger.info('...finished making stamps.')
 
+        if self.mem_trace:
+            SNLogger.info( f"After make_stamps, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
+
         if 'make_lightcurve' in steps:
             SNLogger.info( "Making lightcurve" )
             with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
                 self.make_lightcurve()
 
+        if self.mem_trace:
+            SNLogger.info( f"After make_lightcurve, memory usage = \
+                            {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
                 # ======================================================================
+
 
 def main():
     # Run one arg pass just to get the config file, so we can augment

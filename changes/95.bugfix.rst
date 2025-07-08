@@ -1,0 +1,1 @@
+Add function to free memory after processing images. Also, add option to trace CPU memory. Updates example phrosty_config.yaml file to match new mem_trace option.
