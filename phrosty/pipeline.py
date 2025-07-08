@@ -9,6 +9,7 @@ import numpy as np
 import nvtx
 import pathlib
 import re
+import tracemalloc
 
 # Imports ASTRO
 from astropy.coordinates import SkyCoord
@@ -174,7 +175,6 @@ class PipelineImage:
 
     def free( self ):
         """Try to free memory.  More might be done here."""
-
         self.image.free()
 
 
@@ -595,7 +595,6 @@ class Pipeline:
 
     def __call__( self, through_step=None ):
         if self.mem_trace:
-            import tracemalloc
             tracemalloc.start()
             tracemalloc.reset_peak()
 
@@ -761,7 +760,8 @@ class Pipeline:
 
                     SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
                     if self.mem_trace:
-                        SNLogger.info( f"After a science image, memory usage = \
+                        SNLogger.info( f"After preprocessing, subtracting, and postprocessing \
+                                        a science image, memory usage = \
                                          {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
                     sci_image.free()
@@ -815,7 +815,7 @@ class Pipeline:
             SNLogger.info('...finished making stamps.')
 
         if self.mem_trace:
-            SNLogger.info( f"After make stamps, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
+            SNLogger.info( f"After make_stamps, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
         if 'make_lightcurve' in steps:
             SNLogger.info( "Making lightcurve" )
@@ -823,7 +823,7 @@ class Pipeline:
                 self.make_lightcurve()
 
         if self.mem_trace:
-            SNLogger.info( f"After make lightcurve, memory usage = \
+            SNLogger.info( f"After make_lightcurve, memory usage = \
                             {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
                 # ======================================================================
