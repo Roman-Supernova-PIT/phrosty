@@ -604,8 +604,6 @@ class Pipeline:
             except Exception as e:
                 print( f'Oops! Deleting {f} from {directory} did not work.\nReason: {e}' )
 
-
-
     def __call__( self, through_step=None ):
         if self.mem_trace:
             tracemalloc.start()
