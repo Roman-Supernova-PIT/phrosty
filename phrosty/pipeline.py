@@ -231,7 +231,7 @@ class Pipeline:
         self.nwrite = nwrite
 
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
-        self.nuke_temp_dir = self.config.value( 'photometry.phrosty.nuke_temp_dir' )
+        self.remove_temp_dir = self.config.value( 'photometry.phrosty.remove_temp_dir' )
         self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
 
 
@@ -609,7 +609,6 @@ class Pipeline:
             tracemalloc.start()
             tracemalloc.reset_peak()
 
-
         if through_step is None:
             through_step = 'make_lightcurve'
 
@@ -837,7 +836,7 @@ class Pipeline:
             SNLogger.info( f"After make_lightcurve, memory usage = \
                             {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
-        if self.nuke_temp_dir:
+        if self.remove_temp_dir:
             self.clear_contents( self.temp_dir )
 
                 # ======================================================================
