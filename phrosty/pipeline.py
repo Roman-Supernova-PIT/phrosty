@@ -593,8 +593,8 @@ class Pipeline:
     def write_fits_file( self, data, header, savepath ):
         fits.writeto( savepath, data, header=header, overwrite=True )
 
-    def clear_contents( self, dir ):
-        for f in self.dir.iterdir():
+    def clear_contents( self, directory ):
+        for f in directory.iterdir():
             try:
                 if f.is_dir():
                     shutil.rmtree( f )
