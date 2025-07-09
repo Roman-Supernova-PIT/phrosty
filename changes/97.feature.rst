@@ -1,0 +1,1 @@
+Move nuke_temp_dir kwarg out of Pipeline function and into the phrosty_config.yaml file. Also, make it work instead of leaving it as an empty parameter. Also, rename nuke_temp_dir to remove_temp_dir.

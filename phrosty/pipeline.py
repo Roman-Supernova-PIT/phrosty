@@ -9,6 +9,7 @@ import numpy as np
 import nvtx
 import pathlib
 import re
+import shutil
 import tracemalloc
 
 # Imports ASTRO
@@ -180,7 +181,7 @@ class PipelineImage:
 
 class Pipeline:
     def __init__( self, object_id, ra, dec, band, science_images, template_images, nprocs=1, nwrite=5,
-                  nuke_temp_dir=False, verbose=False ):
+                  verbose=False ):
 
         """Create the a pipeline object.
 
@@ -215,6 +216,7 @@ class Pipeline:
         self.image_base_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.image_base_dir' ) )
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
         self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
+        self.temp_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
         self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
 
         self.object_id = object_id
@@ -227,11 +229,9 @@ class Pipeline:
                                    for ppsmb in template_images if ppsmb[4] == self.band ] )
         self.nprocs = nprocs
         self.nwrite = nwrite
-        self.nuke_temp_dir = nuke_temp_dir
-        if self.nuke_temp_dir:
-            SNLogger.warning( "nuke_temp_dir not implemented" )
 
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
+        self.remove_temp_dir = self.config.value( 'photometry.phrosty.remove_temp_dir' )
         self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
 
 
@@ -593,11 +593,21 @@ class Pipeline:
     def write_fits_file( self, data, header, savepath ):
         fits.writeto( savepath, data, header=header, overwrite=True )
 
+    def clear_contents( self, directory ):
+        for f in directory.iterdir():
+            try:
+                if f.is_dir():
+                    shutil.rmtree( f )
+                else:
+                    f.unlink()
+
+            except Exception as e:
+                print( f'Oops! Deleting {f} from {directory} did not work.\nReason: {e}' )
+
     def __call__( self, through_step=None ):
         if self.mem_trace:
             tracemalloc.start()
             tracemalloc.reset_peak()
-
 
         if through_step is None:
             through_step = 'make_lightcurve'
@@ -826,6 +836,9 @@ class Pipeline:
             SNLogger.info( f"After make_lightcurve, memory usage = \
                             {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
+        if self.remove_temp_dir:
+            self.clear_contents( self.temp_dir )
+
                 # ======================================================================
 
 
@@ -874,7 +887,7 @@ def main():
                 imlist.append( ( pathlib.Path(img), int(point), int(sca), float(mjd), band ) )
 
     pipeline = Pipeline( args.oid, args.ra, args.dec, args.band, science_images, template_images,
-                         nprocs=args.nprocs, nwrite=args.nwrite, nuke_temp_dir=False, verbose=args.verbose )
+                         nprocs=args.nprocs, nwrite=args.nwrite, verbose=args.verbose )
     pipeline( args.through_step )
 
 
