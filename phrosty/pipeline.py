@@ -601,8 +601,8 @@ class Pipeline:
                 else:
                     f.unlink()
 
-            except:
-                print( f'Oops! Deleting {f} from {dir} did not work.' )
+            except Exception as e:
+                print( f'Oops! Deleting {f} from {dir} did not work.\nReason: {e}' )
 
 
 
