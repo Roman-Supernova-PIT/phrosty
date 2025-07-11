@@ -11,6 +11,7 @@ import pathlib
 import re
 import shutil
 import tracemalloc
+import uuid
 
 # Imports ASTRO
 from astropy.coordinates import SkyCoord
@@ -56,7 +57,7 @@ class PipelineImage:
         """
         # self.psf is a object of a subclass of snappl.psf.PSF
         self.config = Config.get()
-        self.temp_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+        self.temp_dir = pipeline.temp_dir
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         if self.keep_intermediate:
             self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
@@ -216,7 +217,9 @@ class Pipeline:
         self.image_base_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.image_base_dir' ) )
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
         self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
-        self.temp_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+        self.temp_dir_parent = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+        self.temp_dir = self.temp_dir_parent / str(uuid.uuid1())
+        self.temp_dir.mkdir()
         self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
 
         self.object_id = object_id
