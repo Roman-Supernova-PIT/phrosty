@@ -62,7 +62,7 @@ class PipelineImage:
         if self.keep_intermediate:
             self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
         elif not self.keep_intermediate:
-            self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+            self.save_dir = self.temp_dir
 
         if self.config.value( 'photometry.phrosty.image_type' ) == 'ou2024fits':
             self.image = OpenUniverse2024FITSImage( imagepath, None, sca )
