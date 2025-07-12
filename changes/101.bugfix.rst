@@ -1,0 +1,1 @@
+pipeline.py now generates a uniquely-named folder, based on UUID, inside `self.temp_dir`. This avoids conflicts when remove_temp_dir is set to true and multiple jobs are running in parallel.
