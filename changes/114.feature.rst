@@ -1,0 +1,1 @@
+Change zeropoint calculation endpoints from 20 < x < 23 to 19 < x < 21.5 to match Aldoroty et al. 2025a.
