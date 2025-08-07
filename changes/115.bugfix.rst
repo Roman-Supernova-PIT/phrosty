@@ -1,0 +1,1 @@
+Per the adopted convention in SFFT, all input and output arrays should be transposed. The output intermediate file arrays were not transposed when saving to disk. Now they are.
