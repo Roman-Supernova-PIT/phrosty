@@ -380,7 +380,7 @@ class Pipeline:
 
         return {'exptime': exptime, 'area_eff': area_eff, 'gs_zpt': gs_zpt}
 
-    def get_zpt(self, zptimg, err, psf, band, stars, ap_r=4, 
+    def get_zpt(self, zptimg, err, psf, band, stars, ap_r=4,
                 zpt_plot=None, oid=None, sci_pointing=None, sci_sca=None):
 
         # TODO : Need to move this code all over into snappl Image.  It sounds like
