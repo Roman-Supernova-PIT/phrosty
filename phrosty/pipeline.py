@@ -336,6 +336,7 @@ class Pipeline:
         mag_err = (2.5 / np.log(10)) * np.abs(final["flux_err"][0] / final["flux_fit"][0])
 
         results_dict = {
+                        'aperture_sum': init['aperture_sum'][0],
                         'flux_fit': flux,
                         'flux_fit_err': flux_err,
                         'mag_fit': mag,
@@ -379,7 +380,7 @@ class Pipeline:
 
         return {'exptime': exptime, 'area_eff': area_eff, 'gs_zpt': gs_zpt}
 
-    def get_zpt(self, zptimg, err, psf, band, stars, ap_r=4, ap_phot_only=False,
+    def get_zpt(self, zptimg, err, psf, band, stars, ap_r=4, 
                 zpt_plot=None, oid=None, sci_pointing=None, sci_sca=None):
 
         # TODO : Need to move this code all over into snappl Image.  It sounds like
@@ -401,11 +402,11 @@ class Pipeline:
         # will be in the same order.
         photres = astropy.table.join(stars, init_params, keys=['object_id', 'ra', 'dec', 'realized_flux',
                                                                'flux_truth', 'mag_truth', 'obj_type'])
-        if not ap_phot_only:
-            photres = astropy.table.join(photres, final_params, keys=['id'])
+        photres = astropy.table.join(photres, final_params, keys=['id'])
 
         # Get the zero point.
         galsim_vals = self.get_galsim_values()
+        star_ap_mags = -2.5 * np.log10(photres['aperture_sum'])
         star_fit_mags = -2.5 * np.log10(photres['flux_fit'])
         star_truth_mags = ( -2.5 * np.log10(photres['flux_truth']) + galsim_vals['gs_zpt']
                             + 2.5 * np.log10(galsim_vals['exptime'] * galsim_vals['area_eff']) )
@@ -413,6 +414,7 @@ class Pipeline:
         # Eventually, this should be a S/N cut, not a mag cut.
         zpt_mask = np.logical_and(star_truth_mags > 19, star_truth_mags < 21.5)
         zpt = np.nanmedian(star_truth_mags[zpt_mask] - star_fit_mags[zpt_mask])
+        ap_zpt = np.nanmedian(star_truth_mags[zpt_mask] - star_ap_mags[zpt_mask])
 
         if zpt_plot is not None:
             assert oid is not None, 'If zpt_plot=True, oid must be provided.'
@@ -443,7 +445,7 @@ class Pipeline:
             # plt.savefig(savepath, dpi=300, bbox_inches='tight')
             # plt.close()
 
-        return zpt
+        return zpt, ap_zpt
 
     def make_phot_info_dict( self, sci_image, templ_image, ap_r=4 ):
         # Do photometry on stamp because it will read faster
@@ -494,11 +496,12 @@ class Pipeline:
             with fits.open(zptimg_path) as hdu:
                 zptimg = hdu[0].data
 
-            zpt = self.get_zpt(zptimg, sci_image.image.noise, psf, self.band, stars, oid=self.object_id,
+            zpt, ap_zpt = self.get_zpt(zptimg, sci_image.image.noise, psf, self.band, stars, oid=self.object_id,
                                sci_pointing=sci_image.pointing, sci_sca=sci_image.image.sca)
 
             # Add additional info to the results dictionary so it can be merged into a nice file later.
             results_dict['zpt'] = zpt
+            results_dict['ap_zpt'] = ap_zpt
             results_dict['success'] = True
 
         else:
@@ -507,6 +510,8 @@ class Pipeline:
                               f"{self.band}_{templ_image.pointing}_{templ_image.image.sca} "
                               f"do not exist.  Skipping." )
             results_dict['zpt'] = np.nan
+            results_dict['ap_zpt'] = np.nan
+            results_dict['aperture_sum'] = np.nan
             results_dict['flux_fit'] = np.nan
             results_dict['flux_fit_err'] = np.nan
             results_dict['mag_fit'] = np.nan
@@ -562,6 +567,8 @@ class Pipeline:
             'template_pointing': [],
             'template_sca': [],
             'zpt': [],
+            'ap_zpt': [],
+            'aperture_sum': [],
             'flux_fit': [],
             'flux_fit_err': [],
             'mag_fit': [],
