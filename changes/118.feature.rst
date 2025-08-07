@@ -1,0 +1,1 @@
+Add aperture photometry to output. LC output files now have "aperture_sum" and "ap_zpt" columns. Also, remove ap_phot_only kwarg in get_zpt() because this makes it obsolete. pytests pass.
