@@ -411,7 +411,7 @@ class Pipeline:
                             + 2.5 * np.log10(galsim_vals['exptime'] * galsim_vals['area_eff']) )
 
         # Eventually, this should be a S/N cut, not a mag cut.
-        zpt_mask = np.logical_and(star_truth_mags > 20, star_truth_mags < 23)
+        zpt_mask = np.logical_and(star_truth_mags > 19, star_truth_mags < 21.5)
         zpt = np.nanmedian(star_truth_mags[zpt_mask] - star_fit_mags[zpt_mask])
 
         if zpt_plot is not None:
