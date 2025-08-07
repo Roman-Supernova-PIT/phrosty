@@ -1,0 +1,1 @@
+Removed the SpaceSFFTPurePack folder from our repo. These are vestigial; the functionality is in our SFFT repo.
