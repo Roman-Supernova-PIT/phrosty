@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phrosty.imagesubtraction &#8212; phrosty 0.1.dev1+g00c2b9739 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=db0969fc" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <script src="../../_static/documentation_options.js?v=19778094"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/logo_black_filled.png" alt="Logo" />
+    
+  </a>
+</p>
+
+
+
+<p class="blurb">Software developed by the Roman SNPIT</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../development.html">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changes.html">Change Log</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">phrosty API</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for phrosty.imagesubtraction</h1><div class="highlight"><pre>
+<span></span><span class="c1"># temp import for use with nsys</span>
+<span class="c1"># (see &quot;with nvtx.annotate&quot; blocks below)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">nvtx</span>
+
+<span class="c1"># IMPORTS Standard:</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cupy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gzip</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pathlib</span>
+
+<span class="c1"># IMPORTS Astro:</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.coordinates</span><span class="w"> </span><span class="kn">import</span> <span class="n">SkyCoord</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.wcs.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">skycoord_to_pixel</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">astropy.units</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">u</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.wcs</span><span class="w"> </span><span class="kn">import</span> <span class="n">WCS</span>
+
+<span class="c1"># IMPORTS SFFT:</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sfft.utils.SExSkySubtract</span><span class="w"> </span><span class="kn">import</span> <span class="n">SEx_SkySubtract</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sfft.utils.StampGenerator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Stamp_Generator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sfft.utils.CudaResampling</span><span class="w"> </span><span class="kn">import</span> <span class="n">Cuda_Resampling</span>
+
+<span class="c1"># IMPORTS internal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">snpit_utils.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">SNLogger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">snpit_utils.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module was written with significant contributions from</span>
+<span class="sd">Dr. Lei Hu (https://github.com/thomasvrussell/), and relies on his</span>
+<span class="sd">SFFT image subtraction package (https://github.com/thomasvrussell/sfft).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="gz_and_ext">
+<a class="viewcode-back" href="../../api.html#phrosty.imagesubtraction.gz_and_ext">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">gz_and_ext</span><span class="p">(</span><span class="n">in_path</span><span class="p">,</span> <span class="n">out_path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Utility function that unzips the original file and turns it into a single-extension FITS file.&quot;&quot;&quot;</span>
+    <span class="c1"># ****</span>
+    <span class="c1"># Remove this</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span>
+    <span class="c1"># ****</span>
+
+    <span class="n">bio</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">in_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_in</span><span class="p">:</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfileobj</span><span class="p">(</span><span class="n">f_in</span><span class="p">,</span> <span class="n">bio</span><span class="p">)</span>
+    <span class="n">bio</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">bio</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdu</span><span class="p">:</span>
+        <span class="n">newhdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">hdu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)])</span>
+        <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">current_process</span><span class="p">()</span><span class="o">.</span><span class="n">pid</span><span class="si">}</span><span class="s2"> Writing extracted HDU 1 to </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2">...&quot;</span> <span class="p">)</span>
+        <span class="n">newhdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;...process </span><span class="si">{</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">current_process</span><span class="p">()</span><span class="o">.</span><span class="n">pid</span><span class="si">}</span><span class="s2"> done writing &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;extracted HDU 1 to </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2">.&quot;</span> <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">out_path</span></div>
+
+
+
+<span class="c1"># def sky_subtract(path=None, band=None, pointing=None, sca=None, out_path=output_files_rootdir,</span>
+<span class="c1">#                  force=False, verbose=False):</span>
+<div class="viewcode-block" id="sky_subtract">
+<a class="viewcode-back" href="../../api.html#phrosty.imagesubtraction.sky_subtract">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sky_subtract</span><span class="p">(</span> <span class="n">inpath</span><span class="p">,</span> <span class="n">skysubpath</span><span class="p">,</span> <span class="n">detmaskpath</span><span class="p">,</span> <span class="n">temp_dir</span><span class="o">=</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/tmp&quot;</span><span class="p">),</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span> <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Subtracts background, found with Source Extractor.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">      inpath: Path</span>
+<span class="sd">        Original FITS image</span>
+
+<span class="sd">      skysubpath: Path</span>
+<span class="sd">        Sky-subtracted FITS image</span>
+
+<span class="sd">      detmaskpath: Path</span>
+<span class="sd">        Detection Mask FITS Image.  (Will be uint8, I think.)</span>
+
+<span class="sd">      temp_dir: Path</span>
+<span class="sd">        Already-existing directory where we can write a temporary file.</span>
+<span class="sd">        (If the image is .gz compressed, source-extractor can&#39;t handle</span>
+<span class="sd">        that, so we have to write a decompressed version.)</span>
+
+<span class="sd">      force: bool, default False</span>
+<span class="sd">        If False, and outpath already exists, do nothing.  If True,</span>
+<span class="sd">        clobber the existing file and recalculate it.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">      skyrms: float</span>
+<span class="sd">        Median of the skyrms image calculated by source-extractor</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="p">(</span> <span class="ow">not</span> <span class="n">force</span> <span class="p">)</span> <span class="ow">and</span> <span class="p">(</span> <span class="n">skysubpath</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="p">)</span> <span class="ow">and</span> <span class="p">(</span> <span class="n">detmaskpath</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="p">):</span>
+        <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span> <span class="n">skysubpath</span> <span class="p">)</span> <span class="k">as</span> <span class="n">hdul</span><span class="p">:</span>
+            <span class="n">skyrms</span> <span class="o">=</span> <span class="n">hdul</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;SKYRMS&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">skyrms</span>
+
+    <span class="c1"># do_skysub = force or ( ( not force ) and ( not skysubpath.is_file() ) and ( detmaskpath.is_file() ) )</span>
+
+    <span class="k">if</span> <span class="n">inpath</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:]</span> <span class="o">==</span> <span class="s1">&#39;.gz&#39;</span><span class="p">:</span>
+        <span class="n">decompressed_path</span> <span class="o">=</span> <span class="n">temp_dir</span> <span class="o">/</span> <span class="n">inpath</span><span class="o">.</span><span class="n">name</span><span class="p">[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">gz_and_ext</span><span class="p">(</span> <span class="n">inpath</span><span class="p">,</span> <span class="n">decompressed_path</span> <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">decompressed_path</span> <span class="o">=</span> <span class="n">inpath</span>
+
+
+    <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="s2">&quot;Calling SEx_SkySubtract.SSS...&quot;</span> <span class="p">)</span>
+    <span class="p">(</span> <span class="n">SKYDIP</span><span class="p">,</span> <span class="n">SKYPEAK</span><span class="p">,</span> <span class="n">PixA_skysub</span><span class="p">,</span>
+      <span class="n">PixA_sky</span><span class="p">,</span> <span class="n">PixA_skyrms</span> <span class="p">)</span> <span class="o">=</span> <span class="n">SEx_SkySubtract</span><span class="o">.</span><span class="n">SSS</span><span class="p">(</span><span class="n">FITS_obj</span><span class="o">=</span><span class="n">decompressed_path</span><span class="p">,</span>
+                                                    <span class="n">FITS_skysub</span><span class="o">=</span><span class="n">skysubpath</span><span class="p">,</span>
+                                                    <span class="n">FITS_detmask</span><span class="o">=</span><span class="n">detmaskpath</span><span class="p">,</span>
+                                                    <span class="n">FITS_sky</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">FITS_skyrms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                                    <span class="n">ESATUR_KEY</span><span class="o">=</span><span class="s1">&#39;ESATUR&#39;</span><span class="p">,</span>
+                                                    <span class="n">BACK_SIZE</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">BACK_FILTERSIZE</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                                                    <span class="n">DETECT_THRESH</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">DETECT_MINAREA</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                                                    <span class="n">DETECT_MAXAREA</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                                                    <span class="n">VERBOSE_LEVEL</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">MDIR</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="s2">&quot;...back from SEx_SkySubtract.SSS&quot;</span> <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span> <span class="n">PixA_skyrms</span> <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_resample">
+<a class="viewcode-back" href="../../api.html#phrosty.imagesubtraction.run_resample">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_resample</span><span class="p">(</span><span class="n">FITS_obj</span><span class="p">,</span> <span class="n">FITS_targ</span><span class="p">,</span> <span class="n">FITS_resamp</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;run resampling using CUDA&quot;&quot;&quot;</span>
+    <span class="n">hdr_obj</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getheader</span><span class="p">(</span><span class="n">FITS_obj</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">hdr_targ</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getheader</span><span class="p">(</span><span class="n">FITS_targ</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">PixA_obj</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">FITS_obj</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="c1"># PixA_targ = fits.getdata(FITS_targ, ext=0).T</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">PixA_obj</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s1">&#39;C_CONTIGUOUS&#39;</span><span class="p">]:</span>
+        <span class="n">PixA_obj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">PixA_obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">PixA_obj_GPU</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">PixA_obj</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span> <span class="n">PixA_obj_GPU</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">PixA_obj</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+
+    <span class="c1"># if not PixA_targ.flags[&#39;C_CONTIGUOUS&#39;]:</span>
+    <span class="c1">#     PixA_targ = np.ascontiguousarray(PixA_targ, np.float64)</span>
+    <span class="c1">#     PixA_targ_GPU = cupy.array(PixA_targ)</span>
+    <span class="c1"># else:</span>
+    <span class="c1">#     PixA_targ_GPU = cupy.array(PixA_targ.astype(np.float64))</span>
+
+    <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">&quot;Cuda_Resampling&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0xdddd00</span> <span class="p">):</span>
+        <span class="n">CR</span> <span class="o">=</span> <span class="n">Cuda_Resampling</span><span class="p">(</span><span class="n">RESAMP_METHOD</span><span class="o">=</span><span class="s1">&#39;BILINEAR&#39;</span><span class="p">,</span> <span class="n">VERBOSE_LEVEL</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">&quot;CR.projection_sip&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0xbbbb00</span> <span class="p">):</span>
+        <span class="n">XX_proj_GPU</span><span class="p">,</span> <span class="n">YY_proj_GPU</span> <span class="o">=</span> <span class="n">CR</span><span class="o">.</span><span class="n">projection_sip</span><span class="p">(</span><span class="n">hdr_obj</span><span class="p">,</span> <span class="n">hdr_targ</span><span class="p">,</span> <span class="n">Nsamp</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">RANDOM_SEED</span><span class="o">=</span><span class="mi">10086</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">&quot;CR.frame_extension&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0x999900</span> <span class="p">):</span>
+        <span class="n">PixA_Eobj_GPU</span><span class="p">,</span> <span class="n">EProjDict</span> <span class="o">=</span> <span class="n">CR</span><span class="o">.</span><span class="n">frame_extension</span><span class="p">(</span><span class="n">XX_proj_GPU</span><span class="o">=</span><span class="n">XX_proj_GPU</span><span class="p">,</span> <span class="n">YY_proj_GPU</span><span class="o">=</span><span class="n">YY_proj_GPU</span><span class="p">,</span>
+                                                      <span class="n">PixA_obj_GPU</span><span class="o">=</span><span class="n">PixA_obj_GPU</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">&quot;CR.resampling&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0x777700</span> <span class="p">):</span>
+        <span class="n">PixA_resamp</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">asnumpy</span><span class="p">(</span><span class="n">CR</span><span class="o">.</span><span class="n">resampling</span><span class="p">(</span><span class="n">PixA_Eobj_GPU</span><span class="o">=</span><span class="n">PixA_Eobj_GPU</span><span class="p">,</span> <span class="n">EProjDict</span><span class="o">=</span><span class="n">EProjDict</span><span class="p">))</span>
+
+    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">FITS_targ</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdl</span><span class="p">:</span>
+        <span class="n">PixA_resamp</span><span class="p">[</span><span class="n">PixA_resamp</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">hdl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">PixA_resamp</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">hdl</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">FITS_resamp</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<span class="c1"># def imalign(template_path, sci_path, out_path=output_files_rootdir,savename=None,force=False, verbose=False):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     Align images.</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+
+<span class="c1">#     outdir = os.path.join(out_path, &#39;align&#39;)</span>
+<span class="c1">#     if savename is None:</span>
+<span class="c1">#         savename = os.path.basename(sci_path)</span>
+<span class="c1">#     output_path = os.path.join(outdir, f&#39;align_{savename}&#39;)</span>
+
+
+<span class="c1">#     do_align = (force is True) or (force is False and not os.path.exists(output_path))</span>
+<span class="c1">#     skip_align = (not force) and os.path.exists(output_path)</span>
+<span class="c1">#     if do_align:</span>
+<span class="c1">#         check_and_mkdir(outdir)</span>
+
+<span class="c1">#         SNLogger.debug( &quot;Using Cuda_Resampling.CR to resample image&quot; )</span>
+
+<span class="c1">#         # Cuda_Resampling.CR( sci_path, template_path, output_path, METHOD=&quot;BILINEAR&quot; )</span>
+<span class="c1">#         run_resample( sci_path, template_path, output_path )</span>
+
+<span class="c1">#     elif skip_align and verbose:</span>
+<span class="c1">#         print(output_path, &#39;already exists. Skipping alignment.&#39;)</span>
+
+<span class="c1">#     return output_path</span>
+
+<span class="c1"># def calculate_skyN_vector(wcshdr, x_start, y_start, shift_dec=1.0):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     Lei Hu 2024</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     w = Read_WCS.RW(wcshdr, VERBOSE_LEVEL=1)</span>
+<span class="c1">#     ra_start, dec_start = w.all_pix2world(np.array([[x_start, y_start]]), 1)[0]</span>
+<span class="c1">#     ra_end, dec_end = ra_start, dec_start + shift_dec/3600.0</span>
+<span class="c1">#     x_end, y_end = w.all_world2pix(np.array([[ra_end, dec_end]]), 1)[0]</span>
+<span class="c1">#     skyN_vector = np.array([x_end - x_start, y_end - y_start])</span>
+<span class="c1">#     return skyN_vector</span>
+
+<span class="c1"># def calculate_rotate_angle(vector_ref, vector_obj):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     Lei Hu 2024</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     rad = np.arctan2(np.cross(vector_ref, vector_obj), np.dot(vector_ref, vector_obj))</span>
+<span class="c1">#     rotate_angle = np.rad2deg(rad)</span>
+<span class="c1">#     if rotate_angle &lt; 0.0:</span>
+<span class="c1">#         rotate_angle += 360.0</span>
+<span class="c1">#     return rotate_angle</span>
+
+
+<span class="c1"># def rotate_psf(ra,dec,psf,target,savename=None,force=False,verbose=False):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     2. Rotate PSF model to match reference WCS.</span>
+<span class="c1">#         2a. Calculate rotation angle during alignment</span>
+<span class="c1">#         2b. Rotate PSF to match rotated science image</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+
+<span class="c1">#     # Set up filepaths.</span>
+<span class="c1">#     psf_dir = os.path.join(output_files_rootdir,&#39;psf&#39;)</span>
+<span class="c1">#     check_and_mkdir(psf_dir)</span>
+
+<span class="c1">#     basename = os.path.basename(psf)</span>
+<span class="c1">#     if savename is None:</span>
+<span class="c1">#         savename = f&#39;rot_{basename}&#39;</span>
+<span class="c1">#     psf_path = os.path.join(psf_dir, savename)</span>
+
+<span class="c1">#     do_psf = (force is True) or (force is False and not os.path.exists(psf_path))</span>
+<span class="c1">#     skip_psf = (not force) and os.path.exists(psf_path)</span>
+<span class="c1">#     if do_psf:</span>
+<span class="c1">#         # Get vector from original PSF WCS (i.e., not rotated to reference)</span>
+<span class="c1">#         hdr = fits.getheader(psf, ext=0)</span>
+<span class="c1">#         _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)</span>
+<span class="c1">#         x0, y0 = 0.5 + int(hdr[&#39;NAXIS1&#39;])/2.0, 0.5 + int(hdr[&#39;NAXIS2&#39;])/2.0</span>
+<span class="c1">#         ra0, dec0 = _w.all_pix2world(np.array([[x0, y0]]), 1)[0]</span>
+<span class="c1">#         skyN_vector = calculate_skyN_vector(wcshdr=hdr, x_start=x0, y_start=y0)</span>
+
+<span class="c1">#         # Also get the PSF image for rotation</span>
+<span class="c1">#         psfimg = fits.getdata(psf, ext=0).T # Already saved as a transposed matrix from get_imsim_psf.</span>
+
+<span class="c1">#         # Get vector from target WCS (i.e., rotated)</span>
+<span class="c1">#         hdr = fits.getheader(target, ext=0)</span>
+<span class="c1">#         _w = Read_WCS.RW(hdr, VERBOSE_LEVEL=1)</span>
+<span class="c1">#         x1, y1 = _w.all_world2pix(np.array([[ra0, dec0]]), 1)[0]</span>
+<span class="c1">#         skyN_vectorp = calculate_skyN_vector(wcshdr=hdr, x_start=x1, y_start=y1)</span>
+<span class="c1">#         PATTERN_ROTATE_ANGLE = calculate_rotate_angle(vector_ref=skyN_vector, vector_obj=skyN_vectorp)</span>
+
+<span class="c1">#         # Do rotation</span>
+<span class="c1">#         psf_rotated = Image_ZoomRotate.IZR(PixA_obj=psfimg, ZOOM_SCALE_X=1., \</span>
+<span class="c1">#                                             ZOOM_SCALE_Y=1., PATTERN_ROTATE_ANGLE=PATTERN_ROTATE_ANGLE, \</span>
+<span class="c1">#                                             RESAMPLING_TYPE=&#39;BILINEAR&#39;, FILL_VALUE=0.0, VERBOSE_LEVEL=1)[0]</span>
+
+<span class="c1">#         # Save rotated PSF</span>
+<span class="c1">#         fits.HDUList([fits.PrimaryHDU(data=psf_rotated.T, header=None)]).writeto(psf_path, overwrite=True)</span>
+<span class="c1">#     elif skip_psf and verbose:</span>
+<span class="c1">#         print(psf_path, &#39;already exists. Skipping getting PSF.&#39;)</span>
+
+<span class="c1">#     return psf_path</span>
+
+<span class="c1"># def crossconvolve(sci_img_path, sci_psf_path,</span>
+<span class="c1">#                   ref_img_path, ref_psf_path,</span>
+<span class="c1">#                   force=False,verbose=False,</span>
+<span class="c1">#                   sci_outname=None,</span>
+<span class="c1">#                   ref_outname=None,</span>
+<span class="c1">#                   out_path=output_files_rootdir):</span>
+
+<span class="c1">#     savedir = os.path.join(out_path,&#39;convolved&#39;)</span>
+<span class="c1">#     check_and_mkdir(savedir)</span>
+
+<span class="c1">#     # First convolves reference PSF on science image.</span>
+<span class="c1">#     # Then, convolves science PSF on reference image.</span>
+<span class="c1">#     savepaths = []</span>
+<span class="c1">#     for img, name in zip([sci_img_path,ref_img_path],</span>
+<span class="c1">#                     [sci_outname,ref_outname]):</span>
+
+<span class="c1">#         if name is None:</span>
+<span class="c1">#             savename = f&#39;conv_{os.path.basename(img)}&#39;</span>
+<span class="c1">#         else:</span>
+<span class="c1">#             savename = name</span>
+
+<span class="c1">#         savepath = os.path.join(savedir, savename)</span>
+<span class="c1">#         savepaths.append(savepath)</span>
+
+<span class="c1">#     do_conv = (force is True) or (force is False and not any([os.path.exists(p) for p in savepaths]))</span>
+<span class="c1">#     skip_conv = (not force) and all([os.path.exists(p) for p in savepaths])</span>
+<span class="c1">#     if do_conv:</span>
+<span class="c1">#         for img, psf, name, save in zip([sci_img_path, ref_img_path],</span>
+<span class="c1">#                             [ref_psf_path, sci_psf_path],</span>
+<span class="c1">#                             [&#39;sci&#39;, &#39;ref&#39;], savepaths):</span>
+
+<span class="c1">#             imgdata = fits.getdata(img, ext=0).T</span>
+<span class="c1">#             psfdata = fits.getdata(psf, ext=0).T</span>
+
+<span class="c1">#             # See comment in decorr_img</span>
+<span class="c1">#             convolved = convolve_fft(imgdata, psfdata, boundary=&#39;fill&#39;, nan_treatment=&#39;fill&#39;, \</span>
+<span class="c1">#                                      fill_value=0.0, normalize_kernel=True, preserve_nan=True, allow_huge=True,</span>
+<span class="c1">#                                      fftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.fftn( cupy.array( x ) ) ),</span>
+<span class="c1">#                                      ifftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.ifftn( cupy.array( x ) ) )</span>
+<span class="c1">#                                      )</span>
+
+<span class="c1">#             with fits.open(img) as hdl:</span>
+<span class="c1">#                 hdl[0].data[:, :] = convolved.T</span>
+<span class="c1">#                 hdl.writeto(save, overwrite=True)</span>
+
+<span class="c1">#     elif skip_conv and verbose:</span>
+<span class="c1">#         print(savepaths, &#39;already exist. Skipping cross convolve.&#39;)</span>
+
+<span class="c1">#     return savepaths</span>
+
+
+<div class="viewcode-block" id="stampmaker">
+<a class="viewcode-back" href="../../api.html#phrosty.imagesubtraction.stampmaker">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">stampmaker</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">imgpath</span><span class="p">,</span> <span class="n">savedir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">savename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Make stamps.</span>
+
+<span class="sd">    Note: &#39;shape&#39; must be a numpy array. e.g. np.array([100,100])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">savedir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">savedir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="n">cfg</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;photometry.phrosty.paths.dia_out_dir&#39;</span> <span class="p">)</span> <span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;stamps&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">savedir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="n">savedir</span> <span class="p">)</span>
+    <span class="n">savedir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span> <span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">savename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">savename</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;stamp_</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">imgpath</span><span class="p">)</span><span class="si">}</span><span class="s1">.fits&#39;</span>
+
+    <span class="n">savepath</span> <span class="o">=</span> <span class="n">savedir</span> <span class="o">/</span> <span class="n">savename</span>
+
+    <span class="n">coord</span> <span class="o">=</span> <span class="n">SkyCoord</span><span class="p">(</span><span class="n">ra</span><span class="o">=</span><span class="n">ra</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">deg</span><span class="p">,</span> <span class="n">dec</span><span class="o">=</span><span class="n">dec</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">deg</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">imgpath</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdu</span><span class="p">:</span>
+        <span class="n">hdun</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">imgpath</span><span class="p">)[</span><span class="o">-</span><span class="mi">3</span><span class="p">:]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;.fz&#39;</span><span class="p">,</span> <span class="s1">&#39;.gz&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">wcs</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">hdu</span><span class="p">[</span><span class="n">hdun</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">skycoord_to_pixel</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">wcs</span><span class="p">)</span>
+    <span class="n">pxradec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">]])</span>
+
+    <span class="c1"># TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()</span>
+    <span class="n">Stamp_Generator</span><span class="o">.</span><span class="n">SG</span><span class="p">(</span><span class="n">FITS_obj</span><span class="o">=</span><span class="n">imgpath</span><span class="p">,</span> <span class="n">EXTINDEX</span><span class="o">=</span><span class="n">hdun</span><span class="p">,</span> <span class="n">COORD</span><span class="o">=</span><span class="n">pxradec</span><span class="p">,</span> <span class="n">COORD_TYPE</span><span class="o">=</span><span class="s1">&#39;IMAGE&#39;</span><span class="p">,</span>
+                       <span class="n">STAMP_IMGSIZE</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span> <span class="n">FILL_VALUE</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">FITS_StpLst</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">savepath</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">savepath</span></div>
+
+
+
+<span class="c1"># def bkg_mask(imgpath):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     Create detection mask. Not necessary to call directly.</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+
+<span class="c1">#     source_ext_params = [&#39;X_IMAGE&#39;, &#39;Y_IMAGE&#39;, &#39;FLUX_AUTO&#39;, &#39;FLUXERR_AUTO&#39;, &#39;MAG_AUTO&#39;, &#39;MAGERR_AUTO&#39;, &#39;FLAGS&#39;, \</span>
+<span class="c1">#     &#39;FLUX_RADIUS&#39;, &#39;FWHM_IMAGE&#39;, &#39;A_IMAGE&#39;, &#39;B_IMAGE&#39;, &#39;KRON_RADIUS&#39;, &#39;THETA_IMAGE&#39;, &#39;SNR_WIN&#39;]</span>
+
+<span class="c1">#     scatalog = PY_SEx.PS(FITS_obj=imgpath, SExParam=source_ext_params, GAIN_KEY=&#39;GAIN&#39;, SATUR_KEY=&#39;SATURATE&#39;, \</span>
+<span class="c1">#                          BACK_TYPE=&#39;MANUAL&#39;, BACK_VALUE=0.0, BACK_SIZE=64, BACK_FILTERSIZE=3, DETECT_THRESH=1.5, \</span>
+<span class="c1">#                          DETECT_MINAREA=5, DETECT_MAXAREA=0, DEBLEND_MINCONT=0.001, BACKPHOTO_TYPE=&#39;LOCAL&#39;, \</span>
+<span class="c1">#                          CHECKIMAGE_TYPE=&#39;SEGMENTATION&#39;, AddRD=True, ONLY_FLAGS=None, XBoundary=0.0, YBoundary=0.0, \</span>
+<span class="c1">#                          DEFAULT_GAIN=1.0, DEFAULT_SATUR=100000, MDIR=None, VERBOSE_LEVEL=1)[1][0]</span>
+
+<span class="c1">#     bkg_mask = (scatalog == 0)</span>
+
+<span class="c1">#     # BAD IDEA : we were reading masks from different images</span>
+<span class="c1">#     #   (unaligned template, convolved neither.)</span>
+<span class="c1">#     # fname = os.path.join( output_files_rootdir, f&#39;detect_mask/{os.path.basename(imgpath)}.npy&#39; )</span>
+<span class="c1">#     # SNLogger.info( f&quot;Trying to load detection mask from {fname}&quot; )</span>
+<span class="c1">#     # bkg_mask = np.load( fname )</span>
+
+<span class="c1">#     return bkg_mask</span>
+
+<span class="c1"># def difference(scipath, refpath,</span>
+<span class="c1">#                out_path=output_files_rootdir, savename=None, ForceConv=&#39;REF&#39;, GKerHW=9, KerPolyOrder=2, BGPolyOrder=0,</span>
+<span class="c1">#                ConstPhotRatio=True, backend=&#39;Numpy&#39;, cudadevice=&#39;0&#39;, nCPUthreads=1, force=False, verbose=False ):</span>
+
+<span class="c1">#     tracemalloc.start()</span>
+
+<span class="c1">#     sci_basename = os.path.basename(scipath)</span>
+
+<span class="c1">#     sci_data = fits.getdata(scipath).T</span>
+<span class="c1">#     ref_data = fits.getdata(refpath).T</span>
+
+<span class="c1">#     if savename is None:</span>
+<span class="c1">#         savename = sci_basename</span>
+
+<span class="c1">#     savedir = os.path.join(out_path, &#39;subtract&#39;)</span>
+<span class="c1">#     check_and_mkdir(savedir)</span>
+
+<span class="c1">#     diff_savedir = os.path.join(savedir,&#39;difference&#39;)</span>
+<span class="c1">#     soln_savedir = os.path.join(savedir, &#39;solution&#39;)</span>
+<span class="c1">#     masked_savedir = os.path.join(savedir, &#39;masked&#39;)</span>
+
+<span class="c1">#     for dirname in [diff_savedir, soln_savedir, masked_savedir]:</span>
+<span class="c1">#         check_and_mkdir(dirname)</span>
+
+<span class="c1">#     diff_savepath = os.path.join(diff_savedir, f&#39;diff_{savename}&#39;)</span>
+<span class="c1">#     soln_savepath = os.path.join(soln_savedir, f&#39;solution_{savename}&#39;)</span>
+
+<span class="c1">#     sci_masked_savepath = os.path.join(masked_savedir,f&#39;masked_{savename}&#39;)</span>
+<span class="c1">#     ref_masked_savepath = os.path.join(masked_savedir,f&#39;masked_{savename}&#39;)</span>
+
+<span class="c1">#     do_subtract = (force is True) or (force is False and not os.path.exists(diff_savepath))</span>
+<span class="c1">#     skip_subtract = (not force) and os.path.exists(diff_savepath)</span>
+<span class="c1">#     if do_subtract:</span>
+<span class="c1">#         # Make combined detection mask.</span>
+<span class="c1">#         sci_bkgmask = bkg_mask(scipath)</span>
+<span class="c1">#         ref_bkgmask = bkg_mask(refpath)</span>
+<span class="c1">#         nanmask = np.isnan(sci_data) | np.isnan(ref_data)</span>
+<span class="c1">#         _bkgmask = np.logical_and(sci_bkgmask,ref_bkgmask)</span>
+<span class="c1">#         bkgmask = np.logical_or(nanmask, _bkgmask)</span>
+
+<span class="c1">#         for path, msavepath in zip([refpath, scipath], \</span>
+<span class="c1">#                                     [ref_masked_savepath, sci_masked_savepath]):</span>
+<span class="c1">#             with fits.open(path) as hdu:</span>
+<span class="c1">#                 hdudata = hdu[0].data.T</span>
+<span class="c1">#                 hdudata[bkgmask] = 0.0</span>
+<span class="c1">#                 hdu[0].data[:, :] = hdudata.T</span>
+<span class="c1">#                 hdu.writeto(msavepath, overwrite=True)</span>
+
+<span class="c1">#         size,peak = tracemalloc.get_traced_memory()</span>
+<span class="c1">#         SNLogger.debug(f&#39;MEMORY IN imagesubtraction.difference() BEFORE Customized_Packet.CP: &#39;</span>
+<span class="c1">#                        f&#39;size = {size}, peak = {peak}&#39;)</span>
+<span class="c1">#         tracemalloc.reset_peak()</span>
+
+<span class="c1">#         # Do SFFT subtraction</span>
+<span class="c1">#         with nvtx.annotate( &quot;Customized_Packet.CP&quot;, color=0x44ff44 ):</span>
+<span class="c1">#             Customized_Packet.CP(FITS_REF=refpath, FITS_SCI=scipath, FITS_mREF=ref_masked_savepath,</span>
+<span class="c1">#                                  FITS_mSCI=sci_masked_savepath, ForceConv=ForceConv, GKerHW=GKerHW,</span>
+<span class="c1">#                                  FITS_DIFF=diff_savepath, FITS_Solution=soln_savepath,</span>
+<span class="c1">#                                  KerPolyOrder=KerPolyOrder, BGPolyOrder=BGPolyOrder, ConstPhotRatio=ConstPhotRatio,</span>
+<span class="c1">#                                  BACKEND_4SUBTRACT=backend, CUDA_DEVICE_4SUBTRACT=cudadevice,</span>
+<span class="c1">#                                  NUM_CPU_THREADS_4SUBTRACT=nCPUthreads)</span>
+
+<span class="c1">#         size,peak = tracemalloc.get_traced_memory()</span>
+<span class="c1">#         SNLogger.debug(f&#39;MEMORY IN imagesubtraction.difference() AFTER Customized_Packet.CP: &#39;</span>
+<span class="c1">#                        f&#39;size = {size}, peak = {peak}&#39;)</span>
+<span class="c1">#         tracemalloc.reset_peak()</span>
+
+<span class="c1">#     elif skip_subtract and verbose:</span>
+<span class="c1">#         print(diff_savepath, &#39;already exists. Skipping image subtraction.&#39;)</span>
+
+<span class="c1">#     return diff_savepath, soln_savepath</span>
+
+<span class="c1"># def decorr_kernel(scipath, refpath,</span>
+<span class="c1">#                   scipsfpath, refpsfpath,</span>
+<span class="c1">#                   diffpath, solnpath, out_path=output_files_rootdir, savename=None):</span>
+
+<span class="c1">#     savedir = os.path.join(out_path, &#39;dcker&#39;)</span>
+<span class="c1">#     check_and_mkdir(savedir)</span>
+
+<span class="c1">#     if savename is None:</span>
+<span class="c1">#         basename = os.path.basename(scipath)</span>
+<span class="c1">#         savename = F&#39;DCKer_{basename}&#39;</span>
+
+<span class="c1">#     decorr_savepath = os.path.join(savedir, savename)</span>
+
+<span class="c1">#     imgdatas = []</span>
+<span class="c1">#     psfdatas = []</span>
+<span class="c1">#     bkgsigs = []</span>
+<span class="c1">#     with nvtx.annotate( &quot;get_data_and_SkyLevel&quot;, color=&quot;#ff44ff&quot; ):</span>
+<span class="c1">#         for img, psf in zip([scipath, refpath], [scipsfpath, refpsfpath]):</span>
+<span class="c1">#             imgdata = fits.getdata(img, ext=0).T</span>
+<span class="c1">#             psfdatas.append(fits.getdata(psf, ext=0).T)</span>
+<span class="c1">#             imgdatas.append(imgdata)</span>
+<span class="c1">#             with nvtx.annotate( &quot;SkyLevel_Estimator&quot;, color=&quot;#ff22ff&quot; ):</span>
+<span class="c1">#                 # bkgsigs.append(SkyLevel_Estimator.SLE(PixA_obj=imgdata)[1])</span>
+<span class="c1">#                 # TODO : clean up interface.  This file was written in</span>
+<span class="c1">#                 #   diff-img preprocess.py</span>
+<span class="c1">#                 skyrmspath = os.path.join(output_files_rootdir, f&#39;skyrms/{os.path.basename(img)}.json&#39;)</span>
+<span class="c1">#                 bkgsigs.append( json.load( open( skyrmspath ) )[&#39;skyrms&#39;] )</span>
+
+
+<span class="c1">#     sci_img, ref_img = imgdatas</span>
+<span class="c1">#     sci_psf, ref_psf = psfdatas</span>
+<span class="c1">#     sci_bkg, ref_bkg = bkgsigs</span>
+
+<span class="c1">#     with nvtx.annotate( &quot;Realize_MatchingKernel&quot;, color=&quot;#ff88ff&quot; ):</span>
+<span class="c1">#         N0, N1 = sci_img.shape</span>
+<span class="c1">#         XY_q = np.array([[N0/2. + 0.5, N1/2. + 0.5]])</span>
+<span class="c1">#         MKerStack = Realize_MatchingKernel(XY_q).FromFITS(FITS_Solution=solnpath)</span>
+<span class="c1">#         MK_Fin = MKerStack[0]</span>
+
+<span class="c1">#     with nvtx.annotate( &quot;DeCorrelation_Calculator&quot;, color=&quot;#ffaaff&quot; ):</span>
+<span class="c1">#         DCKer = DeCorrelation_Calculator.DCC(MK_JLst=[ref_psf], SkySig_JLst=[sci_bkg],</span>
+<span class="c1">#                                              MK_ILst=[sci_psf], SkySig_ILst=[ref_bkg],</span>
+<span class="c1">#                                              MK_Fin=MK_Fin, KERatio=2.0, VERBOSE_LEVEL=2)</span>
+
+<span class="c1">#     with fits.open(scipath) as hdu:</span>
+<span class="c1">#         hdu[0].data = DCKer.T</span>
+<span class="c1">#         hdu.writeto(decorr_savepath, overwrite=True)</span>
+
+<span class="c1">#     return decorr_savepath</span>
+
+<span class="c1"># def decorr_img(imgpath, dckerpath, out_path=output_files_rootdir, savename=None):</span>
+
+<span class="c1">#     savedir = os.path.join(out_path,&#39;decorr&#39;)</span>
+<span class="c1">#     check_and_mkdir(savedir)</span>
+
+<span class="c1">#     if savename is None:</span>
+<span class="c1">#         basename = os.path.basename(imgpath)</span>
+<span class="c1">#         savename = f&#39;decorr_{basename}&#39;</span>
+
+<span class="c1">#     decorr_savepath = os.path.join(savedir,savename)</span>
+
+<span class="c1">#     img_data = fits.getdata(imgpath, ext=0).T</span>
+<span class="c1">#     DCKer = fits.getdata(dckerpath)</span>
+
+<span class="c1">#     # Final decorrelated difference image:</span>
+<span class="c1">#     #  TODO : right now, we&#39;re acting as if</span>
+<span class="c1">#     #     the fftn= and ifftn= arguments</span>
+<span class="c1">#     #     of convolve_fft need to take and</span>
+<span class="c1">#     #     return numpy arrays, so we do all</span>
+<span class="c1">#     #     the conversions manually.  There</span>
+<span class="c1">#     #     must be a cleaner way.</span>
+<span class="c1">#     # THINK: can we just replace astropy convolve_fft</span>
+<span class="c1">#     #    with cupy and do our own post-processing?</span>
+<span class="c1">#     dcdiff = convolve_fft(img_data, DCKer, boundary=&#39;fill&#39;,</span>
+<span class="c1">#                           nan_treatment=&#39;fill&#39;, fill_value=0.0,</span>
+<span class="c1">#                           normalize_kernel=True, preserve_nan=True,</span>
+<span class="c1">#                           fftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.fftn( cupy.array( x ) ) ),</span>
+<span class="c1">#                           ifftn=lambda x: cupy.asnumpy( cupyx.scipy.fftpack.ifftn( cupy.array( x ) ) )</span>
+<span class="c1">#                           )</span>
+
+<span class="c1">#     with fits.open(imgpath) as hdu:</span>
+<span class="c1">#         hdu[0].data[:, :] = dcdiff.T</span>
+<span class="c1">#         hdu.writeto(decorr_savepath, overwrite=True)</span>
+
+<span class="c1">#     return decorr_savepath</span>
+
+<span class="c1"># def swarp_coadd(imgpath_list,refpath,out_name,out_path=output_files_rootdir,subdir=&#39;coadd&#39;,**kwargs):</span>
+<span class="c1">#     &quot;&quot;&quot;Coadd images using SWarp.</span>
+
+<span class="c1">#     kwargs: see sfft.utils.pyAstroMatic.PYSWarp.PY_SWarp.Mk_ConfigDict</span>
+
+<span class="c1">#     :param imgpath_list: Paths to images that will be coadded.</span>
+<span class="c1">#     :type imgpath_list: list</span>
+<span class="c1">#     :param refpath: Path to image to use as WCS reference.</span>
+<span class="c1">#     :type refpath: str</span>
+<span class="c1">#     :param savepath: Path to save coadded image.</span>
+<span class="c1">#     :type savepath: str</span>
+<span class="c1">#     :return:</span>
+<span class="c1">#     :rtype: str</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     cd = PY_SWarp.Mk_ConfigDict(GAIN_DEFAULT=1., SATLEV_DEFAULT=100000.,</span>
+<span class="c1">#                                 RESAMPLING_TYPE=&#39;BILINEAR&#39;, WEIGHT_TYPE=&#39;NONE&#39;,</span>
+<span class="c1">#                                 RESCALE_WEIGHTS=&#39;N&#39;, NTHREADS=1, **kwargs)</span>
+
+<span class="c1">#     imgpaths = []</span>
+<span class="c1">#     for p in imgpath_list:</span>
+<span class="c1">#         if p[-3:] == &#39;.gz&#39;:</span>
+<span class="c1">#             zip_savedir = os.path.join(out_path, &#39;unzip&#39;)</span>
+<span class="c1">#             check_and_mkdir(zip_savedir)</span>
+
+<span class="c1">#             decompressed_path = os.path.join(zip_savedir,f&#39;{os.path.basename(p)[:-3]}&#39;)</span>
+<span class="c1">#             dc_path = gz_and_ext(p, decompressed_path)</span>
+
+<span class="c1">#             imgpaths.append(dc_path)</span>
+<span class="c1">#         else:</span>
+<span class="c1">#             imgpaths.append(p)</span>
+
+<span class="c1">#     coadd_savedir = os.path.join(out_path,subdir)</span>
+<span class="c1">#     check_and_mkdir(coadd_savedir)</span>
+<span class="c1">#     coadd_savepath = os.path.join(coadd_savedir,out_name)</span>
+
+<span class="c1">#     coadd = PY_SWarp.Coadd(FITS_obj=imgpaths, FITS_ref=refpath, ConfigDict=cd,</span>
+<span class="c1">#                            OUT_path=coadd_savepath, FILL_VALUE=np.nan)</span>
+
+<span class="c1">#     return coadd_savepath, imgpaths</span>
+</pre></div>
+
+          </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Roman Supernova PIT.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

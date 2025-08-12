@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phrosty.photometry &#8212; phrosty 0.1.dev1+g00c2b9739 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=db0969fc" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <script src="../../_static/documentation_options.js?v=19778094"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/logo_black_filled.png" alt="Logo" />
+    
+  </a>
+</p>
+
+
+
+<p class="blurb">Software developed by the Roman SNPIT</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../development.html">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changes.html">Change Log</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">phrosty API</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for phrosty.photometry</h1><div class="highlight"><pre>
+<span></span><span class="c1"># IMPORTS Standard:</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="c1"># IMPORTS Astro:</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.table</span><span class="w"> </span><span class="kn">import</span> <span class="n">hstack</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.modeling.fitting</span><span class="w"> </span><span class="kn">import</span> <span class="n">NonFiniteValueError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">photutils.aperture</span><span class="w"> </span><span class="kn">import</span> <span class="n">CircularAperture</span><span class="p">,</span> <span class="n">aperture_photometry</span><span class="p">,</span> <span class="n">ApertureStats</span>
+<span class="c1"># from photutils.background import LocalBackground, MMMBackground, Background2D</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">photutils.psf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSFPhotometry</span><span class="p">,</span> <span class="n">FittableImageModel</span> <span class="c1"># EPSFBuilder, extract_stars,</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">photutils.background</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalBackground</span><span class="p">,</span> <span class="n">MMMBackground</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">NOTE: This module assumes images have already had background subtracted.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">roman_bands</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;R062&#39;</span><span class="p">,</span> <span class="s1">&#39;Z087&#39;</span><span class="p">,</span> <span class="s1">&#39;Y106&#39;</span><span class="p">,</span> <span class="s1">&#39;J129&#39;</span><span class="p">,</span> <span class="s1">&#39;H158&#39;</span><span class="p">,</span> <span class="s1">&#39;F184&#39;</span><span class="p">,</span> <span class="s1">&#39;K213&#39;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="ap_phot">
+<a class="viewcode-back" href="../../api.html#phrosty.photometry.ap_phot">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ap_phot</span><span class="p">(</span><span class="n">scienceimage</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span>
+            <span class="n">ap_r</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;subpixel&#39;</span><span class="p">,</span> <span class="n">subpixels</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+            <span class="n">merge_tables</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Does aperture photometry on the input science image and</span>
+<span class="sd">        specified coordinates.</span>
+
+<span class="sd">    :param scienceimage: Array containing science image.</span>
+<span class="sd">    :type scienceimage: array-like</span>
+<span class="sd">    :param coords: Table with columns &#39;x&#39; and &#39;y&#39; representing pixel</span>
+<span class="sd">                                    coordinates for the detected sources. Table can contain</span>
+<span class="sd">                                    more than just &#39;x&#39; and &#39;y&#39;, and this may be useful if you</span>
+<span class="sd">                                    use merge_tables=True.</span>
+<span class="sd">    :type coords: astropy.table.Table</span>
+<span class="sd">    :param ap_r: Aperture radius to use for aperture photometry. Defaults to 3.</span>
+<span class="sd">    :type ap_r: int, optional</span>
+<span class="sd">    :param method: _description_. Defaults to &#39;subpixel&#39;.</span>
+<span class="sd">    :type method: str, optional</span>
+<span class="sd">    :param subpixels: _description_. Defaults to 5.</span>
+<span class="sd">    :type subpixels: int, optional</span>
+<span class="sd">    :param merge_tables: If true, output is merged coords and results from aperture</span>
+<span class="sd">                        photometry. Defaults to True.</span>
+<span class="sd">    :type merge_tables: boolean, optional</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        astropy.table.Table: Table containing results from aperture photometry.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">])</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">])</span>
+    <span class="n">photcoords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">]))</span>
+    <span class="n">apertures</span> <span class="o">=</span> <span class="n">CircularAperture</span><span class="p">(</span><span class="n">photcoords</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="n">ap_r</span><span class="p">)</span>
+
+    <span class="n">ap_results</span> <span class="o">=</span> <span class="n">aperture_photometry</span><span class="p">(</span><span class="n">scienceimage</span><span class="p">,</span> <span class="n">apertures</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">subpixels</span><span class="o">=</span><span class="n">subpixels</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">apstats</span> <span class="o">=</span> <span class="n">ApertureStats</span><span class="p">(</span><span class="n">scienceimage</span><span class="p">,</span> <span class="n">apertures</span><span class="p">)</span>
+    <span class="n">ap_results</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">apstats</span><span class="o">.</span><span class="n">max</span>
+
+    <span class="c1"># Needs to be &#39;xcentroid&#39; and &#39;ycentroid&#39; for PSF photometry.</span>
+    <span class="c1"># Same with &#39;flux&#39;.</span>
+    <span class="n">ap_results</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s1">&#39;xcenter&#39;</span><span class="p">,</span> <span class="s1">&#39;xcentroid&#39;</span><span class="p">)</span>
+    <span class="n">ap_results</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s1">&#39;ycenter&#39;</span><span class="p">,</span> <span class="s1">&#39;ycentroid&#39;</span><span class="p">)</span>
+    <span class="c1"># ap_results.rename_column(&#39;aperture_sum&#39;, &#39;flux&#39;)</span>
+
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">ap_results</span><span class="o">.</span><span class="n">colnames</span><span class="p">:</span>
+        <span class="n">ap_results</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">ap_results</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="k">if</span> <span class="n">merge_tables</span><span class="p">:</span>
+        <span class="n">ap_results</span> <span class="o">=</span> <span class="n">hstack</span><span class="p">([</span><span class="n">ap_results</span><span class="p">,</span> <span class="n">coords</span><span class="p">])</span>
+        <span class="c1"># These are duplicates:</span>
+        <span class="n">ap_results</span><span class="o">.</span><span class="n">remove_columns</span><span class="p">([</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">ap_results</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">psfmodel</span><span class="p">(</span><span class="n">psfimg</span><span class="p">):</span>
+    <span class="n">psf</span> <span class="o">=</span> <span class="n">FittableImageModel</span><span class="p">(</span><span class="n">psfimg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">psf</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">psf_phot</span><span class="p">(</span><span class="n">scienceimage</span><span class="p">,</span> <span class="n">noise</span><span class="p">,</span> <span class="n">psf</span><span class="p">,</span> <span class="n">init_params</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">forced_phot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fwhm</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">fit_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+             <span class="n">oversampling</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">maxiters</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+
+    <span class="c1"># mean, median, stddev = sigma_clipped_stats(scienceimage)</span>
+    <span class="c1"># daofind = DAOStarFinder(fwhm=fwhm, threshold = 5.*(stddev))</span>
+
+    <span class="k">if</span> <span class="s1">&#39;flux_init&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">init_params</span><span class="o">.</span><span class="n">colnames</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Astropy table passed to kwarg init_params must contain column </span><span class="se">\&quot;</span><span class="s1">flux_init</span><span class="se">\&quot;</span><span class="s1">.&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">forced_phot</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;x, y are fixed!&#39;</span><span class="p">)</span>
+        <span class="n">psf</span><span class="o">.</span><span class="n">x_0</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">psf</span><span class="o">.</span><span class="n">y_0</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;x, y are fitting parameters!&#39;</span><span class="p">)</span>
+        <span class="n">psf</span><span class="o">.</span><span class="n">x_0</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">psf</span><span class="o">.</span><span class="n">x_0</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">bkgfunc</span> <span class="o">=</span> <span class="n">LocalBackground</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="n">MMMBackground</span><span class="p">())</span>
+        <span class="n">psfphot</span> <span class="o">=</span> <span class="n">PSFPhotometry</span><span class="p">(</span><span class="n">psf</span><span class="p">,</span> <span class="n">fit_shape</span><span class="p">,</span> <span class="n">localbkg_estimator</span><span class="o">=</span><span class="n">bkgfunc</span><span class="p">)</span>
+        <span class="n">psf_results</span> <span class="o">=</span> <span class="n">psfphot</span><span class="p">(</span><span class="n">scienceimage</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">noise</span><span class="p">,</span> <span class="n">init_params</span><span class="o">=</span><span class="n">init_params</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">wcs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">init_radec</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">pixel_to_world</span><span class="p">(</span><span class="n">psf_results</span><span class="p">[</span><span class="s1">&#39;x_init&#39;</span><span class="p">],</span> <span class="n">psf_results</span><span class="p">[</span><span class="s1">&#39;y_init&#39;</span><span class="p">])</span>
+            <span class="n">radec</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">pixel_to_world</span><span class="p">(</span><span class="n">psf_results</span><span class="p">[</span><span class="s1">&#39;x_fit&#39;</span><span class="p">],</span> <span class="n">psf_results</span><span class="p">[</span><span class="s1">&#39;y_fit&#39;</span><span class="p">])</span>
+
+            <span class="n">psf_results</span><span class="p">[</span><span class="s1">&#39;ra_init&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">init_radec</span><span class="o">.</span><span class="n">ra</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">psf_results</span><span class="p">[</span><span class="s1">&#39;dec_init&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">init_radec</span><span class="o">.</span><span class="n">dec</span><span class="o">.</span><span class="n">value</span>
+
+            <span class="n">psf_results</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">radec</span><span class="o">.</span><span class="n">ra</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">psf_results</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">radec</span><span class="o">.</span><span class="n">dec</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="k">return</span> <span class="n">psf_results</span>
+
+    <span class="k">except</span> <span class="n">NonFiniteValueError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;fit_shape overlaps with edge of image, and therefore encloses NaNs! Photometry cancelled.&#39;</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Roman Supernova PIT.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
