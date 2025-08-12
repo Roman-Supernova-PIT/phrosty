@@ -7,6 +7,7 @@
 import datetime
 import importlib
 import sys
+import pathlib
 import os
 import tomli
 
@@ -15,6 +16,15 @@ from configparser import ConfigParser
 import sphinx
 
 from sphinx.ext.autodoc import AttributeDocumenter
+
+# -- Code import for autodoc -------------------------------------------------
+
+# Make sure the phrosty module can be found so we can document the API
+
+sys.path.insert( 0, str( pathlib.Path( '..' ).resolve() ) )
+autodoc_mock_imports = [ 'astropy', 'photutils', 'cupy', 'nvtx', 'matplotlib', 'galsim',
+                         'sfft', 'snpit_utils', 'snappl' ]
+
 
 # -- Project information -----------------------------------------------------
 

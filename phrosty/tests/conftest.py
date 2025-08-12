@@ -1,9 +1,10 @@
 import pytest # noqa: F401
-import os
 import pathlib
 
 import tox # noqa: F401
 from tox.pytest import init_fixture # noqa: F401
+
+from snpit_utils.config import Config
 
 import phrosty.imagesubtraction
 
@@ -12,17 +13,17 @@ direc = pathlib.Path( __file__ ).parent
 
 @pytest.fixture( scope='session' )
 def dia_out_dir():
-    return pathlib.Path( os.getenv( "DIA_OUT_DIR", "/dia_out_dir" ) )
+    return pathlib.Path( Config.get().value( 'photometry.phrosty.paths.dia_out_dir' ) )
 
 
 @pytest.fixture( scope='session' )
 def sims_dir():
-    return pathlib.Path( os.getenv( "SIMS_DIR", "/sims_dir" ) )
+    return pathlib.Path( Config.get().value( 'ou24.tds_base' ) ) / 'images'
 
 
-@pytest.fixture( scope='session' )
-def sn_info_dir():
-    return pathlib.Path( os.getenv( "SN_INFO_DIR", direc / "sn_info_dir" ) )
+# @pytest.fixture( scope='session' )
+# def sn_info_dir():
+#     return pathlib.Path( os.getenv( "SN_INFO_DIR", direc / "sn_info_dir" ) )
 
 
 @pytest.fixture( scope='session' )
@@ -32,23 +33,23 @@ def template_csv():
 
 @pytest.fixture( scope='session' )
 def two_science_csv():
-    return direc / "20172782_instances_science_two_images.csv"
+    return direc / "20172782_instances_science_2.csv"
 
 
 @pytest.fixture( scope='session' )
 def test_dia_image():
-    # This is the first image from the csv file in two_science_csv
-    return { 'relpath': 'RomanTDS/images/simple_model/R062/35083/Roman_TDS_simple_model_R062_35083_8.fits.gz',
-             'pointing': 35083,
-             'sca': 8,
-             'mjd': 62455.174,
-             'band': 'R062'
+    # This is the first image from the csv file in 20172782_instances_science_2.csv
+    return { 'relpath': 'simple_model/Y106/35198/Roman_TDS_simple_model_Y106_35198_2.fits.gz',
+             'pointing': 35198,
+             'sca': 2,
+             'mjd': 62455.669,
+             'band': 'Y106'
             }
 
 
 @pytest.fixture( scope='session' )
 def test_sn():
-    # This object is on the science images in two_science_csv
+    # This object is on the science images in 20172782_instances_science_2.csv
     return { 'oid': 20172782,
              'mjd0': 62450.0,
              'mjd1': 62881.0,
@@ -63,7 +64,9 @@ def test_sn():
 def compressed_template_image_path( sims_dir, template_csv ):
     with open( template_csv ) as ifp:
         line = ifp.readline()
-        img, point, sca, mjd = line.split()
+        assert line.split() == [ 'path', 'pointing', 'sca', 'mjd', 'band' ]
+        line = ifp.readline()
+        img, _point, _sca, _mjd, _band = line.split()
 
     return sims_dir / img
 
@@ -72,7 +75,9 @@ def compressed_template_image_path( sims_dir, template_csv ):
 def one_compressed_science_image_path( sims_dir, two_science_csv ):
     with open( two_science_csv ) as ifp:
         line = ifp.readline()
-        img, point, sca, mjd = line.split()
+        assert line.split() == [ 'path', 'pointing', 'sca', 'mjd', 'band' ]
+        line = ifp.readline()
+        img, _point, _sca, _mjd, _band = line.split()
 
     return sims_dir / img
 

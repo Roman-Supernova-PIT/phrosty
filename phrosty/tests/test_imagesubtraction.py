@@ -57,8 +57,8 @@ def _check_resampled_image( templ, resamp ):
         # little galaxy in it.  (It should make you feel very small
         # to realize that an astronomer at z=0.4 just called the Milky
         # Way a cute little galaxy.)
-        tx = [ 2495, 2495, 2564, 2564 ]
-        ty = [ 3148, 3185, 3148, 3185 ]
+        tx = [ 3370, 3370, 3404, 3404 ]
+        ty = [  396,  422,  396,  422 ]
         twcs = WCS( t[0].header )
         sc = twcs.pixel_to_world( tx, ty )
         rwcs = WCS( r[0].header )
@@ -77,8 +77,10 @@ def _check_resampled_image( templ, resamp ):
         rdata = r[0].data[ rymin:rymax , rxmin:rxmax ]
         assert tdata.shape == rdata.shape
 
-        assert np.median( tdata ) == pytest.approx( np.median( rdata ), rel=0.02 )
-        assert tdata.std() == pytest.approx( rdata.std(), rel=0.04 )
+        assert np.median( tdata ) == pytest.approx( np.median( rdata ), rel=0.01 )
+        assert np.sum( tdata ) == pytest.approx( np.sum( rdata ), rel=0.01 )
+        # The standard deviation goes down quite a bit... correlated pixel errors from the warping doing that.
+        assert tdata.std() == pytest.approx( rdata.std(), rel=0.5 )
 
 
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
@@ -218,7 +220,7 @@ def test_stampmaker( dia_out_dir, test_dia_image, test_sn, one_science_image_pat
             skylevel = np.median( stamp[0].data[ 6:40, 6:40 ] )
             skysig = stamp[0].data[ 6:40, 6:40 ].std()
             # Make sure skysig is what we know it is from having looked at it before
-            assert skysig == pytest.approx( 11.5, abs=0.2 )
+            assert skysig == pytest.approx( 18.7, abs=0.1 )
             # Look at the supernova, make sure our square 3x3 aperture is at least 10σ
             assert ( stamp[0].data[ 50:53, 50:53 ].sum() - 9 * skylevel ) > 10. * skysig * 3.
     finally:

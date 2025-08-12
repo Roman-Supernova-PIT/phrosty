@@ -181,6 +181,8 @@ class PipelineImage:
 
 
 class Pipeline:
+    """Phrosty's top-level pipeline"""
+
     def __init__( self, object_id, ra, dec, band, science_images, template_images, nprocs=1, nwrite=5,
                   verbose=False ):
 
@@ -214,7 +216,7 @@ class Pipeline:
 
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.config = Config.get()
-        self.image_base_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.image_base_dir' ) )
+        self.image_base_dir = pathlib.Path( self.config.value( 'ou24.tds_base' ) ) / 'images'
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
         self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
         self.temp_dir_parent = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
