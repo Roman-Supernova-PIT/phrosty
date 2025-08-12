@@ -62,37 +62,25 @@ This will pull the actual phrosty code, including the pipeline you'll run.  This
 
 ### Locate existing directories
 
-*phrosty* currently reads data from the OpenUniverse sims.  On NERSC, you can find the necessary information at the following directories.  (The names in parentheses afterwards tell you which environment variables correspond to these directories.  You won't actually set these environment variables directly; that's handled in the shell scripts you'll run below.)
+*phrosty* currently reads data from the OpenUniverse sims.  On NERSC, you can find the necessary information at the following directories.  These directories will be bind-mounted to the locations in parentheses (see below re: bind mounting).
 
-* `/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data` ("SIMS_DIR")
-* `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE` ("SNANA_PQ_DIR")
-* `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal` ("SNID_LC_DIR")
+* `/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data` (`/ou2024`)
+* `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE` (`/ou2024_snana`)
+* `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal` (`/ou2024_snana_lc_dir`)
+* `/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library` (`/ou2024_sims_sed_library`)
 
 ### Create needed directories
 
 You need to make the following directories.  (They don't have to have exactly these names.  However, for purposes of the example, create these directories with these names as subdirectories under your parent directory.)
 
-* `sn_info_dir`
 * `dia_out_dir`
 * `lc_out_dir`
 
-In addition, create a directories `phrosty_temp` and `phrosty_intermediate` somewhere underneath `$SCRATCH`, e.g.:
+In addition, create a directory `phrosty_temp` somewhere underneath `$SCRATCH`, e.g.:
 ```
 mkdir $SCRATCH/phrosty_temp
-mkdir $SCRATCH/phrosty_intermediate
-```
 
-(The further examples below will assume that this is where you made them.)
-
-### Populate your sn_info_dir
-
-This is where you put information that *phrosty* needs to find information about the OpenUniverse sims, and about any supernova from that sim you want to run it on.  The first file you need is `tds.yaml`; copy that file from this directory (i.e. `phrosty/examples/perlmutter/tds.yaml`) into your `sn_info_dir`; when in the `sn_info_dir`, run:)
-```
-cp -p phrosty/examples/perlmutter/tds.yaml ./
-```
-(This file is a modified version of the standard OpenUniverse sims file `/global/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS`, fixing some paths for our own purposes.)
-
-<a name="securelistsofimagesforyoursupernova"></a>
+This directory will be mounted to `/phrosty_temp` inside the container.  (The further examples below will assume that this is where you made it.)
 
 ### Secure lists of images for your supernova.
 
@@ -102,14 +90,12 @@ For this example, we're going to run on the object with id 20172782.  In the dir
 * `20172782_instances_templates_1.csv` — a single R-band template image
 * `20172782_instances_templates_10.csv` — 10 R-band template images
 * `20172782_instances_science.csv` — 54 science images
-* `20172782_instances_science_two_images.csv` — 2 science images
+* `20172782_instances_science_2.csv` — 2 science images
 
 (Template images where chosen based on their simulated date relative to when the simulated supernova was active.)
 
-Copy the `.csv` files you'll need to your parent directory.  For this example, we're going to use `...templates_1...` and `...science_two...`.  The other files are there in case you want to try a run with more data.
-
-If you look at these `.csv` files, there are four pieces of information on each line:
-* The filename of the OpenUniverse image, relative to `$SIMS_DIR`.  Inside the container (below), `$SIMS_DIR` will be at `/sims_dir`.  On Perlmutter outside the container, `$SIMS_DIR` is `/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data`.
+If you look at these `.csv` files, there are give pieces of information on each line:
+* The filename of the OpenUniverse image, relative to `/ou2024/RomanTDS/images` inside the container (see below).  On Perlmutter outside the container, these are relative to `/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images`.
 * The pointing of the image
 * The SCA on which the supernova is present for this pointing
 * The MJD of the pointing
@@ -127,15 +113,11 @@ after a minute or so, that should log you into one of the nodes with a session t
 
 cd into your "parent" directory (if you're not there already).
 
-Copy the files `interactive_podman.sh` and `phrosty_config.yaml` from `phrosty/examples/perlmutter` to your parent directory:
-```
-cp -p phrosty/examples/perlmutter/interactive_podman.sh phrosty_config.yaml ./
-```
-Look at the `.sh` file.  (There's no need to edit it; this is so you can see what's going on.)  You'll see number of `--mount` parameters.  Each of these takes a directory on the host machine (the `source`) and maps it to a directory inside the podman container (the `target`).  For example, you will see your phrosty checkout goes to `/phrosty` inside the container.  In addition, a bunch of environment variables are set so that *phrosty* will be able to find all of these directories inside the container.
+Look at the file `phrosty/examples/perlmutter/interactive_podman.sh`.  (There's no need to edit it; this is so you can see what's going on.)  You'll see number of `--mount` parameters.  Each of these takes a directory on the host machine (the `source`) and maps it to a directory inside the podman container (the `target`); this is "bind mounting".  For example, you will see your phrosty checkout goes to `/phrosty` inside the container.  In addition, several environment variables are set, and an "annotation" that is needed for `podman-hpc` to be able to handle accessing directories that are group-readable, but not world-readable.
 
 Now do
 ```
-bash interactive_podman.sh
+bash phrosty/examples/perlmutter/interactive_podman.sh
 ```
 
 This will put you inside the container.  Your prompt will change to something like `root@56356f1a4b9b:/usr/src#` (where the hex barf will be different every time).  At any time, run `ls -F /`; if you see directories `phrosty`, `phrosty_temp`, `roman_imsim`, and the others that were mounted by `interactive_podman.sh`, then you know you're working inside the container, rather than on the host machine.  Verify that the GPUs are visible inside the container with `nvidia-smi`.
@@ -154,13 +136,13 @@ to see how it works, and to see what the various parameters you can specify are.
 Run this on your example lightcurve with:
 ```
 python phrosty/phrosty/pipeline.py \
-  -c phrosty_config.yaml \
+  -c phrosty/examples/perlmutter/phrosty_config.yaml \
   --oid 20172782 \
   -r 7.551093401915147 \
   -d -44.80718106491529 \
   -b R062 \
-  -t 20172782_instances_templates_1.csv \
-  -s 20172782_instances_science_two_images.csv \
+  -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv \
+  -s phrosty/examples/perlmutter/20172782_instances_science_2.csv \
   -p 3 \
   -w 3
 ```
@@ -187,13 +169,13 @@ nsys profile \
   --python-sampling=true \
   --trace=cuda,nvtx,cublas,cusparse,cudnn,cudla,cusolver,opengl,openacc,openmp,osrt,mpi,nvvideo,vulkan,python-gil \
   python phrosty/phrosty/pipeline.py \
-  -c phrosty_config.yaml \
+  -c perlmutter/examples/phrosty_config.yaml \
   --oid 20172782 \
   -r 7.551093401915147 \
   -d -44.80718106491529 \
   -b R062 \
-  -t 20172782_instances_templates_1.csv \
-  -s 20172782_instances_science_two_images.csv \
+  -t perlmutter/examples/20172782_instances_templates_1.csv \
+  -s perlmutter/examples/20172782_instances_science_2.csv \
   -p 3 \
   -w 3
 ```

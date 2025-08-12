@@ -21,9 +21,10 @@ podman-hpc run --gpu \
     --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
     --mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir \
     --mount type=bind,source=$SCRATCH/phrosty_temp,target=/phrosty_temp \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/sims_dir \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/snana_pq_dir \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/snid_lc_dir \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/ou2024 \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/ou2024_snana \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/ou2024_snana_lc_dir \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library,target=/ou2024_sims_sed_library \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
     --env PYTHONPATH=/roman_imsim:/phrosty:/sfft \
     --env OPENBLAS_NUM_THREADS=1 \
@@ -31,19 +32,17 @@ podman-hpc run --gpu \
     --env NUMEXPR_NUM_THREADS=1 \
     --env OMP_NUM_THREADS=1 \
     --env VECLIB_MAXIMUM_THREADS=1 \
-    --env SIMS_DIR=/sims_dir \
-    --env SNANA_PQ_DIR=/snana_pq_dir \
     --env TERM=xterm \
     -w /home \
     -it \
     registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev \
     python phrosty/phrosty/pipeline.py \
-      -c phrosty_config.yaml \
+      -c phrosty/examples/perlmutter/phrosty_config.yaml \
       --oid 20172782 \
       -r 7.551093401915147 \
       -d -44.80718106491529 \
       -b R062 \
-      -t 20172782_instances_templates_1.csv \
-      -s 20172782_instances_science_two_images.csv \
+      -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv \
+      -s phrosty/examples/perlmutter/20172782_instances_science_2.csv \
       -p 15 \
       -w 5

@@ -214,7 +214,7 @@ class Pipeline:
 
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.config = Config.get()
-        self.image_base_dir = pathlib.Path( self.config.value( 'ou2024.tds_base' ) ) / 'images'
+        self.image_base_dir = pathlib.Path( self.config.value( 'ou24.tds_base' ) ) / 'images'
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
         self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
         self.temp_dir_parent = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )

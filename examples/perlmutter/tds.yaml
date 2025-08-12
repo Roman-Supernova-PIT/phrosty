@@ -80,6 +80,7 @@ image:
     draw_method: 'auto'
 
     # These are all by default turned on, but you can turn any of them off if desired:
+
     ignore_noise: True
     stray_light: False
     thermal_background: False
@@ -115,7 +116,7 @@ gal:
 
 input:
     obseq_data:
-        file_name: /sims_dir/RomanTDS/Roman_TDS_obseq_11_6_23.fits
+        file_name: /ou2024/RomanTDS/Roman_TDS_obseq_11_6_23.fits
         visit: 80840
         SCA: '@image.SCA'
     roman_psf:
