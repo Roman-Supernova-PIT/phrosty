@@ -77,6 +77,11 @@ def _build_filepath(path, band, pointing, sca, filetype, rootdir=None):
         raise ValueError('You need to provide either the full image path, or the band, pointing, and SCA.')
 
 
+def ou2024_obseq_path( path=None ):
+    return ( os.path.join( Config.get().value('ou24.tds_base'), 'Roman_TDS_obseq_11_6_23.fits' )
+             if path is None else path )
+
+
 def get_roman_bands():
     """Get roman passbands.
 
@@ -176,7 +181,7 @@ def get_transient_radec(oid):
     """Retrieve RA, dec of a transient based on its object ID."""
 
     oid = int(oid)
-    snana_pq_path = os.path.join( Config.get.value('ou24.sn_truth_dir'), 'snana_*.parquet' )
+    snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
@@ -190,7 +195,7 @@ def get_transient_radec(oid):
 def get_transient_mjd(oid):
     """Retrieve start and end dates of a transient based on its object ID."""
     oid = int(oid)
-    snana_pq_path = os.path.join( Config.get.value('ou24.sn_truth_dir'), 'snana_*.parquet' )
+    snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
@@ -204,7 +209,7 @@ def get_transient_mjd(oid):
 def get_transient_zcmb(oid):
     """Retrieve z_CMB of a transient based on its object ID."""
     oid = int(oid)
-    snana_pq_path = os.path.join( Config.get.value('ou24.sn_truth_dir'), 'snana_*.parquet' )
+    snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
@@ -218,7 +223,7 @@ def get_transient_zcmb(oid):
 def get_transient_peakmjd(oid):
     """Retrieve z of a transient based on its object ID."""
     oid = int(oid)
-    snana_pq_path = os.path.join( Config.get.value('ou24.sn_truth_dir'), 'snana_*.parquet' )
+    snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
@@ -330,9 +335,7 @@ def make_object_table(oid):
 def get_mjd_limits(obseq_path=None):
     """Retrive the earliest and latest MJD in the simulations."""
 
-    obseq_path = ( os.path.join( Config.get().value('ou24.tds_base'), 'Roman_TDS_obseq_11_6_23.fits' )
-                   if obseq_path is None else obseq_path )
-    with fits.open(obseq_path) as obs:
+    with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
 
     start = min(obseq['date'])
@@ -343,9 +346,7 @@ def get_mjd_limits(obseq_path=None):
 
 def get_radec_limits(obseq_path=None):
     """Retrieve RA, dec limits (boresight coordinates)."""
-    obseq_path = ( os.path.join( Config.get().value('ou24.tds_base'), 'Roman_TDS_obseq_11_6_23.fits' )
-                   if obseq_path is None else obseq_path )
-    with fits.open(obseq_path) as obs:
+    with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
 
     ra_min = min(obseq['ra'])
@@ -368,9 +369,7 @@ def get_mjd(pointing, obseq_path=None):
     :rtype: float
     """
 
-    obseq_path = ( os.path.join( Config.get().value('ou24.tds_base'), 'Roman_TDS_obseq_11_6_23.fits' )
-                   if obseq_path is None else obseq_path )
-    with fits.open(obseq_path) as obs:
+    with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
     mjd = float(obseq['date'][int(pointing)])
 
@@ -390,9 +389,7 @@ def pointings_near_mjd(mjd, window=3, obseq_path=None):
     :rtype: list
     """
 
-    obseq_path = ( os.path.join( Config.get().value('ou24.tds_base'), 'Roman_TDS_obseq_11_6_23.fits' )
-                   if obseq_path is None else obseq_path )
-    with fits.open(obseq_path) as obs:
+    with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
 
     pointings = np.where(np.logical_and(obseq['date'] < mjd + window, obseq['date'] > mjd - window))[0]
@@ -418,9 +415,7 @@ def get_mjd_info(mjd_start=-np.inf, mjd_end=np.inf, return_inverse=False, obseq_
             MJD requirements.
     :rtype: astropy.table.Table
     """
-    obseq_path = ( os.path.join( Config.get().value('ou24.tds_base'), 'Roman_TDS_obseq_11_6_23.fits' )
-                   if obseq_path is None else obseq_path )
-    with fits.open(obseq_path) as obs:
+    with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
 
     if not return_inverse:

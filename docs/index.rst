@@ -21,6 +21,7 @@ the github package repository at https://github.com/Roman-Supernova-PIT/phrosty
 
    installation.rst
    usage.rst
+   development.rst
    changes.rst
 
 
