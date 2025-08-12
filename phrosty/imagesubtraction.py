@@ -28,9 +28,17 @@ def gz_and_ext(in_path, out_path):
     
     Parameters
     ----------
-        in_path:
-        out_path:
-       
+      in_path: Path
+        The input path of the file to unzip and flatten.
+
+      out_path: Path
+        The desired output path of the file that is unzipped and flattened, once it is saved.
+
+    Returns
+    -------
+      out_path: Path
+        The output path of the file that has been unzipped and flattened.
+    
     """
 
     bio = io.BytesIO()
