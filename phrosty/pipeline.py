@@ -712,62 +712,47 @@ class Pipeline:
                     if self.keep_intermediate:
                         # Each key is the file prefix addition.
                         # Each list has [descriptive filetype, image file name, data, header].
-                        # The 'convolved' images have that [:-8] in their image file name and combined
-                        # names because LNA thinks it's important that we keep track of which images
-                        # have been convolved with which. Because also then if you use the same template
-                        # image more than once, it gets overwritten.
 
-                        # TODO: Include variance images. Include multiprocessing.
+                        # TODO: Include multiprocessing.
                         # In the future, we may want to write these things right after they happen
                         # instead of saving it all for the end of the SFFT stuff.
 
-                        # HACK ALERT : we're stripping the .gz off of the end of filenames
-                        #   if they have them, and making sure filenames end in .fits,
-                        #   because that's what SFFT needs.  This can go away if we
-                        #   refactor.
-                        if sci_image.image.name[-3:] == '.gz':
-                            conv_sci_name = str( pathlib.Path( sci_image.image.name ).stem )
-                        if sci_image.image.name[-5:] != '.fits':
-                            conv_sci_name = f'{sci_image.image.name}.fits'
-
-                        if templ_image.image.name[-3:] == '.gz':
-                            conv_templ_name = str( pathlib.Path( templ_image.image.name ).stem )
-                        if templ_image.image.name[-5:] != '.fits':
-                            conv_templ_name = f'{templ_image.image.name}.fits'
+                        sci_filepathpart = f'{sci_image.band}_{sci_image.pointing}_{sci_image.image.sca}'
+                        templ_filepathpart = f'{templ_image.band}_{templ_image.pointing}_{templ_image.image.sca}'
 
                         write_filepaths = {'aligned': [['img',
-                                                        templ_image.image.name,
+                                                        f'{templ_filepathpart}_-_{sci_filepathpart}.fits',
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_GPU.T),
                                                         sfftifier.hdr_target],
                                                         ['var',
-                                                         templ_image.image.name,
+                                                         f'{templ_filepathpart}_-_{sci_filepathpart}.fits',
                                                          cp.asnumpy(sfftifier.PixA_resamp_objectVar_GPU.T),
                                                          sfftifier.hdr_target],
                                                        ['psf',
-                                                        templ_image.image.name,
+                                                        f'{templ_filepathpart}_-_{sci_filepathpart}.fits',
                                                         cp.asnumpy(sfftifier.PSF_resamp_object_GPU.T),
                                                         sfftifier.hdr_target],
                                                        ['detmask',
-                                                        sci_image.image.name,
+                                                        f'{sci_filepathpart}_-_{templ_filepathpart}.fits',
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_DMASK_GPU.T),
                                                         sfftifier.hdr_target]
                                                        ],
                                            'convolved': [['img',
-                                                         f'{conv_sci_name[:-5]}_{conv_templ_name}',
+                                                         f'{sci_filepathpart}_-_{templ_filepathpart}.fits',
                                                          cp.asnumpy(sfftifier.PixA_Ctarget_GPU.T),
                                                          sfftifier.hdr_target],
                                                          ['img',
-                                                         f'{conv_templ_name[:-5]}_{conv_sci_name}',
+                                                         f'{templ_filepathpart}_-_{sci_filepathpart}.fits',
                                                          cp.asnumpy(sfftifier.PixA_Cresamp_object_GPU.T),
                                                          sfftifier.hdr_target]
                                                         ],
                                            'diff':     [['img',
-                                                        f'{conv_sci_name[:-5]}_{conv_templ_name}',
+                                                        f'{sci_filepathpart}_-_{templ_filepathpart}.fits',
                                                         cp.asnumpy(sfftifier.PixA_DIFF_GPU.T),
                                                         sfftifier.hdr_target]
                                                        ],
                                            'decorr':   [['kernel',
-                                                        sci_image.image.name,
+                                                        f'{sci_filepathpart}_-_{templ_filepathpart}.fits',
                                                         cp.asnumpy(sfftifier.FKDECO_GPU.T),
                                                         sfftifier.hdr_target]
                                                        ]
