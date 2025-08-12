@@ -17,26 +17,14 @@ from astropy.table import Table
 from astropy import units as u
 
 # IMPORTS snpit
+from snpit_utils.config import Config
 from snpit_utils.logger import SNLogger
-
-# Set environment variable so this works:
-# Note: on DCC, this should be '/cwork/mat90/RomanDESC_sims_2024/'
-# It's the path to the location of the RomanTDS folder in the RomanDESC sims.
-rootdir = os.getenv('SIMS_DIR', None)
-assert rootdir is not None, 'You need to set SIMS_DIR as an environment variable.'
-
-snana_pq_dir = os.getenv('SNANA_PQ_DIR', None)
-assert snana_pq_dir is not None, 'You need to set SNANA_PQ_DIR as an environment variable.'
-snana_pq_path = os.path.join(snana_pq_dir, 'snana_*.parquet')
-
-obseq_path = os.path.join(rootdir, 'RomanTDS/Roman_TDS_obseq_11_6_23.fits')
-obseq_radec_path = os.path.join(rootdir, 'RomanTDS/Roman_TDS_obseq_11_6_23_radec.fits')
 
 # The FITSFixedWarning is consequenceless and it will get thrown every single time you deal with a WCS.
 warnings.simplefilter('ignore', category=FITSFixedWarning)
 
 
-def _build_filepath(path, band, pointing, sca, filetype, rootdir=rootdir):
+def _build_filepath(path, band, pointing, sca, filetype, rootdir=None):
     """_summary_
 
     :param path: _description_
@@ -56,20 +44,22 @@ def _build_filepath(path, band, pointing, sca, filetype, rootdir=rootdir):
     :rtype: _type_
     """
 
+    rootdir = Config.get().value( 'ou24.tds_base' ) if rootdir is None else rootdir
+
     # First, what kind of file are we looking for?
     neededtypes = [ 'image', 'truth', 'truthtxt' ]
     if filetype not in neededtypes:
         raise ValueError(f"filetype must be in {neededtypes}.")
     elif filetype == 'image':
-        subdir = 'RomanTDS/images/simple_model'
+        subdir = 'images/simple_model'
         prefix = 'simple_model'
         extension = 'fits.gz'
     elif filetype == 'truth':
-        subdir = 'RomanTDS/images/truth'
+        subdir = 'images/truth'
         prefix = 'truth'
         extension = 'fits.gz'
     elif filetype == 'truthtxt':
-        subdir = 'RomanTDS/truth'
+        subdir = 'truth'
         prefix = 'index'
         extension = 'txt'
 
@@ -85,6 +75,11 @@ def _build_filepath(path, band, pointing, sca, filetype, rootdir=rootdir):
 
     elif (path is None) and (band is None) and (pointing is None) and (sca is None):
         raise ValueError('You need to provide either the full image path, or the band, pointing, and SCA.')
+
+
+def ou2024_obseq_path( path=None ):
+    return ( os.path.join( Config.get().value('ou24.tds_base'), 'Roman_TDS_obseq_11_6_23.fits' )
+             if path is None else path )
 
 
 def get_roman_bands():
@@ -186,6 +181,7 @@ def get_transient_radec(oid):
     """Retrieve RA, dec of a transient based on its object ID."""
 
     oid = int(oid)
+    snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
@@ -199,6 +195,7 @@ def get_transient_radec(oid):
 def get_transient_mjd(oid):
     """Retrieve start and end dates of a transient based on its object ID."""
     oid = int(oid)
+    snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
@@ -212,6 +209,7 @@ def get_transient_mjd(oid):
 def get_transient_zcmb(oid):
     """Retrieve z_CMB of a transient based on its object ID."""
     oid = int(oid)
+    snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
@@ -225,6 +223,7 @@ def get_transient_zcmb(oid):
 def get_transient_peakmjd(oid):
     """Retrieve z of a transient based on its object ID."""
     oid = int(oid)
+    snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
     for file in file_list:
         # Read the Parquet file
@@ -333,10 +332,10 @@ def make_object_table(oid):
     return objs
 
 
-def get_mjd_limits(obseq_path=obseq_path):
+def get_mjd_limits(obseq_path=None):
     """Retrive the earliest and latest MJD in the simulations."""
 
-    with fits.open(obseq_path) as obs:
+    with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
 
     start = min(obseq['date'])
@@ -345,9 +344,9 @@ def get_mjd_limits(obseq_path=obseq_path):
     return start, end
 
 
-def get_radec_limits(obseq_path=obseq_path):
+def get_radec_limits(obseq_path=None):
     """Retrieve RA, dec limits (boresight coordinates)."""
-    with fits.open(obseq_path) as obs:
+    with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
 
     ra_min = min(obseq['ra'])
@@ -359,7 +358,7 @@ def get_radec_limits(obseq_path=obseq_path):
     return {'ra': [ra_min, ra_max], 'dec': [dec_min, dec_max]}
 
 
-def get_mjd(pointing, obseq_path=obseq_path):
+def get_mjd(pointing, obseq_path=None):
     """Retrieve MJD of a given pointing.
 
     :param pointing: Pointing ID.
@@ -370,14 +369,14 @@ def get_mjd(pointing, obseq_path=obseq_path):
     :rtype: float
     """
 
-    with fits.open(obseq_path) as obs:
+    with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
     mjd = float(obseq['date'][int(pointing)])
 
     return mjd
 
 
-def pointings_near_mjd(mjd, window=3, obseq_path=obseq_path):
+def pointings_near_mjd(mjd, window=3, obseq_path=None):
     """Retrieve pointings near given MJD.
 
     :param mjd: Central MJD to search around.
@@ -390,14 +389,14 @@ def pointings_near_mjd(mjd, window=3, obseq_path=obseq_path):
     :rtype: list
     """
 
-    with fits.open(obseq_path) as obs:
+    with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
 
     pointings = np.where(np.logical_and(obseq['date'] < mjd + window, obseq['date'] > mjd - window))[0]
     return pointings
 
 
-def get_mjd_info(mjd_start=-np.inf, mjd_end=np.inf, return_inverse=False, obseq_path=obseq_path):
+def get_mjd_info(mjd_start=-np.inf, mjd_end=np.inf, return_inverse=False, obseq_path=None):
     """Get all pointings and corresponding filters between two MJDs.
 
     Returns an astropy table with columns 'filter' and 'pointing'.
@@ -416,7 +415,7 @@ def get_mjd_info(mjd_start=-np.inf, mjd_end=np.inf, return_inverse=False, obseq_
             MJD requirements.
     :rtype: astropy.table.Table
     """
-    with fits.open(obseq_path) as obs:
+    with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
 
     if not return_inverse:

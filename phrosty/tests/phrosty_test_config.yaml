@@ -1,8 +1,8 @@
 ou24:
-  tds_base: /ou2024/RomanTDS
-  config_file: /home/phrosty/examples/perlmutter/tds.yaml
+  tds_base: /photometry_test_data/ou2024
+  config_file: /photometry_test_data/ou2024/tds.yaml
 
-  sn_truth_dir: /ou2024_snana
+  sn_truth_dir: /photometry_test_data/ou2024/snana_truth
   # sn_truth_dir: /snana_pq_dir
 
   images: /photometry_test_data/ou2024/images
@@ -28,7 +28,7 @@ photometry:
     mem_trace: false
 
     paths:
-      scratch_dir: /phrosty_temp
+      scratch_dir: /scratch
       temp_dir: /phrosty_temp
       sn_info_dir: /sn_info_dir
       dia_out_dir: /dia_out_dir

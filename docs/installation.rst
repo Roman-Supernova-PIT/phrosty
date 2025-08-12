@@ -4,9 +4,29 @@
 Installation
 ============
 
+Prerequisites
+-------------
+
+Currently, phrosty is designed inside a container built from the the Roman Supernova PIT environment defined at https://github.com/Roman-Supernova-PIT/environment .
+
+You can pull the necessary container from one of the following two sources:
+
+* ``registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev``
+* ``docker.io/rknop/roman-snpit-env:cuda-dev``
+
+Because phrosty (and other libraries it depends on, such as snappl) is under heavy development, it's possible that the latest container will not work properly with phrosty at any given moment.
+
+.. _running-snpit-container:
+Running the SNPIT container
+---------------------------
+
+TODO.
+
 
 Stable release
 --------------
+
+(NOTE: this is not currently supported, we don't have up-to-date pip releases.)
 
 To install phrosty, run this command in your terminal:
 

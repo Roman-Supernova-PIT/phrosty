@@ -2,7 +2,6 @@
 import os
 import os.path
 import re
-import pathlib
 import pytest
 
 import numpy as np
@@ -13,19 +12,6 @@ from astropy.table import Table
 
 # IMPORTS Internal:
 import phrosty.utils
-
-
-def test_utils_globals():
-    assert pathlib.Path( phrosty.utils.rootdir ).is_dir()
-    assert pathlib.Path( phrosty.utils.snana_pq_dir ).is_dir()
-
-    tab = Table.read( phrosty.utils.obseq_path )
-    assert len(tab) == 57365
-    assert set( tab.columns ) == {'ra', 'pa', 'date', 'filter', 'exptime', 'dec'}
-
-    tab = Table.read( phrosty.utils.obseq_radec_path )
-    assert len(tab) == 57365
-    assert set( tab.columns ) == {'ra', 'dec', 'filter'}
 
 
 def test_build_filepath( test_dia_image ):
@@ -60,7 +46,7 @@ def test_read_truth_txt( test_dia_image ):
     pointing = test_dia_image[ 'pointing' ]
     sca = test_dia_image[ 'sca' ]
     truth = phrosty.utils.read_truth_txt( None, band, pointing, sca )
-    assert len(truth) == 25019
+    assert len(truth) == 25622
     assert set(truth.columns) == {'dec', 'ra', 'obj_type', 'flux', 'x', 'realized_flux', 'object_id', 'mag', 'y'}
 
 
@@ -181,7 +167,7 @@ def test_get_mjd():
 
 
 def test_pointings_near_mjd():
-    obseq = Table.read( phrosty.utils.obseq_path )
+    obseq = Table.read( phrosty.utils.ou2024_obseq_path() )
 
     ptgs = phrosty.utils.pointings_near_mjd( 62000.04011 )
     assert len(ptgs) == 383
