@@ -22,10 +22,11 @@ from sfft.utils.StampGenerator import Stamp_Generator
 from snpit_utils.logger import SNLogger
 from snpit_utils.config import Config
 
+
 def gz_and_ext(in_path, out_path):
-    """Utility function that unzips the original file and turns 
+    """Utility function that unzips the original file and turns
        it into a single-extension FITS file.
-    
+
     Parameters
     ----------
       in_path: Path
@@ -38,7 +39,7 @@ def gz_and_ext(in_path, out_path):
     -------
       out_path: Path
         The output path of the file that has been unzipped and flattened.
-    
+
     """
 
     bio = io.BytesIO()
@@ -54,6 +55,7 @@ def gz_and_ext(in_path, out_path):
                         f"extracted HDU 1 to {out_path}." )
 
     return out_path
+
 
 def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp"), force=False ):
     """Subtracts background, found with Source Extractor.
@@ -114,6 +116,7 @@ def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp")
 
     return np.median( PixA_skyrms )
 
+
 def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
     """Make stamps.
 
@@ -140,7 +143,7 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
     Returns
     -------
       savepath: Path
-        Full savepath of stamp. Combined inputs "savedir/savename".   
+        Full savepath of stamp. Combined inputs "savedir/savename".
 
     """
 
