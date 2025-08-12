@@ -1,1 +1,2 @@
-Deprecate nn2.py. May be revived at a later date.
+Deprecate nn2.py. May be revived at a later date. Also moved a lot of old functions from imagesubtraction.py to unused.py. Added docstrings to imagesubtraction.py.
+
