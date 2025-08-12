@@ -396,7 +396,7 @@ def pointings_near_mjd(mjd, window=3, obseq_path=None):
     return pointings
 
 
-def get_mjd_info(mjd_start=-np.inf, mjd_end=np.inf, return_inverse=False, obseq_path=None):
+def get_mjd_info(mjd_start=0, mjd_end=np.inf, return_inverse=False, obseq_path=None):
     """Get all pointings and corresponding filters between two MJDs.
 
     Returns an astropy table with columns 'filter' and 'pointing'.
