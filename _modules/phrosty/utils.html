@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phrosty.utils &#8212; phrosty 0.1.dev1+g26ab9e31b documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=db0969fc" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <script src="../../_static/documentation_options.js?v=e78b2000"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/logo_black_filled.png" alt="Logo" />
+    
+  </a>
+</p>
+
+
+
+<p class="blurb">Software developed by the Roman SNPIT</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../development.html">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changes.html">Change Log</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">phrosty API</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for phrosty.utils</h1><div class="highlight"><pre>
+<span></span><span class="c1"># IMPORTS Standard:</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os.path</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">glob</span><span class="w"> </span><span class="kn">import</span> <span class="n">glob</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+
+<span class="c1"># IMPORTS Astro:</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.coordinates</span><span class="w"> </span><span class="kn">import</span> <span class="n">SkyCoord</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.wcs</span><span class="w"> </span><span class="kn">import</span> <span class="n">WCS</span><span class="p">,</span> <span class="n">FITSFixedWarning</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">astropy.wcs.wcs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.wcs.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">skycoord_to_pixel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.table</span><span class="w"> </span><span class="kn">import</span> <span class="n">Table</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy</span><span class="w"> </span><span class="kn">import</span> <span class="n">units</span> <span class="k">as</span> <span class="n">u</span>
+
+<span class="c1"># IMPORTS snpit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">snpit_utils.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">snpit_utils.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">SNLogger</span>
+
+<span class="c1"># The FITSFixedWarning is consequenceless and it will get thrown every single time you deal with a WCS.</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="n">FITSFixedWarning</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_build_filepath</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="n">pointing</span><span class="p">,</span> <span class="n">sca</span><span class="p">,</span> <span class="n">filetype</span><span class="p">,</span> <span class="n">rootdir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;_summary_</span>
+
+<span class="sd">    :param path: _description_</span>
+<span class="sd">    :type path: str</span>
+<span class="sd">    :param band: _description_</span>
+<span class="sd">    :type band: str</span>
+<span class="sd">    :param pointing: _description_</span>
+<span class="sd">    :type pointing: str</span>
+<span class="sd">    :param sca: _description_</span>
+<span class="sd">    :type sca: str</span>
+<span class="sd">    :param filetype: _description_</span>
+<span class="sd">    :type filetype: str</span>
+<span class="sd">    :raises ValueError: _description_</span>
+<span class="sd">    :raises ValueError: _description_</span>
+<span class="sd">    :raises ValueError: _description_</span>
+<span class="sd">    :return: _description_</span>
+<span class="sd">    :rtype: _type_</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">rootdir</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;ou24.tds_base&#39;</span> <span class="p">)</span> <span class="k">if</span> <span class="n">rootdir</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">rootdir</span>
+
+    <span class="c1"># First, what kind of file are we looking for?</span>
+    <span class="n">neededtypes</span> <span class="o">=</span> <span class="p">[</span> <span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="s1">&#39;truth&#39;</span><span class="p">,</span> <span class="s1">&#39;truthtxt&#39;</span> <span class="p">]</span>
+    <span class="k">if</span> <span class="n">filetype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">neededtypes</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;filetype must be in </span><span class="si">{</span><span class="n">neededtypes</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">filetype</span> <span class="o">==</span> <span class="s1">&#39;image&#39;</span><span class="p">:</span>
+        <span class="n">subdir</span> <span class="o">=</span> <span class="s1">&#39;images/simple_model&#39;</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;simple_model&#39;</span>
+        <span class="n">extension</span> <span class="o">=</span> <span class="s1">&#39;fits.gz&#39;</span>
+    <span class="k">elif</span> <span class="n">filetype</span> <span class="o">==</span> <span class="s1">&#39;truth&#39;</span><span class="p">:</span>
+        <span class="n">subdir</span> <span class="o">=</span> <span class="s1">&#39;images/truth&#39;</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;truth&#39;</span>
+        <span class="n">extension</span> <span class="o">=</span> <span class="s1">&#39;fits.gz&#39;</span>
+    <span class="k">elif</span> <span class="n">filetype</span> <span class="o">==</span> <span class="s1">&#39;truthtxt&#39;</span><span class="p">:</span>
+        <span class="n">subdir</span> <span class="o">=</span> <span class="s1">&#39;truth&#39;</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;index&#39;</span>
+        <span class="n">extension</span> <span class="o">=</span> <span class="s1">&#39;txt&#39;</span>
+
+    <span class="c1"># Did you already provide a path?</span>
+    <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">path</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">band</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">pointing</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">sca</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;You need to specify band, pointing, and sca if you do not provide a full filepath.&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">band</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">pointing</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">sca</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rootdir</span><span class="p">,</span> <span class="n">subdir</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">pointing</span><span class="p">),</span>
+                       <span class="sa">f</span><span class="s1">&#39;Roman_TDS_</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">pointing</span><span class="p">)</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">sca</span><span class="p">)</span><span class="si">}</span><span class="s1">.</span><span class="si">{</span><span class="n">extension</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">path</span>
+
+    <span class="k">elif</span> <span class="p">(</span><span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">band</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">pointing</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">sca</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;You need to provide either the full image path, or the band, pointing, and SCA.&#39;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">ou2024_obseq_path</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span> <span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s1">&#39;ou24.tds_base&#39;</span><span class="p">),</span> <span class="s1">&#39;Roman_TDS_obseq_11_6_23.fits&#39;</span> <span class="p">)</span>
+             <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">path</span> <span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_roman_bands">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_roman_bands">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_roman_bands</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get roman passbands.</span>
+
+<span class="sd">   :return: List of bands included in the Roman-DESC TDS simulations.</span>
+<span class="sd">    :rtype: list</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="s1">&#39;R062&#39;</span><span class="p">,</span> <span class="s1">&#39;Z087&#39;</span><span class="p">,</span> <span class="s1">&#39;Y106&#39;</span><span class="p">,</span> <span class="s1">&#39;J129&#39;</span><span class="p">,</span> <span class="s1">&#39;H158&#39;</span><span class="p">,</span> <span class="s1">&#39;F184&#39;</span><span class="p">,</span> <span class="s1">&#39;K213&#39;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="read_truth_txt">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.read_truth_txt">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_truth_txt</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pointing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sca</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reads in the txt versions of the truth files as convenient astropy tables.</span>
+
+<span class="sd">    :param truthpath: Path to txt catalog version of truth file. If you do not</span>
+<span class="sd">                        provide this, you need to specify the arguments</span>
+<span class="sd">                        band, pointing, and sca.</span>
+<span class="sd">    :type truthpath: str, optional</span>
+<span class="sd">    :param band: Roman filter. If you do not provide this, you need to provide truthpath.</span>
+<span class="sd">    :type band: str, optional</span>
+<span class="sd">    :param pointing: Pointing ID. If you do not provide this, you need to provide truthpath.</span>
+<span class="sd">    :type pointing: str, optional</span>
+<span class="sd">    :param sca: SCA ID. If you do not provide this, you need to provide truthpath.</span>
+<span class="sd">    :type sca: str, optional</span>
+<span class="sd">    :return: Astropy table with contents of the specified catalog txt file.</span>
+<span class="sd">    :rtype: astropy.table.Table</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_truthpath</span> <span class="o">=</span> <span class="n">_build_filepath</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="n">band</span><span class="p">,</span> <span class="n">pointing</span><span class="o">=</span><span class="n">pointing</span><span class="p">,</span> <span class="n">sca</span><span class="o">=</span><span class="n">sca</span><span class="p">,</span> <span class="n">filetype</span><span class="o">=</span><span class="s1">&#39;truthtxt&#39;</span><span class="p">)</span>
+    <span class="n">truth_colnames</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;object_id&#39;</span><span class="p">,</span> <span class="s1">&#39;ra&#39;</span><span class="p">,</span> <span class="s1">&#39;dec&#39;</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;realized_flux&#39;</span><span class="p">,</span> <span class="s1">&#39;flux&#39;</span><span class="p">,</span> <span class="s1">&#39;mag&#39;</span><span class="p">,</span> <span class="s1">&#39;obj_type&#39;</span><span class="p">]</span>
+    <span class="n">truth_pd</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">_truthpath</span><span class="p">,</span> <span class="n">comment</span><span class="o">=</span><span class="s1">&#39;#&#39;</span><span class="p">,</span> <span class="n">skipinitialspace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">truth_colnames</span><span class="p">)</span>
+    <span class="n">truth</span> <span class="o">=</span> <span class="n">Table</span><span class="o">.</span><span class="n">from_pandas</span><span class="p">(</span><span class="n">truth_pd</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">truth</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">radec_isin</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pointing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sca</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">_imgpath</span> <span class="o">=</span> <span class="n">_build_filepath</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="n">pointing</span><span class="p">,</span> <span class="n">sca</span><span class="p">,</span> <span class="s1">&#39;image&#39;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">_imgpath</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdu</span><span class="p">:</span>
+        <span class="n">wcs</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">hdu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+    <span class="n">worldcoords</span> <span class="o">=</span> <span class="n">SkyCoord</span><span class="p">(</span><span class="n">ra</span><span class="o">=</span><span class="n">ra</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">deg</span><span class="p">,</span> <span class="n">dec</span><span class="o">=</span><span class="n">dec</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">deg</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">skycoord_to_pixel</span><span class="p">(</span><span class="n">worldcoords</span><span class="p">,</span> <span class="n">wcs</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">astropy</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">NoConvergence</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">pxradec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="nb">any</span><span class="p">(</span><span class="n">pxradec</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">),</span> <span class="nb">any</span><span class="p">(</span><span class="n">pxradec</span> <span class="o">&gt;</span> <span class="mi">4088</span><span class="p">)):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">return</span> <span class="n">res</span>
+
+
+<div class="viewcode-block" id="get_corners">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_corners">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_corners</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pointing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sca</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieves the RA, dec of the corners of the specified SCA in degrees.</span>
+
+<span class="sd">    :param band: Roman filter.</span>
+<span class="sd">    :type band: str</span>
+<span class="sd">    :param pointing: Pointing ID.</span>
+<span class="sd">    :type pointing: str</span>
+<span class="sd">    :param sca: SCA ID.</span>
+<span class="sd">    :type sca: str</span>
+<span class="sd">    :return: Tuple containing four numpy arrays, each with the RA and dec of the corner</span>
+<span class="sd">            of the specified image in degrees.</span>
+<span class="sd">    :rtype: tuple</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_imgpath</span> <span class="o">=</span> <span class="n">_build_filepath</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="n">pointing</span><span class="p">,</span> <span class="n">sca</span><span class="p">,</span> <span class="s1">&#39;image&#39;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">_imgpath</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdu</span><span class="p">:</span>
+        <span class="n">wcs</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">hdu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+    <span class="n">corners</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4088</span><span class="p">],</span> <span class="p">[</span><span class="mi">4088</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">4088</span><span class="p">,</span> <span class="mi">4088</span><span class="p">]]</span>
+    <span class="n">wcs_corners</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">pixel_to_world_values</span><span class="p">(</span><span class="n">corners</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">wcs_corners</span></div>
+
+
+
+<span class="c1"># TODO clean this up for style</span>
+<span class="c1"># TODO write something to clear this out</span>
+<span class="n">_parquet_cache</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_read_parquet</span><span class="p">(</span> <span class="n">file</span> <span class="p">):</span>
+    <span class="k">global</span> <span class="n">_parquet_cache</span>
+
+    <span class="k">if</span> <span class="n">file</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_parquet_cache</span><span class="p">:</span>
+        <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;**** Reading parquet file </span><span class="si">{</span><span class="n">file</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">)</span>
+        <span class="n">_parquet_cache</span><span class="p">[</span><span class="n">file</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span> <span class="n">file</span> <span class="p">)</span>
+
+        <span class="n">totm</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">f</span><span class="p">,</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">_parquet_cache</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">totm</span> <span class="o">+=</span> <span class="n">df</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;**** Done reading parquet file </span><span class="si">{</span><span class="n">file</span><span class="si">}</span><span class="s2">; cache using </span><span class="si">{</span><span class="n">totm</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span><span class="si">}</span><span class="s2"> MiB&quot;</span> <span class="p">)</span>
+    <span class="k">return</span> <span class="n">_parquet_cache</span><span class="p">[</span> <span class="n">file</span> <span class="p">]</span>
+
+
+<div class="viewcode-block" id="get_transient_radec">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_transient_radec">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_transient_radec</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve RA, dec of a transient based on its object ID.&quot;&quot;&quot;</span>
+
+    <span class="n">oid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+    <span class="n">snana_pq_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s1">&#39;ou24.sn_truth_dir&#39;</span><span class="p">),</span> <span class="s1">&#39;snana_*.parquet&#39;</span> <span class="p">)</span>
+    <span class="n">file_list</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="n">snana_pq_path</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+        <span class="c1"># Read the Parquet file</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">_read_parquet</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">ra</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">][</span><span class="s1">&#39;ra&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">dec</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">][</span><span class="s1">&#39;dec&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span></div>
+
+
+
+<div class="viewcode-block" id="get_transient_mjd">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_transient_mjd">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_transient_mjd</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve start and end dates of a transient based on its object ID.&quot;&quot;&quot;</span>
+    <span class="n">oid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+    <span class="n">snana_pq_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s1">&#39;ou24.sn_truth_dir&#39;</span><span class="p">),</span> <span class="s1">&#39;snana_*.parquet&#39;</span> <span class="p">)</span>
+    <span class="n">file_list</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="n">snana_pq_path</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+        <span class="c1"># Read the Parquet file</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">_read_parquet</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">][</span><span class="s1">&#39;start_mjd&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">][</span><span class="s1">&#39;end_mjd&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span></div>
+
+
+
+<div class="viewcode-block" id="get_transient_zcmb">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_transient_zcmb">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_transient_zcmb</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve z_CMB of a transient based on its object ID.&quot;&quot;&quot;</span>
+    <span class="n">oid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+    <span class="n">snana_pq_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s1">&#39;ou24.sn_truth_dir&#39;</span><span class="p">),</span> <span class="s1">&#39;snana_*.parquet&#39;</span> <span class="p">)</span>
+    <span class="n">file_list</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="n">snana_pq_path</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+        <span class="c1"># Read the Parquet file</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">_read_parquet</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">][</span><span class="s1">&#39;z_CMB&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">z</span></div>
+
+
+
+<div class="viewcode-block" id="get_transient_peakmjd">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_transient_peakmjd">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_transient_peakmjd</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve z of a transient based on its object ID.&quot;&quot;&quot;</span>
+    <span class="n">oid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+    <span class="n">snana_pq_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s1">&#39;ou24.sn_truth_dir&#39;</span><span class="p">),</span> <span class="s1">&#39;snana_*.parquet&#39;</span> <span class="p">)</span>
+    <span class="n">file_list</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="n">snana_pq_path</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+        <span class="c1"># Read the Parquet file</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">_read_parquet</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">mjd</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">][</span><span class="s1">&#39;peak_mjd&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">mjd</span></div>
+
+
+
+<div class="viewcode-block" id="get_transient_info">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_transient_info">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_transient_info</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve RA, Dec, MJD start, MJD end for specified object ID.&quot;&quot;&quot;</span>
+
+    <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">&quot;*** calling get_transient_radec&quot;</span> <span class="p">)</span>
+    <span class="n">RA</span><span class="p">,</span> <span class="n">DEC</span> <span class="o">=</span> <span class="n">get_transient_radec</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+    <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">&quot;*** calling get_transient_mjd&quot;</span> <span class="p">)</span>
+    <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">get_transient_mjd</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+    <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">&quot;*** Done with get_transient_info&quot;</span> <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">RA</span><span class="p">,</span> <span class="n">DEC</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span></div>
+
+
+
+<div class="viewcode-block" id="transient_in_or_out">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.transient_in_or_out">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">transient_in_or_out</span><span class="p">(</span><span class="n">oid</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">band</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve pointings that contain and do not contain the specified SN, per the truth files by MJD.</span>
+
+<span class="sd">    transient_info_filepath is the output of make_object_table.</span>
+
+<span class="sd">    Returns a tuple of astropy tables (images with the SN, images without the SN).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tab</span> <span class="o">=</span> <span class="n">Table</span><span class="o">.</span><span class="n">from_pandas</span><span class="p">(</span> <span class="n">make_object_table</span><span class="p">(</span> <span class="n">oid</span> <span class="p">)</span> <span class="p">)</span>
+
+    <span class="n">tab</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="s1">&#39;pointing&#39;</span><span class="p">)</span>
+    <span class="n">tab</span> <span class="o">=</span> <span class="n">tab</span><span class="p">[</span><span class="n">tab</span><span class="p">[</span><span class="s1">&#39;filter&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">band</span><span class="p">]</span>
+
+    <span class="n">in_all</span> <span class="o">=</span> <span class="n">get_mjd_info</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+    <span class="n">in_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">tab</span><span class="p">[</span><span class="s1">&#39;pointing&#39;</span><span class="p">],</span> <span class="n">in_all</span><span class="p">[</span><span class="s1">&#39;pointing&#39;</span><span class="p">]))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">in_tab</span> <span class="o">=</span> <span class="n">tab</span><span class="p">[</span><span class="n">in_rows</span><span class="p">]</span>
+
+    <span class="n">out_all</span> <span class="o">=</span> <span class="n">get_mjd_info</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">out_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">tab</span><span class="p">[</span><span class="s1">&#39;pointing&#39;</span><span class="p">],</span> <span class="n">out_all</span><span class="p">[</span><span class="s1">&#39;pointing&#39;</span><span class="p">]))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">out_tab</span> <span class="o">=</span> <span class="n">tab</span><span class="p">[</span><span class="n">out_rows</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">in_tab</span><span class="p">,</span> <span class="n">out_tab</span></div>
+
+
+
+<div class="viewcode-block" id="get_templates">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_templates">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_templates</span><span class="p">(</span><span class="n">oid</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="n">infodir</span><span class="p">,</span> <span class="n">n_templates</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">returntype</span><span class="o">=</span><span class="s1">&#39;list&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get template images.</span>
+
+<span class="sd">    Template images are those images for a given OID do not actually contain the</span>
+<span class="sd">    transient but do contain the RA/dec coordinates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">get_transient_info</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+
+    <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">infodir</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">oid</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">oid</span><span class="si">}</span><span class="s1">_instances.csv&#39;</span><span class="p">)</span>
+    <span class="n">in_tab</span><span class="p">,</span> <span class="n">out_tab</span> <span class="o">=</span> <span class="n">transient_in_or_out</span><span class="p">(</span><span class="n">oid</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="n">transient_info_filepath</span><span class="o">=</span><span class="n">filepath</span><span class="p">)</span>
+
+    <span class="n">template_tab</span> <span class="o">=</span> <span class="n">out_tab</span><span class="p">[:</span><span class="n">n_templates</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The template images are:&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">template_tab</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">returntype</span> <span class="o">==</span> <span class="s1">&#39;list&#39;</span><span class="p">:</span>
+        <span class="n">template_list</span> <span class="o">=</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">template_tab</span><span class="o">.</span><span class="n">colnames</span><span class="p">,</span> <span class="n">row</span><span class="p">))</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">template_tab</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">template_list</span>
+    <span class="k">elif</span> <span class="n">returntype</span> <span class="o">==</span> <span class="s1">&#39;table&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">template_tab</span></div>
+
+
+
+<div class="viewcode-block" id="get_science">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_science">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_science</span><span class="p">(</span><span class="n">oid</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="n">infodir</span><span class="p">,</span> <span class="n">returntype</span><span class="o">=</span><span class="s1">&#39;list&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get science images.</span>
+
+<span class="sd">    Science images are those images for a given OID actually contain the</span>
+<span class="sd">    transient and also contain the RA/dec coordinates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">get_transient_info</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+
+    <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">infodir</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">oid</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">oid</span><span class="si">}</span><span class="s1">_instances.csv&#39;</span><span class="p">)</span>
+    <span class="n">in_tab</span><span class="p">,</span> <span class="n">out_tab</span> <span class="o">=</span> <span class="n">transient_in_or_out</span><span class="p">(</span><span class="n">oid</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="n">transient_info_filepath</span><span class="o">=</span><span class="n">filepath</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The science images are:&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">in_tab</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">returntype</span> <span class="o">==</span> <span class="s1">&#39;list&#39;</span><span class="p">:</span>
+        <span class="n">science_list</span> <span class="o">=</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">in_tab</span><span class="o">.</span><span class="n">colnames</span><span class="p">,</span> <span class="n">row</span><span class="p">))</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">in_tab</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">science_list</span>
+
+    <span class="k">elif</span> <span class="n">returntype</span> <span class="o">==</span> <span class="s1">&#39;table&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">in_tab</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">make_object_table</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
+
+    <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">get_transient_radec</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+
+    <span class="n">server_url</span> <span class="o">=</span> <span class="s1">&#39;https://roman-desc-simdex.lbl.gov&#39;</span>
+    <span class="n">req</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">server_url</span><span class="si">}</span><span class="s1">/findromanimages/containing=(</span><span class="si">{</span><span class="n">ra</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">dec</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">status_code</span> <span class="o">!=</span> <span class="mi">200</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Got status code </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">objs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">json</span><span class="p">())[[</span><span class="s1">&#39;filter&#39;</span><span class="p">,</span> <span class="s1">&#39;pointing&#39;</span><span class="p">,</span> <span class="s1">&#39;sca&#39;</span><span class="p">]]</span>
+    <span class="k">return</span> <span class="n">objs</span>
+
+
+<div class="viewcode-block" id="get_mjd_limits">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_mjd_limits">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_mjd_limits</span><span class="p">(</span><span class="n">obseq_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrive the earliest and latest MJD in the simulations.&quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">ou2024_obseq_path</span><span class="p">(</span><span class="n">obseq_path</span><span class="p">))</span> <span class="k">as</span> <span class="n">obs</span><span class="p">:</span>
+        <span class="n">obseq</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="n">start</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">])</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span></div>
+
+
+
+<div class="viewcode-block" id="get_radec_limits">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_radec_limits">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_radec_limits</span><span class="p">(</span><span class="n">obseq_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve RA, dec limits (boresight coordinates).&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">ou2024_obseq_path</span><span class="p">(</span><span class="n">obseq_path</span><span class="p">))</span> <span class="k">as</span> <span class="n">obs</span><span class="p">:</span>
+        <span class="n">obseq</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="n">ra_min</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">])</span>
+    <span class="n">ra_max</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">])</span>
+
+    <span class="n">dec_min</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">])</span>
+    <span class="n">dec_max</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;ra&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">ra_min</span><span class="p">,</span> <span class="n">ra_max</span><span class="p">],</span> <span class="s1">&#39;dec&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">dec_min</span><span class="p">,</span> <span class="n">dec_max</span><span class="p">]}</span></div>
+
+
+
+<div class="viewcode-block" id="get_mjd">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_mjd">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_mjd</span><span class="p">(</span><span class="n">pointing</span><span class="p">,</span> <span class="n">obseq_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve MJD of a given pointing.</span>
+
+<span class="sd">    :param pointing: Pointing ID.</span>
+<span class="sd">    :type pointing: int</span>
+<span class="sd">    :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.</span>
+<span class="sd">    :type obseq_path: str, optional</span>
+<span class="sd">    :return: MJD of specified pointing.</span>
+<span class="sd">    :rtype: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">ou2024_obseq_path</span><span class="p">(</span><span class="n">obseq_path</span><span class="p">))</span> <span class="k">as</span> <span class="n">obs</span><span class="p">:</span>
+        <span class="n">obseq</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">mjd</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">][</span><span class="nb">int</span><span class="p">(</span><span class="n">pointing</span><span class="p">)])</span>
+
+    <span class="k">return</span> <span class="n">mjd</span></div>
+
+
+
+<div class="viewcode-block" id="pointings_near_mjd">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.pointings_near_mjd">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pointings_near_mjd</span><span class="p">(</span><span class="n">mjd</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">obseq_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve pointings near given MJD.</span>
+
+<span class="sd">    :param mjd: Central MJD to search around.</span>
+<span class="sd">    :type mjd: float</span>
+<span class="sd">    :param window: Number of days around central MJD to include in search.</span>
+<span class="sd">    :type window: float</span>
+<span class="sd">    :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.</span>
+<span class="sd">    :type obseq_path: str, optional</span>
+<span class="sd">    :return: Pointings within specified MJD range.</span>
+<span class="sd">    :rtype: list</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">ou2024_obseq_path</span><span class="p">(</span><span class="n">obseq_path</span><span class="p">))</span> <span class="k">as</span> <span class="n">obs</span><span class="p">:</span>
+        <span class="n">obseq</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="n">pointings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">mjd</span> <span class="o">+</span> <span class="n">window</span><span class="p">,</span> <span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">mjd</span> <span class="o">-</span> <span class="n">window</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">pointings</span></div>
+
+
+
+<div class="viewcode-block" id="get_mjd_info">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.get_mjd_info">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_mjd_info</span><span class="p">(</span><span class="n">mjd_start</span><span class="o">=-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">mjd_end</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">obseq_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all pointings and corresponding filters between two MJDs.</span>
+
+<span class="sd">    Returns an astropy table with columns &#39;filter&#39; and &#39;pointing&#39;.</span>
+<span class="sd">    Does not return an &#39;sca&#39; column because every sca belonging to a</span>
+<span class="sd">    given pointing satisfies an MJD requirement.</span>
+
+<span class="sd">    :param mjd_start: Start MJD, defaults to -np.inf</span>
+<span class="sd">    :type mjd_start: float, optional</span>
+<span class="sd">    :param mjd_end: End MJD, defaults to np.inf</span>
+<span class="sd">    :type mjd_end: float, optional</span>
+<span class="sd">    :param return_inverse: If true, returns all pointings outside the MJD range specified instead of inside.</span>
+<span class="sd">    :type return_inverse: bool</span>
+<span class="sd">    :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.</span>
+<span class="sd">    :type obseq_path: str, optional</span>
+<span class="sd">    :return: Astropy table with pointing numbers and corresponding filters that satisfy the</span>
+<span class="sd">            MJD requirements.</span>
+<span class="sd">    :rtype: astropy.table.Table</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">ou2024_obseq_path</span><span class="p">(</span><span class="n">obseq_path</span><span class="p">))</span> <span class="k">as</span> <span class="n">obs</span><span class="p">:</span>
+        <span class="n">obseq</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">return_inverse</span><span class="p">:</span>
+        <span class="n">mjd_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">mjd_start</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">mjd_end</span><span class="p">)))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">return_inverse</span><span class="p">:</span>
+        <span class="n">mjd_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">~</span><span class="p">((</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">mjd_start</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">mjd_end</span><span class="p">))))[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">mjd_tab</span> <span class="o">=</span> <span class="n">Table</span><span class="p">([</span><span class="n">obseq</span><span class="p">[</span><span class="s1">&#39;filter&#39;</span><span class="p">][</span><span class="n">mjd_idx</span><span class="p">],</span> <span class="n">mjd_idx</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;filter&#39;</span><span class="p">,</span> <span class="s1">&#39;pointing&#39;</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">mjd_tab</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_exptime</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="n">exptime</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;F184&#39;</span><span class="p">:</span> <span class="mf">901.175</span><span class="p">,</span>
+           <span class="s1">&#39;J129&#39;</span><span class="p">:</span> <span class="mf">302.275</span><span class="p">,</span>
+           <span class="s1">&#39;H158&#39;</span><span class="p">:</span> <span class="mf">302.275</span><span class="p">,</span>
+           <span class="s1">&#39;K213&#39;</span><span class="p">:</span> <span class="mf">901.175</span><span class="p">,</span>
+           <span class="s1">&#39;R062&#39;</span><span class="p">:</span> <span class="mf">161.025</span><span class="p">,</span>
+           <span class="s1">&#39;Y106&#39;</span><span class="p">:</span> <span class="mf">302.275</span><span class="p">,</span>
+           <span class="s1">&#39;Z087&#39;</span><span class="p">:</span> <span class="mf">101.7</span><span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">exptime</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">exptime</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">exptime</span>
+
+
+<div class="viewcode-block" id="transform_to_wcs">
+<a class="viewcode-back" href="../../api.html#phrosty.utils.transform_to_wcs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">transform_to_wcs</span><span class="p">(</span><span class="n">wcs</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pointing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sca</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;&quot;Transform world coordinates in a truth file to a new WCS.</span>
+
+<span class="sd">    Outputs pixel coordinates for the transformed coordinates.</span>
+<span class="sd">    input wcs is an astropy wcs object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">truthtab</span> <span class="o">=</span> <span class="n">read_truth_txt</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="n">band</span><span class="p">,</span> <span class="n">pointing</span><span class="o">=</span><span class="n">pointing</span><span class="p">,</span> <span class="n">sca</span><span class="o">=</span><span class="n">sca</span><span class="p">)</span>
+    <span class="n">worldcoords</span> <span class="o">=</span> <span class="n">SkyCoord</span><span class="p">(</span><span class="n">ra</span><span class="o">=</span><span class="n">truthtab</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">deg</span><span class="p">,</span> <span class="n">dec</span><span class="o">=</span><span class="n">truthtab</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">deg</span><span class="p">)</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">skycoord_to_pixel</span><span class="p">(</span><span class="n">worldcoords</span><span class="p">,</span> <span class="n">wcs</span><span class="p">)</span>
+    <span class="n">tab</span> <span class="o">=</span> <span class="n">Table</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">tab</span></div>
+
+</pre></div>
+
+          </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Roman Supernova PIT.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
