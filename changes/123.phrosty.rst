@@ -1,0 +1,1 @@
+Modify tests (and a bit of code) to use photometry_test_data
