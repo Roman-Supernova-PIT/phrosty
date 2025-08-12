@@ -23,7 +23,7 @@ the github package repository at https://github.com/Roman-Supernova-PIT/phrosty
    usage.rst
    development.rst
    changes.rst
-
+   api.rst
 
 
 Indices and tables

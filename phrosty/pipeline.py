@@ -181,6 +181,8 @@ class PipelineImage:
 
 
 class Pipeline:
+    """Phrosty's top-level pipeline"""
+
     def __init__( self, object_id, ra, dec, band, science_images, template_images, nprocs=1, nwrite=5,
                   verbose=False ):
 
