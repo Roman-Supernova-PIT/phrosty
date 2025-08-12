@@ -17,20 +17,23 @@ from astropy.table import Table
 from astropy import units as u
 
 # IMPORTS snpit
+from snpit_utils.config import Config
 from snpit_utils.logger import SNLogger
+
+# Get a config object.  This requires SNPIT_CONFIG env var to be set.
+cfg = Config.get()
 
 # Set environment variable so this works:
 # Note: on DCC, this should be '/cwork/mat90/RomanDESC_sims_2024/'
 # It's the path to the location of the RomanTDS folder in the RomanDESC sims.
-rootdir = os.getenv('SIMS_DIR', None)
-assert rootdir is not None, 'You need to set SIMS_DIR as an environment variable.'
+rootdir = cfg.value( 'ou24.tds_base' )
+# assert rootdir is not None, 'You need to set SIMS_DIR as an environment variable.'
 
-snana_pq_dir = os.getenv('SNANA_PQ_DIR', None)
-assert snana_pq_dir is not None, 'You need to set SNANA_PQ_DIR as an environment variable.'
+snana_pq_dir = cfg.value( 'ou24.sn_truth_dir' )
 snana_pq_path = os.path.join(snana_pq_dir, 'snana_*.parquet')
 
-obseq_path = os.path.join(rootdir, 'RomanTDS/Roman_TDS_obseq_11_6_23.fits')
-obseq_radec_path = os.path.join(rootdir, 'RomanTDS/Roman_TDS_obseq_11_6_23_radec.fits')
+obseq_path = os.path.join(rootdir, 'Roman_TDS_obseq_11_6_23.fits')
+obseq_radec_path = os.path.join(rootdir, 'Roman_TDS_obseq_11_6_23_radec.fits')
 
 # The FITSFixedWarning is consequenceless and it will get thrown every single time you deal with a WCS.
 warnings.simplefilter('ignore', category=FITSFixedWarning)
@@ -61,15 +64,15 @@ def _build_filepath(path, band, pointing, sca, filetype, rootdir=rootdir):
     if filetype not in neededtypes:
         raise ValueError(f"filetype must be in {neededtypes}.")
     elif filetype == 'image':
-        subdir = 'RomanTDS/images/simple_model'
+        subdir = 'images/simple_model'
         prefix = 'simple_model'
         extension = 'fits.gz'
     elif filetype == 'truth':
-        subdir = 'RomanTDS/images/truth'
+        subdir = 'images/truth'
         prefix = 'truth'
         extension = 'fits.gz'
     elif filetype == 'truthtxt':
-        subdir = 'RomanTDS/truth'
+        subdir = 'truth'
         prefix = 'index'
         extension = 'txt'
 

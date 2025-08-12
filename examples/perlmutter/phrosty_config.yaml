@@ -15,7 +15,7 @@ photometry:
       temp_dir: /phrosty_temp
       sn_info_dir: /sn_info_dir
       dia_out_dir: /dia_out_dir
-      image_base_dir: /sims_dir
+      image_base_dir: /photometry_test_data/ou2024/images
       snana_pq_dir: /snana_pq_dir
       snid_lc_dir: /snid_lc_dir
       ltcv_dir: /lc_out_dir

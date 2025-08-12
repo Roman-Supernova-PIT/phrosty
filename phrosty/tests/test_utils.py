@@ -60,7 +60,7 @@ def test_read_truth_txt( test_dia_image ):
     pointing = test_dia_image[ 'pointing' ]
     sca = test_dia_image[ 'sca' ]
     truth = phrosty.utils.read_truth_txt( None, band, pointing, sca )
-    assert len(truth) == 25019
+    assert len(truth) == 25622
     assert set(truth.columns) == {'dec', 'ra', 'obj_type', 'flux', 'x', 'realized_flux', 'object_id', 'mag', 'y'}
 
 
