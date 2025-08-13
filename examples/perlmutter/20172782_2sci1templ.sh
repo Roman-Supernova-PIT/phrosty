@@ -26,7 +26,7 @@ podman-hpc run --gpu \
     --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/ou2024_snana_lc_dir \
     --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library,target=/ou2024_sims_sed_library \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
-    --env PYTHONPATH=/roman_imsim:/phrosty:/sfft \
+    --env PYTHONPATH=/phrosty \
     --env OPENBLAS_NUM_THREADS=1 \
     --env MKL_NUM_THREADS=1 \
     --env NUMEXPR_NUM_THREADS=1 \
@@ -43,6 +43,6 @@ podman-hpc run --gpu \
       -d -44.80718106491529 \
       -b R062 \
       -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv \
-      -s phrosty/examples/perlmutter/20172782_instances_science_2.csv \
+      -s phrosty/examples/perlmutter/20172782_instances_science.csv \
       -p 15 \
       -w 5
