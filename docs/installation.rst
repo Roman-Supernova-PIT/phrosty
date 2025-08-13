@@ -48,8 +48,8 @@ If you get a permission error trying to do this, try::
 
 Give it your usual NERSC username and password (without any OTP).  Once that's done, try the ``podman-hpc pull`` command again.  If you don't seem to have access to the registry, then you can just pull ``docker.io/rknop/roman-snpit-env:cuda-dev`` instead.
 
-After you've pulled, run ``podman-hpc images``.  You should see output something like (*note* you will probably have to scroll to the right in the quoted code below, because readthedocs uses an absurdly (and, egregiously, specified in pixels) small width for the CSS column containing this text)::
-
+After you've pulled, run ``podman-hpc images``.  You should see output something like::
+  
   REPOSITORY                                          TAG                 IMAGE ID      CREATED         SIZE        R/O
   registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47ffc5b  25 minutes ago  8.6 GB      false
   registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47ffc5b  25 minutes ago  8.6 GB      true
