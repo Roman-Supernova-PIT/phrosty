@@ -4,6 +4,9 @@
 Development
 ===========
 
+.. contents::
+               
+
 If you're one of the phrosty developers, or are otherwise interested in contributing, here is some useful information.
 
 Note that fully running phrosty requires an NVIDIA GPU with enough memory.  Empirically, as 12GB GPU is not enough.  We have succesfully run phrosty on NVIDIA GPUs with 40GB of memory.

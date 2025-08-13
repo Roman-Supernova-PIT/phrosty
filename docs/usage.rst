@@ -2,6 +2,8 @@
 Usage
 *****
 
+.. contents::
+
 Phrosty may be run from the command line by running ``python phrosty/pipeline.py`` (assuming you are in the top level of a github checkout).  If you're in :ref:`the necessary environment to run phrosty<phrosty-installation-prerequisites>`, then try running::
 
   python phrosty/pipeline.py -c phrosty/tests/phrosty_test_config.yaml --help
