@@ -9,6 +9,7 @@ If you're one of the phrosty developers, or are otherwise interested in contribu
 Note that fully running phrosty requires an NVIDIA GPU with enough memory.  Empirically, as 12GB GPU is not enough.  We have succesfully run phrosty on NVIDIA GPUs with 40GB of memory.
 
 .. _running-tests:
+
 Running Tests
 -------------
 
@@ -16,7 +17,7 @@ Running Tests
 
 Running all of the tests requires an NVIDIA GPU with enough memory.  We are able to run them on 40GB NVIDIA GPUs, a GPU with only 12GB is not enough.  (TODO: figure out the actual cutoff.)
 
-To run  the tests, forst make sure you've set up your environment and pulled down the necessary docker images as described in :ref:`phrosty installation prerequisites<phrosty-installation-preqrequisites>`.  
+To run  the tests, forst make sure you've set up your environment and pulled down the necessary docker images as described in :ref:`phrosty installation prerequisites<phrosty-installation-prerequisites>`.  
 
 If you haven't already, get a copy of phrosty::
   git clone https://github.com/Roman-Supernova-PIT/phrosty.git
@@ -46,7 +47,6 @@ Run the container with::
     /bin/bash
 
 **On NERSC Perlmutter**, run the container with::
-Run the container with::
   podman-hpc run --gpu -it \
     --mount type=bind,source=$PWD,target=/home \
     --mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data \
@@ -68,7 +68,7 @@ Once inside the container, cd into ``/home/phrosty/phrosty/tests`` and run::
   SNPIT_CONFIG=phrosty_test_config.yaml pytest -v
 
 
-  Manually running a test lightcurve
+Manually running a test lightcurve
 ------------------------------------
 
 Currently, we do not have tests written for ``phrosty/pipeline.py``; this will be rectified soon, and hopefully this documentation will be updated to reflect that.

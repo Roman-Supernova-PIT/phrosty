@@ -11,31 +11,35 @@ phrosty's behavior, and where it looks to find various images and other files it
 * ``phrosty/tests/phrosty_test_config.yaml``
   
 .. _example-usage:
+
 Example Usage
 =============
 
 In addition to the examples below, see :ref:`running-tests`.
 
 .. _manual-test-lightcurve:
+
 Manually running a test lightcurve
 ----------------------------------
 
 In this example, you will use data packaged with the photometry test archive to build a two-point lightcurve.
 
-First, make sure your system meets the :ref:`system-requirements` and that you've downloaded the roman-snpit docker image as described in the :ref:`phrosty installation preqreuisties<phrosty-installation-preqrequisites>`.
+First, make sure your system meets the :ref:`system-requirements` and that you've downloaded the roman-snpit docker image as described in the :ref:`phrosty installation preqreuisties<phrosty-installation-prerequisites>`.
 
 Next, make sure you've pulled down the ``phrosty`` archive as described in :ref:`installing phrosty from sources<install-from-sources>`.  Make sure also to install the photomery test data, as described there.
 
 Finally, follow the instructions under :ref:`running-snpit-container`.
 
 If all has gone well, you are now sitting inside a container that's ready to run phrosty.  Verify that you're in the container with ``ls -F /``.  Make sure that you see ``dia_out_dir/``, ``lc_out_dir/``, ``photometry_test_data/``, and ``phrosty_temp/`` in the list of directories.  Next, run ``nvidia-smi``, and make sure it shows you a GPU with 40MB.  Part of that output will look something like this::
-  |=========================================+========================+======================|
+
+  \|=========================================+========================+======================|
   |   0  NVIDIA A100-SXM4-40GB          Off |   00000000:03:00.0 Off |                    0 |
   | N/A   30C    P0             52W /  400W |       1MiB /  40960MiB |      0%      Default |
   |                                         |                        |             Disabled |
 
 This shows a NVIDIA A100 GPU with 40GB of memory.  A different system might show::
-  |=========================================+========================+======================|
+
+  \|=========================================+========================+======================|
   |   0  NVIDIA GeForce RTX 3080 Ti     Off |   00000000:09:00.0  On |                  N/A |
   |  0%   60C    P8             35W /  350W |     774MiB /  12288MiB |      1%      Default |
 
@@ -70,6 +74,7 @@ On your host system (as well as inside the container), you should see new files 
 
 
 .. _perlmutter-example:
+
 Running on Perlmutter
 ---------------------
 
@@ -80,7 +85,7 @@ This example will *probably* not work on a login node.  It might.  However, ther
 Setting up the environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Get your environment set up as described under the :ref:`phrosty installation prerequisites<phrosty-installation-prequisites>`.
+Get your environment set up as described under the :ref:`phrosty installation prerequisites<phrosty-installation-prerequisites>`.
 
 Pick a place to work
 ^^^^^^^^^^^^^^^^^^^^
@@ -114,6 +119,7 @@ You need to make the following directories.  (They don't have to have exactly th
 
 In addition, create a directory ``phrosty_temp`` somewhere underneath ``$SCRATCH``, e.g.::
   mkdir $SCRATCH/phrosty_temp
+
 This directory will be mounted to ``/phrosty_temp`` inside the container.  (The further examples below will assume that this is where you made it.)
 
 Secure lists of images for your supernova
@@ -139,6 +145,7 @@ If you look at these ``.csv`` files, there are give pieces of information on eac
 * The band (filter) of the exposure
 
 .. _perlmutter-interactive:
+
 Running interactively
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -194,6 +201,7 @@ Running with the NSight Profiler
 **WARNING**: this section has not been tested recently so may be out of date.  TODO: try this again and update the docs after so doing.
 
 When developing/debugging the pipeline, it's useful to run with a profiler, so you can see where the code is spending most of its time.  The huge ``roman-snpit-env:cuda-dev`` Docker image includes the NVIDIA NSight Systems profiler, and (at least as of this writing) the *phrosty* code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in :ref:`perlmutter-interactive` above, only replacing the final ``python`` command with::
+
   nsys profile \
     --trace-fork-before-exec=true \
     --python-backtrace=cuda \
@@ -210,25 +218,29 @@ When developing/debugging the pipeline, it's useful to run with a profiler, so y
       -p 3 \
       -w 3
 
-_Ideally_, this would create a file ``report1.nsys-rep``, but something about that is broken; I'm not sure what.  It does create a file ``report1.qdstrm``, which you can then somehow somewhere else convert to a ``.nsys-rep`` file.  On a Linux system, if you've installed the ``nsight-compute`` and ``nsight-systems`` packages (see :ref:`Nvidia's Nsight Systems installation guide<https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)>`_), you can download the ``.qdstrm`` file to your system and run::
+*Ideally*, this would create a file ``report1.nsys-rep``, but something about that is broken; I'm not sure what.  It does create a file ``report1.qdstrm``, which you can then somehow somewhere else convert to a ``.nsys-rep`` file.  On a Linux system, if you've installed the ``nsight-compute`` and ``nsight-systems`` packages (see `Nvidia's Nsight Systems installation guide <https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)>`_), you can download the ``.qdstrm`` file to your system and run::
+
   /opt/nvidia/nsight-systems/2024.4.2/host-linux-x64/QdstrmImporter -i <name>.qdstrm
+
 where ``<name>.qstrm`` is the file you downloaded.  (Note that the directory may have something other than ``2024.4.2`` in it, depending on what version you've installed.  For best comptibility with the version of Nsight in the current (as of this writing) snpit docker image, I recommend trying to install something close to ``nsight-compute-2024.3.1`` and  ``nsight-systems-2024.4.2``; exactly what is avialable seems to vary with time.)  This should produce a file ``<name>.nsys-rep``.  Then, on your local desktop, run::
   nsys-ui <name>.nsys-rep
+
 to look at the profile.
 
 
 .. _perlmutter-running-slurm:
+
 Running a SLURM batch job
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For reference, see :ref:`the NERSC documentation on running jobs on Perlmutter<https://docs.nersc.gov/systems/perlmutter/running-jobs/>`_.  You need to set up your environment and run all of the steps above *before* "Running interactively".
+For reference, see `the NERSC documentation on running jobs on Perlmutter <https://docs.nersc.gov/systems/perlmutter/running-jobs/>`_.  You need to set up your environment and run all of the steps above *before* "Running interactively".
 
 **Create a job script**: to submit a job to a batch queue, you need to write a slrum script, which is just a shell script with some directives in the comments at the top.  An example script may be found in the file ``examples/perlmutter/20172782_slurm_demo.sh`` in your phrosty checkout.  If you look at this script, you will see that it contains mostly a combination of the ``podman-hpc`` and ``python phrosty/phrosty/pipeline.py`` commands above under "running interactively".  Instead of starting a shell with ``/bin/bash``, the ``podman-hpc`` command just runs the job directly.  It also adds a ``-w /home`` flag so it will be working in the right location.
 
-At the top are the directives that control how the job is submitted.  Many of these you can leave as is.  (If you're morbidly curious, see :ref:`full documentation on the sbatch command<https://slurm.schedmd.com/sbatch.html>`_.  The ones you are most likely to want to change are
+At the top are the directives that control how the job is submitted.  Many of these you can leave as is.  (If you're morbidly curious, see `full documentation on the sbatch command <https://slurm.schedmd.com/sbatch.html>`_.  The ones you are most likely to want to change are
 
 * ``#SBATCH --output <filename>`` : this is the filename that will hold all of the output written to the console for your job.  It will be written in the directory where you run ``slurm``.
-* ``#SBATCH --qos shared`` : this tells slurm which queue to submit to.  See :ref:`NERSC's information on Perlmutter queues<https://docs.nersc.gov/jobs/policy/>`_.  By default, you want to submit to the ``shared`` queue.  Phrosty only currently uses a single GPU.  Each Perlmutter node has 4 GPUs, so if you submit to a queue that gives you an entire node, you're wasting it.  The shared queue has the advantage that *usually* jobs will start faster than they will on node-exclusive queues.  (You can sometimes wait days for a job on the regular queue to start!)  Additionally, our NERSC allocation will only be charged for the fraction of the node that we used.  However, when you're first testing, and you're only running a very small number of images, you might want to submit to the ``debug`` queue.  That allocates an entire node for the job, but _might_ start faster than jobs on the shared queue start.  (Try the shared queue first, though, because the job may well start within a few minutes.)
+* ``#SBATCH --qos shared`` : this tells slurm which queue to submit to.  See `NERSC's information on Perlmutter queues <https://docs.nersc.gov/jobs/policy/>`_.  By default, you want to submit to the ``shared`` queue.  Phrosty only currently uses a single GPU.  Each Perlmutter node has 4 GPUs, so if you submit to a queue that gives you an entire node, you're wasting it.  The shared queue has the advantage that *usually* jobs will start faster than they will on node-exclusive queues.  (You can sometimes wait days for a job on the regular queue to start!)  Additionally, our NERSC allocation will only be charged for the fraction of the node that we used.  However, when you're first testing, and you're only running a very small number of images, you might want to submit to the ``debug`` queue.  That allocates an entire node for the job, but _might_ start faster than jobs on the shared queue start.  (Try the shared queue first, though, because the job may well start within a few minutes.)
 * ``#SBATCH --time 00:20:00`` : This is how long the job will run before the queue manager kills it.  The default, 20 minutes, *should* be plenty of time for the sample job that has 1 template image and 53 science images.  (However, if the NERSC filesystems are behaving poorly, it may not be enough time.)  If you're running a bigger job, then you need to specify more time.  Right now, assume something like ~1-2 minutes per image (which you can divide by the number of processes you run with ``-p``; see below), plus a few minutes of overhead.  Because phrosty is under heavy development and things are changing, this number will be highly variable.
 
 You can probably leave the rest of the flags as is.  The ``--cpus-per-task`` and ``--gpus-per-task`` flags are set so that it will only ask for a quarter of a node.  (The queue manager is very particular about numbers passed to GPU nodes on the shared queue.  It needs you to ask for exactly 32 CPU cores for each GPU, and it needs you to ask for _exactly_ the right amount of memory.  The extra comment marks on the ``####SBATCH --mem`` line tell slurm to ignore it, as it seems to get the default right, and it's not worth fiddling with it to figure out what you should ask for.  A simple calculation would suggest that 64GB per GPU is what you should ask for, but when you do that, slurm thinks you're asking for 36 CPUs worth of memory, not 32 CPUs worth of memory.  The actual number is something like 56.12GB, but again, since the default seems to do the right thing, it's not worth fiddling with this.)
@@ -242,6 +254,7 @@ If look look at the bottom of the script, you will see that the number of parall
 
 **Submitting your job**: Once you've are satisfied with your job script, submit it with::
   sbatch phrosty/examples/perlmutter/20172782_slurm_demo.sh
+
 (Assuming you are running from the parent directory of your phrosty checkout.)
 
 (replacing the argument with the actual name of your script).  (This example assumes that your current working directory is the parent directory of your phrosty checkout.)  If all is well, you should see an output something like::
@@ -262,10 +275,11 @@ If you want to see the status of jobs that have completed, there are a few jobs 
   sacct -j <jobid> -o jobid,jobname,maxvmsize,reqmem,cputime --units=G
   seff <jobid>
 
-(For more things you can pass to ``sacct``, see :ref:`its documentation<https://slurm.schedmd.com/sacct.html>`_.)  For all of those, ``<jobid>`` is the ID of your job on the slurm system.  While the job is still running you can see that job id in the left column of the output of ``squeue --me``.  After your job is over, you can look at the output file.  Assuming you used the example slurm script from this directory, you should see the jobid near the top of the output file.
+(For more things you can pass to ``sacct``, see `its documentation <https://slurm.schedmd.com/sacct.html>`_.)  For all of those, ``<jobid>`` is the ID of your job on the slurm system.  While the job is still running you can see that job id in the left column of the output of ``squeue --me``.  After your job is over, you can look at the output file.  Assuming you used the example slurm script from this directory, you should see the jobid near the top of the output file.
 
 **Checking job results:** Look at your output file.  The last line should be something like::
   [2025-02-10 15:43:32 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.csv
+
 and, ideally, there should be no lines anywhere in the file with ``ERROR`` near the beginning of the log message.
 
 Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.csv`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
