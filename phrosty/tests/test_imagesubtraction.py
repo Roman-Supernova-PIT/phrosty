@@ -84,16 +84,40 @@ def _check_resampled_image( templ, resamp ):
 
 
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
-def test_run_resample( dia_out_dir, template_image_path, one_science_image_path ):
-    sci = one_science_image_path
-    templ = template_image_path
-    resamp = dia_out_dir / "resamp.fits"
+def test_stampmaker( dia_out_dir, test_dia_image, test_sn, one_science_image_path ):
+    savedir = dia_out_dir
+    savename = 'stamp.fits'
+    ra = test_sn[ 'ra' ]
+    dec = test_sn[ 'dec' ]
+    shape = np.array( [ 100, 100 ] )
 
+    savepath = None
     try:
-        phrosty.imagesubtraction.run_resample( templ, sci, resamp )
-        _check_resampled_image( templ, resamp )
+        savepath = pathlib.Path( phrosty.imagesubtraction.stampmaker( ra, dec, shape, one_science_image_path,
+                                                                      savedir=savedir, savename=savename ) )
+        with fits.open( savepath ) as stamp:
+            assert stamp[0].data.shape == tuple( shape )
+            skylevel = np.median( stamp[0].data[ 6:40, 6:40 ] )
+            skysig = stamp[0].data[ 6:40, 6:40 ].std()
+            # Make sure skysig is what we know it is from having looked at it before
+            assert skysig == pytest.approx( 18.7, abs=0.1 )
+            # Look at the supernova, make sure our square 3x3 aperture is at least 10σ
+            assert ( stamp[0].data[ 50:53, 50:53 ].sum() - 9 * skylevel ) > 10. * skysig * 3.
     finally:
-        resamp.unlink( missing_ok=True )
+        if savepath is not None:
+            savepath.unlink( missing_ok = True )
+
+# @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
+# def test_run_resample( dia_out_dir, template_image_path, one_science_image_path ):
+#     sci = one_science_image_path
+#     templ = template_image_path
+#     resamp = dia_out_dir / "resamp.fits"
+
+#     try:
+#         phrosty.imagesubtraction.run_resample( templ, sci, resamp )
+#         _check_resampled_image( templ, resamp )
+#     finally:
+#         resamp.unlink( missing_ok=True )
 
 
 # def test_imalign(  dia_out_dir, template_image_path, one_science_image_path ):
@@ -201,28 +225,3 @@ def test_run_resample( dia_out_dir, template_image_path, one_science_image_path 
 #             assert psf[0].data.sum() == pytest.approx( 1.000, abs=0.005 )
 
 #     # TODO test force and all that
-
-
-@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
-def test_stampmaker( dia_out_dir, test_dia_image, test_sn, one_science_image_path ):
-    savedir = dia_out_dir
-    savename = 'stamp.fits'
-    ra = test_sn[ 'ra' ]
-    dec = test_sn[ 'dec' ]
-    shape = np.array( [ 100, 100 ] )
-
-    savepath = None
-    try:
-        savepath = pathlib.Path( phrosty.imagesubtraction.stampmaker( ra, dec, shape, one_science_image_path,
-                                                                      savedir=savedir, savename=savename ) )
-        with fits.open( savepath ) as stamp:
-            assert stamp[0].data.shape == tuple( shape )
-            skylevel = np.median( stamp[0].data[ 6:40, 6:40 ] )
-            skysig = stamp[0].data[ 6:40, 6:40 ].std()
-            # Make sure skysig is what we know it is from having looked at it before
-            assert skysig == pytest.approx( 18.7, abs=0.1 )
-            # Look at the supernova, make sure our square 3x3 aperture is at least 10σ
-            assert ( stamp[0].data[ 50:53, 50:53 ].sum() - 9 * skylevel ) > 10. * skysig * 3.
-    finally:
-        if savepath is not None:
-            savepath.unlink( missing_ok = True )

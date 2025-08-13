@@ -275,10 +275,10 @@ def get_templates(oid, band, infodir, n_templates=1, returntype='list', verbose=
     Template images are those images for a given OID do not actually contain the
     transient but do contain the RA/dec coordinates.
     """
-    ra, dec, start, end = get_transient_info(oid)
+    _ra, _dec, start, end = get_transient_info(oid)
 
     filepath = os.path.join(infodir, f'{oid}/{oid}_instances.csv')
-    in_tab, out_tab = transient_in_or_out(oid, start, end, band, transient_info_filepath=filepath)
+    _in_tab, out_tab = transient_in_or_out(oid, start, end, band, transient_info_filepath=filepath)
 
     template_tab = out_tab[:n_templates]
     if verbose:
@@ -300,10 +300,10 @@ def get_science(oid, band, infodir, returntype='list', verbose=False):
     transient and also contain the RA/dec coordinates.
     """
 
-    ra, dec, start, end = get_transient_info(oid)
+    _ra, _dec, start, end = get_transient_info(oid)
 
     filepath = os.path.join(infodir, f'{oid}/{oid}_instances.csv')
-    in_tab, out_tab = transient_in_or_out(oid, start, end, band, transient_info_filepath=filepath)
+    in_tab, _out_tab = transient_in_or_out(oid, start, end, band, transient_info_filepath=filepath)
 
     if verbose:
         print('The science images are:')
