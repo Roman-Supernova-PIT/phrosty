@@ -1,4 +1,5 @@
 # Imports STANDARD
+import sys
 import argparse
 import cupy as cp
 from functools import partial
@@ -316,7 +317,8 @@ class Pipeline:
             data_sci, data_templ,
             cp.array( sci_image.image.noise ), cp.array( templ_image.image.noise ),
             sci_detmask, templ_detmask,
-            sci_psf, templ_psf
+            sci_psf, templ_psf,
+            KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
         )
 
         sfftifier.resampling_image_mask_psf()
@@ -843,10 +845,21 @@ def main():
     # Run one arg pass just to get the config file, so we can augment
     #   the full arg parser later with config options
     configparser = argparse.ArgumentParser( add_help=False )
-    configparser.add_argument( '-c', '--config-file', required=True, help="Location of the .yaml config file" )
+    configparser.add_argument( '-c', '--config-file', default=None,
+                               help=( "Location of the .yaml config file; defaults to the value of the "
+                                      "SNPIT_CONFIG environment varaible." ) )
     args, leftovers = configparser.parse_known_args()
 
-    cfg = Config.get( args.config_file, setdefault=True )
+    try:
+        cfg = Config.get( args.config_file, setdefault=True )
+    except RuntimeError as e:
+        if str(e) == 'No default config defined yet; run Config.init(configfile)':
+            sys.stderr.write( "Error, no configuration file defined.\n"
+                              "Either run phrosty with -c <configfile>\n"
+                              "or set the SNPIT_CONFIG environment varaible.\n" )
+            sys.exit(1)
+        else:
+            raise
 
     parser = argparse.ArgumentParser()
     # Put in the config_file argument, even though it will never be found, so it shows up in help
