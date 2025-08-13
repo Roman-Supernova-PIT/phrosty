@@ -5,12 +5,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Installation &#8212; phrosty 0.1.dev1+gdaadeba documentation</title>
+    <title>Installation &#8212; phrosty 0.1.dev1+gd6608d6 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=db0969fc" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
-    <script src="_static/documentation_options.js?v=1931bbce"></script>
+    <script src="_static/documentation_options.js?v=628014c6"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -98,52 +98,123 @@
           <div class="body" role="main">
             
   <section id="installation">
-<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
+<span id="phrosty-installation"></span><h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
+<section id="system-requirements">
+<span id="id1"></span><h2>System Requirements<a class="headerlink" href="#system-requirements" title="Link to this heading">¶</a></h2>
+<p>Phrosty is built using CUDA 12.4 and requires an NVIDIA GPU to run.  Your host system needs to have an NVIDIA GPU, and needs to have a version of CUDA compatible with 12.4.  (It’s <em>possible</em> that phrosty will run with other versions of CUDA on the host system, but we haven’t verified this.)  To run all of phrosty, you need a GPU with enough memory.  Empirically, 12GB is not enough GPU memory to fully run phrosty on OpenUniverse simulations of Roman data (though you will be able to run some of the tests).  We have succesfully run phrosty on an NVIDIA GPU with 40GB of memory.</p>
+<p>If you are on NERSC Perlmutter, run <code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">list</span></code>.  Make sure that <code class="docutils literal notranslate"><span class="pre">cudatoolkit/12.4</span></code> shows up in your list of modules.  If not, you may need to adjust the modules you have loaded.</p>
+<p>(Ideally, because phrosty runs inside a container, the specific version of CUDA on the host system wouldn’t matter.  However, containers can be touchy about hooking up GPUs inside containers.  If you’re having trouble seeing the GPU inside the container, check for mismatches between the versions of cuda inside and outside of the container.)</p>
+</section>
 <section id="prerequisites">
-<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">¶</a></h2>
-<p>Currently, phrosty is designed inside a container built from the the Roman Supernova PIT environment defined at <a class="reference external" href="https://github.com/Roman-Supernova-PIT/environment">https://github.com/Roman-Supernova-PIT/environment</a> .</p>
-<p>You can pull the necessary container from one of the following two sources:</p>
+<span id="phrosty-installation-prerequisites"></span><h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">¶</a></h2>
+<p>Currently, phrosty is designed inside a container built from the the <a class="reference external" href="https://github.com/Roman-Supernova-PIT/environment">Roman Supernova PIT environment</a>.</p>
+<p>You can pull the necessary container image from one of the following two sources:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docker.io/rknop/roman-snpit-env:cuda-dev</span></code></p></li>
 </ul>
+<p>The latter image location should work for everybody.  For members of the Roman SN PIT, the first image location should be more efficient when you’re running on NERSC Perlmutter; see below.the image,</p>
 <p>Because phrosty (and other libraries it depends on, such as snappl) is under heavy development, it’s possible that the latest container will not work properly with phrosty at any given moment.</p>
+<section id="on-nersc-perlmutter">
+<h3>On NERSC Perlmutter<a class="headerlink" href="#on-nersc-perlmutter" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>If you’re on NERSC Perlmutter, use <code class="docutils literal notranslate"><span class="pre">podman-hpc</span></code> in place of <code class="docutils literal notranslate"><span class="pre">docker</span></code>.  Pull the image with::</dt><dd><p>podman-hpc pull registry.nersc.gov/m4385/rknpo/roman-snpit-env:cuda-dev</p>
+</dd>
+</dl>
+<p><strong>Note:</strong> do _not_ run <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">image</span> <span class="pre">pull</span> <span class="pre">...</span></code>.  That will superficially seem to work, but will skip a step that gets run when you just do <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">pull</span> <span class="pre">...</span></code>.</p>
+<dl class="simple">
+<dt>If you get a permission error trying to do this, try::</dt><dd><p>podman-hpc login registry.nersc.gov</p>
+</dd>
+</dl>
+<p>Give it your usual NERSC username and password (without any OTP).  Once that’s done, try the <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">pull</span></code> command again.  If you don’t seem to have access to the registry, then you can just pull <code class="docutils literal notranslate"><span class="pre">docker.io/rknop/roman-snpit-env:cuda-dev</span></code> instead.</p>
+<dl class="simple">
+<dt>After you’ve pulled, run <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">images</span></code>.  You should see output something like::</dt><dd><p>REPOSITORY                                          TAG                 IMAGE ID      CREATED         SIZE        R/O
+registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47ffc5b  25 minutes ago  8.6 GB      false
+registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47ffc5b  25 minutes ago  8.6 GB      true</p>
+</dd>
+</dl>
+<p>In particular, notice that there is both a R/O “true” and R/O “false” version.  The R/O “true” version is the one you need to be able to run on nodes other than the node you pulled the image (such as compute nodes).  (The Image ID will probably not match what you see above, if we’re released version of the snpit docker image since this documentation was written.  The “CREATED” time is also very likely to be longer ago than what you see here.)</p>
+<p>If you’ve pulled images before, and you’re now working on a new login node, you will only see the <code class="docutils literal notranslate"><span class="pre">R/O=true</span></code> image.  That’s the only image you really need, so in that case there’s no need to pull the image again.  (You will only see the <code class="docutils literal notranslate"><span class="pre">R/O=true</span></code> image on compute nodes.)</p>
+<dl class="simple">
+<dt><strong>If you have trouble with podman</strong>: Podman is, as of this writing, still a beta feature on Nersc, and has some warts.  Refer to <a class="reference external" href="https://docs.nersc.gov/development/containers/podman-hpc/overview/">NERSC’s documentation on podman-hpc</a>.  In particular, if you want to clean the slate and start over, try running::</dt><dd><p>podman-hpc system reset</p>
+</dd>
+</dl>
+<p>to delete all of your podman images and contexts.  Then try pulling the image again.</p>
 </section>
-<section id="running-the-snpit-container">
-<span id="running-snpit-container"></span><h2>Running the SNPIT container<a class="headerlink" href="#running-the-snpit-container" title="Link to this heading">¶</a></h2>
-<p>TODO.</p>
+<section id="on-other-hpc-systems">
+<h3>On other HPC Systems<a class="headerlink" href="#on-other-hpc-systems" title="Link to this heading">¶</a></h3>
+<p>If your HPC system doesn’t support containers, then you’re out of luck.  Most HPC systems support containers using <code class="docutils literal notranslate"><span class="pre">apptainer</span></code> (previously known as <code class="docutils literal notranslate"><span class="pre">singularity</span></code>).  This system is not a drop-in replacment for docker, as the way you obtain images, and the semantics for running containers, are different.  (There are also differences in terms of how isolated the environment is; singularity is less of a “real” isolated container than docker, usually.)</p>
+<p>TODO : document use of singularity.</p>
+</section>
 </section>
 <section id="stable-release">
 <h2>Stable release<a class="headerlink" href="#stable-release" title="Link to this heading">¶</a></h2>
-<p>(NOTE: this is not currently supported, we don’t have up-to-date pip releases.)</p>
-<p>To install phrosty, run this command in your terminal:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>phrosty
-</pre></div>
-</div>
-<p>This is the preferred method to install phrosty, as it will always install the most recent stable release.</p>
-<p>If you don’t have <a class="reference external" href="https://pip.pypa.io">pip</a> installed, this <a class="reference external" href="http://docs.python-guide.org/en/latest/starting/installation/">Python installation guide</a> can guide
-you through the process.</p>
+<p>phrosty is under heavy development and does not currently have stable releases.  Eventually it will be released on pypi either under the name <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> or <code class="docutils literal notranslate"><span class="pre">roman-snpit-phrosty</span></code> (depending on what’s available).</p>
 </section>
 <section id="from-sources">
-<h2>From sources<a class="headerlink" href="#from-sources" title="Link to this heading">¶</a></h2>
-<p>The sources for phrosty can be downloaded from the <a class="reference external" href="https://github.com/Roman-Supernova-PIT/phrosty">Github repo</a>.</p>
-<p>You can either clone the public repository:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:Roman-Supernova-PIT/phrosty.git
+<span id="install-from-sources"></span><h2>From sources<a class="headerlink" href="#from-sources" title="Link to this heading">¶</a></h2>
+<p>Currently, the only way to install phrosty is to download it from the <a class="reference external" href="https://github.com/Roman-Supernova-PIT/phrosty">github repo</a>.  Clone it with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Roman-Supernova-PIT/phrosty.git
 </pre></div>
 </div>
-<p>Or download the <a class="reference external" href="https://github.com/Roman-Supernova-PIT/phrosty/tarball/master">tarball</a>:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>curl<span class="w"> </span>-OJL<span class="w"> </span>https://github.com/Roman-Supernova-PIT/phrosty/tarball/master
-</pre></div>
-</div>
-<p>Once you have a copy of the source, you can install it with:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>.
-</pre></div>
-</div>
-<p>If you would like to do an editable install:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
-<span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="o">[</span>docs<span class="o">]</span><span class="w">  </span><span class="c1"># install document build packages during install</span>
-</pre></div>
-</div>
+<p>(you can also clone it via the <code class="docutils literal notranslate"><span class="pre">git&#64;</span></code> code link if you know what you’re doing.)</p>
+<section id="installing-the-photometry-test-data">
+<h3>Installing the photometry test data<a class="headerlink" href="#installing-the-photometry-test-data" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>If you want to <a class="reference internal" href="development.html#running-tests"><span class="std std-ref">run tests</span></a>, and some of the examples, then you will also need to pull the photometry test data::</dt><dd><p>git clone <a class="reference external" href="https://github.com/Roman-Supernova-PIT/photometry_test_data.git">https://github.com/Roman-Supernova-PIT/photometry_test_data.git</a></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="running-the-snpit-container">
+<span id="running-snpit-container"></span><h2>Running the SNPIT container<a class="headerlink" href="#running-the-snpit-container" title="Link to this heading">¶</a></h2>
+<p>To use phrosty inside the container, you will need to run it with <code class="docutils literal notranslate"><span class="pre">docker</span></code> or <code class="docutils literal notranslate"><span class="pre">podman</span></code>, and bind-mount the directory where you’ve cloned phrosty.  Phrosty requires a handful of additional directories:
+* <code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code> : a place to write output lightcurves
+* <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code> : a place to write output difference images
+* <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code> : a place to write temp files; you want this on a fast filesystem
+* <code class="docutils literal notranslate"><span class="pre">phrosty_intermediate</span></code> : a place to write intermediate data products for diagnostic purposes; you want this on a fast filesystem</p>
+<dl class="simple">
+<dt>You configure these directories with the phrosty config <code class="docutils literal notranslate"><span class="pre">.yaml</span></code> file.  For the config file we use for tests, inside the container these directories must show up at <code class="docutils literal notranslate"><span class="pre">/lc_out_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">/dia_out_dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">/phrosty_temp</span></code>.  (The test environment unifies <code class="docutils literal notranslate"><span class="pre">phrosty_intermediate</span></code> and <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code>.)  You can make all of these diretories as subdirectories of your current directory::</dt><dd><p>mkdir lc_out_dir
+mkdir dia_out_dir
+mkdir phrosty_temp</p>
+</dd>
+</dl>
+<p>If you put them somewhere else, then make sure to modify the docker command below appropriately.</p>
+<dl class="simple">
+<dt>Assuming you’re currently in the directory which is the parent of your <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> and <code class="docutils literal notranslate"><span class="pre">photometry_test_data</span></code> checkouts, you can run a docker container suitable for running tests by running the following::</dt><dd><dl class="simple">
+<dt>docker run –gpus=all -it </dt><dd><p>–mount type=bind,source=$PWD,target=/home –mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data –mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp –mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir –mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir –env PYTHONPATH=/roman_imsim –env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs –env OPENBLAS_NUM_THREADS=1 –env MKL_NUM_THREADS=1 –env NUMEXPR_NUM_THREADS=1 –env OMP_NUM_THREADS=1 –env VECLIB_MAXIMUM_THREADS=1 rknop/roman-snpit-env:cuda-dev /bin/bash</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>(Substitute <code class="docutils literal notranslate"><span class="pre">registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev</span></code> for <code class="docutils literal notranslate"><span class="pre">rknop/roman-snpit-env:cuda-dev</span></code> if you pulled the docker image from there.)</p>
+<dl class="simple">
+<dt>If all is well, this will put you in a docker container.  You can tell you’re in the container because your prompt will change to something like <code class="docutils literal notranslate"><span class="pre">root&#64;47394bd41fbe:/#</span></code> (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you’ve got access to the GPUs by running, inside the container::</dt><dd><p>nvidia-smi</p>
+</dd>
+</dl>
+<p>If you get an error message, or don’t see at least one NVIDIA GPU listed, then phrosty will not work.</p>
+<section id="id2">
+<h3>On NERSC Perlmutter<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>The procedure above is mostly right.  However, we <strong>strongly</strong> recommend you put your output directories on  on the Perlmutter scratch disk, at least for testing and development::</dt><dd><p>mkdir $SCRATCH/phrosty_lc_out_dir
+mkdir $SCRATCH/phrosty_dia_out_dir
+mkdir $SCRATCH/phrosty_temp</p>
+</dd>
+</dl>
+<p>(In fact, it’s probably a good idea to put the other directories on <code class="docutils literal notranslate"><span class="pre">$SCRATCH</span></code> as well.)</p>
+<dl class="simple">
+<dt>Then, assuming you’re in the directory above your <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> and <code class="docutils literal notranslate"><span class="pre">photometry_test_data</span></code> checkouts, and assuming you’ve made the other two necessary directories, you can run the container with::</dt><dd><dl class="simple">
+<dt>podman-hpc run –gpu -it </dt><dd><p>–mount type=bind,source=$PWD,target=/home –mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data –mount type=bind,source=$SCRATCH/phrosty_temp,target=/phrosty_temp –mount type=bind,source=$SCRATCH/phrosty_dia_out_dir,target=/dia_out_dir –mount type=bind,source=$SCRATCH/phrosty_lc_out_dir,target=/lc_out_dir –env PYTHONPATH=/roman_imsim –env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs –env OPENBLAS_NUM_THREADS=1 –env MKL_NUM_THREADS=1 –env NUMEXPR_NUM_THREADS=1 –env OMP_NUM_THREADS=1 –env VECLIB_MAXIMUM_THREADS=1 –env TERM=xterm –annotation run.oci.keep_original_groups=1 registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev /bin/bash</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>If you’re inside the container, your prompt will be something like <code class="docutils literal notranslate"><span class="pre">root&#64;f24c2ad04d6d:/#</span></code> (though with a different string of hexidecimal digits (hexits?)).  If you do <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-F</span> <span class="pre">/</span></code>, you will see the various specific directories you mounted, such as <code class="docutils literal notranslate"><span class="pre">/dia_out_dir</span></code> and <code class="docutils literal notranslate"><span class="pre">/photometry_test_data</span></code>.</p>
+<dl class="simple">
+<dt>Verify that you have access to GPUs by running::</dt><dd><p>nvidia-smi</p>
+</dd>
+</dl>
+</section>
 </section>
 </section>
 

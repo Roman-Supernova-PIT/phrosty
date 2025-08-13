@@ -5,12 +5,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Usage &#8212; phrosty 0.1.dev1+gdaadeba documentation</title>
+    <title>Usage &#8212; phrosty 0.1.dev1+gd6608d6 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=db0969fc" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
-    <script src="_static/documentation_options.js?v=1931bbce"></script>
+    <script src="_static/documentation_options.js?v=628014c6"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -99,12 +99,222 @@
             
   <section id="usage">
 <h1>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h1>
-<p>To use phrosty in a project:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phrosty</span>
+<p>Phrosty may be run from the command line by running <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">phrosty/pipeline.py</span></code> (assuming you are in the top level of a github checkout).  If you’re in <a class="reference internal" href="installation.html#phrosty-installation-prerequisites"><span class="std std-ref">the necessary environment to run phrosty</span></a>, then try running:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">c</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">help</span>
 </pre></div>
 </div>
-<p>&lt;&lt;ENTER EXAMPLES HERE&gt;&gt;</p>
+<p>phrosty’s behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find two examples of these files in:
+* <code class="docutils literal notranslate"><span class="pre">examples/perlmutter/phrosty_config.yaml</span></code>
+* <code class="docutils literal notranslate"><span class="pre">phrosty/tests/phrosty_test_config.yaml</span></code></p>
+<section id="example-usage">
+<span id="id1"></span><h2>Example Usage<a class="headerlink" href="#example-usage" title="Link to this heading">¶</a></h2>
+<p>In addition to the examples below, see <a class="reference internal" href="development.html#running-tests"><span class="std std-ref">Running Tests</span></a>.</p>
+<section id="manually-running-a-test-lightcurve">
+<span id="manual-test-lightcurve"></span><h3>Manually running a test lightcurve<a class="headerlink" href="#manually-running-a-test-lightcurve" title="Link to this heading">¶</a></h3>
+<p>In this example, you will use data packaged with the photometry test archive to build a two-point lightcurve.</p>
+<p>First, make sure your system meets the <a class="reference internal" href="installation.html#system-requirements"><span class="std std-ref">System Requirements</span></a> and that you’ve downloaded the roman-snpit docker image as described in the <span class="xref std std-ref">phrosty installation preqreuisties</span>.</p>
+<p>Next, make sure you’ve pulled down the <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> archive as described in <a class="reference internal" href="installation.html#install-from-sources"><span class="std std-ref">installing phrosty from sources</span></a>.  Make sure also to install the photomery test data, as described there.</p>
+<p>Finally, follow the instructions under <a class="reference internal" href="installation.html#running-snpit-container"><span class="std std-ref">Running the SNPIT container</span></a>.</p>
+<dl class="simple">
+<dt>If all has gone well, you are now sitting inside a container that’s ready to run phrosty.  Verify that you’re in the container with <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-F</span> <span class="pre">/</span></code>.  Make sure that you see <code class="docutils literal notranslate"><span class="pre">dia_out_dir/</span></code>, <code class="docutils literal notranslate"><span class="pre">lc_out_dir/</span></code>, <code class="docutils literal notranslate"><span class="pre">photometry_test_data/</span></code>, and <code class="docutils literal notranslate"><span class="pre">phrosty_temp/</span></code> in the list of directories.  Next, run <code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code>, and make sure it shows you a GPU with 40MB.  Part of that output will look something like this::</dt><dd><p><a href="#id12"><span class="problematic" id="id13">|=========================================+========================+======================|</span></a>
+|   0  NVIDIA A100-SXM4-40GB          Off |   00000000:03:00.0 Off |                    0 |
+| N/A   30C    P0             52W /  400W |       1MiB /  40960MiB |      0%      Default |
+|                                         |                        |             Disabled |</p>
+</dd>
+<dt>This shows a NVIDIA A100 GPU with 40GB of memory.  A different system might show::</dt><dd><p><a href="#id14"><span class="problematic" id="id15">|=========================================+========================+======================|</span></a>
+|   0  NVIDIA GeForce RTX 3080 Ti     Off |   00000000:09:00.0  On |                  N/A |
+|  0%   60C    P8             35W /  350W |     774MiB /  12288MiB |      1%      Default |</p>
+</dd>
+</dl>
+<p>This system has a NVIDIA RTX 3080 Ti consumer graphics card.  Notice that it only has 12288MiB of memory; 12GB of memory is not enough to run the example.</p>
+<dl class="simple">
+<dt>Inside the container, run::</dt><dd><p>cd /home/phrosty
+pip install -e .</p>
+</dd>
+</dl>
+<p>That will install the checked out version of phrosty in your currently running environment.  Note that if you exit the container and run a new container, you will have to <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span></code> phrosty again, as the changes you make to a container only persist as long as that same container is still running.</p>
+<dl class="simple">
+<dt>Next, try running:</dt><dd><p>SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py –help | less</p>
+</dd>
+</dl>
+<p>You should see all the options you can pass to phrosty.  There are a lot, because there are (verbose) options for everything that’s in the config file.  Press <code class="docutils literal notranslate"><span class="pre">q</span></code> to get out of <code class="docutils literal notranslate"><span class="pre">less</span></code>.</p>
+<dl class="simple">
+<dt>Try running::</dt><dd><dl class="simple">
+<dt>SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py </dt><dd><p>–oid 20172782 –ra 7.551093401915147 –dec -44.80718106491529 -b Y106 -t phrosty/tests/20172782_instances_templates_1.csv -s phrosty/tests/20172782_instances_science_2.csv -p 3 -w 3 -v</p>
+</dd>
+</dl>
+</dd>
+<dt>If all is well, after it’s done running the output will end with something like::</dt><dd><p>[2025-08-13 17:35:24 - INFO] - Results saved to /lc_out_dir/data/20172782/20172782_Y106_all.csv</p>
+</dd>
+</dl>
+<p>On your host system (as well as inside the container), you should see new files in wherever you put <code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code>.  (Inside the container, these are at <code class="docutils literal notranslate"><span class="pre">/lc_out_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">/dia_out_dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">/phrosty_temp</span></code>.)</p>
+</section>
+<section id="running-on-perlmutter">
+<span id="perlmutter-example"></span><h3>Running on Perlmutter<a class="headerlink" href="#running-on-perlmutter" title="Link to this heading">¶</a></h3>
+<p>While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn’t use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren’t in the right unix groups.</p>
+<p>This example will <em>probably</em> not work on a login node.  It might.  However, there is only a single GPU on each login node, and because of how some very annoying python libraries are written (jax, I’m looking at you), often people have allocated a large fraction of the available GPU memory even if they don’t really need it.  You will probably need to run on a compute node.  This is described below.</p>
+<section id="setting-up-the-environment">
+<h4>Setting up the environment<a class="headerlink" href="#setting-up-the-environment" title="Link to this heading">¶</a></h4>
+<p>Get your environment set up as described under the <span class="xref std std-ref">phrosty installation prerequisites</span>.</p>
+</section>
+<section id="pick-a-place-to-work">
+<h4>Pick a place to work<a class="headerlink" href="#pick-a-place-to-work" title="Link to this heading">¶</a></h4>
+<p>Work in one of two places.  You make yourself a subdirectory underneath <code class="docutils literal notranslate"><span class="pre">/pscratch/sd/&lt;u&gt;/&lt;username&gt;</span></code>, where <code class="docutils literal notranslate"><span class="pre">&lt;username&gt;</span></code> is your NERSC username and <code class="xref py py-obj docutils literal notranslate"><span class="pre">&lt;u&gt;</span></code> is the first letter of your username.  (You can get to this directory with <code class="docutils literal notranslate"><span class="pre">cd</span> <span class="pre">$SCRATCH</span></code>; this is your top-level scratch directory, and NERSC sets the <code class="docutils literal notranslate"><span class="pre">SCRATCH</span></code> environment variable to point to it.)  Alternatively, you can create yourself a subdirectory somewhere underneath <code class="docutils literal notranslate"><span class="pre">/global/cfs/cdirs/m4385/users</span></code>.  This is the shared SNPIT space on the NERSC community file system, so if you’re going to work there, be aware that you’re using up our shared file allocation.  At the moment, that’s not a worry.</p>
+<p>I’m going to call the place you’ve picked to work your “parent” directory.</p>
+</section>
+<section id="get-phrosty">
+<h4>Get phrosty<a class="headerlink" href="#get-phrosty" title="Link to this heading">¶</a></h4>
+<p>In your parent directory, <a class="reference internal" href="installation.html#install-from-sources"><span class="std std-ref">clone the phrosty repository</span></a>.  For this example, you do not need to install the photometry test data.</p>
+</section>
+<section id="locate-existing-directories">
+<h4>Locate existing directories<a class="headerlink" href="#locate-existing-directories" title="Link to this heading">¶</a></h4>
+<p>phrosty currently reads data from the OpenUniverse sims.  On NERSC, you can find the necessary information at the following directories.  These directories will be bind-mounted to the locations in parentheses (see below re: bind mounting).</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data</span></code> (<code class="docutils literal notranslate"><span class="pre">/ou2024</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE</span></code> (<code class="docutils literal notranslate"><span class="pre">/ou2024_snana</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal</span></code> (<code class="docutils literal notranslate"><span class="pre">/ou2024_snana_lc_dir</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library</span></code> (<code class="docutils literal notranslate"><span class="pre">/ou2024_sims_sed_library</span></code>)</p></li>
+</ul>
+</section>
+<section id="create-needed-directories">
+<h4>Create needed directories<a class="headerlink" href="#create-needed-directories" title="Link to this heading">¶</a></h4>
+<p>You need to make the following directories.  (They don’t have to have exactly these names.  However, for purposes of the example, create these directories with these names as subdirectories under your parent directory.)</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code></p></li>
+</ul>
+<dl class="simple">
+<dt>In addition, create a directory <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code> somewhere underneath <code class="docutils literal notranslate"><span class="pre">$SCRATCH</span></code>, e.g.::</dt><dd><p>mkdir $SCRATCH/phrosty_temp</p>
+</dd>
+</dl>
+<p>This directory will be mounted to <code class="docutils literal notranslate"><span class="pre">/phrosty_temp</span></code> inside the container.  (The further examples below will assume that this is where you made it.)</p>
+</section>
+<section id="secure-lists-of-images-for-your-supernova">
+<h4>Secure lists of images for your supernova<a class="headerlink" href="#secure-lists-of-images-for-your-supernova" title="Link to this heading">¶</a></h4>
+<p>Pick a supernova to run on.  TODO: more information.</p>
+<p>For this example, we’re going to run on the object with id 20172782.  In the <code class="docutils literal notranslate"><span class="pre">examples/perlmutter</span></code> directory under your <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> checkout), you can find three <code class="docutils literal notranslate"><span class="pre">.csv</span></code> files that have information about the template and/or science images we’re going to use:
+* <code class="docutils literal notranslate"><span class="pre">20172782_instances_templates_1.csv</span></code> — a single R-band template image
+* <code class="docutils literal notranslate"><span class="pre">20172782_instances_templates_10.csv</span></code> — 10 R-band template images
+* <code class="docutils literal notranslate"><span class="pre">20172782_instances_science.csv</span></code> — 53 science images
+* <code class="docutils literal notranslate"><span class="pre">20172782_instances_science_2.csv</span></code> — 2 science images</p>
+<p>(Template images where chosen based on their simulated date relative to when the simulated supernova was active.)</p>
+<p>For this example, you don’t have to do anything, you will just use the files that are there.  However, if you are pushing this further, you will need to know how to find files, and how to construct your own <code class="docutils literal notranslate"><span class="pre">.csv</span></code> files.</p>
+<p>If you look at these <code class="docutils literal notranslate"><span class="pre">.csv</span></code> files, there are give pieces of information on each line:
+* The filename of the OpenUniverse image, relative to <code class="docutils literal notranslate"><span class="pre">/ou2024/RomanTDS/images</span></code> inside the container (see below).  On Perlmutter outside the container, these are relative to <code class="docutils literal notranslate"><span class="pre">/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images</span></code>.
+* The pointing of the image
+* The SCA on which the supernova is present for this pointing
+* The MJD of the pointing
+* The band (filter) of the exposure</p>
+</section>
+<section id="running-interactively">
+<span id="perlmutter-interactive"></span><h4>Running interactively<a class="headerlink" href="#running-interactively" title="Link to this heading">¶</a></h4>
+<p>The easiest way to just run something is to do it on an interactive node on Perlmutter.  (See <a class="reference internal" href="#perlmutter-running-slurm"><span class="std std-ref">below</span></a> for running it with slurm.)</p>
+<dl class="simple">
+<dt>First, get yourself a session on an interactive GPU node with::</dt><dd><p>salloc -t 04:00:00 -A m4385 –constraint=gpu -q interactive</p>
+</dd>
+</dl>
+<p>after a minute or so, that should log you into one of the nodes with a session that will last 4 hours.  (This is overkill; if you know it won’t be that long, shorten the time after the <code class="docutils literal notranslate"><span class="pre">-t</span></code> flag.)  You can verify that you’re on a compute node by running <code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code>; you should see four different GPUs listed each with either 40MB or 80GB of memory, but no GPU processes running.</p>
+<p>cd into your “parent” directory (if you’re not there already).</p>
+<p>Look at the file <code class="docutils literal notranslate"><span class="pre">phrosty/examples/perlmutter/interactive_podman.sh</span></code>.  (There’s no need to edit it; this is so you can see what’s going on.  If you read all of the <a class="reference internal" href="installation.html#phrosty-installation"><span class="std std-ref">installation instructions</span></a>, you will recognize a lot of what’s there.)  You’ll see number of <code class="docutils literal notranslate"><span class="pre">--mount</span></code> parameters.  Each of these takes a directory on the host machine (the <code class="docutils literal notranslate"><span class="pre">source</span></code>) and maps it to a directory inside the podman container (the <code class="docutils literal notranslate"><span class="pre">target</span></code>); this is “bind mounting”.  For example, you will see your phrosty checkout goes to <code class="docutils literal notranslate"><span class="pre">/phrosty</span></code> inside the container.  In addition, several environment variables are set, and an “annotation” that is needed for <code class="docutils literal notranslate"><span class="pre">podman-hpc</span></code> to be able to handle accessing directories that are group-readable, but not world-readable.</p>
+<dl class="simple">
+<dt>Now do::</dt><dd><p>bash phrosty/examples/perlmutter/interactive_podman.sh</p>
+</dd>
+</dl>
+<p>This will create a container from the <code class="docutils literal notranslate"><span class="pre">roman-snpit-env</span></code> image, and put in a bash shell inside the container.  This will put you inside the container.  Your prompt will change to something like <code class="docutils literal notranslate"><span class="pre">root&#64;56356f1a4b9b:/usr/src#</span></code> (where the hex barf will be different every time).  At any time, run <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-F</span> <span class="pre">/</span></code>; if you see directories <code class="docutils literal notranslate"><span class="pre">phrosty</span></code>, <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code>, <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code>, and the others that were mounted by <code class="docutils literal notranslate"><span class="pre">interactive_podman.sh</span></code>, then you know you’re working inside the container, rather than on the host machine.  Verify that the GPUs are visible inside the container with <code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code>.</p>
+<dl class="simple">
+<dt>Go to the <code class="docutils literal notranslate"><span class="pre">/home</span></code> directory, which is where your parent directory should be mounted::</dt><dd><p>cd /home</p>
+</dd>
+<dt>The main Python executable for running the pipeline is <code class="docutils literal notranslate"><span class="pre">phrosty/phrosty/pipeline.py</span></code>.  Run::</dt><dd><p>SNPIT_CONFIG=phrosty/examples/perlmutter/phrosty_config.yaml python phrosty/phrosty/pipeline.py –help</p>
+</dd>
+</dl>
+<p>to see how it works, and to see what the various parameters you can specify are.</p>
+<dl class="simple">
+<dt>Run this on your example lightcurve with::</dt><dd><dl class="simple">
+<dt>python phrosty/phrosty/pipeline.py </dt><dd><p>-c phrosty/examples/perlmutter/phrosty_config.yaml –oid 20172782 -r 7.551093401915147 -d -44.80718106491529 -b R062 -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv -s phrosty/examples/perlmutter/20172782_instances_science_2.csv -p 3 -w 3</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>(If you run with <code class="docutils literal notranslate"><span class="pre">.csv</span></code> files that have larger number of images, you probably want to pass a larger number to <code class="xref py py-obj docutils literal notranslate"><span class="pre">-p</span></code>; this is a number of parallel CPU processes that will run at once, and is limited by how many CPUs and how much memory you have available.  The code will only run one GPU process at once.  You can also try increasing <code class="xref py py-obj docutils literal notranslate"><span class="pre">-w</span></code>, but this is more limited by filesystem performance than the number of CPUs and the amount of memory you have available.  We’ve set these both to 3 right now because there are only 3 files being processed (one template and two science images).  Empirically, on Perlmutter nodes, you can go up to something like <code class="xref py py-obj docutils literal notranslate"><span class="pre">-p</span> <span class="pre">15</span></code>; while there are (many) more CPUs than that, memory is the limiting factor.  Also, empirically, on Perlmutter, you can go up to something like <code class="xref py py-obj docutils literal notranslate"><span class="pre">-w</span> <span class="pre">5</span></code> before you reach the point of diminishing returns.  This is more variable, because whereas you have the node’s CPUs to yourself, you’re sharing the filesystem with the rest of the users of the system.)</p>
+<dl class="simple">
+<dt>If all is well, you should see a final line that looks something like::</dt><dd><p>[2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.csv</p>
+</dd>
+</dl>
+<p>Outside the container (i.e. on Perlmutter), you should be able to find the file <code class="docutils literal notranslate"><span class="pre">data/20172782/20172782_R062_all.csv</span></code> underneath the <code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code> subdirectory of your parent directory.  Congratulations, this has the lightcurve!  (TODO: document the columns of this <code class="docutils literal notranslate"><span class="pre">.csv</span></code> file, but you can approximately guess what they are based on the column headers.)</p>
+<p>You will also find new files in the <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code> subdirectory, including several large <code class="docutils literal notranslate"><span class="pre">.fits</span></code> files.</p>
+</section>
+<section id="running-with-the-nsight-profiler">
+<h4>Running with the NSight Profiler<a class="headerlink" href="#running-with-the-nsight-profiler" title="Link to this heading">¶</a></h4>
+<p><strong>WARNING</strong>: this section has not been tested recently so may be out of date.  TODO: try this again and update the docs after so doing.</p>
+<dl>
+<dt>When developing/debugging the pipeline, it’s useful to run with a profiler, so you can see where the code is spending most of its time.  The huge <code class="docutils literal notranslate"><span class="pre">roman-snpit-env:cuda-dev</span></code> Docker image includes the NVIDIA NSight Systems profiler, and (at least as of this writing) the <em>phrosty</em> code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in <a class="reference internal" href="#perlmutter-interactive"><span class="std std-ref">Running interactively</span></a> above, only replacing the final <code class="docutils literal notranslate"><span class="pre">python</span></code> command with::</dt><dd><dl>
+<dt>nsys profile </dt><dd><p>–trace-fork-before-exec=true –python-backtrace=cuda –python-sampling=true –trace=cuda,nvtx,cublas,cusparse,cudnn,cudla,cusolver,opengl,openacc,openmp,osrt,mpi,nvvideo,vulkan,python-gil python phrosty/phrosty/pipeline.py </p>
+<blockquote>
+<div><p>-c phrosty/examples/perlmutter/phrosty_config.yaml –oid 20172782 -r 7.551093401915147 -d -44.80718106491529 -b R062 -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv -s phrosty/examples/perlmutter/20172782_instances_science_2.csv -p 3 -w 3</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd>
+<dt>_Ideally_, this would create a file <code class="docutils literal notranslate"><span class="pre">report1.nsys-rep</span></code>, but something about that is broken; I’m not sure what.  It does create a file <code class="docutils literal notranslate"><span class="pre">report1.qdstrm</span></code>, which you can then somehow somewhere else convert to a <code class="docutils literal notranslate"><span class="pre">.nsys-rep</span></code> file.  On a Linux system, if you’ve installed the <code class="docutils literal notranslate"><span class="pre">nsight-compute</span></code> and <code class="docutils literal notranslate"><span class="pre">nsight-systems</span></code> packages (see <a href="#id2"><span class="problematic" id="id3">:ref:`Nvidia's Nsight Systems installation guide&lt;https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)&gt;`_</span></a>), you can download the <code class="docutils literal notranslate"><span class="pre">.qdstrm</span></code> file to your system and run::</dt><dd><p>/opt/nvidia/nsight-systems/2024.4.2/host-linux-x64/QdstrmImporter -i &lt;name&gt;.qdstrm</p>
+</dd>
+<dt>where <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;.qstrm</span></code> is the file you downloaded.  (Note that the directory may have something other than <code class="docutils literal notranslate"><span class="pre">2024.4.2</span></code> in it, depending on what version you’ve installed.  For best comptibility with the version of Nsight in the current (as of this writing) snpit docker image, I recommend trying to install something close to <code class="docutils literal notranslate"><span class="pre">nsight-compute-2024.3.1</span></code> and  <code class="docutils literal notranslate"><span class="pre">nsight-systems-2024.4.2</span></code>; exactly what is avialable seems to vary with time.)  This should produce a file <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;.nsys-rep</span></code>.  Then, on your local desktop, run::</dt><dd><p>nsys-ui &lt;name&gt;.nsys-rep</p>
+</dd>
+</dl>
+<p>to look at the profile.</p>
+</section>
+<section id="running-a-slurm-batch-job">
+<span id="perlmutter-running-slurm"></span><h4>Running a SLURM batch job<a class="headerlink" href="#running-a-slurm-batch-job" title="Link to this heading">¶</a></h4>
+<p>For reference, see <a href="#id4"><span class="problematic" id="id5">:ref:`the NERSC documentation on running jobs on Perlmutter&lt;https://docs.nersc.gov/systems/perlmutter/running-jobs/&gt;`_</span></a>.  You need to set up your environment and run all of the steps above <em>before</em> “Running interactively”.</p>
+<p><strong>Create a job script</strong>: to submit a job to a batch queue, you need to write a slrum script, which is just a shell script with some directives in the comments at the top.  An example script may be found in the file <code class="docutils literal notranslate"><span class="pre">examples/perlmutter/20172782_slurm_demo.sh</span></code> in your phrosty checkout.  If you look at this script, you will see that it contains mostly a combination of the <code class="docutils literal notranslate"><span class="pre">podman-hpc</span></code> and <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">phrosty/phrosty/pipeline.py</span></code> commands above under “running interactively”.  Instead of starting a shell with <code class="docutils literal notranslate"><span class="pre">/bin/bash</span></code>, the <code class="docutils literal notranslate"><span class="pre">podman-hpc</span></code> command just runs the job directly.  It also adds a <code class="docutils literal notranslate"><span class="pre">-w</span> <span class="pre">/home</span></code> flag so it will be working in the right location.</p>
+<p>At the top are the directives that control how the job is submitted.  Many of these you can leave as is.  (If you’re morbidly curious, see <a href="#id6"><span class="problematic" id="id7">:ref:`full documentation on the sbatch command&lt;https://slurm.schedmd.com/sbatch.html&gt;`_</span></a>.  The ones you are most likely to want to change are</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">#SBATCH</span> <span class="pre">--output</span> <span class="pre">&lt;filename&gt;</span></code> : this is the filename that will hold all of the output written to the console for your job.  It will be written in the directory where you run <code class="docutils literal notranslate"><span class="pre">slurm</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">#SBATCH</span> <span class="pre">--qos</span> <span class="pre">shared</span></code> : this tells slurm which queue to submit to.  See <a href="#id8"><span class="problematic" id="id9">:ref:`NERSC's information on Perlmutter queues&lt;https://docs.nersc.gov/jobs/policy/&gt;`_</span></a>.  By default, you want to submit to the <code class="docutils literal notranslate"><span class="pre">shared</span></code> queue.  Phrosty only currently uses a single GPU.  Each Perlmutter node has 4 GPUs, so if you submit to a queue that gives you an entire node, you’re wasting it.  The shared queue has the advantage that <em>usually</em> jobs will start faster than they will on node-exclusive queues.  (You can sometimes wait days for a job on the regular queue to start!)  Additionally, our NERSC allocation will only be charged for the fraction of the node that we used.  However, when you’re first testing, and you’re only running a very small number of images, you might want to submit to the <code class="docutils literal notranslate"><span class="pre">debug</span></code> queue.  That allocates an entire node for the job, but _might_ start faster than jobs on the shared queue start.  (Try the shared queue first, though, because the job may well start within a few minutes.)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">#SBATCH</span> <span class="pre">--time</span> <span class="pre">00:20:00</span></code> : This is how long the job will run before the queue manager kills it.  The default, 20 minutes, <em>should</em> be plenty of time for the sample job that has 1 template image and 53 science images.  (However, if the NERSC filesystems are behaving poorly, it may not be enough time.)  If you’re running a bigger job, then you need to specify more time.  Right now, assume something like ~1-2 minutes per image (which you can divide by the number of processes you run with <code class="docutils literal notranslate"><span class="pre">-p</span></code>; see below), plus a few minutes of overhead.  Because phrosty is under heavy development and things are changing, this number will be highly variable.</p></li>
+</ul>
+<p>You can probably leave the rest of the flags as is.  The <code class="docutils literal notranslate"><span class="pre">--cpus-per-task</span></code> and <code class="docutils literal notranslate"><span class="pre">--gpus-per-task</span></code> flags are set so that it will only ask for a quarter of a node.  (The queue manager is very particular about numbers passed to GPU nodes on the shared queue.  It needs you to ask for exactly 32 CPU cores for each GPU, and it needs you to ask for _exactly_ the right amount of memory.  The extra comment marks on the <code class="docutils literal notranslate"><span class="pre">####SBATCH</span> <span class="pre">--mem</span></code> line tell slurm to ignore it, as it seems to get the default right, and it’s not worth fiddling with it to figure out what you should ask for.  A simple calculation would suggest that 64GB per GPU is what you should ask for, but when you do that, slurm thinks you’re asking for 36 CPUs worth of memory, not 32 CPUs worth of memory.  The actual number is something like 56.12GB, but again, since the default seems to do the right thing, it’s not worth fiddling with this.)</p>
+<p>If look look at the bottom of the script, you will see that the number of parallel worker jobs that phrosty uses is set to 15 (<code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">15</span></code> as a flag to <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">phrosty/phrosty/pipeline.py</span></code>).  The total number of processes that the python program runs at once is this, plus the number of FITS writer threads (given by <code class="docutils literal notranslate"><span class="pre">-w</span></code>), plus one for the master process that launches all of the others.   You will notice that this total is less than the 32 CPUs that we nominally have.  To be safe, assume that each of the <code class="docutils literal notranslate"><span class="pre">-p</span></code> processes will use ~6GB of memory.  By limiting ourselves to 9 processes, we should safely fit within the amount of CPU memory allocated to the job (allowing for some overhead for the driver process and the FITS writer processes).  (TODO: we really want to get this memory usage down.)   Based on performance, you might want to play with the number of FITS writing threads (the number after <code class="docutils literal notranslate"><span class="pre">-w</span></code>); assume that each FITS writer process will use ~1GB of memory.  (TODO: investigate how much they really use.)</p>
+<dl class="simple">
+<dt><strong>Make sure expected directories exists</strong>: If you look at the batch script, you’ll see a number of <code class="docutils literal notranslate"><span class="pre">--mount</span></code> flags that bind-mount directories inside the container.  From the location where you submit your job, all of the <code class="docutils literal notranslate"><span class="pre">source=</span></code> part of those <code class="docutils literal notranslate"><span class="pre">--mount</span></code> directives must be available.  For the demo, you will need to create the following directories underneath where you plan to submit the script::</dt><dd><p>mkdir lc_out_dir
+mkdir dia_out_dir
+mkdir $SCRATCH/phrosty_temp</p>
+</dd>
+<dt><strong>Submitting your job</strong>: Once you’ve are satisfied with your job script, submit it with::</dt><dd><p>sbatch phrosty/examples/perlmutter/20172782_slurm_demo.sh</p>
+</dd>
+</dl>
+<p>(Assuming you are running from the parent directory of your phrosty checkout.)</p>
+<dl class="simple">
+<dt>(replacing the argument with the actual name of your script).  (This example assumes that your current working directory is the parent directory of your phrosty checkout.)  If all is well, you should see an output something like::</dt><dd><p>Submitted batch job 35680404</p>
+</dd>
+</dl>
+<p>That number is the job id of your job.  If you see other things, they are probably error messages, and you need to fix what went wrong.</p>
+<dl class="simple">
+<dt><strong>Monitoring your job</strong>: If you run::</dt><dd><p>squeue –me</p>
+</dd>
+</dl>
+<p>you will see all jobs you have submitted that are either pending or still running.  In the <code class="docutils literal notranslate"><span class="pre">ST</span></code> (short for “state”) column, if you see <code class="docutils literal notranslate"><span class="pre">PD</span></code>, it means your job is still pending, and hasn’t started yet.  If you see <code class="docutils literal notranslate"><span class="pre">R</span></code>, it means your job is running; in this case, the <code class="docutils literal notranslate"><span class="pre">TIME</span></code> column will tell you how long your job has been running.  If you see <code class="docutils literal notranslate"><span class="pre">CG</span></code>, it means your job has recently finished (either succesfully, or with an error), and the system is currently cleaning it up.  If you see nothing, it means either that your job failed to submit (in which case you should have gotten an error message after your <code class="docutils literal notranslate"><span class="pre">sbatch</span></code> command above), or that it’s finished.  (“Finished” may mean “exited right away with an error”.)  Look at your output file to see what happened.</p>
+<p>While the job is running, you can look at the output file to see how far it’s gone and how it’s doing.  (This is the file you specified on the <code class="docutils literal notranslate"><span class="pre">#SBATCH</span> <span class="pre">--output</span></code> line of your slurm script)</p>
+<dl class="simple">
+<dt>If you want to see the status of jobs that have completed, there are a few jobs you can run; try each of::</dt><dd><p>scontrol show job &lt;jobid&gt;
+sacct -j &lt;jobid&gt;
+sacct -j &lt;jobid&gt; -o jobid,jobname,maxvmsize,reqmem,cputime –units=G
+seff &lt;jobid&gt;</p>
+</dd>
+</dl>
+<p>(For more things you can pass to <code class="docutils literal notranslate"><span class="pre">sacct</span></code>, see <a href="#id10"><span class="problematic" id="id11">:ref:`its documentation&lt;https://slurm.schedmd.com/sacct.html&gt;`_</span></a>.)  For all of those, <code class="docutils literal notranslate"><span class="pre">&lt;jobid&gt;</span></code> is the ID of your job on the slurm system.  While the job is still running you can see that job id in the left column of the output of <code class="docutils literal notranslate"><span class="pre">squeue</span> <span class="pre">--me</span></code>.  After your job is over, you can look at the output file.  Assuming you used the example slurm script from this directory, you should see the jobid near the top of the output file.</p>
+<dl class="simple">
+<dt><strong>Checking job results:</strong> Look at your output file.  The last line should be something like::</dt><dd><p>[2025-02-10 15:43:32 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.csv</p>
+</dd>
+</dl>
+<p>and, ideally, there should be no lines anywhere in the file with <code class="docutils literal notranslate"><span class="pre">ERROR</span></code> near the beginning of the log message.</p>
+<p>Note that <code class="docutils literal notranslate"><span class="pre">/lc_out_dir/...</span></code> is the absolute path _inside_ the container; it maps to <code class="docutils literal notranslate"><span class="pre">lc_out_dir/...</span></code> underneath your working directory where you ran <code class="docutils literal notranslate"><span class="pre">sbatch</span></code>.  You will find the lightcurve in that <code class="docutils literal notranslate"><span class="pre">.csv</span></code> file.  There will also be a number of files written to the <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code> directory.</p>
+</section>
+</section>
+</section>
+<section id="phrosty-functionality">
+<h2>Phrosty Functionality<a class="headerlink" href="#phrosty-functionality" title="Link to this heading">¶</a></h2>
 <p>&lt;&lt;ALSO DOCUMENT FUNCTIONALITY &amp;&gt;&gt;</p>
+</section>
 </section>
 
 

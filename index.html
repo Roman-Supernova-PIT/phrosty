@@ -5,12 +5,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>phrosty Documentation &#8212; phrosty 0.1.dev1+gdaadeba documentation</title>
+    <title>phrosty Documentation &#8212; phrosty 0.1.dev1+gd6608d6 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=db0969fc" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
-    <script src="_static/documentation_options.js?v=1931bbce"></script>
+    <script src="_static/documentation_options.js?v=628014c6"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -94,10 +94,23 @@
   <section id="phrosty-documentation">
 <h1>phrosty Documentation<a class="headerlink" href="#phrosty-documentation" title="Link to this heading">¶</a></h1>
 <p>This is the documentation for phrosty.</p>
-<p><strong>Version</strong>: 0.1.dev1+gdaadeba</p>
+<p><strong>Version</strong>: 0.1.dev1+gd6608d6</p>
 <p>This package contains the Python software suite developed for use with the Roman Telescope project, as part of the Roman Supernova Project Implementation Team (PIT) project.</p>
-<p>&lt;&lt;ENTER STATEMENT OF NEED HERE&gt;&gt;</p>
-<p>&lt;&lt;STATE OF THE FIELD&gt;&gt;</p>
+<section id="statement-of-need">
+<h2>Statement of Need<a class="headerlink" href="#statement-of-need" title="Link to this heading">¶</a></h2>
+<p>Difference imaging analysis (DIA) is a technique in transient analysis that allows both transient detection and photometric measurements. Broadly, this method involves subtracting two images, one with a transient and a “reference” image without a transient, to isolate the object of interest.</p>
+<p>The Nancy Grace Roman Space Telescope (_Roman_) is NASA’s first survey-oriented flagship mission. Its design is optimized for cosmological studies, which includes extraction and precision analysis of Type Ia Supernova (SN Ia) light curves. Analysis of these data pose several challenges: (1) the enormous quantity of data that will be returned on a regular basis, and (2) the spatially-dependent nature of the image properties as a function of location on the detector, which directly affects ease of (3) obtaining the required &lt;1% flux precision on SN Ia measurements.</p>
+<p>_Roman_ is expected to generate approximately 30 PB of data during its first five years of operation (16.5 TB per day). In comparison, NASA’s Hubble Space Telescope has produced approximately 400 TB of data during its full 35 years of operation (31 GB per day). At 530 times the data rate of Hubble, BLAH BLAH FIGURE OUT WITH MEG WHAT NUMBERS TO SAY</p>
+<p>Other DIA and forced photometry survey pipelines are insufficient to process this quantity of data. For example, the Dark Energy Survey (DES) pipeline takes three hours to do DIA on a single image (parallelizable), with additional time for forced photometry [&#64;destime].</p>
+<p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phrosty</span></code> is a DIA and forced photometry pipeline that addresses these challenges. We integrate the saccadic fast fourier transform (<a class="reference external" href="https://ui.adsabs.harvard.edu/abs/2022ApJ...936..157H/abstract">SFFT</a>) method for difference imaging analysis, which uses a flexible delta basis function that can accommodate Roman’s spatially-varying point spread function (PSF). <code class="xref py py-obj docutils literal notranslate"><span class="pre">phrosty</span></code> uses both GPU and CPU computation; this architecture has been carefully chosen to address the challenge of processing the large quantity of survey data within a reasonable amount of time.</p>
+<p>Because Roman software is currently under-development, there is no similar publicly available all-in-one pipeline that takes _Roman_ images as input and outputs light curves. The architecture choices made in development have substantially accelerated processing time such that <code class="xref py py-obj docutils literal notranslate"><span class="pre">phrosty</span></code> is among the fastest astronomical DIA pipelines available.</p>
+</section>
+<section id="state-of-the-field">
+<h2>State of the Field<a class="headerlink" href="#state-of-the-field" title="Link to this heading">¶</a></h2>
+<p>TODO LAUREN</p>
+</section>
+<section id="contact-and-support">
+<h2>Contact and Support<a class="headerlink" href="#contact-and-support" title="Link to this heading">¶</a></h2>
 <p>Individuals who wish to contribute to phrosty, report issues, or seek support are encouraged to submit an issue via [GitHub](<a class="reference external" href="https://github.com/Roman-Supernova-PIT/phrosty/issues">https://github.com/Roman-Supernova-PIT/phrosty/issues</a>) and use the pre-loaded templates for feature requests and issue reports. Please include as much detail as possible, including a description of the problem, any associated error messages, inputs, and details about the environment the user is running. Please adhere to the phrosty [code of conduct](<a class="reference external" href="https://github.com/Roman-Supernova-PIT/phrosty/blob/main/CODE_OF_CONDUCT.md">https://github.com/Roman-Supernova-PIT/phrosty/blob/main/CODE_OF_CONDUCT.md</a>).</p>
 <hr class="docutils" />
 <div class="toctree-wrapper compound">
@@ -110,6 +123,7 @@
 <li class="toctree-l1"><a class="reference internal" href="api.html">phrosty API</a></li>
 </ul>
 </div>
+</section>
 <section id="indices-and-tables">
 <h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading">¶</a></h2>
 <ul class="simple">

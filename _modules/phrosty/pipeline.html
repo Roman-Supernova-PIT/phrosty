@@ -4,12 +4,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phrosty.pipeline &#8212; phrosty 0.1.dev1+gdaadeba documentation</title>
+    <title>phrosty.pipeline &#8212; phrosty 0.1.dev1+gd6608d6 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=db0969fc" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
-    <script src="../../_static/documentation_options.js?v=1931bbce"></script>
+    <script src="../../_static/documentation_options.js?v=628014c6"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -88,6 +88,7 @@
             
   <h1>Source code for phrosty.pipeline</h1><div class="highlight"><pre>
 <span></span><span class="c1"># Imports STANDARD</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">cupy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cp</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
@@ -316,7 +317,8 @@
 
         <span class="n">SNLogger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span> <span class="k">if</span> <span class="n">verbose</span> <span class="k">else</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span> <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">image_base_dir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;ou24.tds_base&#39;</span> <span class="p">)</span> <span class="p">)</span> <span class="o">/</span> <span class="s1">&#39;images&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tds_base_dir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;ou24.tds_base&#39;</span> <span class="p">)</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image_base_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tds_base_dir</span> <span class="o">/</span> <span class="s1">&#39;images&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dia_out_dir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;photometry.phrosty.paths.dia_out_dir&#39;</span> <span class="p">)</span> <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;photometry.phrosty.paths.scratch_dir&#39;</span> <span class="p">)</span> <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">temp_dir_parent</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;photometry.phrosty.paths.temp_dir&#39;</span> <span class="p">)</span> <span class="p">)</span>
@@ -418,7 +420,8 @@
             <span class="n">data_sci</span><span class="p">,</span> <span class="n">data_templ</span><span class="p">,</span>
             <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">noise</span> <span class="p">),</span> <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">noise</span> <span class="p">),</span>
             <span class="n">sci_detmask</span><span class="p">,</span> <span class="n">templ_detmask</span><span class="p">,</span>
-            <span class="n">sci_psf</span><span class="p">,</span> <span class="n">templ_psf</span>
+            <span class="n">sci_psf</span><span class="p">,</span> <span class="n">templ_psf</span><span class="p">,</span>
+            <span class="n">KerPolyOrder</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s1">&#39;photometry.phrosty.kerpolyorder&#39;</span><span class="p">)</span>
         <span class="p">)</span>
 
         <span class="n">sfftifier</span><span class="o">.</span><span class="n">resampling_image_mask_psf</span><span class="p">()</span>
@@ -601,8 +604,8 @@
 
             <span class="c1"># TODO -- take this galsim-specific code out, move it to a separate module.  Define a general</span>
             <span class="c1">#  zeropointing interface, of which the galsim-speicifc one will be one instance</span>
-            <span class="n">truthpath</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_base_dir</span> <span class="o">/</span>
-                             <span class="sa">f</span><span class="s1">&#39;RomanTDS/truth/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">pointing</span><span class="si">}</span><span class="s1">/&#39;</span>
+            <span class="n">truthpath</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">tds_base_dir</span> <span class="o">/</span>
+                             <span class="sa">f</span><span class="s1">&#39;truth/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">pointing</span><span class="si">}</span><span class="s1">/&#39;</span>
                              <span class="sa">f</span><span class="s1">&#39;Roman_TDS_index_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">pointing</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span><span class="si">}</span><span class="s1">.txt&#39;</span> <span class="p">)</span>
             <span class="n">stars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_stars</span><span class="p">(</span><span class="n">truthpath</span><span class="p">)</span>
             <span class="c1"># Now, calculate the zero point based on those stars.</span>
@@ -956,10 +959,21 @@
     <span class="c1"># Run one arg pass just to get the config file, so we can augment</span>
     <span class="c1">#   the full arg parser later with config options</span>
     <span class="n">configparser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span> <span class="n">add_help</span><span class="o">=</span><span class="kc">False</span> <span class="p">)</span>
-    <span class="n">configparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span> <span class="s1">&#39;-c&#39;</span><span class="p">,</span> <span class="s1">&#39;--config-file&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Location of the .yaml config file&quot;</span> <span class="p">)</span>
+    <span class="n">configparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span> <span class="s1">&#39;-c&#39;</span><span class="p">,</span> <span class="s1">&#39;--config-file&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                               <span class="n">help</span><span class="o">=</span><span class="p">(</span> <span class="s2">&quot;Location of the .yaml config file; defaults to the value of the &quot;</span>
+                                      <span class="s2">&quot;SNPIT_CONFIG environment varaible.&quot;</span> <span class="p">)</span> <span class="p">)</span>
     <span class="n">args</span><span class="p">,</span> <span class="n">leftovers</span> <span class="o">=</span> <span class="n">configparser</span><span class="o">.</span><span class="n">parse_known_args</span><span class="p">()</span>
 
-    <span class="n">cfg</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span> <span class="n">args</span><span class="o">.</span><span class="n">config_file</span><span class="p">,</span> <span class="n">setdefault</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span> <span class="n">args</span><span class="o">.</span><span class="n">config_file</span><span class="p">,</span> <span class="n">setdefault</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;No default config defined yet; run Config.init(configfile)&#39;</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span> <span class="s2">&quot;Error, no configuration file defined.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                              <span class="s2">&quot;Either run phrosty with -c &lt;configfile&gt;</span><span class="se">\n</span><span class="s2">&quot;</span>
+                              <span class="s2">&quot;or set the SNPIT_CONFIG environment varaible.</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span>
 
     <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
     <span class="c1"># Put in the config_file argument, even though it will never be found, so it shows up in help</span>

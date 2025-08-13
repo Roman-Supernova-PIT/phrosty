@@ -5,12 +5,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Development &#8212; phrosty 0.1.dev1+gdaadeba documentation</title>
+    <title>Development &#8212; phrosty 0.1.dev1+gd6608d6 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=db0969fc" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
-    <script src="_static/documentation_options.js?v=1931bbce"></script>
+    <script src="_static/documentation_options.js?v=628014c6"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -100,13 +100,90 @@
   <section id="development">
 <h1>Development<a class="headerlink" href="#development" title="Link to this heading">¶</a></h1>
 <p>If you’re one of the phrosty developers, or are otherwise interested in contributing, here is some useful information.</p>
+<p>Note that fully running phrosty requires an NVIDIA GPU with enough memory.  Empirically, as 12GB GPU is not enough.  We have succesfully run phrosty on NVIDIA GPUs with 40GB of memory.</p>
 <section id="running-tests">
-<h2>Running Tests<a class="headerlink" href="#running-tests" title="Link to this heading">¶</a></h2>
+<span id="id1"></span><h2>Running Tests<a class="headerlink" href="#running-tests" title="Link to this heading">¶</a></h2>
+<p><strong>Warning</strong>: all docker images are currently built only for the <code class="docutils literal notranslate"><span class="pre">amd64</span></code> architecture (also sometimes known as <code class="docutils literal notranslate"><span class="pre">x86_64</span></code>).  If you’re on <code class="docutils literal notranslate"><span class="pre">arm64</span></code>, then things may not work, and if they do work, they may be horribly slow as you’re emulating a different architecture.  NERSC’s Perlmutter cluster, and any Linux system running on hardware with an Intel or AMD CPU, are on the <code class="docutils literal notranslate"><span class="pre">amd64</span></code> architecture.  Current Macs, and any other systems based on an ARM chip, are on the <code class="docutils literal notranslate"><span class="pre">arm64</span></code> architecture.</p>
 <p>Running all of the tests requires an NVIDIA GPU with enough memory.  We are able to run them on 40GB NVIDIA GPUs, a GPU with only 12GB is not enough.  (TODO: figure out the actual cutoff.)</p>
-<p>To run the tests, make sure to run the SNPIT container as described in <a class="reference internal" href="installation.html#running-snpit-container"><span class="std std-ref">Running the SNPIT container</span></a>.  Inside the container, cd into the <code class="xref py py-obj docutils literal notranslate"><span class="pre">/phrosty/phrosty/tests</span></code> directory and run:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">SNPIT_CONFIG</span><span class="o">=</span>phrosty_test_config.yaml<span class="w"> </span>pytest<span class="w"> </span>-v
+<p>To run  the tests, forst make sure you’ve set up your environment and pulled down the necessary docker images as described in <span class="xref std std-ref">phrosty installation prerequisites</span>.</p>
+<dl class="simple">
+<dt>If you haven’t already, get a copy of phrosty::</dt><dd><p>git clone <a class="reference external" href="https://github.com/Roman-Supernova-PIT/phrosty.git">https://github.com/Roman-Supernova-PIT/phrosty.git</a></p>
+</dd>
+<dt>Second, in the same directory, get a copy of the photometry test datay::</dt><dd><p>git clone <a class="reference external" href="https://github.com/Roman-Supernova-PIT/photometry_test_data.git">https://github.com/Roman-Supernova-PIT/photometry_test_data.git</a></p>
+</dd>
+<dt>Make a couple of necessary directories::</dt><dd><p>mkdir dia_out_dir
+mkdir phrosty_temp</p>
+</dd>
+<dt>Run the container with::</dt><dd><dl class="simple">
+<dt>docker run –gpus=all -it </dt><dd><p>–mount type=bind,source=$PWD,target=/home –mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data –mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir –mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp –env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs –env PYTHONPATH=/roman_imsim –env OPENBLAS_NUM_THREADS=1 –env MKL_NUM_THREADS=1 –env NUMEXPR_NUM_THREADS=1 –env OMP_NUM_THREADS=1 –env VECLIB_MAXIMUM_THREADS=1 –env TERM=xterm rknop/roman-snpit-env:cuda-dev /bin/bash</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p><strong>On NERSC Perlmutter</strong>, run the container with::
+Run the container with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>podman-hpc<span class="w"> </span>run<span class="w"> </span>--gpu<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>,target<span class="o">=</span>/home<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>/photometry_test_data,target<span class="o">=</span>/photometry_test_data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>/dia_out_dir,target<span class="o">=</span>/dia_out_dir<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>/phrosty_temp,target<span class="o">=</span>/phrosty_temp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span>/roman_imsim<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">OPENBLAS_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">MKL_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">NUMEXPR_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">OMP_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">VECLIB_MAXIMUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">TERM</span><span class="o">=</span>xterm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--annotation<span class="w"> </span>run.oci.keep_original_groups<span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/bin/bash
 </pre></div>
 </div>
+<dl>
+<dt>Once inside the container, cd into <code class="docutils literal notranslate"><span class="pre">/home/phrosty/phrosty/tests</span></code> and run::</dt><dd><p>SNPIT_CONFIG=phrosty_test_config.yaml pytest -v</p>
+<p>Manually running a test lightcurve</p>
+</dd>
+</dl>
+<hr class="docutils" />
+<p>Currently, we do not have tests written for <code class="docutils literal notranslate"><span class="pre">phrosty/pipeline.py</span></code>; this will be rectified soon, and hopefully this documentation will be updated to reflect that.</p>
+<p>If you want to build a lightcurve using the test data, follow the instructions in the previous section for getting the <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> and <code class="docutils literal notranslate"><span class="pre">photometry_test_data</span></code> archives, and for pulling the <code class="docutils literal notranslate"><span class="pre">cuda-dev</span></code> version of the roman SNPIT docker image.</p>
+<p>You need a few of extra directories when running your container, to store temporary and output data.  You can put these where you want, but for this example we are going to assume you make three directories underneath the same place you checked out the two git archvies: <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code>, <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code>.</p>
+<dl class="simple">
+<dt>With these directories in place, run a container with::</dt><dd><dl class="simple">
+<dt>docker run –gpus=all -it </dt><dd><p>–mount type=bind,source=$PWD,target=/home –mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data –mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp –mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir –mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir –env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs –env PYTHONPATH=/roman_imsim –env OPENBLAS_NUM_THREADS=1 –env MKL_NUM_THREADS=1 –env NUMEXPR_NUM_THREADS=1 –env OMP_NUM_THREADS=1 –env VECLIB_MAXIMUM_THREADS=1 –env TERM=xterm rknop/roman-snpit-env:cuda-dev /bin/bash</p>
+</dd>
+</dl>
+</dd>
+<dt><strong>on NERSC Perlmutter</strong>, the command would be::</dt><dd><dl class="simple">
+<dt>podman-hpc run -gpu -it </dt><dd><p>–mount type=bind,source=$PWD,target=/home –mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data –mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp –mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir –mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir –env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs –env PYTHONPATH=/roman_imsim –env OPENBLAS_NUM_THREADS=1 –env MKL_NUM_THREADS=1 –env NUMEXPR_NUM_THREADS=1 –env OMP_NUM_THREADS=1 –env VECLIB_MAXIMUM_THREADS=1 –env TERM=xterm –annotation run.oci.keep_original_groups=1 registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev /bin/bash</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>If you placed any of the new directories anywhere other than underneath your current working directory, modify the <code class="docutils literal notranslate"><span class="pre">source=...</span></code> parts of the command above to reflect that.</p>
+<dl class="simple">
+<dt>Inside the container, cd into <code class="docutils literal notranslate"><span class="pre">/home/phrosty</span></code> and try running::</dt><dd><p>nvidia-smi</p>
+</dd>
+</dl>
+<p>If you don’t get errors, it should list the nvidia GPUs you have available.  If it doesn’t list GPUs, then the rest of this won’t work.</p>
+<dl class="simple">
+<dt>Next, try running::</dt><dd><p>cd /home/phrosty
+pip install -e .
+SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py –help | less</p>
+</dd>
+</dl>
+<p>You should see all the options you can pass to phrosty.  There are a lot, because there are (verbose) options for everything that’s in the config file.  Press <code class="docutils literal notranslate"><span class="pre">q</span></code> to get out of <code class="docutils literal notranslate"><span class="pre">less</span></code>.</p>
+<dl class="simple">
+<dt>Try running::</dt><dd><dl class="simple">
+<dt>SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py </dt><dd><p>–oid 20172782 –ra 7.551093401915147 –dec -44.80718106491529 -b Y106 -t phrosty/tests/20172782_instances_templates_1.csv -s phrosty/tests/20172782_instances_science_2.csv -p 3 -w 3 -v</p>
+</dd>
+</dl>
+</dd>
+<dt>If all is well, after it’s done running the output will end with something like::</dt><dd><p>[2025-08-13 17:35:24 - INFO] - Results saved to /lc_out_dir/data/20172782/20172782_Y106_all.csv</p>
+</dd>
+</dl>
+<p>On your host system (as well as inside the container), you should see new files in <code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code>.  (Inside the container, these are at <code class="docutils literal notranslate"><span class="pre">/lc_out_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">/dia_out_dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">/phrosty_temp</span></code>.)</p>
 </section>
 </section>
 
