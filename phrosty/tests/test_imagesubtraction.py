@@ -82,6 +82,7 @@ def _check_resampled_image( templ, resamp ):
         # The standard deviation goes down quite a bit... correlated pixel errors from the warping doing that.
         assert tdata.std() == pytest.approx( rdata.std(), rel=0.5 )
 
+
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
 def test_stampmaker( dia_out_dir, test_dia_image, test_sn, one_science_image_path ):
     savedir = dia_out_dir

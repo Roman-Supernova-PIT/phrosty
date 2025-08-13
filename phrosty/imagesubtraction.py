@@ -102,16 +102,16 @@ def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp")
 
 
     SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
-    ( SKYDIP, SKYPEAK, PixA_skysub,
-      PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path,
-                                                    FITS_skysub=skysubpath,
-                                                    FITS_detmask=detmaskpath,
-                                                    FITS_sky=None, FITS_skyrms=None,
-                                                    ESATUR_KEY='ESATUR',
-                                                    BACK_SIZE=64, BACK_FILTERSIZE=3,
-                                                    DETECT_THRESH=1.5, DETECT_MINAREA=5,
-                                                    DETECT_MAXAREA=0,
-                                                    VERBOSE_LEVEL=2, MDIR=None)
+    ( _SKYDIP, _SKYPEAK, _PixA_skysub,
+      _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path,
+                                                     FITS_skysub=skysubpath,
+                                                     FITS_detmask=detmaskpath,
+                                                     FITS_sky=None, FITS_skyrms=None,
+                                                     ESATUR_KEY='ESATUR',
+                                                     BACK_SIZE=64, BACK_FILTERSIZE=3,
+                                                     DETECT_THRESH=1.5, DETECT_MINAREA=5,
+                                                     DETECT_MAXAREA=0,
+                                                     VERBOSE_LEVEL=2, MDIR=None)
     SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
 
     return np.median( PixA_skyrms )
