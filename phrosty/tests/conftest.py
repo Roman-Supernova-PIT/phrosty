@@ -46,6 +46,12 @@ def test_dia_image():
              'band': 'Y106'
             }
 
+# @pytest.fixture( scope='session' )
+# def test_truth_file():
+#     # This is the truth file corresponding to the above image in test_dia_image().
+#     return pathlib.Path( Config.get().value('ou24.tds_base') ) / 'truth' /
+#                          'Y106' / '35198' / 'Roman_TDS_index_Y106_35198_2.txt'
+
 
 @pytest.fixture( scope='session' )
 def test_sn():

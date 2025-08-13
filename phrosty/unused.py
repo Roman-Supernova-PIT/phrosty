@@ -892,3 +892,76 @@
 #                            OUT_path=coadd_savepath, FILL_VALUE=np.nan)
 
 #     return coadd_savepath, imgpaths
+
+# FUNCTION IS OBSOLETE.
+#
+# Delete it once we feel safe to do so.
+# Moved from utils.py. 
+
+# def transform_to_wcs(wcs, path=None, band=None, pointing=None, sca=None):
+#     """"Transform world coordinates in a truth file to a new WCS.
+
+#     Outputs pixel coordinates for the transformed coordinates.
+#     input wcs is an astropy wcs object.
+#     """
+#     truthtab = read_truth_txt(path=path, band=band, pointing=pointing, sca=sca)
+#     worldcoords = SkyCoord(ra=truthtab['ra']*u.deg, dec=truthtab['dec']*u.deg)
+#     x, y = skycoord_to_pixel(worldcoords, wcs)
+#     tab = Table([x, y], names=['x', 'y'])
+
+#     return tab
+
+# FUNCTION IS OBSOLETE.
+#
+# Delete it once we feel safe to do so.
+# Moved from utils.py. 
+# def get_templates(oid, band, infodir, n_templates=1, returntype='list', verbose=False):
+#     """Get template images.
+
+#     Template images are those images for a given OID do not actually contain the
+#     transient but do contain the RA/dec coordinates.
+#     """
+#     _ra, _dec, start, end = get_transient_info(oid)
+
+#     filepath = os.path.join(infodir, f'{oid}/{oid}_instances.csv')
+#     _in_tab, out_tab = transient_in_or_out(oid, start, end, band, transient_info_filepath=filepath)
+
+#     template_tab = out_tab[:n_templates]
+#     if verbose:
+#         print('The template images are:')
+#         print(template_tab)
+
+#     if returntype == 'list':
+#         template_list = [dict(zip(template_tab.colnames, row)) for row in template_tab]
+
+#         return template_list
+#     elif returntype == 'table':
+#         return template_tab
+
+# FUNCTION IS OBSOLETE.
+#
+# Delete it once we feel safe to do so.
+# Moved from utils.py. 
+# def get_science(oid, band, infodir, returntype='list', verbose=False):
+#     """Get science images.
+
+#     Science images are those images for a given OID actually contain the
+#     transient and also contain the RA/dec coordinates.
+#     """
+
+#     _ra, _dec, start, end = get_transient_info(oid)
+
+#     filepath = os.path.join(infodir, f'{oid}/{oid}_instances.csv')
+#     in_tab, _out_tab = transient_in_or_out(oid, start, end, band, transient_info_filepath=filepath)
+
+#     if verbose:
+#         print('The science images are:')
+#         print(in_tab)
+
+#     if returntype == 'list':
+#         science_list = [dict(zip(in_tab.colnames, row)) for row in in_tab]
+
+#         return science_list
+
+#     elif returntype == 'table':
+#         return in_tab

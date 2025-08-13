@@ -3,9 +3,9 @@ import os
 import os.path as pa
 import numpy as np
 import pandas as pd
+import requests
 import warnings
 from glob import glob
-import requests
 
 # IMPORTS Astro:
 from astropy.coordinates import SkyCoord
@@ -25,23 +25,41 @@ warnings.simplefilter('ignore', category=FITSFixedWarning)
 
 
 def _build_filepath(path, band, pointing, sca, filetype, rootdir=None):
-    """_summary_
+    """Builds the filepath to an OpenUniverse simulation file.
 
-    :param path: _description_
-    :type path: str
-    :param band: _description_
-    :type band: str
-    :param pointing: _description_
-    :type pointing: str
-    :param sca: _description_
-    :type sca: str
-    :param filetype: _description_
-    :type filetype: str
-    :raises ValueError: _description_
-    :raises ValueError: _description_
-    :raises ValueError: _description_
-    :return: _description_
-    :rtype: _type_
+    Parameters
+    ----------
+      path: Path
+        If the path to the file is already known, this overrides the rest of the function and returns
+        the input to kwarg 'path'.
+      band: str
+        Filter associated with target file.
+      pointing: str
+        Pointing number associated with target file.
+      sca: str
+        SCA number associated with target file.
+      filetype: str
+        The type of target file within the OpenUniverse simulations that you are looking for. Valid
+        values are 'image' (*.fits.gz), 'truth' (*.fits.gz), and 'truthtxt' (*.txt).
+      rootdir: Path, default None
+        Root directory where OpenUniverse files are stored.
+
+    Returns
+    -------
+      path: Path
+        Path to target file.
+
+    Raises
+    ------
+      ValueError
+        if filetype is not 'image', 'truth', or 'truthtxt', a ValueError is raised.
+      ValueError
+        if (band is None) or (pointing is None) or (sca is None),
+        you need to specify band, pointing, and sca if you do not provide a full filepath.
+      ValueError
+        if (path is None) and (band is None) and (pointing is None) and (sca is None),
+        you need to provide either the full image path, or the band, pointing, and SCA.
+
     """
 
     rootdir = Config.get().value( 'ou24.tds_base' ) if rootdir is None else rootdir
@@ -78,6 +96,18 @@ def _build_filepath(path, band, pointing, sca, filetype, rootdir=None):
 
 
 def ou2024_obseq_path( path=None ):
+    """Retrieve the path to the OpenUniverse obseq file.
+
+    Parameters
+    ----------
+      path: Path, default None
+        Path to file. If not provided, use config file.
+
+    Returns
+    -------
+    Path to OpenUniverse obseq file.
+
+    """
     return ( os.path.join( Config.get().value('ou24.tds_base'), 'Roman_TDS_obseq_11_6_23.fits' )
              if path is None else path )
 
@@ -85,8 +115,10 @@ def ou2024_obseq_path( path=None ):
 def get_roman_bands():
     """Get roman passbands.
 
-   :return: List of bands included in the Roman-DESC TDS simulations.
-    :rtype: list
+    Returns
+    -------
+    List of bands included in the Roman-DESC TDS simulations.
+
     """
     return ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'K213']
 
@@ -94,18 +126,23 @@ def get_roman_bands():
 def read_truth_txt(path=None, band=None, pointing=None, sca=None):
     """Reads in the txt versions of the truth files as convenient astropy tables.
 
-    :param truthpath: Path to txt catalog version of truth file. If you do not
-                        provide this, you need to specify the arguments
-                        band, pointing, and sca.
-    :type truthpath: str, optional
-    :param band: Roman filter. If you do not provide this, you need to provide truthpath.
-    :type band: str, optional
-    :param pointing: Pointing ID. If you do not provide this, you need to provide truthpath.
-    :type pointing: str, optional
-    :param sca: SCA ID. If you do not provide this, you need to provide truthpath.
-    :type sca: str, optional
-    :return: Astropy table with contents of the specified catalog txt file.
-    :rtype: astropy.table.Table
+    Parameters
+    ----------
+      truthpath: str, default None
+        Path to txt catalog version of truth file. If you do not
+        provide this, you need to specify the arguments
+        band, pointing, and sca.
+      band: str, default None
+        Roman filter. If you do not provide this, you need to provide truthpath.
+      pointing: str, default None
+        Pointing ID. If you do not provide this, you need to provide truthpath.
+      sca: str, default None
+        SCA ID. If you do not provide this, you need to provide truthpath.
+
+    Returns
+    -------
+      truth: astropy.table.Table
+        Astropy table with contents of the specified catalog txt file.
 
     """
 
@@ -118,6 +155,30 @@ def read_truth_txt(path=None, band=None, pointing=None, sca=None):
 
 
 def radec_isin(ra, dec, path=None, band=None, pointing=None, sca=None):
+    """Check if a given RA, dec coordinate is in a given target image.
+
+    Parameters
+    ----------
+    ra : float
+        RA in degrees.
+    dec : float
+        Dec in degrees.
+    path : Path, default None
+        Path to image to check.
+    band : str, default None
+        Filter assocated with target image.
+    pointing : str, default None
+        Pointing associated with target image.
+    sca : str, default None
+        SCA associated with target image.
+
+    Returns
+    -------
+    res: boolean
+        True if provided RA, Dec is in the image. False if not.
+
+    """
+
     _imgpath = _build_filepath(path, band, pointing, sca, 'image')
     with fits.open(_imgpath) as hdu:
         wcs = WCS(hdu[1].header)
@@ -269,69 +330,6 @@ def transient_in_or_out(oid, start, end, band):
     return in_tab, out_tab
 
 
-def get_templates(oid, band, infodir, n_templates=1, returntype='list', verbose=False):
-    """Get template images.
-
-    Template images are those images for a given OID do not actually contain the
-    transient but do contain the RA/dec coordinates.
-    """
-    _ra, _dec, start, end = get_transient_info(oid)
-
-    filepath = os.path.join(infodir, f'{oid}/{oid}_instances.csv')
-    _in_tab, out_tab = transient_in_or_out(oid, start, end, band, transient_info_filepath=filepath)
-
-    template_tab = out_tab[:n_templates]
-    if verbose:
-        print('The template images are:')
-        print(template_tab)
-
-    if returntype == 'list':
-        template_list = [dict(zip(template_tab.colnames, row)) for row in template_tab]
-
-        return template_list
-    elif returntype == 'table':
-        return template_tab
-
-
-def get_science(oid, band, infodir, returntype='list', verbose=False):
-    """Get science images.
-
-    Science images are those images for a given OID actually contain the
-    transient and also contain the RA/dec coordinates.
-    """
-
-    _ra, _dec, start, end = get_transient_info(oid)
-
-    filepath = os.path.join(infodir, f'{oid}/{oid}_instances.csv')
-    in_tab, _out_tab = transient_in_or_out(oid, start, end, band, transient_info_filepath=filepath)
-
-    if verbose:
-        print('The science images are:')
-        print(in_tab)
-
-    if returntype == 'list':
-        science_list = [dict(zip(in_tab.colnames, row)) for row in in_tab]
-
-        return science_list
-
-    elif returntype == 'table':
-        return in_tab
-
-
-def make_object_table(oid):
-
-    ra, dec = get_transient_radec(oid)
-
-    server_url = 'https://roman-desc-simdex.lbl.gov'
-    req = requests.Session()
-    result = req.post(f'{server_url}/findromanimages/containing=({ra}, {dec})')
-    if result.status_code != 200:
-        raise RuntimeError(f"Got status code {result.status_code}\n{result.text}")
-
-    objs = pd.DataFrame(result.json())[['filter', 'pointing', 'sca']]
-    return objs
-
-
 def get_mjd_limits(obseq_path=None):
     """Retrive the earliest and latest MJD in the simulations."""
 
@@ -431,12 +429,12 @@ def get_mjd_info(mjd_start=0, mjd_end=np.inf, return_inverse=False, obseq_path=N
 def get_exptime(band=None):
 
     exptime = {'F184': 901.175,
-           'J129': 302.275,
-           'H158': 302.275,
-           'K213': 901.175,
-           'R062': 161.025,
-           'Y106': 302.275,
-           'Z087': 101.7}
+               'J129': 302.275,
+               'H158': 302.275,
+               'K213': 901.175,
+               'R062': 161.025,
+               'Y106': 302.275,
+               'Z087': 101.7}
 
     if band in exptime.keys():
         return exptime[band]
@@ -444,15 +442,15 @@ def get_exptime(band=None):
         return exptime
 
 
-def transform_to_wcs(wcs, path=None, band=None, pointing=None, sca=None):
-    """"Transform world coordinates in a truth file to a new WCS.
+def make_object_table(oid):
 
-    Outputs pixel coordinates for the transformed coordinates.
-    input wcs is an astropy wcs object.
-    """
-    truthtab = read_truth_txt(path=path, band=band, pointing=pointing, sca=sca)
-    worldcoords = SkyCoord(ra=truthtab['ra']*u.deg, dec=truthtab['dec']*u.deg)
-    x, y = skycoord_to_pixel(worldcoords, wcs)
-    tab = Table([x, y], names=['x', 'y'])
+    ra, dec = get_transient_radec(oid)
 
-    return tab
+    server_url = 'https://roman-desc-simdex.lbl.gov'
+    req = requests.Session()
+    result = req.post(f'{server_url}/findromanimages/containing=({ra}, {dec})')
+    if result.status_code != 200:
+        raise RuntimeError(f"Got status code {result.status_code}\n{result.text}")
+
+    objs = pd.DataFrame(result.json())[['filter', 'pointing', 'sca']]
+    return objs
