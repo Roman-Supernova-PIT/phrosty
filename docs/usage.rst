@@ -46,6 +46,7 @@ This shows a NVIDIA A100 GPU with 40GB of memory.  A different system might show
 This system has a NVIDIA RTX 3080 Ti consumer graphics card.  Notice that it only has 12288MiB of memory; 12GB of memory is not enough to run the example.
 
 Inside the container, run::
+
   cd /home/phrosty
   pip install -e .
 
@@ -57,6 +58,7 @@ Next, try running:
 You should see all the options you can pass to phrosty.  There are a lot, because there are (verbose) options for everything that's in the config file.  Press ``q`` to get out of ``less``.
 
 Try running::
+
   SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
     --oid 20172782 \
     --ra 7.551093401915147 \
@@ -118,6 +120,7 @@ You need to make the following directories.  (They don't have to have exactly th
 * ``lc_out_dir``
 
 In addition, create a directory ``phrosty_temp`` somewhere underneath ``$SCRATCH``, e.g.::
+
   mkdir $SCRATCH/phrosty_temp
 
 This directory will be mounted to ``/phrosty_temp`` inside the container.  (The further examples below will assume that this is where you made it.)
@@ -152,6 +155,7 @@ Running interactively
 The easiest way to just run something is to do it on an interactive node on Perlmutter.  (See :ref:`below<perlmutter-running-slurm>` for running it with slurm.)
 
 First, get yourself a session on an interactive GPU node with::
+
   salloc -t 04:00:00 -A m4385 --constraint=gpu -q interactive
 
 after a minute or so, that should log you into one of the nodes with a session that will last 4 hours.  (This is overkill; if you know it won't be that long, shorten the time after the ``-t`` flag.)  You can verify that you're on a compute node by running ``nvidia-smi``; you should see four different GPUs listed each with either 40MB or 80GB of memory, but no GPU processes running.
@@ -161,19 +165,23 @@ cd into your "parent" directory (if you're not there already).
 Look at the file ``phrosty/examples/perlmutter/interactive_podman.sh``.  (There's no need to edit it; this is so you can see what's going on.  If you read all of the :ref:`installation instructions<phrosty-installation>`, you will recognize a lot of what's there.)  You'll see number of ``--mount`` parameters.  Each of these takes a directory on the host machine (the ``source``) and maps it to a directory inside the podman container (the ``target``); this is "bind mounting".  For example, you will see your phrosty checkout goes to ``/phrosty`` inside the container.  In addition, several environment variables are set, and an "annotation" that is needed for ``podman-hpc`` to be able to handle accessing directories that are group-readable, but not world-readable.
 
 Now do::
+
   bash phrosty/examples/perlmutter/interactive_podman.sh
 
 This will create a container from the ``roman-snpit-env`` image, and put in a bash shell inside the container.  This will put you inside the container.  Your prompt will change to something like ``root@56356f1a4b9b:/usr/src#`` (where the hex barf will be different every time).  At any time, run ``ls -F /``; if you see directories ``phrosty``, ``phrosty_temp``, ``dia_out_dir``, and the others that were mounted by ``interactive_podman.sh``, then you know you're working inside the container, rather than on the host machine.  Verify that the GPUs are visible inside the container with ``nvidia-smi``.
 
 Go to the ``/home`` directory, which is where your parent directory should be mounted::
+
   cd /home
 
 The main Python executable for running the pipeline is ``phrosty/phrosty/pipeline.py``.  Run::
+
   SNPIT_CONFIG=phrosty/examples/perlmutter/phrosty_config.yaml python phrosty/phrosty/pipeline.py --help
 
 to see how it works, and to see what the various parameters you can specify are.
 
 Run this on your example lightcurve with::
+
   python phrosty/phrosty/pipeline.py \
     -c phrosty/examples/perlmutter/phrosty_config.yaml \
     --oid 20172782 \
@@ -188,6 +196,7 @@ Run this on your example lightcurve with::
 (If you run with ``.csv`` files that have larger number of images, you probably want to pass a larger number to `-p`; this is a number of parallel CPU processes that will run at once, and is limited by how many CPUs and how much memory you have available.  The code will only run one GPU process at once.  You can also try increasing `-w`, but this is more limited by filesystem performance than the number of CPUs and the amount of memory you have available.  We've set these both to 3 right now because there are only 3 files being processed (one template and two science images).  Empirically, on Perlmutter nodes, you can go up to something like `-p 15`; while there are (many) more CPUs than that, memory is the limiting factor.  Also, empirically, on Perlmutter, you can go up to something like `-w 5` before you reach the point of diminishing returns.  This is more variable, because whereas you have the node's CPUs to yourself, you're sharing the filesystem with the rest of the users of the system.)
 
 If all is well, you should see a final line that looks something like::
+
   [2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.csv
 
 Outside the container (i.e. on Perlmutter), you should be able to find the file ``data/20172782/20172782_R062_all.csv`` underneath the ``lc_out_dir`` subdirectory of your parent directory.  Congratulations, this has the lightcurve!  (TODO: document the columns of this ``.csv`` file, but you can approximately guess what they are based on the column headers.)
@@ -223,6 +232,7 @@ When developing/debugging the pipeline, it's useful to run with a profiler, so y
   /opt/nvidia/nsight-systems/2024.4.2/host-linux-x64/QdstrmImporter -i <name>.qdstrm
 
 where ``<name>.qstrm`` is the file you downloaded.  (Note that the directory may have something other than ``2024.4.2`` in it, depending on what version you've installed.  For best comptibility with the version of Nsight in the current (as of this writing) snpit docker image, I recommend trying to install something close to ``nsight-compute-2024.3.1`` and  ``nsight-systems-2024.4.2``; exactly what is avialable seems to vary with time.)  This should produce a file ``<name>.nsys-rep``.  Then, on your local desktop, run::
+
   nsys-ui <name>.nsys-rep
 
 to look at the profile.
@@ -248,21 +258,25 @@ You can probably leave the rest of the flags as is.  The ``--cpus-per-task`` and
 If look look at the bottom of the script, you will see that the number of parallel worker jobs that phrosty uses is set to 15 (``-p 15`` as a flag to ``python phrosty/phrosty/pipeline.py``).  The total number of processes that the python program runs at once is this, plus the number of FITS writer threads (given by ``-w``), plus one for the master process that launches all of the others.   You will notice that this total is less than the 32 CPUs that we nominally have.  To be safe, assume that each of the ``-p`` processes will use ~6GB of memory.  By limiting ourselves to 9 processes, we should safely fit within the amount of CPU memory allocated to the job (allowing for some overhead for the driver process and the FITS writer processes).  (TODO: we really want to get this memory usage down.)   Based on performance, you might want to play with the number of FITS writing threads (the number after ``-w``); assume that each FITS writer process will use ~1GB of memory.  (TODO: investigate how much they really use.)
 
 **Make sure expected directories exists**: If you look at the batch script, you'll see a number of ``--mount`` flags that bind-mount directories inside the container.  From the location where you submit your job, all of the ``source=`` part of those ``--mount`` directives must be available.  For the demo, you will need to create the following directories underneath where you plan to submit the script::
+
   mkdir lc_out_dir
   mkdir dia_out_dir
   mkdir $SCRATCH/phrosty_temp
 
 **Submitting your job**: Once you've are satisfied with your job script, submit it with::
+
   sbatch phrosty/examples/perlmutter/20172782_slurm_demo.sh
 
 (Assuming you are running from the parent directory of your phrosty checkout.)
 
 (replacing the argument with the actual name of your script).  (This example assumes that your current working directory is the parent directory of your phrosty checkout.)  If all is well, you should see an output something like::
+
   Submitted batch job 35680404
 
 That number is the job id of your job.  If you see other things, they are probably error messages, and you need to fix what went wrong.
 
 **Monitoring your job**: If you run::
+
   squeue --me
 
 you will see all jobs you have submitted that are either pending or still running.  In the ``ST`` (short for "state") column, if you see ``PD``, it means your job is still pending, and hasn't started yet.  If you see ``R``, it means your job is running; in this case, the ``TIME`` column will tell you how long your job has been running.  If you see ``CG``, it means your job has recently finished (either succesfully, or with an error), and the system is currently cleaning it up.  If you see nothing, it means either that your job failed to submit (in which case you should have gotten an error message after your ``sbatch`` command above), or that it's finished.  ("Finished" may mean "exited right away with an error".)  Look at your output file to see what happened.
@@ -270,6 +284,7 @@ you will see all jobs you have submitted that are either pending or still runnin
 While the job is running, you can look at the output file to see how far it's gone and how it's doing.  (This is the file you specified on the ``#SBATCH --output`` line of your slurm script)
 
 If you want to see the status of jobs that have completed, there are a few jobs you can run; try each of::
+
   scontrol show job <jobid>
   sacct -j <jobid>
   sacct -j <jobid> -o jobid,jobname,maxvmsize,reqmem,cputime --units=G
@@ -278,6 +293,7 @@ If you want to see the status of jobs that have completed, there are a few jobs 
 (For more things you can pass to ``sacct``, see `its documentation <https://slurm.schedmd.com/sacct.html>`_.)  For all of those, ``<jobid>`` is the ID of your job on the slurm system.  While the job is still running you can see that job id in the left column of the output of ``squeue --me``.  After your job is over, you can look at the output file.  Assuming you used the example slurm script from this directory, you should see the jobid near the top of the output file.
 
 **Checking job results:** Look at your output file.  The last line should be something like::
+
   [2025-02-10 15:43:32 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.csv
 
 and, ideally, there should be no lines anywhere in the file with ``ERROR`` near the beginning of the log message.
