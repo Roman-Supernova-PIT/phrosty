@@ -109,6 +109,7 @@ Assuming you're currently in the directory which is the parent of your ``phrosty
     --mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp \
     --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
     --mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir \
+    --env PYTHONPATH=/roman_imsim \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
     --env OPENBLAS_NUM_THREADS=1 \
     --env MKL_NUM_THREADS=1 \
@@ -142,6 +143,7 @@ Then, assuming you're in the directory above your ``phrosty`` and ``photometry_t
     --mount type=bind,source=$SCRATCH/phrosty_temp,target=/phrosty_temp \
     --mount type=bind,source=$SCRATCH/phrosty_dia_out_dir,target=/dia_out_dir \
     --mount type=bind,source=$SCRATCH/phrosty_lc_out_dir,target=/lc_out_dir \
+    --env PYTHONPATH=/roman_imsim \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
     --env OPENBLAS_NUM_THREADS=1 \
     --env MKL_NUM_THREADS=1 \

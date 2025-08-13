@@ -217,7 +217,8 @@ class Pipeline:
 
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.config = Config.get()
-        self.image_base_dir = pathlib.Path( self.config.value( 'ou24.tds_base' ) ) / 'images'
+        self.tds_base_dir = pathlib.Path( self.config.value( 'ou24.tds_base' ) )
+        self.image_base_dir = self.tds_base_dir / 'images'
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
         self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
         self.temp_dir_parent = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
@@ -491,8 +492,8 @@ class Pipeline:
 
             # TODO -- take this galsim-specific code out, move it to a separate module.  Define a general
             #  zeropointing interface, of which the galsim-speicifc one will be one instance
-            truthpath = str( self.image_base_dir /
-                             f'RomanTDS/truth/{self.band}/{sci_image.pointing}/'
+            truthpath = str( self.tds_base_dir /
+                             f'truth/{self.band}/{sci_image.pointing}/'
                              f'Roman_TDS_index_{self.band}_{sci_image.pointing}_{sci_image.image.sca}.txt' )
             stars = self.get_stars(truthpath)
             # Now, calculate the zero point based on those stars.

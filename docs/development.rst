@@ -16,26 +16,32 @@ Running Tests
 
 Running all of the tests requires an NVIDIA GPU with enough memory.  We are able to run them on 40GB NVIDIA GPUs, a GPU with only 12GB is not enough.  (TODO: figure out the actual cutoff.)
 
-To run the tests, you will need to run the SNPIT container as briefly described in :ref:`running-snpit-container`.  However, you must also make sure to mount the ``photometry_test_data`` archive in your container.
+To run  the tests, forst make sure you've set up your environment and pulled down the necessary docker images as described in :ref:`phrosty installation prerequisites<phrosty-installation-preqrequisites>`.  
 
-First, if you haven't already, get a copy of phrosty::
+If you haven't already, get a copy of phrosty::
   git clone https://github.com/Roman-Supernova-PIT/phrosty.git
 
 Second, in the same directory, get a copy of the photometry test datay::
   git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
 
-Next, the latest ``cuda-dev`` image to your local system.  If you're using docker, do this with one of::
-  docker pull registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev
-  docker pull docker.io/rknop/roman-snpit-env:cuda-dev
-
-**On NERSC Perlmutter**, pull the image with::
-  podman-hpc pull registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev
-
+Make a couple of necessary directories::
+  mkdir dia_out_dir
+  mkdir phrosty_temp
+  
 Run the container with::
   docker run --gpus=all -it \
     --mount type=bind,source=$PWD,target=/home \
     --mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data \
+    --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
+    --mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
+    --env PYTHONPATH=/roman_imsim \
+    --env OPENBLAS_NUM_THREADS=1 \
+    --env MKL_NUM_THREADS=1 \
+    --env NUMEXPR_NUM_THREADS=1 \
+    --env OMP_NUM_THREADS=1 \
+    --env VECLIB_MAXIMUM_THREADS=1 \
+    --env TERM=xterm \
     rknop/roman-snpit-env:cuda-dev \
     /bin/bash
 
@@ -44,7 +50,17 @@ Run the container with::
   podman-hpc run --gpu -it \
     --mount type=bind,source=$PWD,target=/home \
     --mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data \
+    --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
+    --mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
+    --env PYTHONPATH=/roman_imsim \
+    --env OPENBLAS_NUM_THREADS=1 \
+    --env MKL_NUM_THREADS=1 \
+    --env NUMEXPR_NUM_THREADS=1 \
+    --env OMP_NUM_THREADS=1 \
+    --env VECLIB_MAXIMUM_THREADS=1 \
+    --env TERM=xterm \
+    --annotation run.oci.keep_original_groups=1 \
     registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev \
     /bin/bash
 
@@ -69,6 +85,13 @@ With these directories in place, run a container with::
     --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
     --mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
+    --env PYTHONPATH=/roman_imsim \
+    --env OPENBLAS_NUM_THREADS=1 \
+    --env MKL_NUM_THREADS=1 \
+    --env NUMEXPR_NUM_THREADS=1 \
+    --env OMP_NUM_THREADS=1 \
+    --env VECLIB_MAXIMUM_THREADS=1 \
+    --env TERM=xterm \
     rknop/roman-snpit-env:cuda-dev \
     /bin/bash
 
@@ -80,6 +103,14 @@ With these directories in place, run a container with::
     --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
     --mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
+    --env PYTHONPATH=/roman_imsim \
+    --env OPENBLAS_NUM_THREADS=1 \
+    --env MKL_NUM_THREADS=1 \
+    --env NUMEXPR_NUM_THREADS=1 \
+    --env OMP_NUM_THREADS=1 \
+    --env VECLIB_MAXIMUM_THREADS=1 \
+    --env TERM=xterm \
+    --annotation run.oci.keep_original_groups=1 \
     registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev \
     /bin/bash
 
