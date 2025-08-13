@@ -11,7 +11,7 @@ body {
 
 
 div.document {
-    width: 940px;
+    width: 75%;
     margin: 30px auto 0 auto;
 }
 
@@ -45,7 +45,7 @@ div.body > .section {
 }
 
 div.footer {
-    width: 940px;
+    width: 75%;
     margin: 20px auto 30px auto;
     font-size: 14px;
     color: #888;
@@ -507,7 +507,7 @@ div.sphinxsidebar {
     margin-left: 0;
 }
 
-@media screen and (max-width: 940px) {
+@media screen and (max-width: 75%) {
 
     body {
         margin: 0;

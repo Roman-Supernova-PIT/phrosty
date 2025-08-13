@@ -37,16 +37,19 @@ On NERSC Perlmutter
 ^^^^^^^^^^^^^^^^^^^
 
 If you're on NERSC Perlmutter, use ``podman-hpc`` in place of ``docker``.  Pull the image with::
-  podman-hpc pull registry.nersc.gov/m4385/rknpo/roman-snpit-env:cuda-dev
 
-**Note:** do _not_ run ``podman-hpc image pull ...``.  That will superficially seem to work, but will skip a step that gets run when you just do ``podman-hpc pull ...``.
+  podman-hpc pull registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev
+
+**Note:** do *not* run ``podman-hpc image pull ...``.  That will superficially seem to work, but will skip a step that gets run when you just do ``podman-hpc pull ...``.
   
 If you get a permission error trying to do this, try::
+
   podman-hpc login registry.nersc.gov
 
 Give it your usual NERSC username and password (without any OTP).  Once that's done, try the ``podman-hpc pull`` command again.  If you don't seem to have access to the registry, then you can just pull ``docker.io/rknop/roman-snpit-env:cuda-dev`` instead.
 
 After you've pulled, run ``podman-hpc images``.  You should see output something like::
+  
   REPOSITORY                                          TAG                 IMAGE ID      CREATED         SIZE        R/O
   registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47ffc5b  25 minutes ago  8.6 GB      false
   registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47ffc5b  25 minutes ago  8.6 GB      true
@@ -56,6 +59,7 @@ In particular, notice that there is both a R/O "true" and R/O "false" version.  
 If you've pulled images before, and you're now working on a new login node, you will only see the ``R/O=true`` image.  That's the only image you really need, so in that case there's no need to pull the image again.  (You will only see the ``R/O=true`` image on compute nodes.)
 
 **If you have trouble with podman**: Podman is, as of this writing, still a beta feature on Nersc, and has some warts.  Refer to `NERSC's documentation on podman-hpc <https://docs.nersc.gov/development/containers/podman-hpc/overview/>`_.  In particular, if you want to clean the slate and start over, try running::
+
   podman-hpc system reset
   
 to delete all of your podman images and contexts.  Then try pulling the image again.
@@ -88,6 +92,7 @@ Installing the photometry test data
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you want to :ref:`run tests<running-tests>`, and some of the examples, then you will also need to pull the photometry test data::
+
   git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
 
 .. _running-snpit-container:
@@ -102,6 +107,7 @@ To use phrosty inside the container, you will need to run it with ``docker`` or 
 * ``phrosty_intermediate`` : a place to write intermediate data products for diagnostic purposes; you want this on a fast filesystem
 
 You configure these directories with the phrosty config ``.yaml`` file.  For the config file we use for tests, inside the container these directories must show up at ``/lc_out_dir``, ``/dia_out_dir``, and ``/phrosty_temp``.  (The test environment unifies ``phrosty_intermediate`` and ``phrosty_temp``.)  You can make all of these diretories as subdirectories of your current directory::
+
   mkdir lc_out_dir
   mkdir dia_out_dir
   mkdir phrosty_temp
@@ -109,6 +115,7 @@ You configure these directories with the phrosty config ``.yaml`` file.  For the
 If you put them somewhere else, then make sure to modify the docker command below appropriately.
    
 Assuming you're currently in the directory which is the parent of your ``phrosty`` and ``photometry_test_data`` checkouts, you can run a docker container suitable for running tests by running the following::
+
   docker run --gpus=all -it \
     --mount type=bind,source=$PWD,target=/home \
     --mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data \
@@ -128,6 +135,7 @@ Assuming you're currently in the directory which is the parent of your ``phrosty
 (Substitute ``registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev`` for ``rknop/roman-snpit-env:cuda-dev`` if you pulled the docker image from there.)
 
 If all is well, this will put you in a docker container.  You can tell you're in the container because your prompt will change to something like ``root@47394bd41fbe:/#`` (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you've got access to the GPUs by running, inside the container::
+
   nvidia-smi
 
 If you get an error message, or don't see at least one NVIDIA GPU listed, then phrosty will not work.
@@ -136,6 +144,7 @@ On NERSC Perlmutter
 ^^^^^^^^^^^^^^^^^^^
 
 The procedure above is mostly right.  However, we **strongly** recommend you put your output directories on  on the Perlmutter scratch disk, at least for testing and development::
+
   mkdir $SCRATCH/phrosty_lc_out_dir
   mkdir $SCRATCH/phrosty_dia_out_dir
   mkdir $SCRATCH/phrosty_temp
@@ -143,6 +152,7 @@ The procedure above is mostly right.  However, we **strongly** recommend you put
 (In fact, it's probably a good idea to put the other directories on ``$SCRATCH`` as well.)
   
 Then, assuming you're in the directory above your ``phrosty`` and ``photometry_test_data`` checkouts, and assuming you've made the other two necessary directories, you can run the container with::
+
   podman-hpc run --gpu -it \
     --mount type=bind,source=$PWD,target=/home \
     --mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data \
@@ -164,6 +174,7 @@ Then, assuming you're in the directory above your ``phrosty`` and ``photometry_t
 If you're inside the container, your prompt will be something like ``root@f24c2ad04d6d:/#`` (though with a different string of hexidecimal digits (hexits?)).  If you do ``ls -F /``, you will see the various specific directories you mounted, such as ``/dia_out_dir`` and ``/photometry_test_data``.
 
 Verify that you have access to GPUs by running::
+
   nvidia-smi
 
 .. _Github repo: https://github.com/Roman-Supernova-PIT/phrosty

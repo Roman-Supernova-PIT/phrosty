@@ -5,12 +5,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Installation &#8212; phrosty 0.1.dev1+g72ff7dc documentation</title>
+    <title>Installation &#8212; phrosty 0.1.dev1+gbae0609 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
-    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=db0969fc" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=5a6b8c39" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
-    <script src="_static/documentation_options.js?v=f494f031"></script>
+    <script src="_static/documentation_options.js?v=d9ba7a22"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -117,28 +117,28 @@
 <p>Because phrosty (and other libraries it depends on, such as snappl) is under heavy development, it’s possible that the latest container will not work properly with phrosty at any given moment.</p>
 <section id="on-nersc-perlmutter">
 <h3>On NERSC Perlmutter<a class="headerlink" href="#on-nersc-perlmutter" title="Link to this heading">¶</a></h3>
-<dl class="simple">
-<dt>If you’re on NERSC Perlmutter, use <code class="docutils literal notranslate"><span class="pre">podman-hpc</span></code> in place of <code class="docutils literal notranslate"><span class="pre">docker</span></code>.  Pull the image with::</dt><dd><p>podman-hpc pull registry.nersc.gov/m4385/rknpo/roman-snpit-env:cuda-dev</p>
-</dd>
-</dl>
-<p><strong>Note:</strong> do _not_ run <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">image</span> <span class="pre">pull</span> <span class="pre">...</span></code>.  That will superficially seem to work, but will skip a step that gets run when you just do <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">pull</span> <span class="pre">...</span></code>.</p>
-<dl class="simple">
-<dt>If you get a permission error trying to do this, try::</dt><dd><p>podman-hpc login registry.nersc.gov</p>
-</dd>
-</dl>
+<p>If you’re on NERSC Perlmutter, use <code class="docutils literal notranslate"><span class="pre">podman-hpc</span></code> in place of <code class="docutils literal notranslate"><span class="pre">docker</span></code>.  Pull the image with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>podman-hpc<span class="w"> </span>pull<span class="w"> </span>registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev
+</pre></div>
+</div>
+<p><strong>Note:</strong> do <em>not</em> run <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">image</span> <span class="pre">pull</span> <span class="pre">...</span></code>.  That will superficially seem to work, but will skip a step that gets run when you just do <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">pull</span> <span class="pre">...</span></code>.</p>
+<p>If you get a permission error trying to do this, try:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>podman-hpc<span class="w"> </span>login<span class="w"> </span>registry.nersc.gov
+</pre></div>
+</div>
 <p>Give it your usual NERSC username and password (without any OTP).  Once that’s done, try the <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">pull</span></code> command again.  If you don’t seem to have access to the registry, then you can just pull <code class="docutils literal notranslate"><span class="pre">docker.io/rknop/roman-snpit-env:cuda-dev</span></code> instead.</p>
-<dl class="simple">
-<dt>After you’ve pulled, run <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">images</span></code>.  You should see output something like::</dt><dd><p>REPOSITORY                                          TAG                 IMAGE ID      CREATED         SIZE        R/O
-registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47ffc5b  25 minutes ago  8.6 GB      false
-registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47ffc5b  25 minutes ago  8.6 GB      true</p>
-</dd>
-</dl>
+<p>After you’ve pulled, run <code class="docutils literal notranslate"><span class="pre">podman-hpc</span> <span class="pre">images</span></code>.  You should see output something like:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>REPOSITORY<span class="w">                                          </span>TAG<span class="w">                 </span>IMAGE<span class="w"> </span>ID<span class="w">      </span>CREATED<span class="w">         </span>SIZE<span class="w">        </span>R/O
+registry.nersc.gov/m4385/rknop/roman-snpit-env<span class="w">      </span>cuda-dev<span class="w">            </span>6b39a47ffc5b<span class="w">  </span><span class="m">25</span><span class="w"> </span>minutes<span class="w"> </span>ago<span class="w">  </span><span class="m">8</span>.6<span class="w"> </span>GB<span class="w">      </span><span class="nb">false</span>
+registry.nersc.gov/m4385/rknop/roman-snpit-env<span class="w">      </span>cuda-dev<span class="w">            </span>6b39a47ffc5b<span class="w">  </span><span class="m">25</span><span class="w"> </span>minutes<span class="w"> </span>ago<span class="w">  </span><span class="m">8</span>.6<span class="w"> </span>GB<span class="w">      </span><span class="nb">true</span>
+</pre></div>
+</div>
 <p>In particular, notice that there is both a R/O “true” and R/O “false” version.  The R/O “true” version is the one you need to be able to run on nodes other than the node you pulled the image (such as compute nodes).  (The Image ID will probably not match what you see above, if we’re released version of the snpit docker image since this documentation was written.  The “CREATED” time is also very likely to be longer ago than what you see here.)</p>
 <p>If you’ve pulled images before, and you’re now working on a new login node, you will only see the <code class="docutils literal notranslate"><span class="pre">R/O=true</span></code> image.  That’s the only image you really need, so in that case there’s no need to pull the image again.  (You will only see the <code class="docutils literal notranslate"><span class="pre">R/O=true</span></code> image on compute nodes.)</p>
-<dl class="simple">
-<dt><strong>If you have trouble with podman</strong>: Podman is, as of this writing, still a beta feature on Nersc, and has some warts.  Refer to <a class="reference external" href="https://docs.nersc.gov/development/containers/podman-hpc/overview/">NERSC’s documentation on podman-hpc</a>.  In particular, if you want to clean the slate and start over, try running::</dt><dd><p>podman-hpc system reset</p>
-</dd>
-</dl>
+<p><strong>If you have trouble with podman</strong>: Podman is, as of this writing, still a beta feature on Nersc, and has some warts.  Refer to <a class="reference external" href="https://docs.nersc.gov/development/containers/podman-hpc/overview/">NERSC’s documentation on podman-hpc</a>.  In particular, if you want to clean the slate and start over, try running:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>podman-hpc<span class="w"> </span>system<span class="w"> </span>reset
+</pre></div>
+</div>
 <p>to delete all of your podman images and contexts.  Then try pulling the image again.</p>
 </section>
 <section id="on-other-hpc-systems">
@@ -160,10 +160,10 @@ registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47f
 <p>(you can also clone it via the <code class="docutils literal notranslate"><span class="pre">git&#64;</span></code> code link if you know what you’re doing.)</p>
 <section id="installing-the-photometry-test-data">
 <h3>Installing the photometry test data<a class="headerlink" href="#installing-the-photometry-test-data" title="Link to this heading">¶</a></h3>
-<dl class="simple">
-<dt>If you want to <a class="reference internal" href="development.html#running-tests"><span class="std std-ref">run tests</span></a>, and some of the examples, then you will also need to pull the photometry test data::</dt><dd><p>git clone <a class="reference external" href="https://github.com/Roman-Supernova-PIT/photometry_test_data.git">https://github.com/Roman-Supernova-PIT/photometry_test_data.git</a></p>
-</dd>
-</dl>
+<p>If you want to <a class="reference internal" href="development.html#running-tests"><span class="std std-ref">run tests</span></a>, and some of the examples, then you will also need to pull the photometry test data:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Roman-Supernova-PIT/photometry_test_data.git
+</pre></div>
+</div>
 </section>
 </section>
 <section id="running-the-snpit-container">
@@ -173,47 +173,71 @@ registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47f
 * <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code> : a place to write output difference images
 * <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code> : a place to write temp files; you want this on a fast filesystem
 * <code class="docutils literal notranslate"><span class="pre">phrosty_intermediate</span></code> : a place to write intermediate data products for diagnostic purposes; you want this on a fast filesystem</p>
-<dl class="simple">
-<dt>You configure these directories with the phrosty config <code class="docutils literal notranslate"><span class="pre">.yaml</span></code> file.  For the config file we use for tests, inside the container these directories must show up at <code class="docutils literal notranslate"><span class="pre">/lc_out_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">/dia_out_dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">/phrosty_temp</span></code>.  (The test environment unifies <code class="docutils literal notranslate"><span class="pre">phrosty_intermediate</span></code> and <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code>.)  You can make all of these diretories as subdirectories of your current directory::</dt><dd><p>mkdir lc_out_dir
-mkdir dia_out_dir
-mkdir phrosty_temp</p>
-</dd>
-</dl>
+<p>You configure these directories with the phrosty config <code class="docutils literal notranslate"><span class="pre">.yaml</span></code> file.  For the config file we use for tests, inside the container these directories must show up at <code class="docutils literal notranslate"><span class="pre">/lc_out_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">/dia_out_dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">/phrosty_temp</span></code>.  (The test environment unifies <code class="docutils literal notranslate"><span class="pre">phrosty_intermediate</span></code> and <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code>.)  You can make all of these diretories as subdirectories of your current directory:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>lc_out_dir
+mkdir<span class="w"> </span>dia_out_dir
+mkdir<span class="w"> </span>phrosty_temp
+</pre></div>
+</div>
 <p>If you put them somewhere else, then make sure to modify the docker command below appropriately.</p>
-<dl class="simple">
-<dt>Assuming you’re currently in the directory which is the parent of your <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> and <code class="docutils literal notranslate"><span class="pre">photometry_test_data</span></code> checkouts, you can run a docker container suitable for running tests by running the following::</dt><dd><dl class="simple">
-<dt>docker run –gpus=all -it </dt><dd><p>–mount type=bind,source=$PWD,target=/home –mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data –mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp –mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir –mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir –env PYTHONPATH=/roman_imsim –env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs –env OPENBLAS_NUM_THREADS=1 –env MKL_NUM_THREADS=1 –env NUMEXPR_NUM_THREADS=1 –env OMP_NUM_THREADS=1 –env VECLIB_MAXIMUM_THREADS=1 rknop/roman-snpit-env:cuda-dev /bin/bash</p>
-</dd>
-</dl>
-</dd>
-</dl>
+<p>Assuming you’re currently in the directory which is the parent of your <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> and <code class="docutils literal notranslate"><span class="pre">photometry_test_data</span></code> checkouts, you can run a docker container suitable for running tests by running the following:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--gpus<span class="o">=</span>all<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>,target<span class="o">=</span>/home<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>/photometry_test_data,target<span class="o">=</span>/photometry_test_data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>/phrosty_temp,target<span class="o">=</span>/phrosty_temp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>/dia_out_dir,target<span class="o">=</span>/dia_out_dir<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>/lc_out_dir,target<span class="o">=</span>/lc_out_dir<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span>/roman_imsim<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">OPENBLAS_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">MKL_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">NUMEXPR_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">OMP_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">VECLIB_MAXIMUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>rknop/roman-snpit-env:cuda-dev<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/bin/bash
+</pre></div>
+</div>
 <p>(Substitute <code class="docutils literal notranslate"><span class="pre">registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev</span></code> for <code class="docutils literal notranslate"><span class="pre">rknop/roman-snpit-env:cuda-dev</span></code> if you pulled the docker image from there.)</p>
-<dl class="simple">
-<dt>If all is well, this will put you in a docker container.  You can tell you’re in the container because your prompt will change to something like <code class="docutils literal notranslate"><span class="pre">root&#64;47394bd41fbe:/#</span></code> (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you’ve got access to the GPUs by running, inside the container::</dt><dd><p>nvidia-smi</p>
-</dd>
-</dl>
+<p>If all is well, this will put you in a docker container.  You can tell you’re in the container because your prompt will change to something like <code class="docutils literal notranslate"><span class="pre">root&#64;47394bd41fbe:/#</span></code> (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you’ve got access to the GPUs by running, inside the container:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>nvidia-smi
+</pre></div>
+</div>
 <p>If you get an error message, or don’t see at least one NVIDIA GPU listed, then phrosty will not work.</p>
 <section id="id2">
 <h3>On NERSC Perlmutter<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
-<dl class="simple">
-<dt>The procedure above is mostly right.  However, we <strong>strongly</strong> recommend you put your output directories on  on the Perlmutter scratch disk, at least for testing and development::</dt><dd><p>mkdir $SCRATCH/phrosty_lc_out_dir
-mkdir $SCRATCH/phrosty_dia_out_dir
-mkdir $SCRATCH/phrosty_temp</p>
-</dd>
-</dl>
+<p>The procedure above is mostly right.  However, we <strong>strongly</strong> recommend you put your output directories on  on the Perlmutter scratch disk, at least for testing and development:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span><span class="nv">$SCRATCH</span>/phrosty_lc_out_dir
+mkdir<span class="w"> </span><span class="nv">$SCRATCH</span>/phrosty_dia_out_dir
+mkdir<span class="w"> </span><span class="nv">$SCRATCH</span>/phrosty_temp
+</pre></div>
+</div>
 <p>(In fact, it’s probably a good idea to put the other directories on <code class="docutils literal notranslate"><span class="pre">$SCRATCH</span></code> as well.)</p>
-<dl class="simple">
-<dt>Then, assuming you’re in the directory above your <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> and <code class="docutils literal notranslate"><span class="pre">photometry_test_data</span></code> checkouts, and assuming you’ve made the other two necessary directories, you can run the container with::</dt><dd><dl class="simple">
-<dt>podman-hpc run –gpu -it </dt><dd><p>–mount type=bind,source=$PWD,target=/home –mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data –mount type=bind,source=$SCRATCH/phrosty_temp,target=/phrosty_temp –mount type=bind,source=$SCRATCH/phrosty_dia_out_dir,target=/dia_out_dir –mount type=bind,source=$SCRATCH/phrosty_lc_out_dir,target=/lc_out_dir –env PYTHONPATH=/roman_imsim –env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs –env OPENBLAS_NUM_THREADS=1 –env MKL_NUM_THREADS=1 –env NUMEXPR_NUM_THREADS=1 –env OMP_NUM_THREADS=1 –env VECLIB_MAXIMUM_THREADS=1 –env TERM=xterm –annotation run.oci.keep_original_groups=1 registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev /bin/bash</p>
-</dd>
-</dl>
-</dd>
-</dl>
+<p>Then, assuming you’re in the directory above your <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> and <code class="docutils literal notranslate"><span class="pre">photometry_test_data</span></code> checkouts, and assuming you’ve made the other two necessary directories, you can run the container with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>podman-hpc<span class="w"> </span>run<span class="w"> </span>--gpu<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>,target<span class="o">=</span>/home<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$PWD</span>/photometry_test_data,target<span class="o">=</span>/photometry_test_data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$SCRATCH</span>/phrosty_temp,target<span class="o">=</span>/phrosty_temp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$SCRATCH</span>/phrosty_dia_out_dir,target<span class="o">=</span>/dia_out_dir<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span><span class="nv">$SCRATCH</span>/phrosty_lc_out_dir,target<span class="o">=</span>/lc_out_dir<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span>/roman_imsim<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">OPENBLAS_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">MKL_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">NUMEXPR_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">OMP_NUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">VECLIB_MAXIMUM_THREADS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--env<span class="w"> </span><span class="nv">TERM</span><span class="o">=</span>xterm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--annotation<span class="w"> </span>run.oci.keep_original_groups<span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/bin/bash
+</pre></div>
+</div>
 <p>If you’re inside the container, your prompt will be something like <code class="docutils literal notranslate"><span class="pre">root&#64;f24c2ad04d6d:/#</span></code> (though with a different string of hexidecimal digits (hexits?)).  If you do <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-F</span> <span class="pre">/</span></code>, you will see the various specific directories you mounted, such as <code class="docutils literal notranslate"><span class="pre">/dia_out_dir</span></code> and <code class="docutils literal notranslate"><span class="pre">/photometry_test_data</span></code>.</p>
-<dl class="simple">
-<dt>Verify that you have access to GPUs by running::</dt><dd><p>nvidia-smi</p>
-</dd>
-</dl>
+<p>Verify that you have access to GPUs by running:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>nvidia-smi
+</pre></div>
+</div>
 </section>
 </section>
 </section>
