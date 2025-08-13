@@ -70,6 +70,7 @@ Try running::
     -v
 
 If all is well, after it's done running the output will end with something like::
+
   [2025-08-13 17:35:24 - INFO] - Results saved to /lc_out_dir/data/20172782/20172782_Y106_all.csv
 
 On your host system (as well as inside the container), you should see new files in wherever you put ``lc_out_dir``, ``dia_out_dir``, and ``phrosty_temp``.  (Inside the container, these are at ``/lc_out_dir``, ``/dia_out_dir``, and ``/phrosty_temp``.)
