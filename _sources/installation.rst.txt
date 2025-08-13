@@ -1,11 +1,13 @@
 .. highlight:: shell
 
 .. _phrosty-installation:
+
 ============
 Installation
 ============
 
 .. _system-requirements:
+
 System Requirements
 -------------------
 
@@ -16,6 +18,7 @@ If you are on NERSC Perlmutter, run ``module list``.  Make sure that ``cudatoolk
 (Ideally, because phrosty runs inside a container, the specific version of CUDA on the host system wouldn't matter.  However, containers can be touchy about hooking up GPUs inside containers.  If you're having trouble seeing the GPU inside the container, check for mismatches between the versions of cuda inside and outside of the container.)
 
 .. _phrosty-installation-prerequisites:
+
 Prerequisites
 -------------
 
@@ -54,6 +57,7 @@ If you've pulled images before, and you're now working on a new login node, you 
 
 **If you have trouble with podman**: Podman is, as of this writing, still a beta feature on Nersc, and has some warts.  Refer to `NERSC's documentation on podman-hpc <https://docs.nersc.gov/development/containers/podman-hpc/overview/>`_.  In particular, if you want to clean the slate and start over, try running::
   podman-hpc system reset
+  
 to delete all of your podman images and contexts.  Then try pulling the image again.
 
 On other HPC Systems
@@ -70,6 +74,7 @@ Stable release
 phrosty is under heavy development and does not currently have stable releases.  Eventually it will be released on pypi either under the name ``phrosty`` or ``roman-snpit-phrosty`` (depending on what's available).
 
 .. _install-from-sources:
+
 From sources
 ------------
 
@@ -86,6 +91,7 @@ If you want to :ref:`run tests<running-tests>`, and some of the examples, then y
   git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
 
 .. _running-snpit-container:
+
 Running the SNPIT container
 ---------------------------
 
