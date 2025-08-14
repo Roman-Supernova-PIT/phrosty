@@ -26,7 +26,7 @@ If you haven't already, get a copy of phrosty::
 
   git clone https://github.com/Roman-Supernova-PIT/phrosty.git
 
-Second, in the same directory, get a copy of the photometry test datay::
+Second, in the same directory, get a copy of the photometry test data::
 
   git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
 
