@@ -12,17 +12,7 @@ This package contains the Python software suite developed for use with the Roman
 Statement of Need
 =================
 
-Difference imaging analysis (DIA) is a technique in transient analysis that allows both transient detection and photometric measurements. Broadly, this method involves subtracting two images, one with a transient and a "reference" image without a transient, to isolate the object of interest. 
-
-The Nancy Grace Roman Space Telescope (_Roman_) is NASA’s first survey-oriented flagship mission. Its design is optimized for cosmological studies, which includes extraction and precision analysis of Type Ia Supernova (SN Ia) light curves. Analysis of these data pose several challenges: (1) the enormous quantity of data that will be returned on a regular basis, and (2) the spatially-dependent nature of the image properties as a function of location on the detector, which directly affects ease of (3) obtaining the required <1\% flux precision on SN Ia measurements.
-
-_Roman_ is expected to generate approximately 30 PB of data during its first five years of operation (16.5 TB per day). In comparison, NASA's Hubble Space Telescope has produced approximately 400 TB of data during its full 35 years of operation (31 GB per day). At 530 times the data rate of Hubble, BLAH BLAH FIGURE OUT WITH MEG WHAT NUMBERS TO SAY
-
-Other DIA and forced photometry survey pipelines are insufficient to process this quantity of data. For example, the Dark Energy Survey (DES) pipeline takes three hours to do DIA on a single image (parallelizable), with additional time for forced photometry [@destime]. 
-
-`phrosty` is a DIA and forced photometry pipeline that addresses these challenges. We integrate the saccadic fast fourier transform (`SFFT <https://ui.adsabs.harvard.edu/abs/2022ApJ...936..157H/abstract>`_) method for difference imaging analysis, which uses a flexible delta basis function that can accommodate Roman’s spatially-varying point spread function (PSF). `phrosty` uses both GPU and CPU computation; this architecture has been carefully chosen to address the challenge of processing the large quantity of survey data within a reasonable amount of time. 
-
-Because Roman software is currently under-development, there is no similar publicly available all-in-one pipeline that takes _Roman_ images as input and outputs light curves. The architecture choices made in development have substantially accelerated processing time such that `phrosty` is among the fastest astronomical DIA pipelines available.
+TODO LAUREN
 
 State of the Field
 ===================
