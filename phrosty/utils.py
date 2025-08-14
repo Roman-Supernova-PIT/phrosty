@@ -124,8 +124,7 @@ def get_roman_bands():
 
 
 def read_truth_txt(path=None, band=None, pointing=None, sca=None):
-    """Reads in the txt versions of the OpenUniverse 
-       truth files as convenient astropy tables.
+    """Reads in the txt versions of the OpenUniverse truth files as convenient astropy tables.
 
     Parameters
     ----------
@@ -240,8 +239,7 @@ def _read_parquet( file ):
 
 
 def get_transient_radec(oid):
-    """Retrieve RA, dec of a transient based on its object ID
-       in the OpenUniverse sims.
+    """Retrieve RA, dec of a transient based on its object ID in the OpenUniverse sims.
 
        Parameters
        ----------
@@ -254,7 +252,7 @@ def get_transient_radec(oid):
          RA in degrees of target transient.
        dec : float
          Dec in degrees of target transient.
-       
+
        """
 
     oid = int(oid)
@@ -270,8 +268,7 @@ def get_transient_radec(oid):
 
 
 def get_transient_mjd(oid):
-    """Retrieve start and end dates of a transient 
-       in the OpenUniverse sims based on its object ID.
+    """Retrieve start and end dates of a transient in the OpenUniverse sims based on its object ID.
 
     Parameters
     ----------
@@ -284,7 +281,7 @@ def get_transient_mjd(oid):
       Simulated start MJD of target transient.
 
     end : float
-      Simulated end MJD of target transient. 
+      Simulated end MJD of target transient.
 
     """
     oid = int(oid)
@@ -302,8 +299,7 @@ def get_transient_mjd(oid):
 
 def get_transient_zcmb(oid):
 
-    """Retrieve z_CMB of a transient in the OpenUniverse
-       sims based on its object ID.
+    """Retrieve z_CMB of a transient in the OpenUniverse sims based on its object ID.
 
     Parameters
     ----------
@@ -315,8 +311,8 @@ def get_transient_zcmb(oid):
     z : float
       z_CMB of target transient.
 
-    """    
-    
+    """
+
     oid = int(oid)
     snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
@@ -331,8 +327,7 @@ def get_transient_zcmb(oid):
 
 def get_transient_peakmjd(oid):
 
-    """Retrieve MJD of peak brightness for a transient
-    object in the OpenUniverse sims.
+    """Retrieve MJD of peak brightness for a transient object in the OpenUniverse sims.
 
     Parameters
     ----------
@@ -359,11 +354,9 @@ def get_transient_peakmjd(oid):
 
 
 def get_transient_info(oid):
-    """Retrieve RA, Dec, start MJD, and end MJD for a 
-       specified object in the OpenUnvierse sims. 
+    """Retrieve RA, Dec, start MJD, and end MJD for a specified object in the OpenUnvierse sims.
 
-       This function calls get_transient_radec() and
-       get_transient_mjd(). 
+       This function calls get_transient_radec() and get_transient_mjd().
 
     Parameters
     ----------
@@ -382,7 +375,7 @@ def get_transient_info(oid):
       Simulated start MJD of target transient.
 
     end : float
-      Simulated end MJD of target transient. 
+      Simulated end MJD of target transient.
 
     """
 
@@ -419,8 +412,7 @@ def transient_in_or_out(oid, start, end, band):
 
 
 def get_mjd_limits(obseq_path=None):
-    """Retrive the earliest and latest MJD in the 
-       OpenUniverse TDS simulations.
+    """Retrive the earliest and latest MJD in the OpenUniverse TDS simulations.
 
     Parameters
     ----------
@@ -447,8 +439,7 @@ def get_mjd_limits(obseq_path=None):
 
 
 def get_radec_limits(obseq_path=None):
-    """Retrieve the RA, dec limits of the boresight coordinates
-       of the simulated TDS OpenUniverse survey in degrees.
+    """Retrieve the RA, dec limits of the boresight coordinates of the simulated TDS OpenUniverse survey in degrees.
 
     Parameters
     ----------
@@ -461,7 +452,7 @@ def get_radec_limits(obseq_path=None):
     with [minimum RA, maximum RA] and [minimum Dec, maximum Dec],
     respectively.
 
-    """    
+    """
     with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
 
@@ -565,20 +556,21 @@ def get_mjd_info(mjd_start=0, mjd_end=np.inf, return_inverse=False, obseq_path=N
 def get_exptime(band=None):
 
     """Retrieves exposure times from the TDS OpenUniverse sims.
+
        https://arxiv.org/abs/2501.05632
 
     Parameters
     ----------
     band : str, default None
-      Band for which to retrieve exposure time. 
+      Band for which to retrieve exposure time.
 
     Returns
     -------
     exptime : dict or float
       If a band is specified, a float with the exposure time in seconds is
-      returned. If no band is specified, a dictionary with the exposure time 
-      for all bands is returned. 
-    """   
+      returned. If no band is specified, a dictionary with the exposure time
+      for all bands is returned.
+    """
 
     exptime = {'F184': 901.175,
                'J129': 302.275,
@@ -595,8 +587,7 @@ def get_exptime(band=None):
 
 
 def make_object_table(oid):
-    """Retrieves a table with all images that contain the RA, Dec
-       coordinates of a specified transient.
+    """Retrieves a table with all images that contain the RA, Dec coordinates of a specified transient.
 
     Parameters
     ----------
