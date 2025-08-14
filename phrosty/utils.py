@@ -124,7 +124,8 @@ def get_roman_bands():
 
 
 def read_truth_txt(path=None, band=None, pointing=None, sca=None):
-    """Reads in the txt versions of the truth files as convenient astropy tables.
+    """Reads in the txt versions of the OpenUniverse 
+       truth files as convenient astropy tables.
 
     Parameters
     ----------
@@ -239,7 +240,22 @@ def _read_parquet( file ):
 
 
 def get_transient_radec(oid):
-    """Retrieve RA, dec of a transient based on its object ID."""
+    """Retrieve RA, dec of a transient based on its object ID
+       in the OpenUniverse sims.
+
+       Parameters
+       ----------
+       oid : int
+         Object ID of target transient.
+
+       Returns
+       -------
+       ra : float
+         RA in degrees of target transient.
+       dec : float
+         Dec in degrees of target transient.
+       
+       """
 
     oid = int(oid)
     snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
@@ -254,7 +270,23 @@ def get_transient_radec(oid):
 
 
 def get_transient_mjd(oid):
-    """Retrieve start and end dates of a transient based on its object ID."""
+    """Retrieve start and end dates of a transient 
+       in the OpenUniverse sims based on its object ID.
+
+    Parameters
+    ----------
+    oid : int
+      Object ID of target transient.
+
+    Returns
+    -------
+    start : float
+      Simulated start MJD of target transient.
+
+    end : float
+      Simulated end MJD of target transient. 
+
+    """
     oid = int(oid)
     snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
@@ -264,11 +296,27 @@ def get_transient_mjd(oid):
         if len(df[df['id'] == oid]) != 0:
             start = df[df['id'] == oid]['start_mjd'].values[0]
             end = df[df['id'] == oid]['end_mjd'].values[0]
+
     return start, end
 
 
 def get_transient_zcmb(oid):
-    """Retrieve z_CMB of a transient based on its object ID."""
+
+    """Retrieve z_CMB of a transient in the OpenUniverse
+       sims based on its object ID.
+
+    Parameters
+    ----------
+    oid : int
+      Object ID of target transient.
+
+    Returns
+    -------
+    z : float
+      z_CMB of target transient.
+
+    """    
+    
     oid = int(oid)
     snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
@@ -282,7 +330,22 @@ def get_transient_zcmb(oid):
 
 
 def get_transient_peakmjd(oid):
-    """Retrieve z of a transient based on its object ID."""
+
+    """Retrieve MJD of peak brightness for a transient
+    object in the OpenUniverse sims.
+
+    Parameters
+    ----------
+    oid : int
+      Object ID of target transient.
+
+    Returns
+    -------
+    mjd : float
+      Peak MJD of target transient.
+
+    """
+
     oid = int(oid)
     snana_pq_path = os.path.join( Config.get().value('ou24.sn_truth_dir'), 'snana_*.parquet' )
     file_list = glob(snana_pq_path)
@@ -296,15 +359,40 @@ def get_transient_peakmjd(oid):
 
 
 def get_transient_info(oid):
-    """Retrieve RA, Dec, MJD start, MJD end for specified object ID."""
+    """Retrieve RA, Dec, start MJD, and end MJD for a 
+       specified object in the OpenUnvierse sims. 
+
+       This function calls get_transient_radec() and
+       get_transient_mjd(). 
+
+    Parameters
+    ----------
+    oid : int
+      Object ID of target transient.
+
+    Returns
+    -------
+    ra : float
+        RA in degrees of target transient.
+
+    dec : float
+        Dec in degrees of target transient.
+
+    start : float
+      Simulated start MJD of target transient.
+
+    end : float
+      Simulated end MJD of target transient. 
+
+    """
 
     SNLogger.info( "*** calling get_transient_radec" )
-    RA, DEC = get_transient_radec(oid)
+    ra, dec = get_transient_radec(oid)
     SNLogger.info( "*** calling get_transient_mjd" )
     start, end = get_transient_mjd(oid)
     SNLogger.info( "*** Done with get_transient_info" )
 
-    return RA, DEC, start, end
+    return ra, dec, start, end
 
 
 def transient_in_or_out(oid, start, end, band):
@@ -331,7 +419,23 @@ def transient_in_or_out(oid, start, end, band):
 
 
 def get_mjd_limits(obseq_path=None):
-    """Retrive the earliest and latest MJD in the simulations."""
+    """Retrive the earliest and latest MJD in the 
+       OpenUniverse TDS simulations.
+
+    Parameters
+    ----------
+    obseq_path : Path, default None
+        Path to obseq file Roman_TDS_obseq_11_6_23.fits.
+
+    Returns
+    -------
+    start : float
+      Simulated start MJD of OpenUniverse TDS survey.
+
+    end : float
+      Simulated end MJD OpenUniverse TDS survey.
+
+    """
 
     with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
@@ -343,7 +447,21 @@ def get_mjd_limits(obseq_path=None):
 
 
 def get_radec_limits(obseq_path=None):
-    """Retrieve RA, dec limits (boresight coordinates)."""
+    """Retrieve the RA, dec limits of the boresight coordinates
+       of the simulated TDS OpenUniverse survey in degrees.
+
+    Parameters
+    ----------
+    obseq_path : Path, default None
+        Path to obseq file Roman_TDS_obseq_11_6_23.fits.
+
+    Returns
+    -------
+    Dictionary with keys 'ra' and 'dec'. Each key identifies a list
+    with [minimum RA, maximum RA] and [minimum Dec, maximum Dec],
+    respectively.
+
+    """    
     with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
 
@@ -357,14 +475,20 @@ def get_radec_limits(obseq_path=None):
 
 
 def get_mjd(pointing, obseq_path=None):
-    """Retrieve MJD of a given pointing.
+    """Retrieve the MJD of a given pointing in the OpenUniverse TDS simulation.
 
-    :param pointing: Pointing ID.
-    :type pointing: int
-    :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.
-    :type obseq_path: str, optional
-    :return: MJD of specified pointing.
-    :rtype: float
+    Parameters
+    ----------
+    pointing : int
+      Pointing number.
+    obseq_path: Path, default None
+      Path to obseq file Roman_TDS_obseq_11_6_23.fits.
+
+    Returns
+    -------
+    mjd : float
+      MJD of the specified input pointing.
+
     """
 
     with fits.open(ou2024_obseq_path(obseq_path)) as obs:
@@ -377,14 +501,20 @@ def get_mjd(pointing, obseq_path=None):
 def pointings_near_mjd(mjd, window=3, obseq_path=None):
     """Retrieve pointings near given MJD.
 
-    :param mjd: Central MJD to search around.
-    :type mjd: float
-    :param window: Number of days around central MJD to include in search.
-    :type window: float
-    :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.
-    :type obseq_path: str, optional
-    :return: Pointings within specified MJD range.
-    :rtype: list
+    Parameters
+    ----------
+    mjd : float
+      Central MJD to search around.
+    window : float, default 3
+      Number of days around central MJD to include in search.
+    obseq_path : Path, default None
+      Path to obseq file Roman_TDS_obseq_11_6_23.fits.
+
+    Returns
+    -------
+    pointings : list
+      List of pointings within specified MJD range.
+
     """
 
     with fits.open(ou2024_obseq_path(obseq_path)) as obs:
@@ -401,17 +531,23 @@ def get_mjd_info(mjd_start=0, mjd_end=np.inf, return_inverse=False, obseq_path=N
     Does not return an 'sca' column because every sca belonging to a
     given pointing satisfies an MJD requirement.
 
-    :param mjd_start: Start MJD, defaults to -np.inf
-    :type mjd_start: float, optional
-    :param mjd_end: End MJD, defaults to np.inf
-    :type mjd_end: float, optional
-    :param return_inverse: If true, returns all pointings outside the MJD range specified instead of inside.
-    :type return_inverse: bool
-    :param obseq_path: Path to obseq file Roman_TDS_obseq_11_6_23.fits.
-    :type obseq_path: str, optional
-    :return: Astropy table with pointing numbers and corresponding filters that satisfy the
-            MJD requirements.
-    :rtype: astropy.table.Table
+    Parameters
+    ----------
+    mjd_start : float, default 0
+      Start MJD
+    mjd_end : float, default np.inf
+      End MJD
+    return_inverse: boolean, default False
+      If true, returns all pointings outside the MJD range specified instead of inside.
+    obseq_path: Path, default None
+      Path to obseq file Roman_TDS_obseq_11_6_23.fits.
+
+    Returns
+    -------
+    mjd_tab : astropy.table.Table
+      Astropy table with pointing numbers and corresponding filters that satisfy the
+      MJD requirements.
+
     """
     with fits.open(ou2024_obseq_path(obseq_path)) as obs:
         obseq = Table(obs[1].data)
@@ -428,6 +564,22 @@ def get_mjd_info(mjd_start=0, mjd_end=np.inf, return_inverse=False, obseq_path=N
 
 def get_exptime(band=None):
 
+    """Retrieves exposure times from the TDS OpenUniverse sims.
+       https://arxiv.org/abs/2501.05632
+
+    Parameters
+    ----------
+    band : str, default None
+      Band for which to retrieve exposure time. 
+
+    Returns
+    -------
+    exptime : dict or float
+      If a band is specified, a float with the exposure time in seconds is
+      returned. If no band is specified, a dictionary with the exposure time 
+      for all bands is returned. 
+    """   
+
     exptime = {'F184': 901.175,
                'J129': 302.275,
                'H158': 302.275,
@@ -443,7 +595,26 @@ def get_exptime(band=None):
 
 
 def make_object_table(oid):
+    """Retrieves a table with all images that contain the RA, Dec
+       coordinates of a specified transient.
 
+    Parameters
+    ----------
+    oid : int
+      Object ID of target transient.
+
+    Returns
+    -------
+    objs : pd.DataFrame
+      Table with columns ['filter', 'pointing', 'sca'].
+
+    Raises
+    ------
+    RuntimeError
+      Error is raised if indexing fails. It will probably work if you
+      run it again.
+
+    """
     ra, dec = get_transient_radec(oid)
 
     server_url = 'https://roman-desc-simdex.lbl.gov'

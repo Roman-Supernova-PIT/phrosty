@@ -39,13 +39,13 @@ def test_build_filepath( test_dia_image ):
 
 def test_ou2024_obseq_path():
     test_path_none = os.path.join( Config.get().value('ou24.tds_base'), 'Roman_TDS_obseq_11_6_23.fits' )
-    test_path_kwarg = '/foo/bar'
+    test_path_arg = '/foo/bar'
 
     path_none = phrosty.utils.ou2024_obseq_path()
-    path_kwarg = phrosty.utils.ou2024_obseq_path( test_path_kwarg )
+    path_arg = phrosty.utils.ou2024_obseq_path( test_path_arg )
 
     assert path_none == test_path_none
-    assert path_kwarg == test_path_kwarg
+    assert path_arg == test_path_arg
 
 
 def test_get_roman_bands():
