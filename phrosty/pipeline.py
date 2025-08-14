@@ -1,4 +1,5 @@
 # Imports STANDARD
+import sys
 import argparse
 import cupy as cp
 from functools import partial
@@ -216,7 +217,8 @@ class Pipeline:
 
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.config = Config.get()
-        self.image_base_dir = pathlib.Path( self.config.value( 'ou24.tds_base' ) ) / 'images'
+        self.tds_base_dir = pathlib.Path( self.config.value( 'ou24.tds_base' ) )
+        self.image_base_dir = self.tds_base_dir / 'images'
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
         self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
         self.temp_dir_parent = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
@@ -316,7 +318,8 @@ class Pipeline:
             data_sci, data_templ,
             cp.array( sci_image.image.noise ), cp.array( templ_image.image.noise ),
             sci_detmask, templ_detmask,
-            sci_psf, templ_psf
+            sci_psf, templ_psf,
+            KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
         )
 
         sfftifier.resampling_image_mask_psf()
@@ -489,8 +492,8 @@ class Pipeline:
 
             # TODO -- take this galsim-specific code out, move it to a separate module.  Define a general
             #  zeropointing interface, of which the galsim-speicifc one will be one instance
-            truthpath = str( self.image_base_dir /
-                             f'RomanTDS/truth/{self.band}/{sci_image.pointing}/'
+            truthpath = str( self.tds_base_dir /
+                             f'truth/{self.band}/{sci_image.pointing}/'
                              f'Roman_TDS_index_{self.band}_{sci_image.pointing}_{sci_image.image.sca}.txt' )
             stars = self.get_stars(truthpath)
             # Now, calculate the zero point based on those stars.
@@ -843,10 +846,21 @@ def main():
     # Run one arg pass just to get the config file, so we can augment
     #   the full arg parser later with config options
     configparser = argparse.ArgumentParser( add_help=False )
-    configparser.add_argument( '-c', '--config-file', required=True, help="Location of the .yaml config file" )
+    configparser.add_argument( '-c', '--config-file', default=None,
+                               help=( "Location of the .yaml config file; defaults to the value of the "
+                                      "SNPIT_CONFIG environment varaible." ) )
     args, leftovers = configparser.parse_known_args()
 
-    cfg = Config.get( args.config_file, setdefault=True )
+    try:
+        cfg = Config.get( args.config_file, setdefault=True )
+    except RuntimeError as e:
+        if str(e) == 'No default config defined yet; run Config.init(configfile)':
+            sys.stderr.write( "Error, no configuration file defined.\n"
+                              "Either run phrosty with -c <configfile>\n"
+                              "or set the SNPIT_CONFIG environment varaible.\n" )
+            sys.exit(1)
+        else:
+            raise
 
     parser = argparse.ArgumentParser()
     # Put in the config_file argument, even though it will never be found, so it shows up in help

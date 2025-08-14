@@ -26,14 +26,12 @@ photometry:
     keep_intermediate: true
     remove_temp_dir: false
     mem_trace: false
-
+    kerpolyorder: 2
+    
     paths:
-      scratch_dir: /scratch
+      scratch_dir: /phrosty_temp
       temp_dir: /phrosty_temp
-      sn_info_dir: /sn_info_dir
       dia_out_dir: /dia_out_dir
-      snana_pq_dir: /snana_pq_dir
-      snid_lc_dir: /snid_lc_dir
       ltcv_dir: /lc_out_dir
 
     psf:

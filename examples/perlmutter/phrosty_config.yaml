@@ -1,20 +1,9 @@
 ou24:
   tds_base: /ou2024/RomanTDS
   config_file: /home/phrosty/examples/perlmutter/tds.yaml
-
   sn_truth_dir: /ou2024_snana
-  # sn_truth_dir: /snana_pq_dir
-
-  images: /photometry_test_data/ou2024/images
-  
-  sims_sed_library: /photometry_test_data/ou2024/sims_sed_library
-  # Comment from Cole & Rob: This is a path to the SEDs that were used to generate the
-  # OU24 simulations.  Only a subset of the files are stored in
-  # photometry_test_data, so if you want to use it for real, you'll need
-  # to get the file yourself.  If you are interested in getting the SEDs yourself,
-  # go into the directory where you want it to live and run the command:
-  # curl https://s3df.slac.stanford.edu/groups/rubin/static/sim-data/sed_library/seds_170124.tar.gz  | tar xv
-  # Courtesy of M. Troxel ^^^
+  images: /ou2024/RomanTDS/images
+  sims_sed_library: /ou2024_sims_sed_library
 
 photometry:
   snappl:
@@ -26,14 +15,12 @@ photometry:
     keep_intermediate: true
     remove_temp_dir: false
     mem_trace: false
+    kerpolyorder: 2
 
     paths:
       scratch_dir: /phrosty_temp
       temp_dir: /phrosty_temp
-      sn_info_dir: /sn_info_dir
       dia_out_dir: /dia_out_dir
-      snana_pq_dir: /snana_pq_dir
-      snid_lc_dir: /snid_lc_dir
       ltcv_dir: /lc_out_dir
 
     psf:
