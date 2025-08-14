@@ -5,12 +5,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>phrosty API &#8212; phrosty 0.1.dev1+g894c913 documentation</title>
+    <title>phrosty API &#8212; phrosty 0.1.dev1+g9c64133 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
-    <script src="_static/documentation_options.js?v=d45d1f5e"></script>
+    <script src="_static/documentation_options.js?v=a1f0b140"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -341,18 +341,40 @@ of the specified image in degrees.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="phrosty.utils.get_exptime">
+<span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_exptime</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">band</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_exptime"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_exptime" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves exposure times from the TDS OpenUniverse sims.</p>
+<blockquote>
+<div><p><a class="reference external" href="https://arxiv.org/abs/2501.05632">https://arxiv.org/abs/2501.05632</a></p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>default None</em>) – Band for which to retrieve exposure time.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>exptime</strong> – If a band is specified, a float with the exposure time in seconds is
+returned. If no band is specified, a dictionary with the exposure time
+for all bands is returned.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)">dict</a> or <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="phrosty.utils.get_mjd">
 <span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_mjd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pointing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obseq_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_mjd"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_mjd" title="Link to this definition">¶</a></dt>
-<dd><p>Retrieve MJD of a given pointing.</p>
+<dd><p>Retrieve the MJD of a given pointing in the OpenUniverse TDS simulation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>pointing</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Pointing ID.</p></li>
-<li><p><strong>obseq_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Path to obseq file Roman_TDS_obseq_11_6_23.fits.</p></li>
+<li><p><strong>pointing</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Pointing number.</p></li>
+<li><p><strong>obseq_path</strong> (<em>Path</em><em>, </em><em>default None</em>) – Path to obseq file Roman_TDS_obseq_11_6_23.fits.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>MJD of specified pointing.</p>
+<dd class="field-even"><p><strong>mjd</strong> – MJD of the specified input pointing.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a></p>
@@ -370,14 +392,14 @@ given pointing satisfies an MJD requirement.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>mjd_start</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>optional</em>) – Start MJD, defaults to -np.inf</p></li>
-<li><p><strong>mjd_end</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>optional</em>) – End MJD, defaults to np.inf</p></li>
-<li><p><strong>return_inverse</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – If true, returns all pointings outside the MJD range specified instead of inside.</p></li>
-<li><p><strong>obseq_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Path to obseq file Roman_TDS_obseq_11_6_23.fits.</p></li>
+<li><p><strong>mjd_start</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>default 0</em>) – Start MJD</p></li>
+<li><p><strong>mjd_end</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>default np.inf</em>) – End MJD</p></li>
+<li><p><strong>return_inverse</strong> (<em>boolean</em><em>, </em><em>default False</em>) – If true, returns all pointings outside the MJD range specified instead of inside.</p></li>
+<li><p><strong>obseq_path</strong> (<em>Path</em><em>, </em><em>default None</em>) – Path to obseq file Roman_TDS_obseq_11_6_23.fits.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Astropy table with pointing numbers and corresponding filters that satisfy the
+<dd class="field-even"><p><strong>mjd_tab</strong> – Astropy table with pointing numbers and corresponding filters that satisfy the
 MJD requirements.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -389,13 +411,38 @@ MJD requirements.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="phrosty.utils.get_mjd_limits">
 <span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_mjd_limits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obseq_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_mjd_limits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_mjd_limits" title="Link to this definition">¶</a></dt>
-<dd><p>Retrive the earliest and latest MJD in the simulations.</p>
+<dd><p>Retrive the earliest and latest MJD in the OpenUniverse TDS simulations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obseq_path</strong> (<em>Path</em><em>, </em><em>default None</em>) – Path to obseq file Roman_TDS_obseq_11_6_23.fits.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>start</strong> (<em>float</em>) – Simulated start MJD of OpenUniverse TDS survey.</p></li>
+<li><p><strong>end</strong> (<em>float</em>) – Simulated end MJD OpenUniverse TDS survey.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="phrosty.utils.get_radec_limits">
 <span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_radec_limits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obseq_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_radec_limits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_radec_limits" title="Link to this definition">¶</a></dt>
-<dd><p>Retrieve RA, dec limits (boresight coordinates).</p>
+<dd><p>Retrieve the RA, dec limits of the boresight coordinates of the simulated TDS OpenUniverse survey in degrees.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>obseq_path</strong> (<em>Path</em><em>, </em><em>default None</em>) – Path to obseq file Roman_TDS_obseq_11_6_23.fits.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>Dictionary with keys ‘ra’ and ‘dec’. Each key identifies a list</em></p></li>
+<li><p><em>with [minimum RA, maximum RA] and [minimum Dec, maximum Dec],</em></p></li>
+<li><p><em>respectively.</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -403,57 +450,138 @@ MJD requirements.</p>
 <span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_roman_bands</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_roman_bands"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_roman_bands" title="Link to this definition">¶</a></dt>
 <dd><p>Get roman passbands.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>List of bands included in the Roman-DESC TDS simulations.
-:rtype: list</p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of bands included in the Roman-DESC TDS simulations.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="phrosty.utils.get_science">
-<span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_science</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">infodir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returntype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'list'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_science"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_science" title="Link to this definition">¶</a></dt>
-<dd><p>Get science images.</p>
-<p>Science images are those images for a given OID actually contain the
-transient and also contain the RA/dec coordinates.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="phrosty.utils.get_templates">
-<span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_templates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">infodir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_templates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returntype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'list'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_templates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_templates" title="Link to this definition">¶</a></dt>
-<dd><p>Get template images.</p>
-<p>Template images are those images for a given OID do not actually contain the
-transient but do contain the RA/dec coordinates.</p>
-</dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="phrosty.utils.get_transient_info">
 <span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_transient_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_transient_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_transient_info" title="Link to this definition">¶</a></dt>
-<dd><p>Retrieve RA, Dec, MJD start, MJD end for specified object ID.</p>
+<dd><p>Retrieve RA, Dec, start MJD, and end MJD for a specified object in the OpenUnvierse sims.</p>
+<blockquote>
+<div><p>This function calls get_transient_radec() and get_transient_mjd().</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>oid</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Object ID of target transient.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>ra</strong> (<em>float</em>) – RA in degrees of target transient.</p></li>
+<li><p><strong>dec</strong> (<em>float</em>) – Dec in degrees of target transient.</p></li>
+<li><p><strong>start</strong> (<em>float</em>) – Simulated start MJD of target transient.</p></li>
+<li><p><strong>end</strong> (<em>float</em>) – Simulated end MJD of target transient.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="phrosty.utils.get_transient_mjd">
 <span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_transient_mjd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_transient_mjd"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_transient_mjd" title="Link to this definition">¶</a></dt>
-<dd><p>Retrieve start and end dates of a transient based on its object ID.</p>
+<dd><p>Retrieve start and end dates of a transient in the OpenUniverse sims based on its object ID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>oid</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Object ID of target transient.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>start</strong> (<em>float</em>) – Simulated start MJD of target transient.</p></li>
+<li><p><strong>end</strong> (<em>float</em>) – Simulated end MJD of target transient.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="phrosty.utils.get_transient_peakmjd">
 <span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_transient_peakmjd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_transient_peakmjd"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_transient_peakmjd" title="Link to this definition">¶</a></dt>
-<dd><p>Retrieve z of a transient based on its object ID.</p>
+<dd><p>Retrieve MJD of peak brightness for a transient object in the OpenUniverse sims.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>oid</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Object ID of target transient.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>mjd</strong> – Peak MJD of target transient.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="phrosty.utils.get_transient_radec">
 <span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_transient_radec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_transient_radec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_transient_radec" title="Link to this definition">¶</a></dt>
-<dd><p>Retrieve RA, dec of a transient based on its object ID.</p>
+<dd><p>Retrieve RA, dec of a transient based on its object ID in the OpenUniverse sims.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>oid</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Object ID of target transient.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>ra</strong> (<em>float</em>) – RA in degrees of target transient.</p></li>
+<li><p><strong>dec</strong> (<em>float</em>) – Dec in degrees of target transient.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="phrosty.utils.get_transient_zcmb">
 <span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">get_transient_zcmb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#get_transient_zcmb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.get_transient_zcmb" title="Link to this definition">¶</a></dt>
-<dd><p>Retrieve z_CMB of a transient based on its object ID.</p>
+<dd><p>Retrieve z_CMB of a transient in the OpenUniverse sims based on its object ID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>oid</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Object ID of target transient.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>z</strong> – z_CMB of target transient.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phrosty.utils.make_object_table">
+<span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">make_object_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#make_object_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.make_object_table" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves a table with all images that contain the RA, Dec coordinates of a specified transient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>oid</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Object ID of target transient.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>objs</strong> – Table with columns [‘filter’, ‘pointing’, ‘sca’].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.13)"><strong>RuntimeError</strong></a> – Error is raised if indexing fails. It will probably work if you
+    run it again.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phrosty.utils.ou2024_obseq_path">
+<span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">ou2024_obseq_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#ou2024_obseq_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.ou2024_obseq_path" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve the path to the OpenUniverse obseq file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>Path</em><em>, </em><em>default None</em>) – Path to file. If not provided, use config file.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to OpenUniverse obseq file.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -464,12 +592,12 @@ transient but do contain the RA/dec coordinates.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>mjd</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Central MJD to search around.</p></li>
-<li><p><strong>window</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Number of days around central MJD to include in search.</p></li>
-<li><p><strong>obseq_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Path to obseq file Roman_TDS_obseq_11_6_23.fits.</p></li>
+<li><p><strong>window</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>default 3</em>) – Number of days around central MJD to include in search.</p></li>
+<li><p><strong>obseq_path</strong> (<em>Path</em><em>, </em><em>default None</em>) – Path to obseq file Roman_TDS_obseq_11_6_23.fits.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Pointings within specified MJD range.</p>
+<dd class="field-even"><p><strong>pointings</strong> – List of pointings within specified MJD range.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)">list</a></p>
@@ -478,35 +606,51 @@ transient but do contain the RA/dec coordinates.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="phrosty.utils.read_truth_txt">
-<span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">read_truth_txt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sca</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#read_truth_txt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.read_truth_txt" title="Link to this definition">¶</a></dt>
-<dd><p>Reads in the txt versions of the truth files as convenient astropy tables.</p>
+<dt class="sig sig-object py" id="phrosty.utils.radec_isin">
+<span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">radec_isin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sca</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#radec_isin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.radec_isin" title="Link to this definition">¶</a></dt>
+<dd><p>Check if a given RA, dec coordinate is in a given target image.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>truthpath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Path to txt catalog version of truth file. If you do not
-provide this, you need to specify the arguments
-band, pointing, and sca.</p></li>
-<li><p><strong>band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Roman filter. If you do not provide this, you need to provide truthpath.</p></li>
-<li><p><strong>pointing</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Pointing ID. If you do not provide this, you need to provide truthpath.</p></li>
-<li><p><strong>sca</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – SCA ID. If you do not provide this, you need to provide truthpath.</p></li>
+<li><p><strong>ra</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – RA in degrees.</p></li>
+<li><p><strong>dec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Dec in degrees.</p></li>
+<li><p><strong>path</strong> (<em>Path</em><em>, </em><em>default None</em>) – Path to image to check.</p></li>
+<li><p><strong>band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>default None</em>) – Filter assocated with target image.</p></li>
+<li><p><strong>pointing</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>default None</em>) – Pointing associated with target image.</p></li>
+<li><p><strong>sca</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>default None</em>) – SCA associated with target image.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Astropy table with contents of the specified catalog txt file.</p>
+<dd class="field-even"><p><strong>res</strong> – True if provided RA, Dec is in the image. False if not.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>astropy.table.Table</p>
+<dd class="field-odd"><p>boolean</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="phrosty.utils.transform_to_wcs">
-<span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">transform_to_wcs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wcs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sca</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#transform_to_wcs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.transform_to_wcs" title="Link to this definition">¶</a></dt>
-<dd><p>“Transform world coordinates in a truth file to a new WCS.</p>
-<p>Outputs pixel coordinates for the transformed coordinates.
-input wcs is an astropy wcs object.</p>
+<dt class="sig sig-object py" id="phrosty.utils.read_truth_txt">
+<span class="sig-prename descclassname"><span class="pre">phrosty.utils.</span></span><span class="sig-name descname"><span class="pre">read_truth_txt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sca</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phrosty/utils.html#read_truth_txt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.utils.read_truth_txt" title="Link to this definition">¶</a></dt>
+<dd><p>Reads in the txt versions of the OpenUniverse truth files as convenient astropy tables.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>truthpath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>default None</em>) – Path to txt catalog version of truth file. If you do not
+provide this, you need to specify the arguments
+band, pointing, and sca.</p></li>
+<li><p><strong>band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>default None</em>) – Roman filter. If you do not provide this, you need to provide truthpath.</p></li>
+<li><p><strong>pointing</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>default None</em>) – Pointing ID. If you do not provide this, you need to provide truthpath.</p></li>
+<li><p><strong>sca</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>default None</em>) – SCA ID. If you do not provide this, you need to provide truthpath.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>truth</strong> – Astropy table with contents of the specified catalog txt file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>astropy.table.Table</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
