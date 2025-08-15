@@ -1,0 +1,1 @@
+Add Statement of Need, per JOSS, to README. Add link to docs in README.
