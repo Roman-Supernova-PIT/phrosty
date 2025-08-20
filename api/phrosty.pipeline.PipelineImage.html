@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>PipelineImage &#8212; phrosty 0.1.dev1+ga26093841 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=5a6b8c39" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=f3bc516d" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+    <script src="../_static/documentation_options.js?v=a5285450"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Pipeline" href="phrosty.pipeline.Pipeline.html" />
+    <link rel="prev" title="psf_phot" href="phrosty.photometry.psf_phot.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../index.html">
+    <img class="logo" src="../_static/logo_black_filled.png" alt="Logo" />
+    
+  </a>
+</p>
+
+
+
+<p class="blurb">Software developed by the Roman SNPIT</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development.html">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changes.html">Change Log</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">phrosty API</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../api.html">phrosty API</a><ul>
+      <li>Previous: <a href="phrosty.photometry.psf_phot.html" title="previous chapter">psf_phot</a></li>
+      <li>Next: <a href="phrosty.pipeline.Pipeline.html" title="next chapter">Pipeline</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="phrosty.photometry.psf_phot.html" title="Previous document">psf_phot</a>
+        </li>
+        <li>
+          <a href="phrosty.pipeline.Pipeline.html" title="Next document">Pipeline</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
+          
+
+          <div class="body" role="main">
+            
+  <section id="pipelineimage">
+<h1>PipelineImage<a class="headerlink" href="#pipelineimage" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="phrosty.pipeline.PipelineImage">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phrosty.pipeline.</span></span><span class="sig-name descname"><span class="pre">PipelineImage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imagepath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sca</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pipeline</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#PipelineImage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.PipelineImage" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Holds a snappl.image.Image, with some other stuff the pipeline needs.</p>
+<p>Create a PipelineImage</p>
+<section id="parameters">
+<h2>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h2>
+<blockquote>
+<div><dl class="simple">
+<dt>imagepath<span class="classifier">str or Path</span></dt><dd><p>A path to the image.  This will be passed on to an Image
+subclass constructor; which subclass depends on the config
+option photometry.phrosty.image_type</p>
+</dd>
+<dt>pointing<span class="classifier">str or int</span></dt><dd><p>An identifier of the pointing of this image.  Used e.g. to pull PSFs.</p>
+</dd>
+<dt>pipeline<span class="classifier">phrosty.pipeline.Pipeline</span></dt><dd><p>The pipeline that owns this image.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p class="rubric">Methods Summary</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.PipelineImage.free" title="phrosty.pipeline.PipelineImage.free"><code class="xref py py-obj docutils literal notranslate"><span class="pre">free</span></code></a>()</p></td>
+<td><p>Try to free memory.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.PipelineImage.get_psf" title="phrosty.pipeline.PipelineImage.get_psf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_psf</span></code></a>(ra, dec)</p></td>
+<td><p>Get the at the right spot on the image.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.PipelineImage.keep_psf_data" title="phrosty.pipeline.PipelineImage.keep_psf_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">keep_psf_data</span></code></a>(psf_data)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.PipelineImage.run_sky_subtract" title="phrosty.pipeline.PipelineImage.run_sky_subtract"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_sky_subtract</span></code></a>([mp])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.PipelineImage.save_sky_subtract_info" title="phrosty.pipeline.PipelineImage.save_sky_subtract_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_sky_subtract_info</span></code></a>(info)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods Documentation</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phrosty.pipeline.PipelineImage.free">
+<span class="sig-name descname"><span class="pre">free</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#PipelineImage.free"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.PipelineImage.free" title="Link to this definition">¶</a></dt>
+<dd><p>Try to free memory.  More might be done here.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phrosty.pipeline.PipelineImage.get_psf">
+<span class="sig-name descname"><span class="pre">get_psf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#PipelineImage.get_psf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.PipelineImage.get_psf" title="Link to this definition">¶</a></dt>
+<dd><p>Get the at the right spot on the image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ra</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – The coordinates in decimal degrees where we want the PSF.</p></li>
+<li><p><strong>dec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – The coordinates in decimal degrees where we want the PSF.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phrosty.pipeline.PipelineImage.keep_psf_data">
+<span class="sig-name descname"><span class="pre">keep_psf_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">psf_data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#PipelineImage.keep_psf_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.PipelineImage.keep_psf_data" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phrosty.pipeline.PipelineImage.run_sky_subtract">
+<span class="sig-name descname"><span class="pre">run_sky_subtract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#PipelineImage.run_sky_subtract"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.PipelineImage.run_sky_subtract" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phrosty.pipeline.PipelineImage.save_sky_subtract_info">
+<span class="sig-name descname"><span class="pre">save_sky_subtract_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">info</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#PipelineImage.save_sky_subtract_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.PipelineImage.save_sky_subtract_info" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+</dd></dl>
+
+</section>
+
+
+          </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="phrosty.photometry.psf_phot.html" title="Previous document">psf_phot</a>
+        </li>
+        <li>
+          <a href="phrosty.pipeline.Pipeline.html" title="Next document">Pipeline</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Roman Supernova PIT.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/api/phrosty.pipeline.PipelineImage.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

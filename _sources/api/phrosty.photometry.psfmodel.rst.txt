@@ -1,0 +1,6 @@
+psfmodel
+========
+
+.. currentmodule:: phrosty.photometry
+
+.. autofunction:: psfmodel

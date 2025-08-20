@@ -1,0 +1,6 @@
+get_exptime
+===========
+
+.. currentmodule:: phrosty.utils
+
+.. autofunction:: get_exptime

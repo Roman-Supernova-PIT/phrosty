@@ -1,0 +1,25 @@
+PipelineImage
+=============
+
+.. currentmodule:: phrosty.pipeline
+
+.. autoclass:: PipelineImage
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~PipelineImage.free
+      ~PipelineImage.get_psf
+      ~PipelineImage.keep_psf_data
+      ~PipelineImage.run_sky_subtract
+      ~PipelineImage.save_sky_subtract_info
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: free
+   .. automethod:: get_psf
+   .. automethod:: keep_psf_data
+   .. automethod:: run_sky_subtract
+   .. automethod:: save_sky_subtract_info

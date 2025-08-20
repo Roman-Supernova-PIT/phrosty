@@ -1,0 +1,6 @@
+read_truth_txt
+==============
+
+.. currentmodule:: phrosty.utils
+
+.. autofunction:: read_truth_txt

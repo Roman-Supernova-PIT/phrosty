@@ -1,0 +1,6 @@
+get_mjd_limits
+==============
+
+.. currentmodule:: phrosty.utils
+
+.. autofunction:: get_mjd_limits

@@ -1,0 +1,6 @@
+stampmaker
+==========
+
+.. currentmodule:: phrosty.imagesubtraction
+
+.. autofunction:: stampmaker

@@ -1,0 +1,6 @@
+make_object_table
+=================
+
+.. currentmodule:: phrosty.utils
+
+.. autofunction:: make_object_table

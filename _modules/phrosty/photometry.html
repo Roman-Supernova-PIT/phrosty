@@ -4,12 +4,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phrosty.photometry &#8212; phrosty 0.1.dev1+ge09c620a9 documentation</title>
+    <title>phrosty.photometry &#8212; phrosty 0.1.dev1+ga26093841 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
-    <script src="../../_static/documentation_options.js?v=f2789e37"></script>
+    <script src="../../_static/documentation_options.js?v=a5285450"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -87,7 +87,9 @@
           <div class="body" role="main">
             
   <h1>Source code for phrosty.photometry</h1><div class="highlight"><pre>
-<span></span><span class="c1"># IMPORTS Standard:</span>
+<span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span> <span class="s1">&#39;ap_phot&#39;</span><span class="p">,</span> <span class="s1">&#39;psfmodel&#39;</span><span class="p">,</span> <span class="s1">&#39;psf_phot&#39;</span> <span class="p">]</span>
+
+<span class="c1"># IMPORTS Standard:</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="c1"># IMPORTS Astro:</span>
@@ -107,7 +109,7 @@
 
 
 <div class="viewcode-block" id="ap_phot">
-<a class="viewcode-back" href="../../api.html#phrosty.photometry.ap_phot">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.photometry.ap_phot.html#phrosty.photometry.ap_phot">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">ap_phot</span><span class="p">(</span><span class="n">scienceimage</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span>
             <span class="n">ap_r</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;subpixel&#39;</span><span class="p">,</span> <span class="n">subpixels</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
             <span class="n">merge_tables</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -161,11 +163,16 @@
 
 
 
+<div class="viewcode-block" id="psfmodel">
+<a class="viewcode-back" href="../../api/phrosty.photometry.psfmodel.html#phrosty.photometry.psfmodel">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">psfmodel</span><span class="p">(</span><span class="n">psfimg</span><span class="p">):</span>
     <span class="n">psf</span> <span class="o">=</span> <span class="n">FittableImageModel</span><span class="p">(</span><span class="n">psfimg</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">psf</span>
+    <span class="k">return</span> <span class="n">psf</span></div>
 
 
+
+<div class="viewcode-block" id="psf_phot">
+<a class="viewcode-back" href="../../api/phrosty.photometry.psf_phot.html#phrosty.photometry.psf_phot">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">psf_phot</span><span class="p">(</span><span class="n">scienceimage</span><span class="p">,</span> <span class="n">noise</span><span class="p">,</span> <span class="n">psf</span><span class="p">,</span> <span class="n">init_params</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
              <span class="n">forced_phot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fwhm</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">fit_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
              <span class="n">oversampling</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">maxiters</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
@@ -203,7 +210,8 @@
         <span class="k">return</span> <span class="n">psf_results</span>
 
     <span class="k">except</span> <span class="n">NonFiniteValueError</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;fit_shape overlaps with edge of image, and therefore encloses NaNs! Photometry cancelled.&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;fit_shape overlaps with edge of image, and therefore encloses NaNs! Photometry cancelled.&#39;</span><span class="p">)</span></div>
+
 </pre></div>
 
           </div>

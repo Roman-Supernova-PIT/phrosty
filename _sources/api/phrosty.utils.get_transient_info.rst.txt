@@ -1,0 +1,6 @@
+get_transient_info
+==================
+
+.. currentmodule:: phrosty.utils
+
+.. autofunction:: get_transient_info

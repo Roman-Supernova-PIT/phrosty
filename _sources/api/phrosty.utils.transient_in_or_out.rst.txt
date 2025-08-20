@@ -1,0 +1,6 @@
+transient_in_or_out
+===================
+
+.. currentmodule:: phrosty.utils
+
+.. autofunction:: transient_in_or_out

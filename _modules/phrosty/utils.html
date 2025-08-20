@@ -4,12 +4,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phrosty.utils &#8212; phrosty 0.1.dev1+ge09c620a9 documentation</title>
+    <title>phrosty.utils &#8212; phrosty 0.1.dev1+ga26093841 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
-    <script src="../../_static/documentation_options.js?v=f2789e37"></script>
+    <script src="../../_static/documentation_options.js?v=a5285450"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -87,7 +87,13 @@
           <div class="body" role="main">
             
   <h1>Source code for phrosty.utils</h1><div class="highlight"><pre>
-<span></span><span class="c1"># IMPORTS Standard:</span>
+<span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span> <span class="s1">&#39;get_roman_bands&#39;</span><span class="p">,</span> <span class="s1">&#39;read_truth_txt&#39;</span><span class="p">,</span> <span class="s1">&#39;radec_isin&#39;</span><span class="p">,</span> <span class="s1">&#39;get_corners&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;get_transient_radec&#39;</span><span class="p">,</span> <span class="s1">&#39;get_transient_mjd&#39;</span><span class="p">,</span> <span class="s1">&#39;get_transient_zcmb&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;get_transient_peakmjd&#39;</span><span class="p">,</span> <span class="s1">&#39;get_transient_info&#39;</span><span class="p">,</span> <span class="s1">&#39;transient_in_or_out&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;get_mjd_limits&#39;</span><span class="p">,</span> <span class="s1">&#39;get_radec_limits&#39;</span><span class="p">,</span> <span class="s1">&#39;get_mjd&#39;</span><span class="p">,</span> <span class="s1">&#39;pointings_near_mjd&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;get_mjd_info&#39;</span><span class="p">,</span> <span class="s1">&#39;get_exptime&#39;</span><span class="p">,</span> <span class="s1">&#39;make_object_table&#39;</span> <span class="p">]</span>
+
+<span class="c1"># IMPORTS Standard:</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os.path</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -184,8 +190,6 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;You need to provide either the full image path, or the band, pointing, and SCA.&#39;</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="ou2024_obseq_path">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.ou2024_obseq_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">ou2024_obseq_path</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span> <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve the path to the OpenUniverse obseq file.</span>
 
@@ -200,12 +204,11 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s1">&#39;ou24.tds_base&#39;</span><span class="p">),</span> <span class="s1">&#39;Roman_TDS_obseq_11_6_23.fits&#39;</span> <span class="p">)</span>
-             <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">path</span> <span class="p">)</span></div>
-
+             <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">path</span> <span class="p">)</span>
 
 
 <div class="viewcode-block" id="get_roman_bands">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_roman_bands">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_roman_bands.html#phrosty.utils.get_roman_bands">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_roman_bands</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get roman passbands.</span>
 
@@ -219,7 +222,7 @@
 
 
 <div class="viewcode-block" id="read_truth_txt">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.read_truth_txt">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.read_truth_txt.html#phrosty.utils.read_truth_txt">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">read_truth_txt</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pointing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sca</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reads in the txt versions of the OpenUniverse truth files as convenient astropy tables.</span>
 
@@ -253,7 +256,7 @@
 
 
 <div class="viewcode-block" id="radec_isin">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.radec_isin">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.radec_isin.html#phrosty.utils.radec_isin">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">radec_isin</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pointing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sca</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if a given RA, dec coordinate is in a given target image.</span>
 
@@ -298,7 +301,7 @@
 
 
 <div class="viewcode-block" id="get_corners">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_corners">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_corners.html#phrosty.utils.get_corners">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_corners</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pointing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sca</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieves the RA, dec of the corners of the specified SCA in degrees.</span>
 
@@ -343,7 +346,7 @@
 
 
 <div class="viewcode-block" id="get_transient_radec">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_transient_radec">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_transient_radec.html#phrosty.utils.get_transient_radec">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_transient_radec</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve RA, dec of a transient based on its object ID in the OpenUniverse sims.</span>
 
@@ -375,7 +378,7 @@
 
 
 <div class="viewcode-block" id="get_transient_mjd">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_transient_mjd">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_transient_mjd.html#phrosty.utils.get_transient_mjd">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_transient_mjd</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve start and end dates of a transient in the OpenUniverse sims based on its object ID.</span>
 
@@ -408,7 +411,7 @@
 
 
 <div class="viewcode-block" id="get_transient_zcmb">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_transient_zcmb">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_transient_zcmb.html#phrosty.utils.get_transient_zcmb">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_transient_zcmb</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
 
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve z_CMB of a transient in the OpenUniverse sims based on its object ID.</span>
@@ -439,7 +442,7 @@
 
 
 <div class="viewcode-block" id="get_transient_peakmjd">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_transient_peakmjd">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_transient_peakmjd.html#phrosty.utils.get_transient_peakmjd">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_transient_peakmjd</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
 
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve MJD of peak brightness for a transient object in the OpenUniverse sims.</span>
@@ -470,7 +473,7 @@
 
 
 <div class="viewcode-block" id="get_transient_info">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_transient_info">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_transient_info.html#phrosty.utils.get_transient_info">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_transient_info</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve RA, Dec, start MJD, and end MJD for a specified object in the OpenUnvierse sims.</span>
 
@@ -508,7 +511,7 @@
 
 
 <div class="viewcode-block" id="transient_in_or_out">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.transient_in_or_out">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.transient_in_or_out.html#phrosty.utils.transient_in_or_out">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">transient_in_or_out</span><span class="p">(</span><span class="n">oid</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">band</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve pointings that contain and do not contain the specified SN, per the truth files by MJD.</span>
 
@@ -534,7 +537,7 @@
 
 
 <div class="viewcode-block" id="get_mjd_limits">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_mjd_limits">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_mjd_limits.html#phrosty.utils.get_mjd_limits">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_mjd_limits</span><span class="p">(</span><span class="n">obseq_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrive the earliest and latest MJD in the OpenUniverse TDS simulations.</span>
 
@@ -564,7 +567,7 @@
 
 
 <div class="viewcode-block" id="get_radec_limits">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_radec_limits">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_radec_limits.html#phrosty.utils.get_radec_limits">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_radec_limits</span><span class="p">(</span><span class="n">obseq_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve the RA, dec limits of the boresight coordinates of the simulated TDS OpenUniverse survey in degrees.</span>
 
@@ -594,7 +597,7 @@
 
 
 <div class="viewcode-block" id="get_mjd">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_mjd">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_mjd.html#phrosty.utils.get_mjd">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_mjd</span><span class="p">(</span><span class="n">pointing</span><span class="p">,</span> <span class="n">obseq_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve the MJD of a given pointing in the OpenUniverse TDS simulation.</span>
 
@@ -621,7 +624,7 @@
 
 
 <div class="viewcode-block" id="pointings_near_mjd">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.pointings_near_mjd">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.pointings_near_mjd.html#phrosty.utils.pointings_near_mjd">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">pointings_near_mjd</span><span class="p">(</span><span class="n">mjd</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">obseq_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve pointings near given MJD.</span>
 
@@ -650,7 +653,7 @@
 
 
 <div class="viewcode-block" id="get_mjd_info">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_mjd_info">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_mjd_info.html#phrosty.utils.get_mjd_info">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_mjd_info</span><span class="p">(</span><span class="n">mjd_start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">mjd_end</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">obseq_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all pointings and corresponding filters between two MJDs.</span>
 
@@ -691,7 +694,7 @@
 
 
 <div class="viewcode-block" id="get_exptime">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.get_exptime">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.get_exptime.html#phrosty.utils.get_exptime">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_exptime</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieves exposure times from the TDS OpenUniverse sims.</span>
@@ -727,7 +730,7 @@
 
 
 <div class="viewcode-block" id="make_object_table">
-<a class="viewcode-back" href="../../api.html#phrosty.utils.make_object_table">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.utils.make_object_table.html#phrosty.utils.make_object_table">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">make_object_table</span><span class="p">(</span><span class="n">oid</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieves a table with all images that contain the RA, Dec coordinates of a specified transient.</span>
 

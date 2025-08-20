@@ -1,0 +1,6 @@
+sky_subtract
+============
+
+.. currentmodule:: phrosty.imagesubtraction
+
+.. autofunction:: sky_subtract

@@ -4,12 +4,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phrosty.pipeline &#8212; phrosty 0.1.dev1+ge09c620a9 documentation</title>
+    <title>phrosty.pipeline &#8212; phrosty 0.1.dev1+ga26093841 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
-    <script src="../../_static/documentation_options.js?v=f2789e37"></script>
+    <script src="../../_static/documentation_options.js?v=a5285450"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -87,7 +87,9 @@
           <div class="body" role="main">
             
   <h1>Source code for phrosty.pipeline</h1><div class="highlight"><pre>
-<span></span><span class="c1"># Imports STANDARD</span>
+<span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span> <span class="s1">&#39;PipelineImage&#39;</span><span class="p">,</span> <span class="s1">&#39;Pipeline&#39;</span> <span class="p">]</span>
+
+<span class="c1"># Imports STANDARD</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">cupy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cp</span>
@@ -125,7 +127,7 @@
 
 
 <div class="viewcode-block" id="PipelineImage">
-<a class="viewcode-back" href="../../api.html#phrosty.pipeline.PipelineImage">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.pipeline.PipelineImage.html#phrosty.pipeline.PipelineImage">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PipelineImage</span><span class="p">:</span>
 
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Holds a snappl.image.Image, with some other stuff the pipeline needs.&quot;&quot;&quot;</span>
@@ -196,6 +198,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">psfobj</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">psf_data</span> <span class="o">=</span> <span class="kc">None</span>
 
+<div class="viewcode-block" id="PipelineImage.run_sky_subtract">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.PipelineImage.html#phrosty.pipeline.PipelineImage.run_sky_subtract">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">run_sky_subtract</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">mp</span><span class="o">=</span><span class="kc">True</span> <span class="p">):</span>
         <span class="c1"># Eventually, we may not want to save the sky subtracted image, but keep</span>
         <span class="c1">#   it in memory.  (Reduce I/O.)  Will require SFFT changes.</span>
@@ -226,16 +230,20 @@
             <span class="k">return</span> <span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">skysub_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">detmask_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">skyrms</span> <span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span> <span class="n">ex</span> <span class="p">)</span>
-            <span class="k">raise</span>
+            <span class="k">raise</span></div>
 
+
+<div class="viewcode-block" id="PipelineImage.save_sky_subtract_info">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.PipelineImage.html#phrosty.pipeline.PipelineImage.save_sky_subtract_info">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_sky_subtract_info</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">info</span> <span class="p">):</span>
         <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;Saving sky_subtract info for path </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">skysub_path</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">detmask_path</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">skyrms</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skyrms</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span></div>
+
 
 <div class="viewcode-block" id="PipelineImage.get_psf">
-<a class="viewcode-back" href="../../api.html#phrosty.pipeline.PipelineImage.get_psf">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.pipeline.PipelineImage.html#phrosty.pipeline.PipelineImage.get_psf">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_psf</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the at the right spot on the image.</span>
 
@@ -267,11 +275,14 @@
         <span class="k">return</span> <span class="n">stamp</span></div>
 
 
+<div class="viewcode-block" id="PipelineImage.keep_psf_data">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.PipelineImage.html#phrosty.pipeline.PipelineImage.keep_psf_data">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">keep_psf_data</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">psf_data</span> <span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">psf_data</span> <span class="o">=</span> <span class="n">psf_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">psf_data</span> <span class="o">=</span> <span class="n">psf_data</span></div>
+
 
 <div class="viewcode-block" id="PipelineImage.free">
-<a class="viewcode-back" href="../../api.html#phrosty.pipeline.PipelineImage.free">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.pipeline.PipelineImage.html#phrosty.pipeline.PipelineImage.free">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">free</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Try to free memory.  More might be done here.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">free</span><span class="p">()</span></div>
@@ -280,7 +291,7 @@
 
 
 <div class="viewcode-block" id="Pipeline">
-<a class="viewcode-back" href="../../api.html#phrosty.pipeline.Pipeline">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Pipeline</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Phrosty&#39;s top-level pipeline&quot;&quot;&quot;</span>
 
@@ -342,6 +353,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">mem_trace</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;photometry.phrosty.mem_trace&#39;</span> <span class="p">)</span>
 
 
+<div class="viewcode-block" id="Pipeline.sky_sub_all_images">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.sky_sub_all_images">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">sky_sub_all_images</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="c1"># Currently, this writes out a bunch of FITS files.  Further refactoring needed</span>
         <span class="c1">#   to support more general image types.</span>
@@ -362,9 +375,12 @@
                 <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">all_imgs</span><span class="p">:</span>
-                <span class="n">img</span><span class="o">.</span><span class="n">save_sky_subtract_info</span><span class="p">(</span> <span class="n">img</span><span class="o">.</span><span class="n">run_sky_subtract</span><span class="p">(</span> <span class="n">mp</span><span class="o">=</span><span class="kc">False</span> <span class="p">)</span> <span class="p">)</span>
+                <span class="n">img</span><span class="o">.</span><span class="n">save_sky_subtract_info</span><span class="p">(</span> <span class="n">img</span><span class="o">.</span><span class="n">run_sky_subtract</span><span class="p">(</span> <span class="n">mp</span><span class="o">=</span><span class="kc">False</span> <span class="p">)</span> <span class="p">)</span></div>
 
 
+
+<div class="viewcode-block" id="Pipeline.get_psfs">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.get_psfs">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_psfs</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="n">all_imgs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">science_images</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>     <span class="c1"># shallow copy</span>
         <span class="n">all_imgs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span> <span class="p">)</span>
@@ -380,11 +396,12 @@
                 <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">all_imgs</span><span class="p">:</span>
-                <span class="n">img</span><span class="o">.</span><span class="n">keep_psf_data</span><span class="p">(</span> <span class="n">img</span><span class="o">.</span><span class="n">get_psf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ra</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dec</span><span class="p">)</span> <span class="p">)</span>
+                <span class="n">img</span><span class="o">.</span><span class="n">keep_psf_data</span><span class="p">(</span> <span class="n">img</span><span class="o">.</span><span class="n">get_psf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ra</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dec</span><span class="p">)</span> <span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="Pipeline.align_and_pre_convolve">
-<a class="viewcode-back" href="../../api.html#phrosty.pipeline.Pipeline.align_and_pre_convolve">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.align_and_pre_convolve">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">align_and_pre_convolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">templ_image</span><span class="p">,</span> <span class="n">sci_image</span> <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Align and pre convolve a single template/science pair.</span>
 
@@ -431,7 +448,7 @@
 
 
 <div class="viewcode-block" id="Pipeline.phot_at_coords">
-<a class="viewcode-back" href="../../api.html#phrosty.pipeline.Pipeline.phot_at_coords">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.phot_at_coords">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">phot_at_coords</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">psf</span><span class="p">,</span> <span class="n">pxcoords</span><span class="o">=</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span> <span class="n">ap_r</span><span class="o">=</span><span class="mi">4</span> <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Do photometry at forced set of pixel coordinates.&quot;&quot;&quot;</span>
 
@@ -457,7 +474,7 @@
 
 
 <div class="viewcode-block" id="Pipeline.get_stars">
-<a class="viewcode-back" href="../../api.html#phrosty.pipeline.Pipeline.get_stars">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.get_stars">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_stars</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">truthpath</span><span class="p">,</span> <span class="n">nx</span><span class="o">=</span><span class="mi">4088</span><span class="p">,</span> <span class="n">ny</span><span class="o">=</span><span class="mi">4088</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">wcs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the stars in the science images.</span>
 
@@ -487,15 +504,18 @@
         <span class="k">return</span> <span class="n">stars</span></div>
 
 
+<div class="viewcode-block" id="Pipeline.get_galsim_values">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.get_galsim_values">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_galsim_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">exptime</span> <span class="o">=</span> <span class="n">get_exptime</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="p">)</span>
         <span class="n">area_eff</span> <span class="o">=</span> <span class="n">roman</span><span class="o">.</span><span class="n">collecting_area</span>
         <span class="n">gs_zpt</span> <span class="o">=</span> <span class="n">roman</span><span class="o">.</span><span class="n">getBandpasses</span><span class="p">()[</span><span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="p">]</span><span class="o">.</span><span class="n">zeropoint</span>
 
-        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;exptime&#39;</span><span class="p">:</span> <span class="n">exptime</span><span class="p">,</span> <span class="s1">&#39;area_eff&#39;</span><span class="p">:</span> <span class="n">area_eff</span><span class="p">,</span> <span class="s1">&#39;gs_zpt&#39;</span><span class="p">:</span> <span class="n">gs_zpt</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;exptime&#39;</span><span class="p">:</span> <span class="n">exptime</span><span class="p">,</span> <span class="s1">&#39;area_eff&#39;</span><span class="p">:</span> <span class="n">area_eff</span><span class="p">,</span> <span class="s1">&#39;gs_zpt&#39;</span><span class="p">:</span> <span class="n">gs_zpt</span><span class="p">}</span></div>
+
 
 <div class="viewcode-block" id="Pipeline.get_zpt">
-<a class="viewcode-back" href="../../api.html#phrosty.pipeline.Pipeline.get_zpt">[docs]</a>
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.get_zpt">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_zpt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">zptimg</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">psf</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="n">stars</span><span class="p">,</span> <span class="n">ap_r</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
                 <span class="n">zpt_plot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sci_pointing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sci_sca</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 
@@ -564,6 +584,8 @@
         <span class="k">return</span> <span class="n">zpt</span><span class="p">,</span> <span class="n">ap_zpt</span></div>
 
 
+<div class="viewcode-block" id="Pipeline.make_phot_info_dict">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.make_phot_info_dict">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">make_phot_info_dict</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span><span class="p">,</span> <span class="n">ap_r</span><span class="o">=</span><span class="mi">4</span> <span class="p">):</span>
         <span class="c1"># Do photometry on stamp because it will read faster</span>
         <span class="n">diff_img_stamp_path</span> <span class="o">=</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">diff_stamp_path</span><span class="p">[</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span> <span class="p">]</span>
@@ -634,17 +656,26 @@
             <span class="n">results_dict</span><span class="p">[</span><span class="s1">&#39;mag_fit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
             <span class="n">results_dict</span><span class="p">[</span><span class="s1">&#39;mag_fit_err&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-        <span class="k">return</span> <span class="n">results_dict</span>
+        <span class="k">return</span> <span class="n">results_dict</span></div>
 
+
+<div class="viewcode-block" id="Pipeline.add_to_results_dict">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.add_to_results_dict">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">add_to_results_dict</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">one_pair</span> <span class="p">):</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">one_pair</span><span class="p">[</span> <span class="n">key</span> <span class="p">]</span> <span class="p">)</span>
+            <span class="n">arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">one_pair</span><span class="p">[</span> <span class="n">key</span> <span class="p">]</span> <span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="Pipeline.save_stamp_paths">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.save_stamp_paths">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_stamp_paths</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span><span class="p">,</span> <span class="n">paths</span> <span class="p">):</span>
         <span class="n">sci_image</span><span class="o">.</span><span class="n">zpt_stamp_path</span><span class="p">[</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span> <span class="p">]</span> <span class="o">=</span> <span class="n">paths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">sci_image</span><span class="o">.</span><span class="n">diff_stamp_path</span><span class="p">[</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span> <span class="p">]</span> <span class="o">=</span> <span class="n">paths</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">sci_image</span><span class="o">.</span><span class="n">diff_var_stamp_path</span><span class="p">[</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span> <span class="p">]</span> <span class="o">=</span> <span class="n">paths</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">sci_image</span><span class="o">.</span><span class="n">diff_var_stamp_path</span><span class="p">[</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span> <span class="p">]</span> <span class="o">=</span> <span class="n">paths</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span></div>
 
+
+<div class="viewcode-block" id="Pipeline.do_stamps">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.do_stamps">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">do_stamps</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span> <span class="p">):</span>
 
         <span class="n">zptname</span> <span class="o">=</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">decorr_zptimg_path</span><span class="p">[</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span> <span class="p">]</span>
@@ -669,8 +700,11 @@
         <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Zpt image stamp path: </span><span class="si">{</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="w"> </span><span class="n">zpt_stampname</span><span class="w"> </span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Decorrelated diff variance stamp path: </span><span class="si">{</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="w"> </span><span class="n">diffvar_stampname</span><span class="w"> </span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="n">zpt_stampname</span> <span class="p">),</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="n">diff_stampname</span> <span class="p">),</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="n">diffvar_stampname</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="n">zpt_stampname</span> <span class="p">),</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="n">diff_stampname</span> <span class="p">),</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="n">diffvar_stampname</span> <span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="Pipeline.make_lightcurve">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.make_lightcurve">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">make_lightcurve</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">&quot;Making lightcurve.&quot;</span> <span class="p">)</span>
 
@@ -715,11 +749,17 @@
         <span class="n">results_savedir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
         <span class="n">results_savepath</span> <span class="o">=</span> <span class="n">results_savedir</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">object_id</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="si">}</span><span class="s1">_all.csv&#39;</span>
         <span class="n">results_tab</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">results_savepath</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;csv&#39;</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Results saved to </span><span class="si">{</span><span class="n">results_savepath</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Results saved to </span><span class="si">{</span><span class="n">results_savepath</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="Pipeline.write_fits_file">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.write_fits_file">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">write_fits_file</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">savepath</span> <span class="p">):</span>
-        <span class="n">fits</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span> <span class="n">savepath</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
+        <span class="n">fits</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span> <span class="n">savepath</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="Pipeline.clear_contents">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.clear_contents">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">clear_contents</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">directory</span> <span class="p">):</span>
         <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">directory</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
             <span class="k">try</span><span class="p">:</span>
@@ -729,8 +769,11 @@
                     <span class="n">f</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
 
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span> <span class="sa">f</span><span class="s1">&#39;Oops! Deleting </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s1"> from </span><span class="si">{</span><span class="n">directory</span><span class="si">}</span><span class="s1"> did not work.</span><span class="se">\n</span><span class="s1">Reason: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">&#39;</span> <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span> <span class="sa">f</span><span class="s1">&#39;Oops! Deleting </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s1"> from </span><span class="si">{</span><span class="n">directory</span><span class="si">}</span><span class="s1"> did not work.</span><span class="se">\n</span><span class="s1">Reason: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">&#39;</span> <span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="Pipeline.__call__">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.__call__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">through_step</span><span class="o">=</span><span class="kc">None</span> <span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_trace</span><span class="p">:</span>
             <span class="n">tracemalloc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
@@ -950,6 +993,7 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">remove_temp_dir</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">clear_contents</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">temp_dir</span> <span class="p">)</span></div>
+</div>
 
 
                 <span class="c1"># ======================================================================</span>

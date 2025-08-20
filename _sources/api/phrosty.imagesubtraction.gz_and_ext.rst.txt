@@ -1,0 +1,6 @@
+gz_and_ext
+==========
+
+.. currentmodule:: phrosty.imagesubtraction
+
+.. autofunction:: gz_and_ext

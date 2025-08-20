@@ -7,23 +7,19 @@ phrosty API
 phrosty.imagesubtraction
 ------------------------
 
-.. automodule:: phrosty.imagesubtraction
-   :members:
+.. automodapi:: phrosty.imagesubtraction
 
 phrosty.photometry
 ------------------
       
-.. automodule:: phrosty.photometry
-   :members:
+.. automodapi:: phrosty.photometry
 
 phrosty.pipeline
 ----------------
       
-.. automodule:: phrosty.pipeline
-   :members:
+.. automodapi:: phrosty.pipeline
 
 phrosty.utils
 -------------
       
-.. automodule:: phrosty.utils
-   :members:
+.. automodapi:: phrosty.utils

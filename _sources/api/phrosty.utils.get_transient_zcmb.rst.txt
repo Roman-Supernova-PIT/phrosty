@@ -1,0 +1,6 @@
+get_transient_zcmb
+==================
+
+.. currentmodule:: phrosty.utils
+
+.. autofunction:: get_transient_zcmb

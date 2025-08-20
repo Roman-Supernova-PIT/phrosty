@@ -1,0 +1,45 @@
+Pipeline
+========
+
+.. currentmodule:: phrosty.pipeline
+
+.. autoclass:: Pipeline
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Pipeline.__call__
+      ~Pipeline.add_to_results_dict
+      ~Pipeline.align_and_pre_convolve
+      ~Pipeline.clear_contents
+      ~Pipeline.do_stamps
+      ~Pipeline.get_galsim_values
+      ~Pipeline.get_psfs
+      ~Pipeline.get_stars
+      ~Pipeline.get_zpt
+      ~Pipeline.make_lightcurve
+      ~Pipeline.make_phot_info_dict
+      ~Pipeline.phot_at_coords
+      ~Pipeline.save_stamp_paths
+      ~Pipeline.sky_sub_all_images
+      ~Pipeline.write_fits_file
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: __call__
+   .. automethod:: add_to_results_dict
+   .. automethod:: align_and_pre_convolve
+   .. automethod:: clear_contents
+   .. automethod:: do_stamps
+   .. automethod:: get_galsim_values
+   .. automethod:: get_psfs
+   .. automethod:: get_stars
+   .. automethod:: get_zpt
+   .. automethod:: make_lightcurve
+   .. automethod:: make_phot_info_dict
+   .. automethod:: phot_at_coords
+   .. automethod:: save_stamp_paths
+   .. automethod:: sky_sub_all_images
+   .. automethod:: write_fits_file
