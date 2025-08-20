@@ -21,9 +21,9 @@ from sphinx.ext.autodoc import AttributeDocumenter
 
 # Make sure the phrosty module can be found so we can document the API
 
-sys.path.insert( 0, str( pathlib.Path( '..' ).resolve() ) )
-autodoc_mock_imports = [ 'astropy', 'cupy', 'galsim', 'matplotlib', 'numpy', 'nvtx', 'pandas', 'photutils',
-                         'sfft', 'snpit_utils', 'snappl' ]
+# sys.path.insert( 0, str( pathlib.Path( '..' ).resolve() ) )
+# autodoc_mock_imports = [ 'astropy', 'cupy', 'galsim', 'matplotlib', 'numpy', 'nvtx', 'pandas', 'photutils',
+#                          'sfft', 'snpit_utils', 'snappl' ]
 
 
 # -- Project information -----------------------------------------------------

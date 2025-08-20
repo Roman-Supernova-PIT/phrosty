@@ -17,6 +17,17 @@ classifiers = [
   "Programming Language :: Python"
 ]
 dependencies = [
+  "astropy",
+  "cupy",
+  "galsim",
+  "matplotlib",
+  "numpy",
+  "nvtx",
+  "pandas",
+  "photutils",
+  "snpit-utils",
+  "roman-snpit-snappl",
+  "sfft-romansnpit",
   "towncrier",
   "setuptools_scm",
   "cruft",
