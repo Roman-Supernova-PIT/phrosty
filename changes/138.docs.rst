@@ -1,0 +1,1 @@
+Make API docs look better, add more dependencies to pyproject.toml

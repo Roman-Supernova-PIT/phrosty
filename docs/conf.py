@@ -22,8 +22,19 @@ from sphinx.ext.autodoc import AttributeDocumenter
 # Make sure the phrosty module can be found so we can document the API
 
 sys.path.insert( 0, str( pathlib.Path( '..' ).resolve() ) )
-autodoc_mock_imports = [ 'astropy', 'cupy', 'galsim', 'matplotlib', 'numpy', 'nvtx', 'pandas', 'photutils',
-                         'sfft', 'snpit_utils', 'snappl' ]
+# Ideally, we just need this next variable.  However,
+#  while it works with the autmodule directive,
+#  it does not work with the automodapi directive.
+#  See https://github.com/astropy/sphinx-automodapi/issues/148
+# autodoc_mock_imports = [ 'roman_imsim' ]
+#
+# So, instead, we do it manually.  You will need to add mock to
+# the docs list in [project.optional-dependencies] in pyproject.tom.
+import mock
+things_to_mock = [ 'roman_imsim', 'roman_imsim.utils' ]
+for mod in things_to_mock:
+    sys.modules[ mod ] = mock.MagicMock()
+
 
 
 # -- Project information -----------------------------------------------------
