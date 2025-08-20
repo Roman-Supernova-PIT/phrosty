@@ -18,7 +18,7 @@ classifiers = [
 ]
 dependencies = [
   "astropy",
-  "cupy",
+  "cupy-cuda12x",
   "galsim",
   "matplotlib",
   "numpy",
