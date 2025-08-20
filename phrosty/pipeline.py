@@ -1,3 +1,5 @@
+__all__ = [ 'PipelineImage', 'Pipeline' ]
+
 # Imports STANDARD
 import sys
 import argparse
