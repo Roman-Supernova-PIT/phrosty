@@ -1,26 +1,23 @@
 __all__ = [ 'gz_and_ext', 'sky_subtract', 'stampmaker' ]
 
 # IMPORTS Standard:
-import os
 import io
 import numpy as np
 import gzip
 import multiprocessing
 import shutil
 import pathlib
+import random
 
 # IMPORTS Astro:
 from astropy.io import fits
-from astropy.coordinates import SkyCoord
-from astropy.wcs.utils import skycoord_to_pixel
-import astropy.units as u
-from astropy.wcs import WCS
 
 # IMPORTS SFFT:
 from sfft.utils.SExSkySubtract import SEx_SkySubtract
 from sfft.utils.StampGenerator import Stamp_Generator
 
 # IMPORTS internal
+import snappl.image
 from snpit_utils.logger import SNLogger
 from snpit_utils.config import Config
 
@@ -44,6 +41,8 @@ def gz_and_ext(in_path, out_path):
 
     """
 
+    raise RuntimeError( "No longer needed." )
+
     bio = io.BytesIO()
     with gzip.open(in_path, 'rb') as f_in:
         shutil.copyfileobj(f_in, bio)
@@ -59,68 +58,89 @@ def gz_and_ext(in_path, out_path):
     return out_path
 
 
-def sky_subtract( inpath, skysubpath, detmaskpath, temp_dir=pathlib.Path("/tmp"), force=False ):
+def sky_subtract( img, temp_dir=None ):
     """Subtracts background, found with Source Extractor.
 
     Parameters
     ----------
-      inpath: Path
-        Original FITS image
+      img: Image
+        Original image.
 
-      skysubpath: Path
-        Sky-subtracted FITS image
-
-      detmaskpath: Path
-        Detection Mask FITS Image.  (Will be uint8, I think.)
-
-      temp_dir: Path
+      temp_dir: Path, default None
         Already-existing directory where we can write a temporary file.
-        (If the image is .gz compressed, source-extractor can't handle
-        that, so we have to write a decompressed version.)
-
-      force: bool, default False
-        If False, and outpath already exists, do nothing.  If True,
-        clobber the existing file and recalculate it.
+        Defaults to photometry.snappl.temp_dir from the config.
 
     Returns
     -------
-      skyrms: float
-        Median of the skyrms image calculated by source-extractor
+      skysubim: snappl.image.FITSFile, detmask: snappl.image.FITSFile, skyrms: float
+
+         skysubim is the sky-subtracted image.  Its location on disk
+         will be underneath temp_dir. It's the caller's responsibility
+         to clean this up.  The file will have been written, so you
+         can pass skysubim.path to any thing that needs the path of a
+         single-HDU FITS image.
+
+         detmask is the detection mask.  Its location on disk will be
+         underneath temp_dir.  It's the caller's responsibility to clean
+         this up.  The file will have been written, so you can pass
+         detmask.path to any thing that needs the path of a single-HDU
+         FITS image.
+
+         skyrms is the median of the skyrms image calculated by source-extractor
 
     """
 
-    if ( not force ) and ( skysubpath.is_file() ) and ( detmaskpath.is_file() ):
-        with fits.open( skysubpath ) as hdul:
-            skyrms = hdul[0].header['SKYRMS']
-        return skyrms
+    # SEx_SkySubtract.SSS requires FITS files to chew on.  At some point
+    # we should refactor this so that we can pass data to it.  However,
+    # for now, write a snappl.image.FITSFile so we have something to
+    # give to it.
 
-    # do_skysub = force or ( ( not force ) and ( not skysubpath.is_file() ) and ( detmaskpath.is_file() ) )
+    temp_dir = pathlib.Path( temp_dir if temp_dir is not None else Config.get().value( 'photometry.snappl.temp_dir' ) )
+    barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
+    tmpimpath = temp_dir / f"{barf}_sub.fits"
+    tmpsubpath = temp_dir / f"{barf}_sub.fits"
+    tmpdetmaskpath = temp_dir / f"{barf}_detmask.fits"
 
-    if inpath.name[-3:] == '.gz':
-        decompressed_path = temp_dir / inpath.name[:-3]
-        gz_and_ext( inpath, decompressed_path )
-    else:
-        decompressed_path = inpath
+    origimg = img
+    try:
+        if isinstance( origimg, snappl.image.FITSFile ):
+            img = origimg.uncompressed_version( include=['data'] )
+        else:
+            img = snappl.image.FITSFile( path=tmpimpath )
+            img.data = origimg.data
+            img.save_data()
+
+        SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
+        ( _SKYDIP, _SKYPEAK, _PixA_skysub,
+          _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=img.pathy,
+                                                         FITS_skysub=tmpsubpath,
+                                                         FITS_detmask=tmpdetmaskpath,
+                                                         FITS_sky=None, FITS_skyrms=None,
+                                                         ESATUR_KEY='ESATUR',
+                                                         BACK_SIZE=64, BACK_FILTERSIZE=3,
+                                                         DETECT_THRESH=1.5, DETECT_MINAREA=5,
+                                                         DETECT_MAXAREA=0,
+                                                         VERBOSE_LEVEL=2, MDIR=None)
+        SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
+
+        subim = snappl.image.FITSFile( path=tmpsubpath )
+        detmaskim = snappl.image.fITSFile( path=tmpdetmaskpath )
+        skyrms = np.median( PixA_skyrms )
+        return subim, detmaskim, skyrms
+
+    finally:
+        # Clean up the image temp file if necessary
+        if img.path != origimg.path:
+            img.path.unlink( missing_ok=True )
 
 
-    SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
-    ( _SKYDIP, _SKYPEAK, _PixA_skysub,
-      _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=decompressed_path,
-                                                     FITS_skysub=skysubpath,
-                                                     FITS_detmask=detmaskpath,
-                                                     FITS_sky=None, FITS_skyrms=None,
-                                                     ESATUR_KEY='ESATUR',
-                                                     BACK_SIZE=64, BACK_FILTERSIZE=3,
-                                                     DETECT_THRESH=1.5, DETECT_MINAREA=5,
-                                                     DETECT_MAXAREA=0,
-                                                     VERBOSE_LEVEL=2, MDIR=None)
-    SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
-
-    return np.median( PixA_skyrms )
-
-
-def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
+def stampmaker(ra, dec, shape, img, savedir=None, savename=None):
     """Make stamps.
+
+    TODO : pass an array of ra and dec to make this more efficient;
+    otherwise, we may be writing and deleting a FITS image over and over
+    again!
+
 
     Parameters
     ----------
@@ -133,14 +153,15 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
       shape: np.array
         Shape of stamp. must be a numpy array. e.g. np.array([100,100])
 
-      imgpath: Path
-        Path to image that stamp will be extracted from.
+      img: Image
+        Image from whose data the stamp will be extracted.
 
-      savedir: Path
-        Directory stamp will be saved to.
+      savedir: Path, default None
+        Directory stamp will be saved to.  Defaults to "stamps" underneath
+        phtometry.phrosty.paths.dia_out_dir from the config.
 
-      savename: Path
-        Base name of stamp filepath.
+      savename: Path, default None
+        Base name of stamp filepath; defaults to the name from img's path.
 
     Returns
     -------
@@ -156,21 +177,29 @@ def stampmaker(ra, dec, shape, imgpath, savedir=None, savename=None):
         savedir = pathlib.Path( savedir )
     savedir.mkdir( parents=True, exist_ok=True )
 
-    if savename is None:
-        savename = f'stamp_{os.path.basename(imgpath)}.fits'
+    savepath = savedir / ( savename if savename is not None else f'stamp_{img.path.stem}.fits' )
 
-    savepath = savedir / savename
-
-    coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-    with fits.open(imgpath) as hdu:
-        hdun = 1 if str(imgpath)[-3:] in ('.fz', '.gz') else 0
-        wcs = WCS(hdu[hdun].header)
-
-    x, y = skycoord_to_pixel(coord, wcs)
+    x, y = img.get_wcs().world_to_pixel( ra, dec )
     pxradec = np.array([[x, y]])
 
-    # TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()
-    Stamp_Generator.SG(FITS_obj=imgpath, EXTINDEX=hdun, COORD=pxradec, COORD_TYPE='IMAGE',
-                       STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=str(savepath))
+    # Give Stamp_Generator.SG a FITS image to chew on
+    origimg = img
+    try:
+        if isinstance( origimg, snappl.image.FITSFile ):
+            img = origimg.uncompressed_version( include=['data'] )
+        else:
+            barf = "".join( random.choices( "0123456789abcdef:", k=10 ) )
+            img = snappl.image.FITSFile( path=savedir / f"{barf}.fits" )
+            img.data = origimg.data
+            img.save_data()
 
-    return savepath
+        # TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()
+        Stamp_Generator.SG(FITS_obj=img.path, EXTINDEX=0, COORD=pxradec, COORD_TYPE='IMAGE',
+                           STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=str(savepath))
+
+        return savepath
+
+    finally:
+        # Clean up temp file if necessary
+        if img.path != origimg.path:
+            img.path.unlink( missing_ok=True )

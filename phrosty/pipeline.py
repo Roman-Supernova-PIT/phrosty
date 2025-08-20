@@ -31,6 +31,8 @@ from phrosty.imagesubtraction import sky_subtract, stampmaker
 from phrosty.photometry import ap_phot, psfmodel, psf_phot
 from phrosty.utils import get_exptime, read_truth_txt
 from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
+from snappl.diaobject import DiaObject
+from snappl.imagecollection import ImageCollection
 from snappl.image import OpenUniverse2024FITSImage
 from snappl.psf import PSF
 from snpit_utils.config import Config
@@ -81,8 +83,8 @@ class PipelineImage:
             # Set to None. The path gets defined later on.
             # They have to be defined here in __init__ so that they exist
             # and are accessible in later functions.
-            self.skysub_path = None
-            self.detmask_path = None
+            self.skysub_img = None
+            self.detmask_img = None
             self.input_sci_psf_path = None
             self.input_templ_psf_path = None
             self.aligned_templ_img_path = None
@@ -108,41 +110,16 @@ class PipelineImage:
         self.psf_data = None
 
     def run_sky_subtract( self, mp=True ):
-        # Eventually, we may not want to save the sky subtracted image, but keep
-        #   it in memory.  (Reduce I/O.)  Will require SFFT changes.
-        #   (This may not be practical, as it will increase memory usage a *lot*.
-        #   We may still need to write files.)
         try:
-            imname = self.image.name
-            # HACK ALERT : we're stripping the .gz off of the end of filenames
-            #   if they have them, and making sure filenames end in .fits,
-            #   because that's what SFFT needs.  This can go away if we
-            #   refactor to pass data.
-            if imname[-3:] == '.gz':
-                imname = imname[:-3]
-            if imname[-5:] != '.fits':
-                imname = f'{imname}.fits'
-            # Hey Rob--the below is broken. The pipeline runs with mp if I use the
-            # example science image file from examples/perlmutter, but not if I use
-            # my own file. If I run with one process, my own file runs.
-            # if mp:
-            #     SNLogger.multiprocessing_replace()
-            SNLogger.debug( f"run_sky_subtract on {imname}" )
-
-            self.skysub_path = self.save_dir / f"skysub_{imname}"
-            self.detmask_path = self.save_dir / f"detmask_{imname}"
-            self.skyrms = sky_subtract( self.image.path, self.skysub_path, self.detmask_path, temp_dir=self.save_dir,
-                                        force=self.config.value( 'photometry.phrosty.force_sky_subtract' ) )
-            SNLogger.debug( f"...done running sky subtraction on {self.image.name}" )
-            return ( self.skysub_path, self.detmask_path, self.skyrms )
+            return sky_subtract( self.image )
         except Exception as ex:
             SNLogger.exception( ex )
             raise
 
     def save_sky_subtract_info( self, info ):
         SNLogger.debug( f"Saving sky_subtract info for path {info[0]}" )
-        self.skysub_path = info[0]
-        self.detmask_path = info[1]
+        self.skysub_img = info[0]
+        self.detmask_img = info[1]
         self.skyrms = info[2]
 
     def get_psf( self, ra, dec ):
@@ -186,17 +163,15 @@ class PipelineImage:
 class Pipeline:
     """Phrosty's top-level pipeline"""
 
-    def __init__( self, object_id, ra, dec, band, science_images, template_images, nprocs=1, nwrite=5,
+    def __init__( self, diaobj, imgcol, band, science_images, template_images, nprocs=1, nwrite=5,
                   verbose=False ):
 
         """Create the a pipeline object.
 
         Parameters
         ----------
-           object_id: int
-
-           ra, dec: float
-             Position of transient in decimal degrees
+           diaobj : DiaObject
+             The object we're building a lightcurve for
 
            band: str
              One of R062, Z087, Y106, J129, H158, F184, K213
@@ -219,8 +194,10 @@ class Pipeline:
 
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.config = Config.get()
-        self.tds_base_dir = pathlib.Path( self.config.value( 'ou24.tds_base' ) )
-        self.image_base_dir = self.tds_base_dir / 'images'
+        self.imgcol = imgcol
+        self.diaobj = diaobj
+        self.band = band
+
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
         self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
         self.temp_dir_parent = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
@@ -228,13 +205,9 @@ class Pipeline:
         self.temp_dir.mkdir()
         self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
 
-        self.object_id = object_id
-        self.ra = ra
-        self.dec = dec
-        self.band = band
-        self.science_images = ( [ PipelineImage( self.image_base_dir / ppsmb[0], ppsmb[1], ppsmb[2], self )
+        self.science_images = ( [ PipelineImage( self.imgcol.base_path / ppsmb[0], ppsmb[1], ppsmb[2], self )
                                   for ppsmb in science_images if ppsmb[4] == self.band ] )
-        self.template_images = ( [ PipelineImage( self.image_base_dir / ppsmb[0], ppsmb[1], ppsmb[2], self )
+        self.template_images = ( [ PipelineImage( self.imgcol.base_path / ppsmb[0], ppsmb[1], ppsmb[2], self )
                                    for ppsmb in template_images if ppsmb[4] == self.band ] )
         self.nprocs = nprocs
         self.nwrite = nwrite
@@ -867,15 +840,26 @@ def main():
     parser = argparse.ArgumentParser()
     # Put in the config_file argument, even though it will never be found, so it shows up in help
     parser.add_argument( '-c', '--config-file', help="Location of the .yaml config file" )
-    parser.add_argument( '--oid', type=int, required=True, help="Object ID" )
-    parser.add_argument( '-r', '--ra', type=float, required=True, help="Object RA" )
-    parser.add_argument( '-d', '--dec', type=float, required=True, help="Object Dec" )
+    parser.add_argument( '--object-collection', '--oc', required=True,
+                         help='Collection of the object.  Currently only "ou2024" and "manual" supported.' )
+    parser.add_argument( '--object-subset', '--os', default=None,
+                         help="Collection subset.  Not used by all collections." )
+    parser.add_argument( '--oid', type=int, required=True,
+                         help="Object ID.  Meaning is collection-dependent." )
+    parser.add_argument( '-r', '--ra', type=float, default=None,
+                         help="Object RA.  By default, uses the one found for the object." )
+    parser.add_argument( '-d', '--dec', type=float, default=None,
+                         help="Object Dec.  By default, uses the one found for the object." )
     parser.add_argument( '-b', '--band', type=str, required=True,
                          help="Band: R062, Z087, Y106, J129, H158, F184, or K213" )
+    parser.add_argument( '--image-collection', '--ic', required=True, help="Collection of the images we're using" )
+    parser.add_argument( '--image-subset', '--is', default=None, help="Image collection subset" )
+    parser.add_argument( '-b', '--base-path', type=str, default=None,
+                         help='Base path for images.  Required for "manual_fits" image collection' )
     parser.add_argument( '-t', '--template-images', type=str, required=True,
-                         help="Path to file with, per line, ( path_to_image, pointing, sca )" )
+                         help="Path to file with, per line, ( path_to_image, pointing, sca, mjd, band )" )
     parser.add_argument( '-s', '--science-images', type=str, required=True,
-                         help="Path to file with, per line, ( path_to_image, pointing, sca )" )
+                         help="Path to file with, per line, ( path_to_image, pointing, sca, mjd, band )" )
     parser.add_argument( '-p', '--nprocs', type=int, default=1,
                          help="Number of process for multiprocessing steps (e.g. skysub)" )
     parser.add_argument( '-w', '--nwrite', type=int, default=5, help="Number of parallel FITS writing processes" )
@@ -886,6 +870,29 @@ def main():
     cfg.augment_argparse( parser )
     args = parser.parse_args( leftovers )
     cfg.parse_args( args )
+
+    # Get the DiaObject, update the RA and Dec
+
+    diaobjs = DiaObject.find_objects( collection=args.object_collectoin, subset=args.object_subset,
+                                      id=args.oid, ra=args.ra, dec=args.dec )
+    if len( diaobjs ) == 0:
+        raise ValueError( f"Could not find DiaObject with id={args.id}, ra={args.ra}, dec={args.dec}." )
+    if len( diaobjs ) > 1:
+        raise ValueError( f"Found multiple DiaObject with id={args.id}, ra={args.ra}, dec={args.dec}." )
+    diaobj = diaobjs[0]
+    if args.ra is not None:
+        if np.fabs( args.ra - diaobj.ra ) > 1. / 3600. / np.cos( diaobj.dec * np.pi / 180. ):
+            SNLogger.warning( f"Given RA {args.ra} is far from DiaObject nominal RA {diaobj.ra}" )
+        diaobj.ra = args.ra
+    if args.dec is not None:
+        if np.fabs( args.dec - diaobj.dec ) > 1. / 3600.:
+            SNLogger.warning( f"Given Dec {args.dec} is far from DiaObject nominal Dec {diaobj.dec}" )
+        diaobj.dec = args.dec
+
+    # Read the image lists
+
+    imgcol = ImageCollection( collection=args.image_collection, subset=args.image_subset,
+                              base_path=args.base_path )
 
     science_images = []
     template_images = []
@@ -899,7 +906,9 @@ def main():
                 img, point, sca, mjd, band = line.split()
                 imlist.append( ( pathlib.Path(img), int(point), int(sca), float(mjd), band ) )
 
-    pipeline = Pipeline( args.oid, args.ra, args.dec, args.band, science_images, template_images,
+    # Make the Pipeline
+
+    pipeline = Pipeline( diaobj, imgcol, args.band, science_images, template_images,
                          nprocs=args.nprocs, nwrite=args.nwrite, verbose=args.verbose )
     pipeline( args.through_step )
 

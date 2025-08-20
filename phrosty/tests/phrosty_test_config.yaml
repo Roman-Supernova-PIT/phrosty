@@ -6,7 +6,7 @@ ou24:
   # sn_truth_dir: /snana_pq_dir
 
   images: /photometry_test_data/ou2024/images
-  
+
   sims_sed_library: /photometry_test_data/ou2024/sims_sed_library
   # Comment from Cole & Rob: This is a path to the SEDs that were used to generate the
   # OU24 simulations.  Only a subset of the files are stored in
@@ -19,6 +19,7 @@ ou24:
 photometry:
   snappl:
       A25ePSF_path: /snappl/snappl/tests/testdata/A25ePSF
+      temp_dir: /phrosty_temp
 
   phrosty:
     image_type: ou2024fits
@@ -27,7 +28,7 @@ photometry:
     remove_temp_dir: false
     mem_trace: false
     kerpolyorder: 2
-    
+
     paths:
       scratch_dir: /phrosty_temp
       temp_dir: /phrosty_temp
