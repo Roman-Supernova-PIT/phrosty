@@ -72,7 +72,7 @@ def sky_subtract( img, temp_dir=None ):
 
     Returns
     -------
-      skysubim: snappl.image.FITSFile, detmask: snappl.image.FITSFile, skyrms: float
+      skysubim: snappl.image.FITSImageOnDisk, detmask: snappl.image.FITSImageOnDisk, skyrms: float
 
          skysubim is the sky-subtracted image.  Its location on disk
          will be underneath temp_dir. It's the caller's responsibility
@@ -92,8 +92,8 @@ def sky_subtract( img, temp_dir=None ):
 
     # SEx_SkySubtract.SSS requires FITS files to chew on.  At some point
     # we should refactor this so that we can pass data to it.  However,
-    # for now, write a snappl.image.FITSFile so we have something to
-    # give to it.
+    # for now, write a snappl.image.FITSImageOnDisk so we have something
+    # to give to it.
 
     temp_dir = pathlib.Path( temp_dir if temp_dir is not None else Config.get().value( 'photometry.snappl.temp_dir' ) )
     barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
@@ -103,16 +103,16 @@ def sky_subtract( img, temp_dir=None ):
 
     origimg = img
     try:
-        if isinstance( origimg, snappl.image.FITSFile ):
+        if isinstance( origimg, snappl.image.FITSImageOnDisk ):
             img = origimg.uncompressed_version( include=['data'] )
         else:
-            img = snappl.image.FITSFile( path=tmpimpath )
+            img = snappl.image.FITSImageOnDisk( path=tmpimpath )
             img.data = origimg.data
             img.save_data()
 
         SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
         ( _SKYDIP, _SKYPEAK, _PixA_skysub,
-          _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=img.pathy,
+          _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=img.path,
                                                          FITS_skysub=tmpsubpath,
                                                          FITS_detmask=tmpdetmaskpath,
                                                          FITS_sky=None, FITS_skyrms=None,
@@ -123,8 +123,8 @@ def sky_subtract( img, temp_dir=None ):
                                                          VERBOSE_LEVEL=2, MDIR=None)
         SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
 
-        subim = snappl.image.FITSFile( path=tmpsubpath )
-        detmaskim = snappl.image.fITSFile( path=tmpdetmaskpath )
+        subim = snappl.image.FITSImageOnDisk( path=tmpsubpath )
+        detmaskim = snappl.image.FITSImageOnDisk( path=tmpdetmaskpath )
         skyrms = np.median( PixA_skyrms )
         return subim, detmaskim, skyrms
 
@@ -185,11 +185,11 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None):
     # Give Stamp_Generator.SG a FITS image to chew on
     origimg = img
     try:
-        if isinstance( origimg, snappl.image.FITSFile ):
+        if isinstance( origimg, snappl.image.FITSImageOnDisk ):
             img = origimg.uncompressed_version( include=['data'] )
         else:
             barf = "".join( random.choices( "0123456789abcdef:", k=10 ) )
-            img = snappl.image.FITSFile( path=savedir / f"{barf}.fits" )
+            img = snappl.image.FITSImageOnDisk( path=savedir / f"{barf}.fits" )
             img.data = origimg.data
             img.save_data()
 

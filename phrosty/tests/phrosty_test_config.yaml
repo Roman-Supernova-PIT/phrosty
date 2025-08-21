@@ -5,7 +5,7 @@ ou24:
   sn_truth_dir: /photometry_test_data/ou2024/snana_truth
   # sn_truth_dir: /snana_pq_dir
 
-  images: /photometry_test_data/ou2024/images
+  images: /photometry_test_data/ou2024/images/simple_model
 
   sims_sed_library: /photometry_test_data/ou2024/sims_sed_library
   # Comment from Cole & Rob: This is a path to the SEDs that were used to generate the

@@ -6,7 +6,6 @@ import argparse
 import cupy as cp
 from functools import partial
 import logging
-import matplotlib.pyplot as plt
 from multiprocessing import Pool
 import numpy as np
 import nvtx
@@ -19,48 +18,39 @@ import uuid
 # Imports ASTRO
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
-import astropy.table
 from astropy.table import Table
 import astropy.units as u
-from astropy.wcs import WCS
 from astropy.wcs.utils import skycoord_to_pixel
-from galsim import roman
 
 # Imports INTERNAL
 from phrosty.imagesubtraction import sky_subtract, stampmaker
-from phrosty.photometry import ap_phot, psfmodel, psf_phot
-from phrosty.utils import get_exptime, read_truth_txt
 from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
-from snappl.image import OpenUniverse2024FITSImage
-from snappl.psf import PSF
+from snappl.image import FITSImageOnDisk
+from snappl.psf import PSF, OversampledImagePSF
 from snpit_utils.config import Config
 from snpit_utils.logger import SNLogger
 
 
 class PipelineImage:
-
     """Holds a snappl.image.Image, with some other stuff the pipeline needs."""
 
-    def __init__( self, imagepath, pointing, sca, pipeline ):
+    def __init__( self, collection, imagepath, pipeline ):
         """Create a PipelineImage
 
         Parameters:
         -----------
-           imagepath : str or Path
-              A path to the image.  This will be passed on to an Image
-              subclass constructor; which subclass depends on the config
-              option photometry.phrosty.image_type
+           collection: snappl.imagecollection.ImageCollection
+              The ImageCollection that these images are a part of.
 
-           pointing : str or int
-              An identifier of the pointing of this image.  Used e.g. to pull PSFs.
+           imagepath : str or Path
+              A path to the image, relative to the base path of collection.
 
            pipeline : phrosty.pipeline.Pipeline
               The pipeline that owns this image.
 
         """
-        # self.psf is a object of a subclass of snappl.psf.PSF
         self.config = Config.get()
         self.temp_dir = pipeline.temp_dir
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
@@ -69,14 +59,10 @@ class PipelineImage:
         elif not self.keep_intermediate:
             self.save_dir = self.temp_dir
 
-        if self.config.value( 'photometry.phrosty.image_type' ) == 'ou2024fits':
-            self.image = OpenUniverse2024FITSImage( imagepath, None, sca )
-        else:
-            raise RuntimeError( "At the moment, phrosty only works with ou2024fits images. "
-                                "We hope this will change soon." )
-
-        self.pointing = pointing
-        self.band = pipeline.band
+        self.image = collection.get_image( imagepath )
+        if self.image.band != pipeline.band:
+            raise ValueError( f"Image {imagepath.name} has a band {self.image.band}, "
+                              f"which is different from the pipeline band {pipeline.band}" )
 
         # Intermediate files
         if self.keep_intermediate:
@@ -142,8 +128,10 @@ class PipelineImage:
 
         if self.psfobj is None:
             psftype = self.config.value( 'photometry.phrosty.psf.type' )
-            self.psfobj = PSF.get_psf_object( psftype, band=self.band, pointing=self.pointing, sca=self.image.sca,
-                                              x=x, y=y )
+            self.psfobj = PSF.get_psf_object( psftype, x=x, y=y,
+                                              band=self.image.band,
+                                              pointing=self.image.pointing,
+                                              sca=self.image.sca )
 
         stamp = self.psfobj.get_stamp( x, y )
         if self.keep_intermediate:
@@ -158,6 +146,9 @@ class PipelineImage:
     def free( self ):
         """Try to free memory.  More might be done here."""
         self.image.free()
+        self.skysub_img.free()
+        self.detmask_img.free()
+        self.psf_data = None
 
 
 class Pipeline:
@@ -177,10 +168,10 @@ class Pipeline:
              One of R062, Z087, Y106, J129, H158, F184, K213
 
            science_images: list of tuple
-               ( path_to_image, pointing, sca )
+               ( relative_path_to_image, band )
 
            template_images: list of tuple
-               ( path_to_image, pointing, sca )
+               ( relative_path_to_image, band )
 
            nprocs: int, default 1
              Number of cpus for the CPU multiprocessing segments of the pipeline.
@@ -205,10 +196,10 @@ class Pipeline:
         self.temp_dir.mkdir()
         self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
 
-        self.science_images = ( [ PipelineImage( self.imgcol.base_path / ppsmb[0], ppsmb[1], ppsmb[2], self )
-                                  for ppsmb in science_images if ppsmb[4] == self.band ] )
-        self.template_images = ( [ PipelineImage( self.imgcol.base_path / ppsmb[0], ppsmb[1], ppsmb[2], self )
-                                   for ppsmb in template_images if ppsmb[4] == self.band ] )
+        self.science_images = [ PipelineImage( self.imgcol, imgrow[0], self )
+                                for imgrow in science_images if imgrow[1] == self.band ]
+        self.template_images = [ PipelineImage( self.imgcol, imgrow[0], self )
+                                 for imgrow in template_images if imgrow[1] == self.band ]
         self.nprocs = nprocs
         self.nwrite = nwrite
 
@@ -263,29 +254,30 @@ class Pipeline:
 
         Parameters
         ----------
-          sci_image: phrosty.Image
+          sci_image: phrosty.PipelineImage
             The science (new) image.
 
-          templ_image: phrosty.Image
+          templ_image: phrosty.PipelineImage
             The template (ref) image that will be subtracted from sci_image.
 
         """
 
-        with fits.open( sci_image.skysub_path ) as hdul:
-            hdr_sci = hdul[0].header
-            data_sci = cp.array( np.ascontiguousarray(hdul[0].data.T), dtype=cp.float64 )
-        with fits.open( templ_image.skysub_path ) as hdul:
-            hdr_templ = hdul[0].header
-            data_templ = cp.array( np.ascontiguousarray(hdul[0].data.T), dtype=cp.float64 )
+        # SFFT needs FITS headers with a WCS and with NAXIS[12]
+        hdr_sci = sci_image.get_wcs.get_astorpy_wcs().to_header( relax=True )
+        hdr_sci['NAXIS1'] = sci_image.data.shape[1]
+        hdr_sci['NAXIS2'] = sci_image.data.shape[0]
+        data_sci = cp.array( np.ascontiguousarray(sci_image.data.T), dtype=cp.float64 )
+
+        hdr_templ = templ_image.get_wcs.get_astropy_wcs().to_header( relax=True )
+        hdr_templ['NAXIS1'] = templ_image.data.shape[1]
+        hdr_templ['NAXIS2'] = templ_image.data.shape[0]
+        data_templ = cp.array( np.ascontiguousarray(templ_image.data.T), dtype=cp.float64 )
 
         sci_psf = cp.ascontiguousarray( cp.array( sci_image.psf_data.T, dtype=cp.float64 ) )
         templ_psf = cp.ascontiguousarray( cp.array( templ_image.psf_data.T, dtype=cp.float64 ) )
 
-        with fits.open( sci_image.detmask_path ) as hdul:
-            sci_detmask = cp.array( np.ascontiguousarray( hdul[0].data.T ) )
-
-        with fits.open( templ_image.detmask_path ) as hdul:
-            templ_detmask = cp.array( np.ascontiguousarray( hdul[0].data.T ) )
+        sci_detmask = cp.array( np.ascontiguousarray( sci_image.detmask_img.data.T ) )
+        templ_detmask = cp.array( np.ascontiguousarray( templ_image.detmask_img.data.T ) )
 
         sfftifier = SpaceSFFT_CupyFlow(
             hdr_sci, hdr_templ,
@@ -302,13 +294,43 @@ class Pipeline:
 
         return sfftifier
 
-    def phot_at_coords( self, img, err, psf, pxcoords=(50, 50), ap_r=4 ):
-        """Do photometry at forced set of pixel coordinates."""
+    def phot_at_coords( self, img, psf, pxcoords=(50, 50), ap_r=4 ):
+        """Do photometry at forced set of pixel coordinates.
+
+        Parameters
+        ----------
+          img: snappl.image.Image
+            The image on which to do the photometry
+
+          psf: snappl.psf.PSF
+            The PSF.
+
+          pxcoords: tuple of (int, int)
+            The position on the image to do the photometry
+
+          ap_r: float
+            Radius of aperture.
+
+        Returns
+        -------
+          results: dict
+            Keys and values are:
+            * 'aperture_sum': flux in aperture of radius ap_r
+            * 'flux_fit': flux from PSF photometry
+            * 'flux_fit_err': uncertainty on flux_fit
+            * 'mag_fit': instrumental magnitude (i.e. no zeropoint) from flux_fit
+            * 'mag_fit_err': uncertainty on mag_fit
+
+            All values are floats.
+
+        """
 
         forcecoords = Table([[float(pxcoords[0])], [float(pxcoords[1])]], names=["x", "y"])
-        init = ap_phot(img, forcecoords, ap_r=ap_r)
-        init['flux_init'] = init['aperture_sum']
-        final = psf_phot(img, err, psf, init, forced_phot=True)
+        init = img.ap_phot( forcecoords, ap_r=ap_r )
+        init.rename_column( 'aperture_sum', 'flux_init' )
+        init.rename_column( 'xcenter', 'xcentroid' )
+        init.rename_column( 'ycenter', 'ycentroid' )
+        final = img.psf_phot( init, psf, forced_phot=True )
 
         flux = final['flux_fit'][0]
         flux_err = final['flux_err'][0]
@@ -325,112 +347,31 @@ class Pipeline:
 
         return results_dict
 
-    def get_stars(self, truthpath, nx=4088, ny=4088, transform=False, wcs=None):
-        """Get the stars in the science images.
-
-        Optional to transform to another WCS.
-        """
-        truth_tab = read_truth_txt(path=truthpath)
-        truth_tab['mag'].name = 'mag_truth'
-        truth_tab['flux'].name = 'flux_truth'
-
-        if transform:
-            assert wcs is not None, 'You need to provide a WCS to transform to!'
-            truth_tab['x'].name, truth_tab['y'].name = 'x_orig', 'y_orig'
-            worldcoords = SkyCoord(ra=truth_tab['ra'] * u.deg, dec=truth_tab['dec'] * u.deg)
-            x, y = skycoord_to_pixel(worldcoords, wcs)
-            truth_tab['x'] = x
-            truth_tab['y'] = y
-
-        if not transform:
-            truth_tab['x'] -= 1
-            truth_tab['y'] -= 1
-
-        idx = np.where(truth_tab['obj_type'] == 'star')[0]
-        stars = truth_tab[idx]
-        stars = stars[np.logical_and(stars["x"] < nx, stars["x"] > 0)]
-        stars = stars[np.logical_and(stars["y"] < ny, stars["y"] > 0)]
-
-        return stars
-
-    def get_galsim_values(self):
-        exptime = get_exptime(self.band)
-        area_eff = roman.collecting_area
-        gs_zpt = roman.getBandpasses()[self.band].zeropoint
-
-        return {'exptime': exptime, 'area_eff': area_eff, 'gs_zpt': gs_zpt}
-
-    def get_zpt(self, zptimg, err, psf, band, stars, ap_r=4,
-                zpt_plot=None, oid=None, sci_pointing=None, sci_sca=None):
-
-        # TODO : Need to move this code all over into snappl Image.  It sounds like
-        #   for Roman images we may have to do our own zeropoints (which is what
-        #   is happening here), but for actual Roman we're going to use
-        #   calibration information we get from elsewhere, so we don't want to bake
-        #   doing the calibration into the pipeline as we do here.
-        #
-        # Also Issue #70
-
-        """Get the zeropoint based on the stars."""
-
-        # First, need to do photometry on the stars.
-        init_params = ap_phot(zptimg, stars, ap_r=ap_r)
-        init_params['flux_init'] = init_params['aperture_sum']
-        final_params = psf_phot(zptimg, err, psf, init_params, forced_phot=True)
-
-        # Do not need to cross match. Can just merge tables because they
-        # will be in the same order.
-        photres = astropy.table.join(stars, init_params, keys=['object_id', 'ra', 'dec', 'realized_flux',
-                                                               'flux_truth', 'mag_truth', 'obj_type'])
-        photres = astropy.table.join(photres, final_params, keys=['id'])
-
-        # Get the zero point.
-        galsim_vals = self.get_galsim_values()
-        star_ap_mags = -2.5 * np.log10(photres['aperture_sum'])
-        star_fit_mags = -2.5 * np.log10(photres['flux_fit'])
-        star_truth_mags = ( -2.5 * np.log10(photres['flux_truth']) + galsim_vals['gs_zpt']
-                            + 2.5 * np.log10(galsim_vals['exptime'] * galsim_vals['area_eff']) )
-
-        # Eventually, this should be a S/N cut, not a mag cut.
-        zpt_mask = np.logical_and(star_truth_mags > 19, star_truth_mags < 21.5)
-        zpt = np.nanmedian(star_truth_mags[zpt_mask] - star_fit_mags[zpt_mask])
-        ap_zpt = np.nanmedian(star_truth_mags[zpt_mask] - star_ap_mags[zpt_mask])
-
-        if zpt_plot is not None:
-            assert oid is not None, 'If zpt_plot=True, oid must be provided.'
-            assert sci_pointing is not None, 'If zpt_plot=True, sci_pointing must be provided.'
-            assert sci_sca is not None, 'If zpt_plot=True, sci_sca must be provided.'
-
-            savedir = self.ltcv_dir / f'figs/{oid}/zpt_plots'
-            savedir.mkdir(parents=True, exist_ok=True)
-            savepath = savedir / f'zpt_stars_{band}_{sci_pointing}_{sci_sca}.png'
-
-            plt.figure(figsize=(8, 8))
-            yaxis = star_fit_mags + zpt - star_truth_mags
-
-            plt.plot(star_truth_mags, yaxis, marker='o', linestyle='')
-            plt.axhline(0, linestyle='--', color='k')
-            plt.xlabel('Truth mag')
-            plt.ylabel('Fit mag - zpt + truth mag')
-            plt.title(f'{band} {sci_pointing} {sci_sca}')
-            plt.savefig(savepath, dpi=300, bbox_inches='tight')
-            plt.close()
-
-            SNLogger.info(f'zpt debug plot saved to {savepath}')
-
-            # savepath = os.path.join(savedir, f'hist_truth-fit_{band}_{sci_pointing}_{sci_sca}.png')
-            # plt.hist(star_truth_mags[zpt_mask] - star_fit_mags[zpt_mask])
-            # plt.title(f'{band} {sci_pointing} {sci_sca}')
-            # plt.xlabel('star_truth_mags[zpt_mask] - star_fit_mags[zpt_mask]')
-            # plt.savefig(savepath, dpi=300, bbox_inches='tight')
-            # plt.close()
-
-        return zpt, ap_zpt
-
     def make_phot_info_dict( self, sci_image, templ_image, ap_r=4 ):
-        # Do photometry on stamp because it will read faster
-        diff_img_stamp_path = sci_image.diff_stamp_path[ templ_image.image.name ]
-        diff_img_var_stamp_path = sci_image.diff_var_stamp_path[ templ_image.image.name ]
+        """"Do things.
+
+        Parmaeters
+        ----------
+          sci_image: PipelineImage
+            science image wrapper
+
+          temp_image: PipelineImage
+            template image wrapper
+
+          ap_r: float, default 4
+             Radius of aperture to use in something
+
+        Returns
+        -------
+          something: dict
+            It has things in it
+
+        """
+
+        # Do photometry on stamp because it will read faster.
+        diff_img = FITSImageOnDisk( sci_image.diff_stamp_path[ templ_image.image.name ],
+                                    noisepath=sci_image.diff_var_stamp_path[ templ_image.image.name ] )
+        psf_img = FITSImageOnDisk( sci_image.decorr_psf_path[ templ_image.image.name ] )
 
         results_dict = {}
         results_dict['sci_name'] = sci_image.image.name
@@ -445,46 +386,15 @@ class Pipeline:
         results_dict['template_pointing'] = templ_image.pointing
         results_dict['template_sca'] = templ_image.image.sca
 
-        if diff_img_stamp_path.is_file():
-            # Load in the difference image stamp.
-            with fits.open(diff_img_stamp_path) as diff_hdu:
-                diffimg = diff_hdu[0].data
-                wcs = WCS(diff_hdu[0].header)
-
-            with fits.open( diff_img_var_stamp_path ) as var_hdu:
-                err = np.sqrt( var_hdu[0].data )
-
-            # Load in the decorrelated PSF.
-            psfpath = sci_image.decorr_psf_path[ templ_image.image.name ]
-            with fits.open( psfpath ) as hdu:
-                psf = psfmodel( hdu[0].data )
-            coord = SkyCoord(ra=self.ra * u.deg, dec=self.dec * u.deg)
-            pxcoords = skycoord_to_pixel(coord, wcs)
-            results_dict.update( self.phot_at_coords(diffimg, err, psf, pxcoords=pxcoords, ap_r=ap_r) )
-
-            # Get the zero point from the decorrelated, convolved science image.
-            # First, get the table of known stars.
-
-            # TODO -- take this galsim-specific code out, move it to a separate module.  Define a general
-            #  zeropointing interface, of which the galsim-speicifc one will be one instance
-            truthpath = str( self.tds_base_dir /
-                             f'truth/{self.band}/{sci_image.pointing}/'
-                             f'Roman_TDS_index_{self.band}_{sci_image.pointing}_{sci_image.image.sca}.txt' )
-            stars = self.get_stars(truthpath)
-            # Now, calculate the zero point based on those stars.
-            zptimg_path = sci_image.decorr_zptimg_path[ templ_image.image.name ]
-            with fits.open(zptimg_path) as hdu:
-                zptimg = hdu[0].data
-
-            zpt, ap_zpt = self.get_zpt(zptimg, sci_image.image.noise, psf, self.band, stars, oid=self.object_id,
-                               sci_pointing=sci_image.pointing, sci_sca=sci_image.image.sca)
-
-            # Add additional info to the results dictionary so it can be merged into a nice file later.
-            results_dict['zpt'] = zpt
-            results_dict['ap_zpt'] = ap_zpt
-            results_dict['success'] = True
-
-        else:
+        try:
+            # Make sure the files are there.  Has side effect of loading the header and data.
+            diff_img.get_data( which='data', cache=True )
+            diff_img.get_data( which='noise', cache=True )
+            # The thing written to disk was actually variance, so fix that
+            diff_img.noise = np.sqrt( diff_img.noise )
+            psf_img.get_data( which='data', cache=True )
+        except Exception:
+            # TODO : change this to a more specific exception
             SNLogger.warning( f"Post-processed image files for "
                               f"{self.band}_{sci_image.pointing}_{sci_image.image.sca}-"
                               f"{self.band}_{templ_image.pointing}_{templ_image.image.sca} "
@@ -496,6 +406,17 @@ class Pipeline:
             results_dict['flux_fit_err'] = np.nan
             results_dict['mag_fit'] = np.nan
             results_dict['mag_fit_err'] = np.nan
+
+        coord = SkyCoord(ra=self.ra * u.deg, dec=self.dec * u.deg)
+        pxcoords = skycoord_to_pixel( coord, diff_img.get_wcs().get_astropy_wcs() )
+        psf = OversampledImagePSF( x=diff_img.data.shape[1]/2., y=diff_img.data.shape[1]/2.,
+                                   oversample_factor=1.,
+                                   data=psf_img.data )
+        results_dict.update( self.phot_at_coords( diff_img, psf, pxcoords=pxcoords, ap_r=ap_r) )
+
+        # Add additional info to the results dictionary so it can be merged into a nice file later.
+        results_dict['zpt'] = sci_image.image.zeropoint
+        results_dict['success'] = True
 
         return results_dict
 
