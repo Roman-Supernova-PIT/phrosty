@@ -196,10 +196,31 @@ class Pipeline:
         self.temp_dir.mkdir()
         self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
 
-        self.science_images = [ PipelineImage( self.imgcol, imgrow[0], self )
-                                for imgrow in science_images if imgrow[1] == self.band ]
-        self.template_images = [ PipelineImage( self.imgcol, imgrow[0], self )
-                                 for imgrow in template_images if imgrow[1] == self.band ]
+        self.science_images = [ PipelineImage( self.imgcol, ppsmb[0], self )
+                                for ppsmb in science_images if ppsmb[4] == self.band ]
+        self.template_images = [ PipelineImage( self.imgcol, ppsmb[0], self )
+                                 for ppsmb in template_images if ppsmb[4] == self.band ]
+
+        # Just to be anal, verify that the pointing, SCA, mjd, and band that was read for the
+        #   images match whats expected.  (Otherwise, the user made an error in mixing
+        #   paths and the other stuff.)
+        mismatches = set()
+        for sci_im, ppsmb in zip( self.science_images, [ s for s in science_images if s[4] == self.band ] ):
+            if any( [ str( sci_im.image.pointing ) != str( ppsmb[1] ),
+                      str( sci_im.image.sca ) != str( ppsmb[2] ),
+                      np.fabs( sci_im.image.mjd - float(ppsmb[3]) ) > 0.001,
+                      str( sci_im.im.band ) != str( ppsmb[4] ) ] ):
+                mismatches.append( sci_im.image.name )
+        for tmp_im, ppsmb in zip( self.template_images, [ t for t in template_images if t[4] == self.band ] ):
+            mismatches = set()
+            if any( [ str( tmp_im.im.pointing ) != str( ppsmb[1] ),
+                      str( tmp_im.im.sca ) != str( ppsmb[2] ),
+                      np.fabs( tmp_im.image.mjd - float(ppsmb[3]) ) > 0.001,
+                      str( tmp_im.im.band ) != str( ppsmb[4] ) ] ):
+                mismatches.append( tmp_im.image.name )
+        if len( mismatches ) > 0:
+            raise ValueError( "Image metadata did not match what was in the input file list for: {mismatches}" )
+
         self.nprocs = nprocs
         self.nwrite = nwrite
 
@@ -214,13 +235,15 @@ class Pipeline:
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
+        omg = False
+
         def log_error( img, x ):
             SNLogger.error( f"Sky subtraction subprocess failure: {x} for image {img.image.path}" )
+            omg = True   # noqa: F841
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
                 for img in all_imgs:
-
                     pool.apply_async( img.run_sky_subtract, (), {},
                                       callback=img.save_sky_subtract_info,
                                       error_callback=partial(log_error, img) )
@@ -230,23 +253,34 @@ class Pipeline:
             for img in all_imgs:
                 img.save_sky_subtract_info( img.run_sky_subtract( mp=False ) )
 
+        if omg:
+            raise RuntimeError( "Sky subtraction errors." )
+
 
     def get_psfs( self ):
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
+
+        omg = False
+
+        def log_error( x ):
+            SNLogger.error( f"get_psf subprocess failure: {x}" )
+            omg = True    # noqa: F841
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
                 for img in all_imgs:
                     # callback_partial = partial( img.save_psf_path, all_imgs )
                     pool.apply_async( img.get_psf, (self.ra, self.dec), {},
-                                      img.keep_psf_data,
-                                      lambda x: SNLogger.error( f"get_psf subprocess failure: {x}" ) )
+                                      img.keep_psf_data, log_error )
                 pool.close()
                 pool.join()
         else:
             for img in all_imgs:
                 img.keep_psf_data( img.get_psf(self.ra, self.dec) )
+
+        if omg:
+            raise RuntimeError( "get_psf errors." )
 
 
     def align_and_pre_convolve(self, templ_image, sci_image ):
@@ -260,18 +294,27 @@ class Pipeline:
           templ_image: phrosty.PipelineImage
             The template (ref) image that will be subtracted from sci_image.
 
+        Returns
+        -------
+          sfftifier: SpaceSFFT_CupyFlow
+            Use this object for futher SFFT work.  Be sure to
+            dereference it to free the prodigious amount of memory it
+            allcoates.
+
         """
 
         # SFFT needs FITS headers with a WCS and with NAXIS[12]
-        hdr_sci = sci_image.get_wcs.get_astorpy_wcs().to_header( relax=True )
+        hdr_sci = sci_image.image.get_wcs().get_astorpy_wcs().to_header( relax=True )
         hdr_sci['NAXIS1'] = sci_image.data.shape[1]
         hdr_sci['NAXIS2'] = sci_image.data.shape[0]
         data_sci = cp.array( np.ascontiguousarray(sci_image.data.T), dtype=cp.float64 )
+        noise_sci = cp.array( np.ascontiguousarray(sci_image.noise.T), dtype=cp.float64 )
 
-        hdr_templ = templ_image.get_wcs.get_astropy_wcs().to_header( relax=True )
+        hdr_templ = templ_image.image.get_wcs().get_astropy_wcs().to_header( relax=True )
         hdr_templ['NAXIS1'] = templ_image.data.shape[1]
         hdr_templ['NAXIS2'] = templ_image.data.shape[0]
         data_templ = cp.array( np.ascontiguousarray(templ_image.data.T), dtype=cp.float64 )
+        noise_templ = cp.array( np.ascontiguousarray(templ_image.noise.T), dtype=cp.float64 )
 
         sci_psf = cp.ascontiguousarray( cp.array( sci_image.psf_data.T, dtype=cp.float64 ) )
         templ_psf = cp.ascontiguousarray( cp.array( templ_image.psf_data.T, dtype=cp.float64 ) )
@@ -283,7 +326,7 @@ class Pipeline:
             hdr_sci, hdr_templ,
             sci_image.skyrms, templ_image.skyrms,
             data_sci, data_templ,
-            cp.array( sci_image.image.noise ), cp.array( templ_image.image.noise ),
+            noise_sci, noise_templ,
             sci_detmask, templ_detmask,
             sci_psf, templ_psf,
             KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
@@ -578,13 +621,11 @@ class Pipeline:
                         SNLogger.info( "...generate variance image" )
                         with nvtx.annotate( "variance", color=0x44ccff ):
                             diff_var = sfftifier.create_variance_image()
-                            mess = ( f"{self.band}_{sci_image.pointing}_{sci_image.image.sca}_-"
-                                     f"_{self.band}_{templ_image.pointing}_{templ_image.image.sca}.fits" )
+                            mess = f"{sci_image.image.name}-{templ_image.image.name}"
                             diff_var_path = self.dia_out_dir / f"diff_var_{mess}"
 
                     if 'apply_decorrelation' in steps:
-                        mess = ( f"{self.band}_{sci_image.pointing}_{sci_image.image.sca}_-"
-                                 f"_{self.band}_{templ_image.pointing}_{templ_image.image.sca}.fits" )
+                        mess = f"{sci_image.image.name}-{templ_image.image.name}"
                         decorr_psf_path = self.dia_out_dir / f"decorr_psf_{mess}"
                         decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
                         decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
@@ -618,42 +659,39 @@ class Pipeline:
                         # In the future, we may want to write these things right after they happen
                         # instead of saving it all for the end of the SFFT stuff.
 
-                        sci_filepathpart = f'{sci_image.band}_{sci_image.pointing}_{sci_image.image.sca}'
-                        templ_filepathpart = f'{templ_image.band}_{templ_image.pointing}_{templ_image.image.sca}'
-
                         write_filepaths = {'aligned': [['img',
-                                                        f'{templ_filepathpart}_-_{sci_filepathpart}.fits',
+                                                        f'{templ_image.image.name}_-_{sci_image.image.name}.fits',
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_GPU.T),
                                                         sfftifier.hdr_target],
                                                         ['var',
-                                                         f'{templ_filepathpart}_-_{sci_filepathpart}.fits',
+                                                         f'{templ_image.image.name}_-_{sci_image.image.name}.fits',
                                                          cp.asnumpy(sfftifier.PixA_resamp_objectVar_GPU.T),
                                                          sfftifier.hdr_target],
                                                        ['psf',
-                                                        f'{templ_filepathpart}_-_{sci_filepathpart}.fits',
+                                                        f'{templ_image.image.name}_-_{sci_image.image.name}.fits',
                                                         cp.asnumpy(sfftifier.PSF_resamp_object_GPU.T),
                                                         sfftifier.hdr_target],
                                                        ['detmask',
-                                                        f'{sci_filepathpart}_-_{templ_filepathpart}.fits',
+                                                        f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_DMASK_GPU.T),
                                                         sfftifier.hdr_target]
                                                        ],
                                            'convolved': [['img',
-                                                         f'{sci_filepathpart}_-_{templ_filepathpart}.fits',
+                                                         f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
                                                          cp.asnumpy(sfftifier.PixA_Ctarget_GPU.T),
                                                          sfftifier.hdr_target],
                                                          ['img',
-                                                         f'{templ_filepathpart}_-_{sci_filepathpart}.fits',
+                                                         f'{templ_image.image.name}_-_{sci_image.image.name}.fits',
                                                          cp.asnumpy(sfftifier.PixA_Cresamp_object_GPU.T),
                                                          sfftifier.hdr_target]
                                                         ],
                                            'diff':     [['img',
-                                                        f'{sci_filepathpart}_-_{templ_filepathpart}.fits',
+                                                        f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
                                                         cp.asnumpy(sfftifier.PixA_DIFF_GPU.T),
                                                         sfftifier.hdr_target]
                                                        ],
                                            'decorr':   [['kernel',
-                                                        f'{sci_filepathpart}_-_{templ_filepathpart}.fits',
+                                                        f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
                                                         cp.asnumpy(sfftifier.FKDECO_GPU.T),
                                                         sfftifier.hdr_target]
                                                        ]
@@ -753,7 +791,7 @@ def main():
         if str(e) == 'No default config defined yet; run Config.init(configfile)':
             sys.stderr.write( "Error, no configuration file defined.\n"
                               "Either run phrosty with -c <configfile>\n"
-                              "or set the SNPIT_CONFIG environment varaible.\n" )
+                              "or set the SNPIT_CONFIG environment variable.\n" )
             sys.exit(1)
         else:
             raise
