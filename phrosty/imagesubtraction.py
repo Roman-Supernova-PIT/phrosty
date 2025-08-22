@@ -1,16 +1,9 @@
-__all__ = [ 'gz_and_ext', 'sky_subtract', 'stampmaker' ]
+__all__ = [ 'sky_subtract', 'stampmaker' ]
 
 # IMPORTS Standard:
-import io
 import numpy as np
-import gzip
-import multiprocessing
-import shutil
 import pathlib
 import random
-
-# IMPORTS Astro:
-from astropy.io import fits
 
 # IMPORTS SFFT:
 from sfft.utils.SExSkySubtract import SEx_SkySubtract
@@ -20,42 +13,6 @@ from sfft.utils.StampGenerator import Stamp_Generator
 import snappl.image
 from snpit_utils.logger import SNLogger
 from snpit_utils.config import Config
-
-
-def gz_and_ext(in_path, out_path):
-    """Utility function that unzips the original file and turns
-       it into a single-extension FITS file.
-
-    Parameters
-    ----------
-      in_path: Path
-        The input path of the file to unzip and flatten.
-
-      out_path: Path
-        The desired output path of the file that is unzipped and flattened, once it is saved.
-
-    Returns
-    -------
-      out_path: Path
-        The output path of the file that has been unzipped and flattened.
-
-    """
-
-    raise RuntimeError( "No longer needed." )
-
-    bio = io.BytesIO()
-    with gzip.open(in_path, 'rb') as f_in:
-        shutil.copyfileobj(f_in, bio)
-    bio.seek(0)
-
-    with fits.open(bio) as hdu:
-        newhdu = fits.HDUList([fits.PrimaryHDU(data=hdu[1].data, header=hdu[0].header)])
-        SNLogger.debug( f"Process {multiprocessing.current_process().pid} Writing extracted HDU 1 to {out_path}..." )
-        newhdu.writeto(out_path, overwrite=True)
-        SNLogger.debug( f"...process {multiprocessing.current_process().pid} done writing "
-                        f"extracted HDU 1 to {out_path}." )
-
-    return out_path
 
 
 def sky_subtract( img, temp_dir=None ):
