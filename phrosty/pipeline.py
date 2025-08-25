@@ -36,21 +36,19 @@ from snpit_utils.logger import SNLogger
 class PipelineImage:
     """Holds a snappl.image.Image, with some other stuff the pipeline needs."""
 
-    def __init__( self, collection, imagepath, pipeline ):
+    def __init__( self, image, pipeline ):
         """Create a PipelineImage
 
         Parameters:
         -----------
-           collection: snappl.imagecollection.ImageCollection
-              The ImageCollection that these images are a part of.
-
-           imagepath : str or Path
-              A path to the image, relative to the base path of collection.
+           image : snappl.image.Image
+              The image we're encapsulating.  Pass either this or imagepath.
 
            pipeline : phrosty.pipeline.Pipeline
               The pipeline that owns this image.
 
         """
+
         self.config = Config.get()
         self.temp_dir = pipeline.temp_dir
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
@@ -59,9 +57,9 @@ class PipelineImage:
         elif not self.keep_intermediate:
             self.save_dir = self.temp_dir
 
-        self.image = collection.get_image( imagepath )
+        self.image = image
         if self.image.band != pipeline.band:
-            raise ValueError( f"Image {imagepath.name} has a band {self.image.band}, "
+            raise ValueError( f"Image {self.image.path.name} has a band {self.image.band}, "
                               f"which is different from the pipeline band {pipeline.band}" )
 
         # Intermediate files
@@ -154,7 +152,12 @@ class PipelineImage:
 class Pipeline:
     """Phrosty's top-level pipeline"""
 
-    def __init__( self, diaobj, imgcol, band, science_images, template_images, nprocs=1, nwrite=5,
+    def __init__( self, diaobj, imgcol, band,
+                  science_images=None,
+                  template_images=None,
+                  science_csv=None,
+                  template_csv=None,
+                  nprocs=1, nwrite=5,
                   verbose=False ):
 
         """Create the a pipeline object.
@@ -167,11 +170,25 @@ class Pipeline:
            band: str
              One of R062, Z087, Y106, J129, H158, F184, K213
 
-           science_images: list of tuple
-               ( relative_path_to_image, band )
+           science_images: list of snappl.image.Image
+             The science images.
 
-           template_images: list of tuple
-               ( relative_path_to_image, band )
+           template_images: list of snappl.image.Image
+             The template images.
+
+           science_csv: Path or str
+             CSV file with the science images.  The first line must be::
+
+               path pointing sca mjd band
+
+             subsequent lines must have that information for all the
+             science images.  path must be relative to ou24.images in
+             config.  Pipeline will extract the images from this file
+             whose band matches the band of the pipeline (and ignore
+             the rest)
+
+           template_csv: Path or str
+             CSV file with template images.  Same format as science_csv.
 
            nprocs: int, default 1
              Number of cpus for the CPU multiprocessing segments of the pipeline.
@@ -179,7 +196,6 @@ class Pipeline:
 
            nwrite: int, default 5
              Number of asynchronous FITS writer processes.
-
 
         """
 
@@ -196,30 +212,18 @@ class Pipeline:
         self.temp_dir.mkdir()
         self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
 
-        self.science_images = [ PipelineImage( self.imgcol, ppsmb[0], self )
-                                for ppsmb in science_images if ppsmb[4] == self.band ]
-        self.template_images = [ PipelineImage( self.imgcol, ppsmb[0], self )
-                                 for ppsmb in template_images if ppsmb[4] == self.band ]
+        if ( science_images is None) == ( science_csv is None ):
+            raise ValueError( "Pass exactly one of science_images or science_csv" )
+        if science_csv is not None:
+            science_images = self._read_csv( science_csv )
 
-        # Just to be anal, verify that the pointing, SCA, mjd, and band that was read for the
-        #   images match whats expected.  (Otherwise, the user made an error in mixing
-        #   paths and the other stuff.)
-        mismatches = set()
-        for sci_im, ppsmb in zip( self.science_images, [ s for s in science_images if s[4] == self.band ] ):
-            if any( [ str( sci_im.image.pointing ) != str( ppsmb[1] ),
-                      str( sci_im.image.sca ) != str( ppsmb[2] ),
-                      np.fabs( sci_im.image.mjd - float(ppsmb[3]) ) > 0.001,
-                      str( sci_im.image.band ) != str( ppsmb[4] ) ] ):
-                mismatches.add( sci_im.image.name )
-        for tmp_im, ppsmb in zip( self.template_images, [ t for t in template_images if t[4] == self.band ] ):
-            mismatches = set()
-            if any( [ str( tmp_im.image.pointing ) != str( ppsmb[1] ),
-                      str( tmp_im.image.sca ) != str( ppsmb[2] ),
-                      np.fabs( tmp_im.image.mjd - float(ppsmb[3]) ) > 0.001,
-                      str( tmp_im.image.band ) != str( ppsmb[4] ) ] ):
-                mismatches.add( tmp_im.image.name )
-        if len( mismatches ) > 0:
-            raise ValueError( f"Image metadata did not match what was in the input file list for: {mismatches}" )
+        if ( template_images is None ) == ( template_csv is None ):
+            raise ValueError( "Pass exactly one of template_images or template_csv" )
+        if template_csv is not None:
+            template_images = self._read_csv( template_csv )
+
+        self.science_images = [ PipelineImage( i, self ) for i in science_images ]
+        self.template_images = [ PipelineImage( i, self ) for i in template_images ]
 
         self.nprocs = nprocs
         self.nwrite = nwrite
@@ -227,6 +231,20 @@ class Pipeline:
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         self.remove_temp_dir = self.config.value( 'photometry.phrosty.remove_temp_dir' )
         self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
+
+
+    def _read_csv( self, csvfile ):
+        imlist = []
+        with open( csvfile ) as ifp:
+            hdrline = ifp.readline()
+            if not re.search( r"^\s*path\s+pointing\s+sca\s+mjd\s+band\s*$", hdrline ):
+                raise ValueError( f"First line of list file {csvfile} didn't match what was expected." )
+            for line in ifp:
+                path, pointing, sca, mjd, band = line.split()
+                if band == self.band:
+                    # This should yell at us if the pointing or sca doesn't match what is read from the path
+                    imlist.append( self.imgcol.get_image( path=path, pointing=pointing, sca=sca, band=band ) )
+        return imlist
 
 
     def sky_sub_all_images( self ):
@@ -564,6 +582,8 @@ class Pipeline:
         results_tab.write(results_savepath, format='csv', overwrite=True)
         SNLogger.info(f'Results saved to {results_savepath}')
 
+        return results_savepath
+
     def write_fits_file( self, data, header, savepath ):
         try:
             fits.writeto( savepath, data, header=header, overwrite=True )
@@ -583,6 +603,30 @@ class Pipeline:
                 print( f'Oops! Deleting {f} from {directory} did not work.\nReason: {e}' )
 
     def __call__( self, through_step=None ):
+        """Run the pipeline.
+
+        Parameters
+        ----------
+          through_step: str, default None
+             Which step to run thorough?  Runs them all if not given.
+
+             Steps in order are:
+             * sky_subtract
+             * get_psfs
+             * align_and_preconvolve
+             * subtract
+             * find_decorrelation
+             * apply_decorrelation
+             * make_stamps
+             * make_lightcurve
+
+        Returns
+        -------
+          ltcvpath : pathlib.Path or None
+            The path to the output lightcurve file if make_lightcurve
+            was run, otherwise None.
+
+        """
         if self.mem_trace:
             tracemalloc.start()
             tracemalloc.reset_peak()
@@ -791,10 +835,10 @@ class Pipeline:
         if self.mem_trace:
             SNLogger.info( f"After make_stamps, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
+        lightcurve_path = None
         if 'make_lightcurve' in steps:
-            SNLogger.info( "Making lightcurve" )
             with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
-                self.make_lightcurve()
+                lightcurve_path = self.make_lightcurve()
 
         if self.mem_trace:
             SNLogger.info( f"After make_lightcurve, memory usage = \
@@ -803,7 +847,10 @@ class Pipeline:
         if self.remove_temp_dir:
             self.clear_contents( self.temp_dir )
 
-                # ======================================================================
+        return lightcurve_path
+
+
+# ======================================================================
 
 
 def main():
@@ -883,21 +930,8 @@ def main():
     imgcol = ImageCollection.get_collection( collection=args.image_collection, subset=args.image_subset,
                                              base_path=args.base_path )
 
-    science_images = []
-    template_images = []
-    for infile, imlist in zip( [ args.science_images, args.template_images ],
-                               [ science_images, template_images ] ):
-        with open( infile ) as ifp:
-            hdrline = ifp.readline()
-            if not re.search( r"^\s*path\s+pointing\s+sca\s+mjd\s+band\s*$", hdrline ):
-                raise ValueError( f"First line of list file {infile} didn't match what was expected." )
-            for line in ifp:
-                img, point, sca, mjd, band = line.split()
-                imlist.append( ( pathlib.Path(img), int(point), int(sca), float(mjd), band ) )
-
-    # Make the Pipeline
-
-    pipeline = Pipeline( diaobj, imgcol, args.band, science_images, template_images,
+    pipeline = Pipeline( diaobj, imgcol, args.band,
+                         science_csv=args.science_images, template_csv=args.template_images,
                          nprocs=args.nprocs, nwrite=args.nwrite, verbose=args.verbose )
     pipeline( args.through_step )
 
