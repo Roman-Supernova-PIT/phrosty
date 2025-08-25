@@ -20,7 +20,7 @@ def sky_subtract( img, temp_dir=None ):
 
     Parameters
     ----------
-      img: Image
+      img: snappl.image.Image
         Original image.
 
       temp_dir: Path, default None
@@ -110,7 +110,7 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None):
       shape: np.array
         Shape of stamp. must be a numpy array. e.g. np.array([100,100])
 
-      img: Image
+      img: snappl.image.Image
         Image from whose data the stamp will be extracted.
 
       savedir: Path, default None
