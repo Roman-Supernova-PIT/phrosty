@@ -926,12 +926,12 @@ def main():
         diaobj.dec = args.dec
 
     # Get the image collection
-        
+
     imgcol = ImageCollection.get_collection( collection=args.image_collection, subset=args.image_subset,
                                              base_path=args.base_path )
 
     # Create and launch the pipeline
-    
+
     pipeline = Pipeline( diaobj, imgcol, args.band,
                          science_csv=args.science_images, template_csv=args.template_images,
                          nprocs=args.nprocs, nwrite=args.nwrite, verbose=args.verbose )
