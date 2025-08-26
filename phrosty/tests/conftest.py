@@ -10,23 +10,91 @@ from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 
 
-direc = pathlib.Path( __file__ ).parent
+_direc = pathlib.Path( __file__ ).parent.resolve()
 
 
-@pytest.fixture( scope='session' )
-def dia_out_dir():
-    return pathlib.Path( Config.get().value( 'photometry.phrosty.paths.dia_out_dir' ) )
+@pytest.fixture( scope='session', autouse=True )
+def config():
+    """Set the global config for phrosty tests.
+
+    Tests ignore SNPIT_CONFIG env var, but will always use
+    phrosty/tests/phrosty_test_config.
+
+    Output directories are made underneath test_output.  This fixture
+    empties out all those output directories when the tests finish.
+
+    """
+
+    # Directories we'll use for test outputs
+    temp_dir = _direc / 'test_output/temp'
+    scratch_dir = temp_dir
+    dia_out_dir = _direc / 'test_output/dia_out_dir'
+    ltcv_dir = _direc / 'test_output/lc_out_dir'
+    # Make sure they exist
+    for path in [ temp_dir, scratch_dir, dia_out_dir, ltcv_dir ]:
+        path.mkdir( exist_ok=True, parents=True )
+
+    try:
+        # We're going to mangle the config to move the output
+        #  directories underneath tests so that we can clean them up
+        #  when done.  Ideally, each test should clean itself up.
+        # This means cheating with the config so we can modify it.  The
+        #  first call to Config.get() gets a pointer to the global
+        #  singleton config object (as it defaults to static=True .
+        # (We don't just do this in the phrosty_test_config.yaml file
+        #   because some examples use that and need access to the
+        #   directories that the tests don't destroy.)
+        cfg = Config.get( _direc / 'phrosty_test_config.yaml', setdefault=True )
+        # Now we're going to poke inside the Config object so we can
+        #   modify this global singleton.  We're not supposed to do
+        #   that.  If this was Java, it totally wouldn't let us.  But
+        #   here we go.
+        cfg._static = False
+        # Edit the config.
+        cfg.set_value( 'photometry.snappl.temp_dir', str(temp_dir) )
+        cfg.set_value( 'photometry.phrosty.paths.scratch_dir', str(temp_dir) )
+        cfg.set_value( 'photometry.phrosty.paths.temp_dir', str(temp_dir) )
+        cfg.set_value( 'photometry.phrosty.paths.dia_out_dir', str(dia_out_dir) )
+        cfg.set_value( 'photometry.phrosty.paths.ltcv_dir', str(ltcv_dir) )
+        # Reset the config to static
+        cfg._static = True
+
+        yield cfg
+
+    finally:
+        # Clean up the output directories.  (Don't delete the
+        #   directories themselves, but do delete all files and
+        #   subdirectories.)
+        # TODO: we could put a check here that they're actually empty,
+        #   and yell if they're not.  That means some test didn't clean
+        #   up after itself.
+        def nukedir( path ):
+            for f in path.iterdir():
+                if f.is_dir():
+                    nukedir( f )
+                    f.rmdir()
+                else:
+                    f.unlink( missing_ok=True )
+
+        nukedir( temp_dir )
+        nukedir( scratch_dir )
+        nukedir( dia_out_dir )
+        nukedir( ltcv_dir )
 
 
 @pytest.fixture( scope='session' )
 def template_csv():
-    return direc / "20172782_instances_templates_1.csv"
+    return _direc / "20172782_instances_templates_1.csv"
 
 
 @pytest.fixture( scope='session' )
 def two_science_csv():
-    return direc / "20172782_instances_science_2.csv"
+    return _direc / "20172782_instances_science_2.csv"
 
+
+@pytest.fixture( scope="session" )
+def dia_out_dir( config ):
+    return pathlib.Path( config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
 
 # @pytest.fixture( scope='session' )
 # def test_dia_image():

@@ -5,7 +5,7 @@ Development
 ===========
 
 .. contents::
-               
+
 
 If you're one of the phrosty developers, or are otherwise interested in contributing, here is some useful information.
 
@@ -20,7 +20,7 @@ Running Tests
 
 Running all of the tests requires an NVIDIA GPU with enough memory.  We are able to run them on 40GB NVIDIA GPUs, a GPU with only 12GB is not enough.  (TODO: figure out the actual cutoff.)
 
-To run  the tests, forst make sure you've set up your environment and pulled down the necessary docker images as described in :ref:`phrosty installation prerequisites<phrosty-installation-prerequisites>`.  
+To run  the tests, forst make sure you've set up your environment and pulled down the necessary docker images as described in :ref:`phrosty installation prerequisites<phrosty-installation-prerequisites>`.
 
 If you haven't already, get a copy of phrosty::
 
@@ -34,7 +34,7 @@ Make a couple of necessary directories::
 
   mkdir dia_out_dir
   mkdir phrosty_temp
-  
+
 Run the container with::
 
   docker run --gpus=all -it \
@@ -74,7 +74,7 @@ Run the container with::
 
 Once inside the container, cd into ``/home/phrosty/phrosty/tests`` and run::
 
-  SNPIT_CONFIG=phrosty_test_config.yaml pytest -v
+  pytest -v
 
 
 Manually running a test lightcurve
@@ -126,7 +126,7 @@ With these directories in place, run a container with::
     /bin/bash
 
 If you placed any of the new directories anywhere other than underneath your current working directory, modify the ``source=...`` parts of the command above to reflect that.
-    
+
 Inside the container, cd into ``/home/phrosty`` and try running::
 
   nvidia-smi
