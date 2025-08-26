@@ -1,3 +1,12 @@
+# ruff: noqa
+
+# This module should no longer be needed, and should be deleted soon.
+#
+# All the functions are left here commented out for now so that when we
+# get to fixing anything that's in plotting.py or plotaesthetics.py, we know
+# what they were trying to do before, and can figure out how to get what we
+# need out of snappl.
+
 # __all__ = [ 'get_roman_bands', 'read_truth_txt', 'radec_isin', 'get_corners',
 #             'get_transient_radec', 'get_transient_mjd', 'get_transient_zcmb',
 #             'get_transient_peakmjd', 'get_transient_info', 'transient_in_or_out',
