@@ -40,10 +40,10 @@ podman-hpc run --gpu \
     registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev \
     python phrosty/phrosty/pipeline.py \
       -c phrosty/examples/perlmutter/phrosty_config.yaml \
+      --oc ou2024 \
       --oid 20172782 \
-      -r 7.551093401915147 \
-      -d -44.80718106491529 \
       -b R062 \
+      --ic ou2024
       -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv \
       -s phrosty/examples/perlmutter/20172782_instances_science.csv \
       -p 9 \
