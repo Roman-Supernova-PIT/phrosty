@@ -1,6 +1,0 @@
-get_mjd_info
-============
-
-.. currentmodule:: phrosty.utils
-
-.. autofunction:: get_mjd_info

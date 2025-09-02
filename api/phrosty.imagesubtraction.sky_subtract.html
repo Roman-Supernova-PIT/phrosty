@@ -5,18 +5,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>sky_subtract &#8212; phrosty 0.1.dev1+ga26093841 documentation</title>
+    <title>sky_subtract &#8212; phrosty 0.1.dev1+g34d375aa8 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
-    <script src="../_static/documentation_options.js?v=a5285450"></script>
+    <script src="../_static/documentation_options.js?v=5be85a4f"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="stampmaker" href="phrosty.imagesubtraction.stampmaker.html" />
-    <link rel="prev" title="gz_and_ext" href="phrosty.imagesubtraction.gz_and_ext.html" />
+    <link rel="prev" title="phrosty API" href="../api.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
@@ -60,7 +60,7 @@
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
   <li><a href="../api.html">phrosty API</a><ul>
-      <li>Previous: <a href="phrosty.imagesubtraction.gz_and_ext.html" title="previous chapter">gz_and_ext</a></li>
+      <li>Previous: <a href="../api.html" title="previous chapter">phrosty API</a></li>
       <li>Next: <a href="phrosty.imagesubtraction.stampmaker.html" title="next chapter">stampmaker</a></li>
   </ul></li>
   </ul></li>
@@ -86,7 +86,7 @@
     <ul>
         <li>
           &larr;
-          <a href="phrosty.imagesubtraction.gz_and_ext.html" title="Previous document">gz_and_ext</a>
+          <a href="../api.html" title="Previous document">phrosty API</a>
         </li>
         <li>
           <a href="phrosty.imagesubtraction.stampmaker.html" title="Next document">stampmaker</a>
@@ -103,26 +103,32 @@
 <h1>sky_subtract<a class="headerlink" href="#sky-subtract" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="phrosty.imagesubtraction.sky_subtract">
-<span class="sig-prename descclassname"><span class="pre">phrosty.imagesubtraction.</span></span><span class="sig-name descname"><span class="pre">sky_subtract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inpath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skysubpath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detmaskpath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">PosixPath('/tmp')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/imagesubtraction.html#sky_subtract"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.imagesubtraction.sky_subtract" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">phrosty.imagesubtraction.</span></span><span class="sig-name descname"><span class="pre">sky_subtract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/imagesubtraction.html#sky_subtract"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.imagesubtraction.sky_subtract" title="Link to this definition">¶</a></dt>
 <dd><p>Subtracts background, found with Source Extractor.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>inpath</strong> (<em>Path</em>) – Original FITS image</p></li>
-<li><p><strong>skysubpath</strong> (<em>Path</em>) – Sky-subtracted FITS image</p></li>
-<li><p><strong>detmaskpath</strong> (<em>Path</em>) – Detection Mask FITS Image.  (Will be uint8, I think.)</p></li>
-<li><p><strong>temp_dir</strong> (<em>Path</em>) – Already-existing directory where we can write a temporary file.
-(If the image is .gz compressed, source-extractor can’t handle
-that, so we have to write a decompressed version.)</p></li>
-<li><p><strong>force</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a><em>, </em><em>default False</em>) – If False, and outpath already exists, do nothing.  If True,
-clobber the existing file and recalculate it.</p></li>
+<li><p><strong>img</strong> (<em>snappl.image.Image</em>) – Original image.</p></li>
+<li><p><strong>temp_dir</strong> (<em>Path</em><em>, </em><em>default None</em>) – Already-existing directory where we can write a temporary file.
+Defaults to photometry.snappl.temp_dir from the config.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>skyrms</strong> – Median of the skyrms image calculated by source-extractor</p>
+<dd class="field-even"><p><p><strong>skysubim</strong> – skysubim is the sky-subtracted image.  Its location on disk
+will be underneath temp_dir. It’s the caller’s responsibility
+to clean this up.  The file will have been written, so you
+can pass skysubim.path to any thing that needs the path of a
+single-HDU FITS image.</p>
+<p>detmask is the detection mask.  Its location on disk will be
+underneath temp_dir.  It’s the caller’s responsibility to clean
+this up.  The file will have been written, so you can pass
+detmask.path to any thing that needs the path of a single-HDU
+FITS image.</p>
+<p>skyrms is the median of the skyrms image calculated by source-extractor</p>
+</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a></p>
+<dd class="field-odd"><p>snappl.image.FITSImageOnDisk, detmask: snappl.image.FITSImageOnDisk, skyrms: float</p>
 </dd>
 </dl>
 </dd></dl>
@@ -137,7 +143,7 @@ clobber the existing file and recalculate it.</p></li>
     <ul>
         <li>
           &larr;
-          <a href="phrosty.imagesubtraction.gz_and_ext.html" title="Previous document">gz_and_ext</a>
+          <a href="../api.html" title="Previous document">phrosty API</a>
         </li>
         <li>
           <a href="phrosty.imagesubtraction.stampmaker.html" title="Next document">stampmaker</a>

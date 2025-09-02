@@ -15,10 +15,7 @@ Pipeline
       ~Pipeline.align_and_pre_convolve
       ~Pipeline.clear_contents
       ~Pipeline.do_stamps
-      ~Pipeline.get_galsim_values
       ~Pipeline.get_psfs
-      ~Pipeline.get_stars
-      ~Pipeline.get_zpt
       ~Pipeline.make_lightcurve
       ~Pipeline.make_phot_info_dict
       ~Pipeline.phot_at_coords
@@ -33,10 +30,7 @@ Pipeline
    .. automethod:: align_and_pre_convolve
    .. automethod:: clear_contents
    .. automethod:: do_stamps
-   .. automethod:: get_galsim_values
    .. automethod:: get_psfs
-   .. automethod:: get_stars
-   .. automethod:: get_zpt
    .. automethod:: make_lightcurve
    .. automethod:: make_phot_info_dict
    .. automethod:: phot_at_coords

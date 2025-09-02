@@ -58,15 +58,15 @@ Next, try running::
 
   SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py --help | less
 
-You should see all the options you can pass to phrosty.  There are a lot, because there are (verbose) options for everything that's in the config file.  Press ``q`` to get out of ``less``.
+You should see all the options you can pass to phrosty.  There are a lot, because there are (verbose) options for everything that's in the config file.  The options you need to think about most are at the top.  Press ``q`` to get out of ``less``.
 
 Try running::
 
   SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
+    --oc ou2024 \
     --oid 20172782 \
-    --ra 7.551093401915147 \
-    --dec -44.80718106491529 \
     -b Y106 \
+    --ic ou2024 \
     -t phrosty/tests/20172782_instances_templates_1.csv \
     -s phrosty/tests/20172782_instances_science_2.csv \
     -p 3 -w 3 \
@@ -182,16 +182,16 @@ The main Python executable for running the pipeline is ``phrosty/phrosty/pipelin
 
   SNPIT_CONFIG=phrosty/examples/perlmutter/phrosty_config.yaml python phrosty/phrosty/pipeline.py --help
 
-to see how it works, and to see what the various parameters you can specify are.
+to see how it works, and to see what the various parameters you can specify are.  The output will be long, becasue everything that's in the config file is included as something you can override on the command line.  The arguments near the top are the ones you're more likely to want to think about.  You might want to pipe the output of this ``-help`` into ``less`` so you can see what's going on.
 
 Run this on your example lightcurve with::
 
   python phrosty/phrosty/pipeline.py \
     -c phrosty/examples/perlmutter/phrosty_config.yaml \
+    --oc ou2024 \
     --oid 20172782 \
-    -r 7.551093401915147 \
-    -d -44.80718106491529 \
     -b R062 \
+    --ic ou2024 \
     -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv \
     -s phrosty/examples/perlmutter/20172782_instances_science_2.csv \
     -p 3 \
@@ -222,20 +222,22 @@ When developing/debugging the pipeline, it's useful to run with a profiler, so y
     --trace=cuda,nvtx,cublas,cusparse,cudnn,cudla,cusolver,opengl,openacc,openmp,osrt,mpi,nvvideo,vulkan,python-gil \
     python phrosty/phrosty/pipeline.py \
       -c phrosty/examples/perlmutter/phrosty_config.yaml \
+      --oc ou2024 \
       --oid 20172782 \
-      -r 7.551093401915147 \
-      -d -44.80718106491529 \
       -b R062 \
+      --ic ou2024 \
       -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv \
       -s phrosty/examples/perlmutter/20172782_instances_science_2.csv \
       -p 3 \
       -w 3
 
-*Ideally*, this would create a file ``report1.nsys-rep``, but something about that is broken; I'm not sure what.  It does create a file ``report1.qdstrm``, which you can then somehow somewhere else convert to a ``.nsys-rep`` file.  On a Linux system, if you've installed the ``nsight-compute`` and ``nsight-systems`` packages (see `Nvidia's Nsight Systems installation guide <https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)>`_), you can download the ``.qdstrm`` file to your system and run::
+*Ideally*, this would create a file ``report1.nsys-rep`` (or ``report2.nsys-rep``, or higher numbers based on what files are already in the directory), but something about that is broken; I'm not sure what.  If that file is created, be happy.  If not, should leave behind a file ``report<n>.qdstrm``.  You can couple that file to another system and manually convert it to a ``.nsys-rep`` file.  On a Linux system, if you've installed the ``nsight-compute`` and ``nsight-systems`` packages (see `Nvidia's Nsight Systems installation guide <https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)>`_), you can download the ``.qdstrm`` file to your system and run::
 
-  /opt/nvidia/nsight-systems/2024.4.2/host-linux-x64/QdstrmImporter -i <name>.qdstrm
+  /opt/nvidia/nsight-systems/2025.3.2/host-linux-x64/QdstrmImporter -i <name>.qdstrm
 
-where ``<name>.qstrm`` is the file you downloaded.  (Note that the directory may have something other than ``2024.4.2`` in it, depending on what version you've installed.  For best comptibility with the version of Nsight in the current (as of this writing) snpit docker image, I recommend trying to install something close to ``nsight-compute-2024.3.1`` and  ``nsight-systems-2024.4.2``; exactly what is avialable seems to vary with time.)  This should produce a file ``<name>.nsys-rep``.  Then, on your local desktop, run::
+where ``<name>.qstrm`` is the file you downloaded.  (Note that the directory may have something other than ``2025.3.2`` in it, depending on what version you've installed.  For best comptibility with the version of Nsight in the current (as of this writing) snpit docker image, I recommend trying to install something close to ``nsight-compute-2025.3.0`` and  ``nsight-systems-2025.3.2``; exactly what is avialable seems to vary with time.)  This should produce a file ``<name>.nsys-rep``.
+
+Once you, somehow, have a ``<name>.nsys-rep`` file, copy it down to your local desktop if it's not there already, and run::
 
   nsys-ui <name>.nsys-rep
 
@@ -303,6 +305,75 @@ If you want to see the status of jobs that have completed, there are a few jobs 
 and, ideally, there should be no lines anywhere in the file with ``ERROR`` near the beginning of the log message.
 
 Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.csv`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
+
+Running on a HPC system that uses apptainer/singularity
+-------------------------------------------------------
+
+Everything below assumes that the apptainer/singulariy executable is named ``apptainer``.  That's the newer name; the older name was singlarity.  If your system doesn't have ``apptainer``, try running ``singularity`` in its place.
+
+Set up the environment
+^^^^^^^^^^^^^^^^^^^^^^
+
+You need to import the roman SNPIT docker environment into singularity.  First, cd to a directory that will be fast to read or write to (this may be a scratch partition or some such on your cluster) and run::
+
+  apptainer pull docker://rknop/roman-snpit-env:cuda-dev
+
+(You can also try pulling from ``registry.nersc.gov``, but to do that you'll have to figure out how to log into the repository with ``apptainer``; try something like ``apptainer remote login --username <yourusername> docker://registry.nersc.gov``.)
+
+That will take a long time.  When it's done, there should be a file::
+
+  roman-snpit-env_cuda-dev.sif
+
+Pick a directory to work in; I will henceforth call this your "parent" directory.  Make some necessary directories here::
+
+  mkdir phrosty_temp
+  mkdir dia_out_dir
+  mkdir lc_out_dir
+  mkdir ou2024_images
+
+Copy the data
+^^^^^^^^^^^^^
+
+This example assumes you're just going to use the data available in ``photometry_test_data``.  Pull it down with::
+
+  git clone https://github.com/Roman-Supernova-PIT/photometry_test_data
+
+If you want to run on more than the images that are there, figure out which images you're going to run on.  Look at the ``.csv`` files you'll be feeding to phrosty.  For all of the images in those files, copy the data file from the host system to ``ou2024_images`` (preserving the relative path that's in the ``.csv`` files.)  On Perlmutter, you can find the files underneath::
+
+  /dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images/simple_model/
+
+
+Check out the code
+^^^^^^^^^^^^^^^^^^
+
+In a directory which I will henceforth call your "parent" directory, get a copy of phrosty::
+
+  git clone https://github.com/Roman-Supernova-PIT/phrosty.git
+
+Run the container
+^^^^^^^^^^^^^^^^^
+
+Do::
+
+  apptainer shell --nv \
+    --bind $PWD:/home \
+    --bind $PWD/photometry_test_data:/photometry_test_data \
+    --bind $PWD/dia_out_dir:/dia_out_dir \
+    --bind $PWD/lc_out_dir:/lc_out_dir \
+    --bind $PWD/phrosty_temp:/phrosty_temp \
+    --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
+    --env PYTHONPATH=/roman_imsim \
+    --env OPENBLAS_NUM_THREADS=1 \
+    --env MKL_NUM_THREADS=1 \
+    --env NUMEXPR_NUM_THREADS=1 \
+    --env OMP_NUM_THREADS=1 \
+    --env VECLIB_MAXIMUM_THREADS=1 \
+    --env TERM=xterm \
+    roman-snpit-env_cuda-dev.sif
+
+
+If you ran the ``apptainer pull`` command above in a different place from where you are now, replaced ``roman-snpit-env_cuda-dev.sif`` above with the full path to that ``.sif`` file.
+
 
 
 Phrosty Functionality

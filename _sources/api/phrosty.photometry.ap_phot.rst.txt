@@ -1,6 +1,0 @@
-ap_phot
-=======
-
-.. currentmodule:: phrosty.photometry
-
-.. autofunction:: ap_phot

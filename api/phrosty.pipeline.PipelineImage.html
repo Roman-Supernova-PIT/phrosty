@@ -5,18 +5,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>PipelineImage &#8212; phrosty 0.1.dev1+ga26093841 documentation</title>
+    <title>PipelineImage &#8212; phrosty 0.1.dev1+g34d375aa8 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
-    <script src="../_static/documentation_options.js?v=a5285450"></script>
+    <script src="../_static/documentation_options.js?v=5be85a4f"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Pipeline" href="phrosty.pipeline.Pipeline.html" />
-    <link rel="prev" title="psf_phot" href="phrosty.photometry.psf_phot.html" />
+    <link rel="prev" title="stampmaker" href="phrosty.imagesubtraction.stampmaker.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
@@ -60,7 +60,7 @@
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
   <li><a href="../api.html">phrosty API</a><ul>
-      <li>Previous: <a href="phrosty.photometry.psf_phot.html" title="previous chapter">psf_phot</a></li>
+      <li>Previous: <a href="phrosty.imagesubtraction.stampmaker.html" title="previous chapter">stampmaker</a></li>
       <li>Next: <a href="phrosty.pipeline.Pipeline.html" title="next chapter">Pipeline</a></li>
   </ul></li>
   </ul></li>
@@ -86,7 +86,7 @@
     <ul>
         <li>
           &larr;
-          <a href="phrosty.photometry.psf_phot.html" title="Previous document">psf_phot</a>
+          <a href="phrosty.imagesubtraction.stampmaker.html" title="Previous document">stampmaker</a>
         </li>
         <li>
           <a href="phrosty.pipeline.Pipeline.html" title="Next document">Pipeline</a>
@@ -103,7 +103,7 @@
 <h1>PipelineImage<a class="headerlink" href="#pipelineimage" title="Link to this heading">¶</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phrosty.pipeline.PipelineImage">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phrosty.pipeline.</span></span><span class="sig-name descname"><span class="pre">PipelineImage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imagepath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pointing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sca</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pipeline</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#PipelineImage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.PipelineImage" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phrosty.pipeline.</span></span><span class="sig-name descname"><span class="pre">PipelineImage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pipeline</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#PipelineImage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.PipelineImage" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Holds a snappl.image.Image, with some other stuff the pipeline needs.</p>
 <p>Create a PipelineImage</p>
@@ -111,11 +111,7 @@
 <h2>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h2>
 <blockquote>
 <div><dl class="simple">
-<dt>imagepath<span class="classifier">str or Path</span></dt><dd><p>A path to the image.  This will be passed on to an Image
-subclass constructor; which subclass depends on the config
-option photometry.phrosty.image_type</p>
-</dd>
-<dt>pointing<span class="classifier">str or int</span></dt><dd><p>An identifier of the pointing of this image.  Used e.g. to pull PSFs.</p>
+<dt>image<span class="classifier">snappl.image.Image</span></dt><dd><p>The image we’re encapsulating.  Pass either this or imagepath.</p>
 </dd>
 <dt>pipeline<span class="classifier">phrosty.pipeline.Pipeline</span></dt><dd><p>The pipeline that owns this image.</p>
 </dd>
@@ -190,7 +186,7 @@ option photometry.phrosty.image_type</p>
     <ul>
         <li>
           &larr;
-          <a href="phrosty.photometry.psf_phot.html" title="Previous document">psf_phot</a>
+          <a href="phrosty.imagesubtraction.stampmaker.html" title="Previous document">stampmaker</a>
         </li>
         <li>
           <a href="phrosty.pipeline.Pipeline.html" title="Next document">Pipeline</a>

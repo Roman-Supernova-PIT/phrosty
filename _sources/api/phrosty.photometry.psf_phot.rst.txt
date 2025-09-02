@@ -1,6 +1,0 @@
-psf_phot
-========
-
-.. currentmodule:: phrosty.photometry
-
-.. autofunction:: psf_phot

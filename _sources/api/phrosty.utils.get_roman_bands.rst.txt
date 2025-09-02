@@ -1,6 +1,0 @@
-get_roman_bands
-===============
-
-.. currentmodule:: phrosty.utils
-
-.. autofunction:: get_roman_bands

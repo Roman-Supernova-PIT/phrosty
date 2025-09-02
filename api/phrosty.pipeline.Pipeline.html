@@ -5,17 +5,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Pipeline &#8212; phrosty 0.1.dev1+ga26093841 documentation</title>
+    <title>Pipeline &#8212; phrosty 0.1.dev1+g34d375aa8 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
-    <script src="../_static/documentation_options.js?v=a5285450"></script>
+    <script src="../_static/documentation_options.js?v=5be85a4f"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="get_roman_bands" href="phrosty.utils.get_roman_bands.html" />
     <link rel="prev" title="PipelineImage" href="phrosty.pipeline.PipelineImage.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -61,7 +60,6 @@
   <li><a href="../index.html">Documentation overview</a><ul>
   <li><a href="../api.html">phrosty API</a><ul>
       <li>Previous: <a href="phrosty.pipeline.PipelineImage.html" title="previous chapter">PipelineImage</a></li>
-      <li>Next: <a href="phrosty.utils.get_roman_bands.html" title="next chapter">get_roman_bands</a></li>
   </ul></li>
   </ul></li>
 </ul>
@@ -88,10 +86,6 @@
           &larr;
           <a href="phrosty.pipeline.PipelineImage.html" title="Previous document">PipelineImage</a>
         </li>
-        <li>
-          <a href="phrosty.utils.get_roman_bands.html" title="Next document">get_roman_bands</a>
-          &rarr;
-        </li>
     </ul>
   </nav>
               </div>
@@ -103,19 +97,28 @@
 <h1>Pipeline<a class="headerlink" href="#pipeline" title="Link to this heading">¶</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phrosty.pipeline.Pipeline">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phrosty.pipeline.</span></span><span class="sig-name descname"><span class="pre">Pipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">science_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">template_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nprocs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#Pipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.Pipeline" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phrosty.pipeline.</span></span><span class="sig-name descname"><span class="pre">Pipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diaobj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">imgcol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">science_images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">template_images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">science_csv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">template_csv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nprocs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#Pipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.Pipeline" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Phrosty’s top-level pipeline</p>
 <p>Create the a pipeline object.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>object_id</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>)</p></li>
-<li><p><strong>ra</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Position of transient in decimal degrees</p></li>
-<li><p><strong>dec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Position of transient in decimal degrees</p></li>
+<li><p><strong>diaobj</strong> (<em>DiaObject</em>) – The object we’re building a lightcurve for</p></li>
 <li><p><strong>band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – One of R062, Z087, Y106, J129, H158, F184, K213</p></li>
-<li><p><strong>science_images</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><em>tuple</em></a>) – ( path_to_image, pointing, sca )</p></li>
-<li><p><strong>template_images</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><em>tuple</em></a>) – ( path_to_image, pointing, sca )</p></li>
+<li><p><strong>science_images</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><em>list</em></a><em> of </em><em>snappl.image.Image</em>) – The science images.</p></li>
+<li><p><strong>template_images</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><em>list</em></a><em> of </em><em>snappl.image.Image</em>) – The template images.</p></li>
+<li><p><strong>science_csv</strong> (<em>Path</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – <p>CSV file with the science images.  The first line must be:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">path</span> <span class="n">pointing</span> <span class="n">sca</span> <span class="n">mjd</span> <span class="n">band</span>
+</pre></div>
+</div>
+<p>subsequent lines must have that information for all the
+science images.  path must be relative to ou24.images in
+config.  Pipeline will extract the images from this file
+whose band matches the band of the pipeline (and ignore
+the rest)</p>
+</p></li>
+<li><p><strong>template_csv</strong> (<em>Path</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – CSV file with template images.  Same format as science_csv.</p></li>
 <li><p><strong>nprocs</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>, </em><em>default 1</em>) – Number of cpus for the CPU multiprocessing segments of the pipeline.
 (GPU segments will run a single process.)</p></li>
 <li><p><strong>nwrite</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>, </em><em>default 5</em>) – Number of asynchronous FITS writer processes.</p></li>
@@ -126,7 +129,7 @@
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.__call__" title="phrosty.pipeline.Pipeline.__call__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code></a>([through_step])</p></td>
-<td><p>Call self as a function.</p></td>
+<td><p>Run the pipeline.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.add_to_results_dict" title="phrosty.pipeline.Pipeline.add_to_results_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_to_results_dict</span></code></a>(one_pair)</p></td>
 <td><p></p></td>
@@ -140,34 +143,25 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.do_stamps" title="phrosty.pipeline.Pipeline.do_stamps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">do_stamps</span></code></a>(sci_image, templ_image)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.get_galsim_values" title="phrosty.pipeline.Pipeline.get_galsim_values"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_galsim_values</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.get_psfs" title="phrosty.pipeline.Pipeline.get_psfs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_psfs</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.get_psfs" title="phrosty.pipeline.Pipeline.get_psfs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_psfs</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.make_lightcurve" title="phrosty.pipeline.Pipeline.make_lightcurve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_lightcurve</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.get_stars" title="phrosty.pipeline.Pipeline.get_stars"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_stars</span></code></a>(truthpath[, nx, ny, transform, wcs])</p></td>
-<td><p>Get the stars in the science images.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.make_phot_info_dict" title="phrosty.pipeline.Pipeline.make_phot_info_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_phot_info_dict</span></code></a>(sci_image, templ_image)</p></td>
+<td><p>&quot;Do things.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.get_zpt" title="phrosty.pipeline.Pipeline.get_zpt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_zpt</span></code></a>(zptimg, err, psf, band, stars[, ...])</p></td>
-<td><p>Get the zeropoint based on the stars.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.make_lightcurve" title="phrosty.pipeline.Pipeline.make_lightcurve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_lightcurve</span></code></a>()</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.make_phot_info_dict" title="phrosty.pipeline.Pipeline.make_phot_info_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_phot_info_dict</span></code></a>(sci_image, templ_image)</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.phot_at_coords" title="phrosty.pipeline.Pipeline.phot_at_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phot_at_coords</span></code></a>(img, err, psf[, pxcoords, ap_r])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.phot_at_coords" title="phrosty.pipeline.Pipeline.phot_at_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phot_at_coords</span></code></a>(img, psf[, pxcoords, ap_r])</p></td>
 <td><p>Do photometry at forced set of pixel coordinates.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.save_stamp_paths" title="phrosty.pipeline.Pipeline.save_stamp_paths"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_stamp_paths</span></code></a>(sci_image, templ_image, paths)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.save_stamp_paths" title="phrosty.pipeline.Pipeline.save_stamp_paths"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_stamp_paths</span></code></a>(sci_image, templ_image, paths)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.sky_sub_all_images" title="phrosty.pipeline.Pipeline.sky_sub_all_images"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sky_sub_all_images</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.sky_sub_all_images" title="phrosty.pipeline.Pipeline.sky_sub_all_images"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sky_sub_all_images</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.write_fits_file" title="phrosty.pipeline.Pipeline.write_fits_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_fits_file</span></code></a>(data, header, savepath)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phrosty.pipeline.Pipeline.write_fits_file" title="phrosty.pipeline.Pipeline.write_fits_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_fits_file</span></code></a>(data, header, savepath)</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -176,7 +170,29 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="phrosty.pipeline.Pipeline.__call__">
 <span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">through_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#Pipeline.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.Pipeline.__call__" title="Link to this definition">¶</a></dt>
-<dd><p>Call self as a function.</p>
+<dd><p>Run the pipeline.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>through_step</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>default None</em>) – <p>Which step to run thorough?  Runs them all if not given.</p>
+<p>Steps in order are:
+* sky_subtract
+* get_psfs
+* align_and_preconvolve
+* subtract
+* find_decorrelation
+* apply_decorrelation
+* make_stamps
+* make_lightcurve</p>
+</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ltcvpath</strong> – The path to the output lightcurve file if make_lightcurve
+was run, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.13)">pathlib.Path</a> or None</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -191,9 +207,17 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>sci_image</strong> (<em>phrosty.Image</em>) – The science (new) image.</p></li>
-<li><p><strong>templ_image</strong> (<em>phrosty.Image</em>) – The template (ref) image that will be subtracted from sci_image.</p></li>
+<li><p><strong>sci_image</strong> (<em>phrosty.PipelineImage</em>) – The science (new) image.</p></li>
+<li><p><strong>templ_image</strong> (<em>phrosty.PipelineImage</em>) – The template (ref) image that will be subtracted from sci_image.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sfftifier</strong> – Use this object for futher SFFT work.  Be sure to
+dereference it to free the prodigious amount of memory it
+allcoates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>SpaceSFFT_CupyFlow</p>
 </dd>
 </dl>
 </dd></dl>
@@ -209,27 +233,9 @@
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phrosty.pipeline.Pipeline.get_galsim_values">
-<span class="sig-name descname"><span class="pre">get_galsim_values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#Pipeline.get_galsim_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.Pipeline.get_galsim_values" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="phrosty.pipeline.Pipeline.get_psfs">
 <span class="sig-name descname"><span class="pre">get_psfs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#Pipeline.get_psfs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.Pipeline.get_psfs" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phrosty.pipeline.Pipeline.get_stars">
-<span class="sig-name descname"><span class="pre">get_stars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">truthpath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4088</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ny</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4088</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wcs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#Pipeline.get_stars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.Pipeline.get_stars" title="Link to this definition">¶</a></dt>
-<dd><p>Get the stars in the science images.</p>
-<p>Optional to transform to another WCS.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phrosty.pipeline.Pipeline.get_zpt">
-<span class="sig-name descname"><span class="pre">get_zpt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zptimg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">psf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stars</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ap_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zpt_plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sci_pointing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sci_sca</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#Pipeline.get_zpt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.Pipeline.get_zpt" title="Link to this definition">¶</a></dt>
-<dd><p>Get the zeropoint based on the stars.</p>
-</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phrosty.pipeline.Pipeline.make_lightcurve">
@@ -239,12 +245,57 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="phrosty.pipeline.Pipeline.make_phot_info_dict">
 <span class="sig-name descname"><span class="pre">make_phot_info_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sci_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">templ_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ap_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#Pipeline.make_phot_info_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.Pipeline.make_phot_info_dict" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>“Do things.</p>
+<section id="parmaeters">
+<h2>Parmaeters<a class="headerlink" href="#parmaeters" title="Link to this heading">¶</a></h2>
+<blockquote>
+<div><dl class="simple">
+<dt>sci_image: PipelineImage</dt><dd><p>science image wrapper</p>
+</dd>
+<dt>temp_image: PipelineImage</dt><dd><p>template image wrapper</p>
+</dd>
+<dt>ap_r: float, default 4</dt><dd><p>Radius of aperture to use in something</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>something</strong> – It has things in it</p>
+</dd>
+<dt class="field-even">rtype<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phrosty.pipeline.Pipeline.phot_at_coords">
-<span class="sig-name descname"><span class="pre">phot_at_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">psf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pxcoords</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(50,</span> <span class="pre">50)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ap_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#Pipeline.phot_at_coords"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.Pipeline.phot_at_coords" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">phot_at_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">psf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pxcoords</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(50,</span> <span class="pre">50)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ap_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phrosty/pipeline.html#Pipeline.phot_at_coords"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phrosty.pipeline.Pipeline.phot_at_coords" title="Link to this definition">¶</a></dt>
 <dd><p>Do photometry at forced set of pixel coordinates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>snappl.image.Image</em>) – The image on which to do the photometry</p></li>
+<li><p><strong>psf</strong> (<em>snappl.psf.PSF</em>) – The PSF.</p></li>
+<li><p><strong>pxcoords</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><em>tuple</em></a><em> of </em><em>(</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>)</em>) – The position on the image to do the photometry</p></li>
+<li><p><strong>ap_r</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Radius of aperture.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p><strong>results</strong> – Keys and values are:
+* ‘aperture_sum’: flux in aperture of radius ap_r
+* ‘flux_fit’: flux from PSF photometry
+* ‘flux_fit_err’: uncertainty on flux_fit
+* ‘mag_fit’: instrumental magnitude (i.e. no zeropoint) from flux_fit
+* ‘mag_fit_err’: uncertainty on mag_fit</p>
+<p>All values are floats.</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)">dict</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -275,10 +326,6 @@
         <li>
           &larr;
           <a href="phrosty.pipeline.PipelineImage.html" title="Previous document">PipelineImage</a>
-        </li>
-        <li>
-          <a href="phrosty.utils.get_roman_bands.html" title="Next document">get_roman_bands</a>
-          &rarr;
         </li>
     </ul>
   </nav>

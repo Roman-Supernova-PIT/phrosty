@@ -1,6 +1,0 @@
-pointings_near_mjd
-==================
-
-.. currentmodule:: phrosty.utils
-
-.. autofunction:: pointings_near_mjd

@@ -4,12 +4,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phrosty.imagesubtraction &#8212; phrosty 0.1.dev1+ga26093841 documentation</title>
+    <title>phrosty.imagesubtraction &#8212; phrosty 0.1.dev1+g34d375aa8 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
-    <script src="../../_static/documentation_options.js?v=a5285450"></script>
+    <script src="../../_static/documentation_options.js?v=5be85a4f"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -87,137 +87,111 @@
           <div class="body" role="main">
             
   <h1>Source code for phrosty.imagesubtraction</h1><div class="highlight"><pre>
-<span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span> <span class="s1">&#39;gz_and_ext&#39;</span><span class="p">,</span> <span class="s1">&#39;sky_subtract&#39;</span><span class="p">,</span> <span class="s1">&#39;stampmaker&#39;</span> <span class="p">]</span>
+<span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span> <span class="s1">&#39;sky_subtract&#39;</span><span class="p">,</span> <span class="s1">&#39;stampmaker&#39;</span> <span class="p">]</span>
 
 <span class="c1"># IMPORTS Standard:</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">gzip</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pathlib</span>
-
-<span class="c1"># IMPORTS Astro:</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.coordinates</span><span class="w"> </span><span class="kn">import</span> <span class="n">SkyCoord</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.wcs.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">skycoord_to_pixel</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">astropy.units</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">u</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.wcs</span><span class="w"> </span><span class="kn">import</span> <span class="n">WCS</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
 
 <span class="c1"># IMPORTS SFFT:</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sfft.utils.SExSkySubtract</span><span class="w"> </span><span class="kn">import</span> <span class="n">SEx_SkySubtract</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sfft.utils.StampGenerator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Stamp_Generator</span>
 
 <span class="c1"># IMPORTS internal</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">snappl.image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">snpit_utils.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">SNLogger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">snpit_utils.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
 
 
-<div class="viewcode-block" id="gz_and_ext">
-<a class="viewcode-back" href="../../api/phrosty.imagesubtraction.gz_and_ext.html#phrosty.imagesubtraction.gz_and_ext">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gz_and_ext</span><span class="p">(</span><span class="n">in_path</span><span class="p">,</span> <span class="n">out_path</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Utility function that unzips the original file and turns</span>
-<span class="sd">       it into a single-extension FITS file.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">      in_path: Path</span>
-<span class="sd">        The input path of the file to unzip and flatten.</span>
-
-<span class="sd">      out_path: Path</span>
-<span class="sd">        The desired output path of the file that is unzipped and flattened, once it is saved.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">      out_path: Path</span>
-<span class="sd">        The output path of the file that has been unzipped and flattened.</span>
-
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">bio</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
-    <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">in_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_in</span><span class="p">:</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfileobj</span><span class="p">(</span><span class="n">f_in</span><span class="p">,</span> <span class="n">bio</span><span class="p">)</span>
-    <span class="n">bio</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-
-    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">bio</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdu</span><span class="p">:</span>
-        <span class="n">newhdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">hdu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)])</span>
-        <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">current_process</span><span class="p">()</span><span class="o">.</span><span class="n">pid</span><span class="si">}</span><span class="s2"> Writing extracted HDU 1 to </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2">...&quot;</span> <span class="p">)</span>
-        <span class="n">newhdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;...process </span><span class="si">{</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">current_process</span><span class="p">()</span><span class="o">.</span><span class="n">pid</span><span class="si">}</span><span class="s2"> done writing &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;extracted HDU 1 to </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2">.&quot;</span> <span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">out_path</span></div>
-
-
-
 <div class="viewcode-block" id="sky_subtract">
 <a class="viewcode-back" href="../../api/phrosty.imagesubtraction.sky_subtract.html#phrosty.imagesubtraction.sky_subtract">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">sky_subtract</span><span class="p">(</span> <span class="n">inpath</span><span class="p">,</span> <span class="n">skysubpath</span><span class="p">,</span> <span class="n">detmaskpath</span><span class="p">,</span> <span class="n">temp_dir</span><span class="o">=</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/tmp&quot;</span><span class="p">),</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span> <span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sky_subtract</span><span class="p">(</span> <span class="n">img</span><span class="p">,</span> <span class="n">temp_dir</span><span class="o">=</span><span class="kc">None</span> <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Subtracts background, found with Source Extractor.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">      inpath: Path</span>
-<span class="sd">        Original FITS image</span>
+<span class="sd">      img: snappl.image.Image</span>
+<span class="sd">        Original image.</span>
 
-<span class="sd">      skysubpath: Path</span>
-<span class="sd">        Sky-subtracted FITS image</span>
-
-<span class="sd">      detmaskpath: Path</span>
-<span class="sd">        Detection Mask FITS Image.  (Will be uint8, I think.)</span>
-
-<span class="sd">      temp_dir: Path</span>
+<span class="sd">      temp_dir: Path, default None</span>
 <span class="sd">        Already-existing directory where we can write a temporary file.</span>
-<span class="sd">        (If the image is .gz compressed, source-extractor can&#39;t handle</span>
-<span class="sd">        that, so we have to write a decompressed version.)</span>
-
-<span class="sd">      force: bool, default False</span>
-<span class="sd">        If False, and outpath already exists, do nothing.  If True,</span>
-<span class="sd">        clobber the existing file and recalculate it.</span>
+<span class="sd">        Defaults to photometry.snappl.temp_dir from the config.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">      skyrms: float</span>
-<span class="sd">        Median of the skyrms image calculated by source-extractor</span>
+<span class="sd">      skysubim: snappl.image.FITSImageOnDisk, detmask: snappl.image.FITSImageOnDisk, skyrms: float</span>
+
+<span class="sd">         skysubim is the sky-subtracted image.  Its location on disk</span>
+<span class="sd">         will be underneath temp_dir. It&#39;s the caller&#39;s responsibility</span>
+<span class="sd">         to clean this up.  The file will have been written, so you</span>
+<span class="sd">         can pass skysubim.path to any thing that needs the path of a</span>
+<span class="sd">         single-HDU FITS image.</span>
+
+<span class="sd">         detmask is the detection mask.  Its location on disk will be</span>
+<span class="sd">         underneath temp_dir.  It&#39;s the caller&#39;s responsibility to clean</span>
+<span class="sd">         this up.  The file will have been written, so you can pass</span>
+<span class="sd">         detmask.path to any thing that needs the path of a single-HDU</span>
+<span class="sd">         FITS image.</span>
+
+<span class="sd">         skyrms is the median of the skyrms image calculated by source-extractor</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">if</span> <span class="p">(</span> <span class="ow">not</span> <span class="n">force</span> <span class="p">)</span> <span class="ow">and</span> <span class="p">(</span> <span class="n">skysubpath</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="p">)</span> <span class="ow">and</span> <span class="p">(</span> <span class="n">detmaskpath</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="p">):</span>
-        <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span> <span class="n">skysubpath</span> <span class="p">)</span> <span class="k">as</span> <span class="n">hdul</span><span class="p">:</span>
-            <span class="n">skyrms</span> <span class="o">=</span> <span class="n">hdul</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;SKYRMS&#39;</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">skyrms</span>
+    <span class="c1"># SEx_SkySubtract.SSS requires FITS files to chew on.  At some point</span>
+    <span class="c1"># we should refactor this so that we can pass data to it.  However,</span>
+    <span class="c1"># for now, write a snappl.image.FITSImageOnDisk so we have something</span>
+    <span class="c1"># to give to it.</span>
 
-    <span class="c1"># do_skysub = force or ( ( not force ) and ( not skysubpath.is_file() ) and ( detmaskpath.is_file() ) )</span>
+    <span class="n">temp_dir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="n">temp_dir</span> <span class="k">if</span> <span class="n">temp_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;photometry.snappl.temp_dir&#39;</span> <span class="p">)</span> <span class="p">)</span>
+    <span class="n">barf</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">random</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span> <span class="s2">&quot;0123456789abcdef&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">10</span> <span class="p">)</span> <span class="p">)</span>
+    <span class="n">tmpimpath</span> <span class="o">=</span> <span class="n">temp_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">barf</span><span class="si">}</span><span class="s2">_sub.fits&quot;</span>
+    <span class="n">tmpsubpath</span> <span class="o">=</span> <span class="n">temp_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">barf</span><span class="si">}</span><span class="s2">_sub.fits&quot;</span>
+    <span class="n">tmpdetmaskpath</span> <span class="o">=</span> <span class="n">temp_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">barf</span><span class="si">}</span><span class="s2">_detmask.fits&quot;</span>
 
-    <span class="k">if</span> <span class="n">inpath</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:]</span> <span class="o">==</span> <span class="s1">&#39;.gz&#39;</span><span class="p">:</span>
-        <span class="n">decompressed_path</span> <span class="o">=</span> <span class="n">temp_dir</span> <span class="o">/</span> <span class="n">inpath</span><span class="o">.</span><span class="n">name</span><span class="p">[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
-        <span class="n">gz_and_ext</span><span class="p">(</span> <span class="n">inpath</span><span class="p">,</span> <span class="n">decompressed_path</span> <span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">decompressed_path</span> <span class="o">=</span> <span class="n">inpath</span>
+    <span class="n">origimg</span> <span class="o">=</span> <span class="n">img</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span> <span class="n">origimg</span><span class="p">,</span> <span class="n">snappl</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">FITSImageOnDisk</span> <span class="p">):</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">origimg</span><span class="o">.</span><span class="n">uncompressed_version</span><span class="p">(</span> <span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">snappl</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">FITSImageOnDisk</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">tmpimpath</span> <span class="p">)</span>
+            <span class="n">img</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">origimg</span><span class="o">.</span><span class="n">data</span>
+            <span class="n">img</span><span class="o">.</span><span class="n">save_data</span><span class="p">()</span>
 
+        <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="s2">&quot;Calling SEx_SkySubtract.SSS...&quot;</span> <span class="p">)</span>
+        <span class="p">(</span> <span class="n">_SKYDIP</span><span class="p">,</span> <span class="n">_SKYPEAK</span><span class="p">,</span> <span class="n">_PixA_skysub</span><span class="p">,</span>
+          <span class="n">_PixA_sky</span><span class="p">,</span> <span class="n">PixA_skyrms</span> <span class="p">)</span> <span class="o">=</span> <span class="n">SEx_SkySubtract</span><span class="o">.</span><span class="n">SSS</span><span class="p">(</span><span class="n">FITS_obj</span><span class="o">=</span><span class="n">img</span><span class="o">.</span><span class="n">path</span><span class="p">,</span>
+                                                         <span class="n">FITS_skysub</span><span class="o">=</span><span class="n">tmpsubpath</span><span class="p">,</span>
+                                                         <span class="n">FITS_detmask</span><span class="o">=</span><span class="n">tmpdetmaskpath</span><span class="p">,</span>
+                                                         <span class="n">FITS_sky</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">FITS_skyrms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                                         <span class="n">ESATUR_KEY</span><span class="o">=</span><span class="s1">&#39;ESATUR&#39;</span><span class="p">,</span>
+                                                         <span class="n">BACK_SIZE</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">BACK_FILTERSIZE</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                                                         <span class="n">DETECT_THRESH</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">DETECT_MINAREA</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                                                         <span class="n">DETECT_MAXAREA</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                                                         <span class="n">VERBOSE_LEVEL</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">MDIR</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="s2">&quot;...back from SEx_SkySubtract.SSS&quot;</span> <span class="p">)</span>
 
-    <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="s2">&quot;Calling SEx_SkySubtract.SSS...&quot;</span> <span class="p">)</span>
-    <span class="p">(</span> <span class="n">_SKYDIP</span><span class="p">,</span> <span class="n">_SKYPEAK</span><span class="p">,</span> <span class="n">_PixA_skysub</span><span class="p">,</span>
-      <span class="n">_PixA_sky</span><span class="p">,</span> <span class="n">PixA_skyrms</span> <span class="p">)</span> <span class="o">=</span> <span class="n">SEx_SkySubtract</span><span class="o">.</span><span class="n">SSS</span><span class="p">(</span><span class="n">FITS_obj</span><span class="o">=</span><span class="n">decompressed_path</span><span class="p">,</span>
-                                                     <span class="n">FITS_skysub</span><span class="o">=</span><span class="n">skysubpath</span><span class="p">,</span>
-                                                     <span class="n">FITS_detmask</span><span class="o">=</span><span class="n">detmaskpath</span><span class="p">,</span>
-                                                     <span class="n">FITS_sky</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">FITS_skyrms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                                                     <span class="n">ESATUR_KEY</span><span class="o">=</span><span class="s1">&#39;ESATUR&#39;</span><span class="p">,</span>
-                                                     <span class="n">BACK_SIZE</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">BACK_FILTERSIZE</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-                                                     <span class="n">DETECT_THRESH</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">DETECT_MINAREA</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
-                                                     <span class="n">DETECT_MAXAREA</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-                                                     <span class="n">VERBOSE_LEVEL</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">MDIR</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-    <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="s2">&quot;...back from SEx_SkySubtract.SSS&quot;</span> <span class="p">)</span>
+        <span class="n">subim</span> <span class="o">=</span> <span class="n">snappl</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">FITSImageOnDisk</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">tmpsubpath</span> <span class="p">)</span>
+        <span class="n">detmaskim</span> <span class="o">=</span> <span class="n">snappl</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">FITSImageOnDisk</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">tmpdetmaskpath</span> <span class="p">)</span>
+        <span class="n">skyrms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span> <span class="n">PixA_skyrms</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="n">subim</span><span class="p">,</span> <span class="n">detmaskim</span><span class="p">,</span> <span class="n">skyrms</span>
 
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span> <span class="n">PixA_skyrms</span> <span class="p">)</span></div>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="c1"># Clean up the image temp file if necessary</span>
+        <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">path</span> <span class="o">!=</span> <span class="n">origimg</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+            <span class="n">img</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span> <span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="stampmaker">
 <a class="viewcode-back" href="../../api/phrosty.imagesubtraction.stampmaker.html#phrosty.imagesubtraction.stampmaker">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">stampmaker</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">imgpath</span><span class="p">,</span> <span class="n">savedir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">savename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">stampmaker</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">savedir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">savename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Make stamps.</span>
+
+<span class="sd">    TODO : pass an array of ra and dec to make this more efficient;</span>
+<span class="sd">    otherwise, we may be writing and deleting a FITS image over and over</span>
+<span class="sd">    again!</span>
+
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -230,14 +204,15 @@
 <span class="sd">      shape: np.array</span>
 <span class="sd">        Shape of stamp. must be a numpy array. e.g. np.array([100,100])</span>
 
-<span class="sd">      imgpath: Path</span>
-<span class="sd">        Path to image that stamp will be extracted from.</span>
+<span class="sd">      img: snappl.image.Image</span>
+<span class="sd">        Image from whose data the stamp will be extracted.</span>
 
-<span class="sd">      savedir: Path</span>
-<span class="sd">        Directory stamp will be saved to.</span>
+<span class="sd">      savedir: Path, default None</span>
+<span class="sd">        Directory stamp will be saved to.  Defaults to &quot;stamps&quot; underneath</span>
+<span class="sd">        phtometry.phrosty.paths.dia_out_dir from the config.</span>
 
-<span class="sd">      savename: Path</span>
-<span class="sd">        Base name of stamp filepath.</span>
+<span class="sd">      savename: Path, default None</span>
+<span class="sd">        Base name of stamp filepath; defaults to the name from img&#39;s path.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -253,24 +228,32 @@
         <span class="n">savedir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="n">savedir</span> <span class="p">)</span>
     <span class="n">savedir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span> <span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">savename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">savename</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;stamp_</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">imgpath</span><span class="p">)</span><span class="si">}</span><span class="s1">.fits&#39;</span>
+    <span class="n">savepath</span> <span class="o">=</span> <span class="n">savedir</span> <span class="o">/</span> <span class="p">(</span> <span class="n">savename</span> <span class="k">if</span> <span class="n">savename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="sa">f</span><span class="s1">&#39;stamp_</span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">stem</span><span class="si">}</span><span class="s1">.fits&#39;</span> <span class="p">)</span>
 
-    <span class="n">savepath</span> <span class="o">=</span> <span class="n">savedir</span> <span class="o">/</span> <span class="n">savename</span>
-
-    <span class="n">coord</span> <span class="o">=</span> <span class="n">SkyCoord</span><span class="p">(</span><span class="n">ra</span><span class="o">=</span><span class="n">ra</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">deg</span><span class="p">,</span> <span class="n">dec</span><span class="o">=</span><span class="n">dec</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">deg</span><span class="p">)</span>
-    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">imgpath</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdu</span><span class="p">:</span>
-        <span class="n">hdun</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">imgpath</span><span class="p">)[</span><span class="o">-</span><span class="mi">3</span><span class="p">:]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;.fz&#39;</span><span class="p">,</span> <span class="s1">&#39;.gz&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
-        <span class="n">wcs</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">hdu</span><span class="p">[</span><span class="n">hdun</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
-
-    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">skycoord_to_pixel</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">wcs</span><span class="p">)</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">get_wcs</span><span class="p">()</span><span class="o">.</span><span class="n">world_to_pixel</span><span class="p">(</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="p">)</span>
     <span class="n">pxradec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">]])</span>
 
-    <span class="c1"># TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()</span>
-    <span class="n">Stamp_Generator</span><span class="o">.</span><span class="n">SG</span><span class="p">(</span><span class="n">FITS_obj</span><span class="o">=</span><span class="n">imgpath</span><span class="p">,</span> <span class="n">EXTINDEX</span><span class="o">=</span><span class="n">hdun</span><span class="p">,</span> <span class="n">COORD</span><span class="o">=</span><span class="n">pxradec</span><span class="p">,</span> <span class="n">COORD_TYPE</span><span class="o">=</span><span class="s1">&#39;IMAGE&#39;</span><span class="p">,</span>
-                       <span class="n">STAMP_IMGSIZE</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span> <span class="n">FILL_VALUE</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">FITS_StpLst</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">savepath</span><span class="p">))</span>
+    <span class="c1"># Give Stamp_Generator.SG a FITS image to chew on</span>
+    <span class="n">origimg</span> <span class="o">=</span> <span class="n">img</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span> <span class="n">origimg</span><span class="p">,</span> <span class="n">snappl</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">FITSImageOnDisk</span> <span class="p">):</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">origimg</span><span class="o">.</span><span class="n">uncompressed_version</span><span class="p">(</span> <span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">barf</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">random</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span> <span class="s2">&quot;0123456789abcdef:&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">10</span> <span class="p">)</span> <span class="p">)</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">snappl</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">FITSImageOnDisk</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">savedir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">barf</span><span class="si">}</span><span class="s2">.fits&quot;</span> <span class="p">)</span>
+            <span class="n">img</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">origimg</span><span class="o">.</span><span class="n">data</span>
+            <span class="n">img</span><span class="o">.</span><span class="n">save_data</span><span class="p">()</span>
 
-    <span class="k">return</span> <span class="n">savepath</span></div>
+        <span class="c1"># TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()</span>
+        <span class="n">Stamp_Generator</span><span class="o">.</span><span class="n">SG</span><span class="p">(</span><span class="n">FITS_obj</span><span class="o">=</span><span class="n">img</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">EXTINDEX</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">COORD</span><span class="o">=</span><span class="n">pxradec</span><span class="p">,</span> <span class="n">COORD_TYPE</span><span class="o">=</span><span class="s1">&#39;IMAGE&#39;</span><span class="p">,</span>
+                           <span class="n">STAMP_IMGSIZE</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span> <span class="n">FILL_VALUE</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">FITS_StpLst</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">savepath</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">savepath</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="c1"># Clean up temp file if necessary</span>
+        <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">path</span> <span class="o">!=</span> <span class="n">origimg</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+            <span class="n">img</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span> <span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span></div>
 
 </pre></div>
 

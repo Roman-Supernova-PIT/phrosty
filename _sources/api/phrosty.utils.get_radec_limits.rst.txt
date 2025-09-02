@@ -1,6 +1,0 @@
-get_radec_limits
-================
-
-.. currentmodule:: phrosty.utils
-
-.. autofunction:: get_radec_limits
