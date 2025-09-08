@@ -798,12 +798,12 @@ class Pipeline:
 
                 partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
                 # template path, savedir, savename
-                templstamp_args = ( (ti.image.path, self.dia_out_dir, f'stamp_{str(ti.image.name)}')
-                                     for ti in self.template_images )
-
+                templstamp_args = ( (ti.image, self.dia_out_dir, f'stamp_{str(ti.image.name)}')
+                                    for ti in self.template_images )
                 if self.nwrite > 1:
                     with Pool( self.nwrite ) as templ_stamp_pool:
-                        templ_stamp_pool.starmap_async( partialstamp, templstamp_args )
+                        templ_stamp_pool.starmap_async( partialstamp, templstamp_args,
+                                                        error_callback=log_stamp_err )
                         templ_stamp_pool.close()
                         templ_stamp_pool.join()
 
