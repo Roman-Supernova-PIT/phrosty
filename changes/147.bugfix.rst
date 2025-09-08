@@ -1,0 +1,1 @@
+Fix a bug that passed the wrong thing to stampmaker, so stampmaker was always failing
