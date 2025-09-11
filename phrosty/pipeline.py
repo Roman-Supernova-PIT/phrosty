@@ -17,7 +17,6 @@ import uuid
 
 # Imports ASTRO
 from astropy.coordinates import SkyCoord
-from astropy.io import fits
 from astropy.table import Table
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
