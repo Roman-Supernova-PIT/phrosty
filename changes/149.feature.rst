@@ -1,0 +1,1 @@
+Swtich to fitsio for 2-4x FITS writing speed improvement.
