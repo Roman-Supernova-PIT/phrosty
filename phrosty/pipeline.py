@@ -17,10 +17,10 @@ import uuid
 
 # Imports ASTRO
 from astropy.coordinates import SkyCoord
-from astropy.io import fits
 from astropy.table import Table
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
+import fitsio
 
 # Imports INTERNAL
 from phrosty.imagesubtraction import sky_subtract, stampmaker
@@ -134,7 +134,7 @@ class PipelineImage:
         stamp = self.psfobj.get_stamp( x, y )
         if self.keep_intermediate:
             outfile = self.save_dir / f"psf_{self.image.name}.fits"
-            fits.writeto( outfile, stamp, overwrite=True )
+            fitsio.write( outfile, stamp, clobber=True )
 
         return stamp
 
@@ -586,7 +586,11 @@ class Pipeline:
 
     def write_fits_file( self, data, header, savepath ):
         try:
-            fits.writeto( savepath, data, header=header, overwrite=True )
+            if header is not None:
+                hdr_dict = dict(header.items())
+            else:
+                hdr_dict = None
+            fitsio.write( savepath, data, header=hdr_dict, clobber=True )
         except Exception as e:
             SNLogger.exception( f"Exception writing FITS image {savepath}: {e}" )
             raise
