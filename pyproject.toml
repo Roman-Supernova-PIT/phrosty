@@ -19,6 +19,7 @@ classifiers = [
 dependencies = [
   "astropy",
   "cupy-cuda12x",
+  "fitsio",
   "galsim",
   "matplotlib",
   "numpy",
@@ -32,7 +33,6 @@ dependencies = [
   "setuptools_scm",
   "cruft",
   "coverage",
-  
 ]
 license-files = ["LICENSE"]
 
