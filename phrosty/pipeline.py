@@ -93,14 +93,10 @@ class PipelineImage:
         self.psfobj = None
         self.psf_data = None
 
-        self._omg = False  # Error variable
-
     def run_sky_subtract( self, mp=True ):
-        self._omg = False
         try:
             return sky_subtract( self.image )
         except Exception as ex:
-            self._omg = True
             SNLogger.exception( ex )
             raise
 
@@ -293,8 +289,6 @@ class Pipeline:
     def get_psfs( self ):
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
-
-        self._omg = False
 
         def log_error( img, x ):
             SNLogger.error( f"get_psf failure on {img.image.path}: {x}" )
