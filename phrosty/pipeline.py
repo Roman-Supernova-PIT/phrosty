@@ -219,6 +219,9 @@ class Pipeline:
            diaobj : DiaObject
              The object we're building a lightcurve for
 
+           imgcol : ImageCollection
+             snappl.imagecollection.ImageCollection
+
            band: str
              One of R062, Z087, Y106, J129, H158, F184, K213
 
@@ -248,6 +251,9 @@ class Pipeline:
 
            nwrite: int, default 5
              Number of asynchronous FITS writer processes.
+
+           verbose: bool, default True
+             Toggle verbose output.
 
         """
 
@@ -292,6 +298,26 @@ class Pipeline:
 
 
     def _read_csv( self, csvfile ):
+        """
+        Reads input csv files with columns:
+        'path pointing sca mjd band'.
+
+        Parameters
+        ----------
+        csvfile : str
+            Path to an input csv file. 
+
+        Returns
+        -------
+        list of snappl.image.Image
+
+        Raises
+        ------
+        ValueError
+            If the first line of the csv file doesn't match
+            'path pointing sca mjd band', a ValueError is raised.
+        """
+
         imlist = []
         with open( csvfile ) as ifp:
             hdrline = ifp.readline()
@@ -306,12 +332,22 @@ class Pipeline:
 
 
     def sky_sub_all_images( self ):
+        """
+        Sky subtracts all snappl.image.Image objects in 
+        self.science_images and self.template_images using
+        Source Extractor.
+
+        Contains its own error logging function, log_error().
+
+        """        
+
         # Currently, this writes out a bunch of FITS files.  Further refactoring needed
         #   to support more general image types.
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
-        def log_error( img, x ):
+        def log_error( img, x ):   
+
             SNLogger.error( f"Sky subtraction failure on {img.image.path}: {x}" )
             self.failures['skysub'].append( f'{img.image.band} {img.image.pointing} {img.image.sca}' )
 
@@ -328,6 +364,14 @@ class Pipeline:
                 img.save_sky_subtract_info( img.run_sky_subtract( mp=False ) )
 
     def get_psfs( self ):
+        """
+        Retrieve PSFs for all snappl.image.Image objects in
+        self.science_images and self.template_images.
+
+        Contains its own error logging function, log_error().
+
+        """
+
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
@@ -458,7 +502,9 @@ class Pipeline:
         return results_dict
 
     def make_phot_info_dict( self, sci_image, templ_image, ap_r=4 ):
-        """"Do things.
+        """"
+        Do photometry on a difference image generated from sci_image
+        and templ_image. Collect the output in a dictionary.
 
         Parmaeters
         ----------
@@ -469,12 +515,15 @@ class Pipeline:
             template image wrapper
 
           ap_r: float, default 4
-             Radius of aperture to use in something
+             Radius of aperture to use in aperture photometry.
 
         Returns
         -------
-          something: dict
-            It has things in it
+          results_dict: dict
+            Dictionary with keys sci_name, templ_name, success, ra,
+            dec, mjd, filter, pointing, sca, template_pointing,
+            template_sca, zpt, aperture_sum, flux_fit, flux_fit_err,
+            mag_fit, and mag_fit_err.
 
         """
 
@@ -549,6 +598,16 @@ class Pipeline:
         return results_dict
 
     def add_to_results_dict( self, one_pair ):
+        """
+        Record results from self.make_phot_info_dict() to the
+        aggregate dictionary for the entire light curve.
+
+        Parameters
+        ----------
+        one_pair : dict
+            Dictionary output from self.make_phot_info_dict().
+        """
+
         for key, arr in self.results_dict.items():
             arr.append( one_pair[ key ] )
 
@@ -560,11 +619,47 @@ class Pipeline:
         SNLogger.debug( "Done adding to results dict" )
 
     def save_stamp_paths( self, sci_image, templ_image, paths ):
+        """
+
+        Helper function for recording the stamp paths returned in
+        self.do_stamps.
+
+        Parameters
+        ----------
+        sci_image : snappl.image.Image
+            Science image with supernova.
+        
+        templ_image : snappl.image.Image
+            Template image without supernova.
+
+        paths : list of pathlib.Path
+            Output from self.do_stamps().
+
+        """
         sci_image.zpt_stamp_path[ templ_image.image.name ] = paths[0]
         sci_image.diff_stamp_path[ templ_image.image.name ] = paths[1]
         sci_image.diff_var_stamp_path[ templ_image.image.name ] = paths[2]
 
     def do_stamps( self, sci_image, templ_image ):
+        """
+        Make stamps from the zero point image, decorrelated
+        difference image, and variance image centered at the
+        location of the supernova.
+
+        Parameters
+        ----------
+        sci_image : snappl.image.Image
+            Science image with supernova.
+        templ_image : snappl.image.Image
+            Template image without supernova.
+
+        Returns
+        -------
+        list of pathlib.Path
+            Paths to the stamps corresponding to the zero point image,
+            decorrelated difference image, and variance image centered
+            at the location of the supernova.
+        """        
 
         try:
             zptim = FITSImageOnDisk( sci_image.decorr_zptimg_path[ templ_image.image.name ] )
@@ -600,6 +695,17 @@ class Pipeline:
                                                  'template': f'{templ_image.image.band} {templ_image.image.pointing} {templ_image.image.sca}'
                                                 })
     def make_lightcurve( self ):
+        """
+        Collect all results from photometry in one dictionary.
+        Write the output to a csv as a table.
+
+        Contains its own error logging function, log_error().
+
+        Returns
+        -------
+        pathlib.Path
+            Path to output csv file that contains a light curve.
+        """        
         SNLogger.info( "Making lightcurve." )
 
         self.results_dict = {
@@ -654,6 +760,19 @@ class Pipeline:
         return results_savepath
 
     def write_fits_file( self, data, header, savepath ):
+        """
+        Helper function for writing fits files.
+
+        Parameters
+        ----------
+        data : np.array
+            Image array.
+        header : _type_
+            FITS header.
+        savepath : str
+            Savepath for FITS file.
+        """
+
         try:
             if header is not None:
                 hdr_dict = dict(header.items())
@@ -665,6 +784,15 @@ class Pipeline:
             raise
 
     def clear_contents( self, directory ):
+        """
+        Delete contents of a directory. Used to clear temporary
+        files.
+
+        Parameters
+        ----------
+        directory : pathlib.Path
+            Path to directory to empty.
+        """        
         for f in directory.iterdir():
             try:
                 if f.is_dir():
