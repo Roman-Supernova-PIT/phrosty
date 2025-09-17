@@ -94,6 +94,21 @@ class PipelineImage:
         self.psf_data = None
 
     def run_sky_subtract( self, mp=True ):
+        """
+        Run sky subtraction using Source Extractor.
+
+        Parameters
+        ----------
+        mp : bool, optional
+            Toggle multiprocessing, by default True
+
+        Returns
+        -------
+        tuple
+            Tuple containing sky subtracted image, detection
+            mask array, and sky RMS value. 
+            Output of phrosty.imagesubtraction.sky_subtract().
+        """        
         try:
             return sky_subtract( self.image )
         except Exception as ex:
@@ -101,6 +116,16 @@ class PipelineImage:
             raise
 
     def save_sky_subtract_info( self, info ):
+        """
+        Saves the sky-subtracted image, detection mask array,
+        and sky RMS values to attributes. 
+
+        Parameters
+        ----------
+        info : tuple
+            Output of self.run_sky_subtract(). See documentation
+            for phrosty.imagesubtraction.sky_subtract().
+        """        
         try:
             SNLogger.debug( f"Saving sky_subtract info for path {info[0]}" )
             self.skysub_img = info[0]
@@ -117,6 +142,11 @@ class PipelineImage:
         ----------
           ra, dec : float
              The coordinates in decimal degrees where we want the PSF.
+        
+        Returns
+        -------
+        np.array
+            PSF stamp. If this function fails, None is returned.
 
         """
 
@@ -147,6 +177,17 @@ class PipelineImage:
             return None
 
     def keep_psf_data( self, psf_data ):
+        """
+        Save PSF data to attribute. If self.get_psf() failed,
+        then the image is recorded as a failure.
+
+        Parameters
+        ----------
+        psf_data : np.array
+            PSF stamp.
+
+        """
+
         self.psf_data = psf_data
 
         if self.psf_data is None:
