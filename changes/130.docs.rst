@@ -1,0 +1,1 @@
+Fix sphinx autodock_mock_imports so docs build on github.  Add placeholders for needed stuff in docs.

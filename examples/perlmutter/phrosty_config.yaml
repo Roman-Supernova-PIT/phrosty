@@ -1,23 +1,27 @@
-ou24psf:
-  config_file: /sn_info_dir/tds.yaml
+ou24:
+  tds_base: /ou2024/RomanTDS
+  config_file: /home/phrosty/examples/perlmutter/tds.yaml
+  sn_truth_dir: /ou2024_snana
+  images: /ou2024/RomanTDS/images/simple_model
+  sims_sed_library: /ou2024_sims_sed_library
 
 photometry:
-  phrosty:
+  snappl:
+      A25ePSF_path: /snappl/snappl/tests/testdata/A25ePSF
+      temp_dir: /phrosty_temp
 
+  phrosty:
     image_type: ou2024fits
     force_sky_subtract: true
     keep_intermediate: true
     remove_temp_dir: false
     mem_trace: false
+    kerpolyorder: 2
 
     paths:
-      scratch_dir: /scratch
+      scratch_dir: /phrosty_temp
       temp_dir: /phrosty_temp
-      sn_info_dir: /sn_info_dir
       dia_out_dir: /dia_out_dir
-      image_base_dir: /sims_dir
-      snana_pq_dir: /snana_pq_dir
-      snid_lc_dir: /snid_lc_dir
       ltcv_dir: /lc_out_dir
 
     psf:

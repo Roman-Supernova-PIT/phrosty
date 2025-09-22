@@ -17,11 +17,22 @@ classifiers = [
   "Programming Language :: Python"
 ]
 dependencies = [
+  "astropy",
+  "cupy-cuda12x",
+  "fitsio",
+  "galsim",
+  "matplotlib",
+  "numpy",
+  "nvtx",
+  "pandas",
+  "photutils",
+  "snpit-utils",
+  "roman-snpit-snappl",
+  "sfft-romansnpit",
   "towncrier",
   "setuptools_scm",
   "cruft",
   "coverage",
-  
 ]
 license-files = ["LICENSE"]
 
@@ -49,7 +60,8 @@ docs = [
     "matplotlib",
     "sphinx",
     "tomli",
-    "graphviz"
+    "graphviz",
+    "mock"
 ]
 
 

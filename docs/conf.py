@@ -7,6 +7,7 @@
 import datetime
 import importlib
 import sys
+import pathlib
 import os
 import tomli
 
@@ -15,6 +16,26 @@ from configparser import ConfigParser
 import sphinx
 
 from sphinx.ext.autodoc import AttributeDocumenter
+
+# -- Code import for autodoc -------------------------------------------------
+
+# Make sure the phrosty module can be found so we can document the API
+
+sys.path.insert( 0, str( pathlib.Path( '..' ).resolve() ) )
+# Ideally, we just need this next variable.  However,
+#  while it works with the autmodule directive,
+#  it does not work with the automodapi directive.
+#  See https://github.com/astropy/sphinx-automodapi/issues/148
+# autodoc_mock_imports = [ 'roman_imsim' ]
+#
+# So, instead, we do it manually.  You will need to add mock to
+# the docs list in [project.optional-dependencies] in pyproject.tom.
+import mock
+things_to_mock = [ 'roman_imsim', 'roman_imsim.utils' ]
+for mod in things_to_mock:
+    sys.modules[ mod ] = mock.MagicMock()
+
+
 
 # -- Project information -----------------------------------------------------
 
@@ -109,6 +130,8 @@ html_theme_options = {
     'logo_text_align': "left",
     'description': "Software developed by the Roman SNPIT",
     'sidebar_width':'250px',
+    'page_width':'75%',
+    'body_max_width':'120ex',
     'show_relbars':True,
 }
 
