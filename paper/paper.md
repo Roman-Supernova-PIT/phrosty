@@ -102,14 +102,14 @@ _Roman_ images will pose several analytical challenges: (1) the large quantity o
 \begin{figure}
    \centering
    \includegraphics[width=0.99\textwidth]{pipelinefigure.pdf}
-   \caption{Visualization of pipeline steps using a sample image from the @openuniverse simulations. Green outlines represent the science image, purple outlines represent the template image, and black outlines represent the difference image. The small inset green and purple squares in panel 1 represent 100 x 100 pixel cutouts.}
+   \caption{Visualization of pipeline steps using a sample image from the OpenUniverse simulations. Green outlines represent the science image, purple outlines represent the template image, and black outlines represent the difference image. The small inset green and purple squares in panel 1 represent 100 x 100 pixel cutouts.}
    \label{fig:pipeline}
 \end{figure}
 
 \begin{figure}
    \centering
    \includegraphics[width=0.5\textwidth]{20172782_lc.pdf}
-   \caption{An example light curve, generated using the output of `phrosty`. Circles indicate measured output from `phrosty`, and solid lines are the known simulated light curve from @openuniverse.}
+   \caption{An example light curve, generated using the output of `phrosty`. Circles indicate measured output from `phrosty`, and solid lines are the known simulated light curve from OpenUniverse.}
    \label{fig:lc}
 \end{figure}
 
