@@ -19,7 +19,7 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     with open( ltcv ) as ifp:
         hdrline = ifp.readline().strip()
         assert hdrline == ( 'ra,dec,mjd,filter,pointing,sca,template_pointing,template_sca,zpt,'
-                            'aperture_sum,flux_fit,flux_fit_err,mag_fit,mag_fit_err' )
+                            'aperture_sum,flux_fit,flux_fit_err,mag_fit,mag_fit_err,success' )
         kws = hdrline.split( "," )
         pairs = []
         for line in ifp:
@@ -36,8 +36,10 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         assert int(pair['sca']) == int(img.sca)
         assert int(pair['template_pointing']) == int(one_ou2024_template_image.pointing)
         assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
-        # TODO : fix the zeropoint!
-        assert pair['zpt'] == ''
+        # TODO : fix the zeropoint! This tolerance is huge...
+        zpt = float( pair['zpt'] )
+        assert zpt == pytest.approx( 32, abs=1 )
+        assert pair['success'] == 'True'
 
     # Tests aren't exactly reproducible from one run to the next,
     #   because some classes (including the galsim PSF that we use right
@@ -67,3 +69,17 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     # TODO : cleanup output directories!  This is scary if you're using the same
     #   directories for tests and for running... so don't do that... but the
     #   way we're set up right now, you probably are.
+
+@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
+def test_pipeline_failures( object_for_tests, ou2024_image_collection,
+                            one_ou2024_template_image, two_ou2024_science_images ):
+    pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                    science_images=two_ou2024_science_images,
+                    template_images=[one_ou2024_template_image],
+                    nprocs=2, nwrite=3 )
+    
+    # First, check the images as-is. Make sure there are no failures.
+    for key in pip.failures:
+        assert len(pip.failures[key]) == 0
+
+    
