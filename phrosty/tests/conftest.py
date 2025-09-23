@@ -1,3 +1,4 @@
+import numpy as np
 import pytest # noqa: F401
 import pathlib
 
@@ -5,7 +6,7 @@ import tox # noqa: F401
 from tox.pytest import init_fixture # noqa: F401
 
 from snpit_utils.config import Config
-from snappl.image import FITSImageOnDisk
+from snappl.image import FITSImageOnDisk, ManualFITSImage
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 
@@ -174,3 +175,14 @@ def two_ou2024_science_images( ou2024_image_collection ):
     img1 = ou2024_image_collection.get_image( pointing=35198, sca=2, band='Y106' )
     img2 = ou2024_image_collection.get_image( pointing=39790, sca=15, band='Y106' )
     return img1, img2
+
+@pytest.fixture
+def nan_image( ou2024_image_collection ):
+    ou_img = ou2024_image_collection.get_image( pointing=35198, sca=2, band='Y106' )
+    ou_header = ou_img.get_fits_header()
+
+    nan_arr = np.empty((4088,4088))
+    nan_arr[:] = np.nan
+
+    nan_img = ManualFITSImage(header=ou_header, data=nan_arr, pointing=35198, sca=2)
+    return nan_img
