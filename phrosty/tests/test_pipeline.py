@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pytest
 from phrosty.pipeline import Pipeline
 
@@ -70,16 +71,27 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     #   directories for tests and for running... so don't do that... but the
     #   way we're set up right now, you probably are.
 
+
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 def test_pipeline_failures( object_for_tests, ou2024_image_collection,
-                            one_ou2024_template_image, two_ou2024_science_images ):
+                            one_ou2024_template_image, two_ou2024_science_images,
+                            nan_image ):
     pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
                     science_images=two_ou2024_science_images,
                     template_images=[one_ou2024_template_image],
                     nprocs=2, nwrite=3 )
-    
+
     # First, check the images as-is. Make sure there are no failures.
     for key in pip.failures:
         assert len(pip.failures[key]) == 0
-
     
+    new_test_imgs = [nan_image, two_ou2024_science_images[1]]
+
+    pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                science_images=new_test_imgs,
+                template_images=[one_ou2024_template_image],
+                nprocs=2, nwrite=3 )
+
+    for key in pip.failures:
+        print(key)
+        print(len(pip.failures[key]))

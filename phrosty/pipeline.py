@@ -94,8 +94,7 @@ class PipelineImage:
         self.psf_data = None
 
     def run_sky_subtract( self, mp=True ):
-        """
-        Run sky subtraction using Source Extractor.
+        """Run sky subtraction using Source Extractor.
 
         Parameters
         ----------
@@ -108,7 +107,7 @@ class PipelineImage:
             Tuple containing sky subtracted image, detection
             mask array, and sky RMS value. 
             Output of phrosty.imagesubtraction.sky_subtract().
-        """        
+        """
         try:
             return sky_subtract( self.image )
         except Exception as ex:
@@ -116,8 +115,7 @@ class PipelineImage:
             raise
 
     def save_sky_subtract_info( self, info ):
-        """
-        Saves the sky-subtracted image, detection mask array,
+        """Saves the sky-subtracted image, detection mask array,
         and sky RMS values to attributes. 
 
         Parameters
@@ -125,7 +123,7 @@ class PipelineImage:
         info : tuple
             Output of self.run_sky_subtract(). See documentation
             for phrosty.imagesubtraction.sky_subtract().
-        """        
+        """
         try:
             SNLogger.debug( f"Saving sky_subtract info for path {info[0]}" )
             self.skysub_img = info[0]
@@ -177,8 +175,7 @@ class PipelineImage:
             return None
 
     def keep_psf_data( self, psf_data ):
-        """
-        Save PSF data to attribute. If self.get_psf() failed,
+        """Save PSF data to attribute. If self.get_psf() failed,
         then the image is recorded as a failure.
 
         Parameters
@@ -298,8 +295,7 @@ class Pipeline:
 
 
     def _read_csv( self, csvfile ):
-        """
-        Reads input csv files with columns:
+        """Reads input csv files with columns:
         'path pointing sca mjd band'.
 
         Parameters
@@ -332,21 +328,20 @@ class Pipeline:
 
 
     def sky_sub_all_images( self ):
-        """
-        Sky subtracts all snappl.image.Image objects in 
+        """Sky subtracts all snappl.image.Image objects in 
         self.science_images and self.template_images using
         Source Extractor.
 
         Contains its own error logging function, log_error().
 
-        """        
+        """
 
         # Currently, this writes out a bunch of FITS files.  Further refactoring needed
         #   to support more general image types.
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
-        def log_error( img, x ):   
+        def log_error( img, x ):
 
             SNLogger.error( f"Sky subtraction failure on {img.image.path}: {x}" )
             self.failures['skysub'].append( f'{img.image.band} {img.image.pointing} {img.image.sca}' )
@@ -364,8 +359,7 @@ class Pipeline:
                 img.save_sky_subtract_info( img.run_sky_subtract( mp=False ) )
 
     def get_psfs( self ):
-        """
-        Retrieve PSFs for all snappl.image.Image objects in
+        """Retrieve PSFs for all snappl.image.Image objects in
         self.science_images and self.template_images.
 
         Contains its own error logging function, log_error().
@@ -385,7 +379,7 @@ class Pipeline:
                     # callback_partial = partial( img.save_psf_path, all_imgs )
                     pool.apply_async( img.get_psf, (self.diaobj.ra, self.diaobj.dec), {},
                                       callback=img.keep_psf_data,
-                                      error_callback=partial(log_error,img) )
+                                      error_callback=partial(log_error, img) )
                 pool.close()
                 pool.join()
         else:
@@ -598,8 +592,7 @@ class Pipeline:
         return results_dict
 
     def add_to_results_dict( self, one_pair ):
-        """
-        Record results from self.make_phot_info_dict() to the
+        """Record results from self.make_phot_info_dict() to the
         aggregate dictionary for the entire light curve.
 
         Parameters
@@ -619,9 +612,7 @@ class Pipeline:
         SNLogger.debug( "Done adding to results dict" )
 
     def save_stamp_paths( self, sci_image, templ_image, paths ):
-        """
-
-        Helper function for recording the stamp paths returned in
+        """Helper function for recording the stamp paths returned in
         self.do_stamps.
 
         Parameters
@@ -641,8 +632,7 @@ class Pipeline:
         sci_image.diff_var_stamp_path[ templ_image.image.name ] = paths[2]
 
     def do_stamps( self, sci_image, templ_image ):
-        """
-        Make stamps from the zero point image, decorrelated
+        """Make stamps from the zero point image, decorrelated
         difference image, and variance image centered at the
         location of the supernova.
 
@@ -659,7 +649,7 @@ class Pipeline:
             Paths to the stamps corresponding to the zero point image,
             decorrelated difference image, and variance image centered
             at the location of the supernova.
-        """        
+        """
 
         try:
             zptim = FITSImageOnDisk( sci_image.decorr_zptimg_path[ templ_image.image.name ] )
@@ -694,9 +684,9 @@ class Pipeline:
             self.failures['make_stamps'].append({'science': f'{sci_image.image.band} {sci_image.image.pointing} {sci_image.image.sca}',
                                                  'template': f'{templ_image.image.band} {templ_image.image.pointing} {templ_image.image.sca}'
                                                 })
+
     def make_lightcurve( self ):
-        """
-        Collect all results from photometry in one dictionary.
+        """Collect all results from photometry in one dictionary.
         Write the output to a csv as a table.
 
         Contains its own error logging function, log_error().
@@ -705,7 +695,7 @@ class Pipeline:
         -------
         pathlib.Path
             Path to output csv file that contains a light curve.
-        """        
+        """
         SNLogger.info( "Making lightcurve." )
 
         self.results_dict = {
@@ -760,8 +750,7 @@ class Pipeline:
         return results_savepath
 
     def write_fits_file( self, data, header, savepath ):
-        """
-        Helper function for writing fits files.
+        """Helper function for writing fits files.
 
         Parameters
         ----------
@@ -784,15 +773,14 @@ class Pipeline:
             raise
 
     def clear_contents( self, directory ):
-        """
-        Delete contents of a directory. Used to clear temporary
+        """Delete contents of a directory. Used to clear temporary
         files.
 
         Parameters
         ----------
         directory : pathlib.Path
             Path to directory to empty.
-        """        
+        """
         for f in directory.iterdir():
             try:
                 if f.is_dir():
