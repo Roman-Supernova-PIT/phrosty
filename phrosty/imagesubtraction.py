@@ -65,7 +65,7 @@ def sky_subtract( img, temp_dir=None ):
         else:
             img = snappl.image.FITSImageOnDisk( path=tmpimpath )
             img.data = origimg.data
-            img.save_data()
+            img.save( which='data' )
 
         SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
         ( _SKYDIP, _SKYPEAK, _PixA_skysub,

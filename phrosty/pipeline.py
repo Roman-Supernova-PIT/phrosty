@@ -126,10 +126,12 @@ class PipelineImage:
 
         if self.psfobj is None:
             psftype = self.config.value( 'photometry.phrosty.psf.type' )
+            psfparams = self.config.value( 'photometry.phrosty.psf.params' )
             self.psfobj = PSF.get_psf_object( psftype, x=x, y=y,
                                               band=self.image.band,
                                               pointing=self.image.pointing,
-                                              sca=self.image.sca )
+                                              sca=self.image.sca,
+                                              **psfparams )
 
         stamp = self.psfobj.get_stamp( x, y )
         if self.keep_intermediate:
