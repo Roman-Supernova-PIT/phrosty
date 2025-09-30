@@ -1,6 +1,10 @@
+import numpy as np
 import os
+import pathlib
 import pytest
+
 from phrosty.pipeline import Pipeline
+from snappl.image import FITSImageOnDisk
 
 # TODO : separate tests for PipelineImage, for all the functions in#
 #   PipelineImage and Pipeline.  Right now we just have this regression
@@ -19,7 +23,7 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     with open( ltcv ) as ifp:
         hdrline = ifp.readline().strip()
         assert hdrline == ( 'ra,dec,mjd,filter,pointing,sca,template_pointing,template_sca,zpt,'
-                            'aperture_sum,flux_fit,flux_fit_err,mag_fit,mag_fit_err' )
+                            'aperture_sum,flux_fit,flux_fit_err,mag_fit,mag_fit_err,success' )
         kws = hdrline.split( "," )
         pairs = []
         for line in ifp:
@@ -36,8 +40,10 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         assert int(pair['sca']) == int(img.sca)
         assert int(pair['template_pointing']) == int(one_ou2024_template_image.pointing)
         assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
-        # TODO : fix the zeropoint!
-        assert pair['zpt'] == ''
+        # TODO : fix the zeropoint! This tolerance is huge...
+        zpt = float( pair['zpt'] )
+        assert zpt == pytest.approx( 32, abs=1 )
+        assert pair['success'] == 'True'
 
     # Tests aren't exactly reproducible from one run to the next,
     #   because some classes (including the galsim PSF that we use right
@@ -67,3 +73,78 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     # TODO : cleanup output directories!  This is scary if you're using the same
     #   directories for tests and for running... so don't do that... but the
     #   way we're set up right now, you probably are.
+
+
+@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
+def test_pipeline_failures( object_for_tests, ou2024_image_collection,
+                            one_ou2024_template_image, two_ou2024_science_images,
+                            nan_image ):
+
+    nprocss = [1, 3]
+    nwrites = [1, 3]
+
+    for i in nprocss:
+        for j in nwrites:
+            pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                            science_images=two_ou2024_science_images,
+                            template_images=[one_ou2024_template_image],
+                            nprocs=i, nwrite=j )
+
+            lctv = pip()
+
+            # First, check the images as-is. Make sure there are no failures.
+            for key in pip.failures:
+                assert len(pip.failures[key]) == 0
+    
+    # Below is commented out because I can't verify that the tests are working
+    # because of NERSC spin issues. What it's trying to do is verify that for
+    # an array full of NaNs, the thing fails in the sky subtraction portion of
+    # the code, and self.failures['skysub'] gets the image identifier appended
+    # to it.
+    
+    # This is messy and file-savey because right now, snappl requires paths to do things.
+    # Or maybe it's sky subtract. Either way. Future improvements necessary.
+    # try:
+        # nanpaths = [ 
+        #                 pathlib.Path( '/phrosty_temp/test_nan_img.fits' ),
+        #                 pathlib.Path( '/phrosty_temp/test_nan_noise.fits' ),
+        #                 pathlib.Path( 'phrosty_temp/test_nan_flags.fits' )
+        #             ]
+
+        # nan_image.save(
+        #                 path=nanpaths[0],
+        #                 noisepath=nanpaths[1],
+        #                 flagspath=nanpaths[2]
+        #             )
+
+        # opened_nan_img = FITSImageOnDisk(nanpaths[0])
+
+        # print(opened_nan_img)
+        # print(opened_nan_img.get_data())
+
+        # new_test_imgs = [opened_nan_image, two_ou2024_science_images[1]]
+
+        # pytest.set_trace()
+        # pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+        #                     science_images=new_test_imgs,
+        #                     template_images=[one_ou2024_template_image],
+        #                     nprocs=1, nwrite=1 )
+        # lctv = pip()
+
+    # finally:
+    #     for path in nanpaths:
+    #         path.unlink()
+
+
+
+    # for i in nprocss:
+    #     for j in nwrites:
+    #         pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+    #                     science_images=new_test_imgs,
+    #                     template_images=[one_ou2024_template_image],
+    #                     nprocs=i, nwrite=j )
+
+    #         for key in pip.failures:
+    #             print(key)
+    #             print(len(pip.failures[key]))
+    #             assert len(pip.failures[key]) == 0 
