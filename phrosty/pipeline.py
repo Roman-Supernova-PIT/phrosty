@@ -124,6 +124,7 @@ class PipelineImage:
             Output of self.run_sky_subtract(). See documentation
             for phrosty.imagesubtraction.sky_subtract().
         """
+
         try:
             SNLogger.debug( f"Saving sky_subtract info for path {info[0]}" )
             self.skysub_img = info[0]
@@ -131,7 +132,8 @@ class PipelineImage:
             self.skyrms = info[2]
 
         except:
-            pipeline.failures['skysub'].append(f'{self.image.band} {self.image.pointing} {self.image.sca}')
+            if self.skysub_img is None or self.detmask_img is None or self.skyrms is None:
+                pipeline.failures['skysub'].append(f'{self.image.band} {self.image.pointing} {self.image.sca}')
 
     def get_psf( self, ra, dec ):
         """Get the at the right spot on the image.
@@ -253,7 +255,7 @@ class Pipeline:
              Toggle verbose output.
 
         """
-
+        
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.config = Config.get()
         self.imgcol = imgcol

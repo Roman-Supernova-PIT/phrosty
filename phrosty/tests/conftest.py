@@ -6,7 +6,7 @@ import tox # noqa: F401
 from tox.pytest import init_fixture # noqa: F401
 
 from snpit_utils.config import Config
-from snappl.image import FITSImageOnDisk, ManualFITSImage
+from snappl.image import FITSImageOnDisk, FITSImageStdHeaders
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 
@@ -184,5 +184,13 @@ def nan_image( ou2024_image_collection ):
     nan_arr = np.empty((4088,4088))
     nan_arr[:] = np.nan
 
-    nan_img = ManualFITSImage(header=ou_header, data=nan_arr, pointing=35198, sca=2)
+    # NOTE: path='/dev/null' because at this time, snappl requires a path to instantiate
+    # a FITSImage object.
+    nan_img = FITSImageStdHeaders( path='/dev/null', 
+                                   header=ou_header, 
+                                   data=nan_arr,
+                                   noise=nan_arr,
+                                   flags=nan_arr )
+    nan_img.band = 'Y106'
+
     return nan_img
