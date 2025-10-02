@@ -69,6 +69,7 @@ def sky_subtract( img, temp_dir=None ):
             img.save( which='data' )
 
         SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
+        import pdb; pdb.set_trace()
         ( _SKYDIP, _SKYPEAK, _PixA_skysub,
           _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=img.path,
                                                          FITS_skysub=tmpsubpath,
