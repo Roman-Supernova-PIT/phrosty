@@ -1,6 +1,7 @@
 __all__ = [ 'sky_subtract', 'stampmaker' ]
 
 # IMPORTS Standard:
+from astropy.io import fits
 import numpy as np
 import pathlib
 import random
@@ -63,7 +64,7 @@ def sky_subtract( img, temp_dir=None ):
         if isinstance( origimg, snappl.image.FITSImageOnDisk ):
             img = origimg.uncompressed_version( include=['data'] )
         else:
-            img = snappl.image.FITSImageOnDisk( path=tmpimpath )
+            img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
             img.data = origimg.data
             img.save( which='data' )
 
@@ -80,8 +81,8 @@ def sky_subtract( img, temp_dir=None ):
                                                          VERBOSE_LEVEL=2, MDIR=None)
         SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
 
-        subim = snappl.image.FITSImageOnDisk( path=tmpsubpath )
-        detmaskim = snappl.image.FITSImageOnDisk( path=tmpdetmaskpath )
+        subim = snappl.image.FITSImage( path=tmpsubpath )
+        detmaskim = snappl.image.FITSImage( path=tmpdetmaskpath )
         skyrms = np.median( PixA_skyrms )
         return subim, detmaskim, skyrms
 
@@ -146,9 +147,9 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None):
             img = origimg.uncompressed_version( include=['data'] )
         else:
             barf = "".join( random.choices( "0123456789abcdef:", k=10 ) )
-            img = snappl.image.FITSImageOnDisk( path=savedir / f"{barf}.fits" )
+            img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=fits.header.Header() )
             img.data = origimg.data
-            img.save_data()
+            img.save_data( which='data' )
 
         # TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()
         Stamp_Generator.SG(FITS_obj=img.path, EXTINDEX=0, COORD=pxradec, COORD_TYPE='IMAGE',
