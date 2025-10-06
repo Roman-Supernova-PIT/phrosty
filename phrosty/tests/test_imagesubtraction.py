@@ -9,7 +9,6 @@ from astropy.io import fits
 from astropy.wcs import WCS
 
 from snappl.image import FITSImageOnDisk
-import phrosty
 import phrosty.imagesubtraction
 
 
