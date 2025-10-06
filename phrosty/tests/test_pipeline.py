@@ -1,7 +1,6 @@
 import os
 import pytest
 
-from snpit_utils.config import Config
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 from phrosty.pipeline import Pipeline
@@ -32,7 +31,7 @@ def test_pipeline_run_simple_gauss1( config ):
         config.set_value( 'photometry.phrosty.psf.type', 'gaussian' )
         config.set_value( 'photometry.phrosty.psf.params', { 'sigmax': 1., 'sigmay': 1., 'theta': 0. } )
         config.set_value( 'photometry.phrosty.sfft.radius_cut_detmas', 1. )
-    
+
         pip = Pipeline( obj, imgcol, 'R062', science_images=sciim, template_images=tmplim, nprocs=1, nwrite=1 )
         ltcv = pip()
 
@@ -75,8 +74,7 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         assert int(pair['sca']) == int(img.sca)
         assert int(pair['template_pointing']) == int(one_ou2024_template_image.pointing)
         assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
-        # TODO : fix the zeropoint!
-        assert pair['zpt'] == ''
+        assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
 
     # Tests aren't exactly reproducible from one run to the next,
     #   because some classes (including the galsim PSF that we use right

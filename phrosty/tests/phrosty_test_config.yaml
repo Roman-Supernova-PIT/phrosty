@@ -21,6 +21,8 @@ photometry:
       A25ePSF_path: /snappl/snappl/tests/testdata/A25ePSF
       temp_dir: /phrosty_temp
 
+      simdex_server: https://roman-desc-simdex.rknop.net
+
   phrosty:
     force_sky_subtract: true
     keep_intermediate: true
@@ -30,7 +32,7 @@ photometry:
 
     sfft:
       radius_cut_detmask: 2
-    
+
     paths:
       scratch_dir: /phrosty_temp
       temp_dir: /phrosty_temp
