@@ -69,7 +69,7 @@ def sky_subtract( img, temp_dir=None ):
             img.save( which='data' )
 
         SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
-        import pdb; pdb.set_trace()
+        radius_cut_detmask = Config.get().value( 'photometry.phrosty.sfft.radius_cut_detmask' )
         ( _SKYDIP, _SKYPEAK, _PixA_skysub,
           _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=img.path,
                                                          FITS_skysub=tmpsubpath,
@@ -79,6 +79,7 @@ def sky_subtract( img, temp_dir=None ):
                                                          BACK_SIZE=64, BACK_FILTERSIZE=3,
                                                          DETECT_THRESH=1.5, DETECT_MINAREA=5,
                                                          DETECT_MAXAREA=0,
+                                                         RADIUS_CUT_DETMASK=radius_cut_detmask,
                                                          VERBOSE_LEVEL=2, MDIR=None)
         SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
 
@@ -147,8 +148,13 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None):
         if isinstance( origimg, snappl.image.FITSImageOnDisk ):
             img = origimg.uncompressed_version( include=['data'] )
         else:
-            barf = "".join( random.choices( "0123456789abcdef:", k=10 ) )
-            img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=fits.header.Header() )
+            barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
+            # NOTE : this next line will break if not using an image type that
+            #   can return a FITS header!  The real solution is to fix SFFT
+            #   so that it's not dependent on FITS images; just pass what's
+            #   needed to Stamp_Generator.SG instead of assuming it will read
+            #   all the right things out of the header.
+            img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
             img.data = origimg.data
             img.save_data( which='data' )
 

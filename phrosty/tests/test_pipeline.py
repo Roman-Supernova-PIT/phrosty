@@ -1,10 +1,49 @@
 import os
 import pytest
+
+from snpit_utils.config import Config
+from snappl.diaobject import DiaObject
+from snappl.imagecollection import ImageCollection
 from phrosty.pipeline import Pipeline
 
 # TODO : separate tests for PipelineImage, for all the functions in#
 #   PipelineImage and Pipeline.  Right now we just have this regression
 #   test.
+
+
+# This one writes a diagnostic plot file to ... ROB FILL IN
+def test_pipeline_run_simple_gauss1( config ):
+    obj = DiaObject.find_objects( collection='manual', id=1, ra=120, dec=-13. )[0]
+    imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
+                                             base_path='/photometry_test_data/simple_gaussian_test/sig1.0' )
+    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
+    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60020, 5 ) ]
+
+    # We have to muck about with the config, because the default config loaded for tests is
+    #   set up for ou2024.  We're going to do naughty things we're not supposed to do,
+    #   specifically, modify the default config that's supposed to be immutable.  We'll
+    #   restore it later.  In actual running code, never modify config._static.  If you
+    #   find yourself doing that in anything other than a test like this where you're
+    #   VERY careful to restore things after you are done, then you're doing it wrong.
+    orig_psf = config.value( 'photometry.phrosty.psf' )
+    orig_sfft = config.value( 'photometry.phrosty.sfft' )
+    try:
+        config._static = False
+        config.set_value( 'photometry.phrosty.psf.type', 'gaussian' )
+        config.set_value( 'photometry.phrosty.psf.params', { 'sigmax': 1., 'sigmay': 1., 'theta': 0. } )
+        config.set_value( 'photometry.phrosty.sfft.radius_cut_detmas', 1. )
+    
+        pip = Pipeline( obj, imgcol, 'R062', science_images=sciim, template_images=tmplim, nprocs=1, nwrite=1 )
+        ltcv = pip()
+
+        import pdb; pdb.set_trace()
+        pass
+
+    finally:
+        # Fix the naughty damage we did to config
+        config.set_value( 'photomery.phrosty.psf', orig_psf )
+        config.set_value( 'photometry.phrosty.sfft', orig_sfft )
+        config._static = True
 
 
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )

@@ -143,12 +143,13 @@ class PipelineImage:
     def keep_psf_data( self, psf_data ):
         self.psf_data = psf_data
 
-    def free( self ):
+    def free( self, free_psf_data=False ):
         """Try to free memory.  More might be done here."""
         self.image.free()
         self.skysub_img.free()
         self.detmask_img.free()
-        self.psf_data = None
+        if free_psf_data:
+            self.psf_data = None
 
 
 class Pipeline:
