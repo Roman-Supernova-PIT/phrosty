@@ -120,6 +120,12 @@ def test_pipeline_run_simple_gauss1( config ):
         axes[1].set_ylabel( 'resid' )
         axes[1].set_xlabel( 'MJD' )
 
+        # WARNING HARDCODED LIMITS these should go away when things are
+        #   fixed and the test works better.  Right now PSF photometry is
+        #   going nuts, and sometimes produces infinite error bars
+        axes[0].set_ylim( -2000, 16000 )
+        axes[1].set_ylim( -12000, 5000 )
+
         plotdir = pathlib.Path( 'test_plots' )
         plotdir.mkdir( parents=True, exist_ok=True )
         fig.savefig( plotdir / 'test_pipeline_run_simple_gauss1.pdf' )
