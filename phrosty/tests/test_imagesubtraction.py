@@ -26,7 +26,7 @@ def test_sky_subtract( dia_out_dir ):
         fits.writeto( in_path, imdata, header=hdr )
         img = FITSImageOnDisk( path=in_path )
 
-        subim, detmask, skymedrms = phrosty.imagesubtraction.sky_subtract( img, temp_dir=dia_out_dir )
+        subim, _detmask, skymedrms = phrosty.imagesubtraction.sky_subtract( img, temp_dir=dia_out_dir )
         assert skymedrms == pytest.approx( 10., abs=0.2 )
         assert subim.data.mean() == pytest.approx( 0., abs=5 * 10. / 512. )   # 3σ
         assert subim.data.std() == pytest.approx( 10., rel=0.05 )

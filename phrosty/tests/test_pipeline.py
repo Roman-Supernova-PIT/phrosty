@@ -25,7 +25,7 @@ def test_pipeline_run_simple_gauss1( config ):
     imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
                                              base_path='/photometry_test_data/simple_gaussian_test/sig2.0' )
     tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
-    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60000, 60065, 5 ) ]
+    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
 
     # We have to muck about with the config, because the default config loaded for tests is
     #   set up for ou2024.  We're going to do naughty things we're not supposed to do,

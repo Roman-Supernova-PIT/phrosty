@@ -243,7 +243,7 @@ class Pipeline:
             if not re.search( r"^\s*path\s+pointing\s+sca\s+mjd\s+band\s*$", hdrline ):
                 raise ValueError( f"First line of list file {csvfile} didn't match what was expected." )
             for line in ifp:
-                path, pointing, sca, mjd, band = line.split()
+                path, pointing, sca, _mjd, band = line.split()
                 if band == self.band:
                     # This should yell at us if the pointing or sca doesn't match what is read from the path
                     imlist.append( self.imgcol.get_image( path=path, pointing=pointing, sca=sca, band=band ) )
@@ -649,6 +649,11 @@ class Pipeline:
         steps = steps[:stepdex+1]
 
         if 'sky_subtract' in steps:
+            # After this step is done, all images (both science and template)
+            #   will have the following fields set:
+            #     .skysub_img : sub-subtracted image
+            #     .detmask_img : deteciton mask image
+            #     .skyrms : float, median of sky image calculated by SExtractor
             SNLogger.info( "Running sky subtraction" )
             with nvtx.annotate( "skysub", color=0xff8888 ):
                 self.sky_sub_all_images()
@@ -657,6 +662,9 @@ class Pipeline:
             SNLogger.info( f"After sky_subtract, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
         if 'get_psfs' in steps:
+            # After this step, all images (both science and template) will
+            #   have the .psf_data field set with the image-resolution PSF stamp data
+            #   (from a PSF.get_stamp() call.)
             SNLogger.info( "Getting PSFs" )
             with nvtx.annotate( "getpsfs", color=0xff8888 ):
                 self.get_psfs()
@@ -679,16 +687,63 @@ class Pipeline:
                     sfftifier = None
 
                     if 'align_and_preconvolve' in steps:
+                        # After this step, sfftifier will be a SpaceSFFT_CupyFlow
+                        #  object with the following fields filled.  All cupy arrays
+                        #  are float64 (even the DMASK!), and all of them are Transposed
+                        #  from what's stored in the PipelineImage object
+                        #    hdr_target : FITS header of science image
+                        #    hdr_object : FITS header of template image
+                        #    target_skyrms : float, median of sky for science image
+                        #    object_skyrms : float, median of sky for template image
+                        #    PixA_target_GPU  : science image data on GPU
+                        #    PixA_Ctarget_GPU : cross-convolved [with what?] science image on GPU
+                        #    PixA_object_GPU  : template image data on GPU
+                        #    PixA_resamp_object_GPU : warped template image data on GPU
+                        #    PixA_Cresampl_object_GPU : cross-convolved template image on GPU
+                        #    BlankMask_GPU : boolean array, True where PixA_resampl_object_GPU is 0.
+                        #    PixA_targetVar_GPU : noise CHECK THIS image for science image, on GPU
+                        #    PixA_objectVar_GPU : noise CHECK THIS image for template image, on GPU
+                        #    PiXA_resampl_objectVar_GPU : warped template variance data on GPU
+                        #    PixA_target_DMASK_GPU : detmask for science image, on GPU
+                        #    PixA_object_DMASK_GPU : detmask for template image, on GPU
+                        #    PixA_resampl_object_DMASK_GPU : warped dmask for template image, on GPU
+                        #    PSF_target_GPU : PSF stamp for science image
+                        #    PSF_object_GPU : PSF stamp for template image
+                        #    PSF_resampl_object_GPU : PSF stamp for template image rotated & resampled, on GPU
+                        #    sci_is_target : True
+                        #    GKerHW : 9 (int half-width of matching kernel, full width is 2*GKerHW+1)
+                        #    KerPolyOrder : config value of photometry.phrosty.kerpolyorder
+                        #    BGPolyOrder : 0
+                        #    ConstPhotRatio : True
+                        #    CUDA_DEVICE_4SUBTRACT : '0'
+                        #    GAIN : 1.0
+                        #    RANDOM_SEED : 10086
                         SNLogger.info( "...align_and_preconvolve" )
                         with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
                             sfftifier = self.align_and_pre_convolve( templ_image, sci_image )
 
                     if 'subtract' in steps:
+                        # After this step is done, two more fields in sfftifier are set:
+                        #    Solution_GPU  : --something--??
+                        #    PixA_DIFF_GPU : difference image ??
+                        # Get Lei to write docs on PureCupy_Customized_Packet.PCCP so
+                        #   we can figure out what these are
                         SNLogger.info( "...subtract" )
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
                             sfftifier.sfft_subtraction()
 
                     if 'find_decorrelation' in steps:
+                        # This step does ...
+                        # After it's done, the following fields of sfftifier are set:
+                        #   Solution : CPU copy of Solution_GPU
+                        #   FKDECO_GPU : result of PureCupy_Decorrelation_Calculator.PCDC
+                        # Get Lei to write documentation on P:ureCupy_DeCorrelation_Calculator
+                        #   so we can figure out what this is, but I THINK it's a
+                        #   kernel that is used to convolve with things to "decorrelate".
+                        #   (From what?)
+                        # In addition the two local varaibles diff_var and diff_var_path are set.
+                        #   diff_var : variance in difference image (I THINK), on GPU
+                        #   diff_var_path : where we want to write diff_var in self.dia_out_dir
                         SNLogger.info( "...find_decorrelation" )
                         with nvtx.annotate( "find_decor", color=0xcc44ff ):
                             sfftifier.find_decorrelation()
@@ -700,6 +755,11 @@ class Pipeline:
                             diff_var_path = self.dia_out_dir / f"diff_var_{mess}"
 
                     if 'apply_decorrelation' in steps:
+                        # After this step is done, the following FITS files will be written in self.dia_out_dir:
+                        #   decorr_diff_* : difference image convolved with FKDECO_GPU
+                        #   diff_var_* : variance of difference image convolved with FKDECO_GPU
+                        #   decorr_zpt_path_* : preconvolved science image (PixA_Ctarget_GPU) convolved with FKDECO_GPU
+                        #   decor_psf_path_* : PSF stamp for science image, convolved with FKDECO_GPU
                         mess = f"{sci_image.image.name}-{templ_image.image.name}"
                         decorr_psf_path = self.dia_out_dir / f"decorr_psf_{mess}"
                         decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
