@@ -107,7 +107,7 @@ With these directories in place, run a container with::
 
 **on NERSC Perlmutter**, the command would be::
 
-  podman-hpc run -gpu -it \
+  podman-hpc run --gpu -it \
     --mount type=bind,source=$PWD,target=/home \
     --mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data \
     --mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp \
@@ -144,10 +144,12 @@ You should see all the options you can pass to phrosty.  There are a lot, becaus
 Try running::
 
   SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
+    --oc ou2024 \
     --oid 20172782 \
     --ra 7.551093401915147 \
     --dec -44.80718106491529 \
     -b Y106 \
+    --ic ou2024 \
     -t phrosty/tests/20172782_instances_templates_1.csv \
     -s phrosty/tests/20172782_instances_science_2.csv \
     -p 3 -w 3 \

@@ -143,7 +143,7 @@ def one_science_image( scope="session" ):
     try:
         img = FITSImageOnDisk( path=('/photometry_test_data/ou2024/images/simple_model/'
                                      'Y106/35198/Roman_TDS_simple_model_Y106_35198_2.fits.gz'),
-                               imhdu=1,
+                               imagehdu=1,
                                pointing=35198,
                                sca=2 ).uncompressed_version()
         yield img

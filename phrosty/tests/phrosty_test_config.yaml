@@ -21,13 +21,17 @@ photometry:
       A25ePSF_path: /snappl/snappl/tests/testdata/A25ePSF
       temp_dir: /phrosty_temp
 
+      simdex_server: https://roman-desc-simdex.rknop.net
+
   phrosty:
-    image_type: ou2024fits
     force_sky_subtract: true
     keep_intermediate: true
     remove_temp_dir: false
     mem_trace: false
     kerpolyorder: 2
+
+    sfft:
+      radius_cut_detmask: 2
 
     paths:
       scratch_dir: /phrosty_temp
@@ -37,3 +41,4 @@ photometry:
 
     psf:
       type: ou24PSF
+      params: {}
