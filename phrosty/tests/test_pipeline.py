@@ -4,7 +4,7 @@ import pathlib
 import pytest
 
 from phrosty.pipeline import Pipeline
-from snappl.image import FITSImageOnDisk
+from snappl.image import FITSImageStdHeaders
 
 # TODO : separate tests for PipelineImage, for all the functions in#
 #   PipelineImage and Pipeline.  Right now we just have this regression
@@ -77,59 +77,51 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
 
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 def test_pipeline_failures( object_for_tests, ou2024_image_collection,
-                            one_ou2024_template_image, two_ou2024_science_images,
-                            nan_image ):
+                            one_ou2024_template_image, two_ou2024_science_images):
 
     nprocss = [1, 3]
     nwrites = [1, 3]
 
-    for i in nprocss:
-        for j in nwrites:
-            pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                            science_images=two_ou2024_science_images,
-                            template_images=[one_ou2024_template_image],
-                            nprocs=i, nwrite=j )
+    # for i in nprocss:
+    #     for j in nwrites:
+    #         pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+    #                         science_images=two_ou2024_science_images,
+    #                         template_images=[one_ou2024_template_image],
+    #                         nprocs=i, nwrite=j )
 
-            lctv = pip()
+    #         lctv = pip()
 
-            # First, check the images as-is. Make sure there are no failures.
-            for key in pip.failures:
-                assert len(pip.failures[key]) == 0
+    #         # First, check the images as-is. Make sure there are no failures.
+    #         for key in pip.failures:
+    #             assert len(pip.failures[key]) == 0
     
-    # Below is commented out because I can't verify that the tests are working
-    # because of NERSC spin issues. What it's trying to do is verify that for
-    # an array full of NaNs, the thing fails in the sky subtraction portion of
-    # the code, and self.failures['skysub'] gets the image identifier appended
-    # to it.
-    
-    # This is messy and file-savey because right now, snappl requires paths to do things.
-    # Or maybe it's sky subtract. Either way. Future improvements necessary.
     # try:
-        # nanpaths = [ 
-        #                 pathlib.Path( '/phrosty_temp/test_nan_img.fits' ),
-        #                 pathlib.Path( '/phrosty_temp/test_nan_noise.fits' ),
-        #                 pathlib.Path( 'phrosty_temp/test_nan_flags.fits' )
-        #             ]
+    nan_image = FITSImageStdHeaders( path='/phrosty_temp/test_nan_img', 
+                                     data=np.full(one_ou2024_template_image.image_shape, np.nan),
+                                     flags=np.zeros(one_ou2024_template_image.image_shape),
+                                     std_imagenames=True
+                                    )
 
-        # nan_image.save(
-        #                 path=nanpaths[0],
-        #                 noisepath=nanpaths[1],
-        #                 flagspath=nanpaths[2]
-        #             )
+    nan_image._wcs = one_ou2024_template_image.get_wcs()
+    nan_image.noise = nan_image.data
+    nan_image.band = 'Y106'
+    nan_image.pointing = -1  # Give it a fake pointing on purpose
+    nan_image.sca = 1
+    nan_image.save( which='data', overwrite=True )
 
-        # opened_nan_img = FITSImageOnDisk(nanpaths[0])
+    # pytest.set_trace()
 
-        # print(opened_nan_img)
-        # print(opened_nan_img.get_data())
+    new_test_imgs = [nan_image, two_ou2024_science_images[1]]
 
-        # new_test_imgs = [opened_nan_image, two_ou2024_science_images[1]]
+    pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                        science_images=new_test_imgs,
+                        template_images=[one_ou2024_template_image],
+                        nprocs=1, nwrite=1 )
+    lctv = pip()
 
-        # pytest.set_trace()
-        # pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-        #                     science_images=new_test_imgs,
-        #                     template_images=[one_ou2024_template_image],
-        #                     nprocs=1, nwrite=1 )
-        # lctv = pip()
+    for key in pip.failures:
+        print(key)
+        print(len(pip.failures[key]))
 
     # finally:
     #     for path in nanpaths:

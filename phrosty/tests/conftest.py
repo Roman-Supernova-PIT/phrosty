@@ -177,20 +177,17 @@ def two_ou2024_science_images( ou2024_image_collection ):
     return img1, img2
 
 @pytest.fixture
-def nan_image( ou2024_image_collection ):
-    ou_img = ou2024_image_collection.get_image( pointing=35198, sca=2, band='Y106' )
-    ou_header = ou_img.get_fits_header()
-
+def nan_image():
     nan_arr = np.empty((4088,4088))
     nan_arr[:] = np.nan
 
     # NOTE: path='/dev/null' because at this time, snappl requires a path to instantiate
     # a FITSImage object.
     nan_img = FITSImageStdHeaders( path='/dev/null', 
-                                   header=ou_header, 
-                                   data=nan_arr,
-                                   noise=nan_arr,
-                                   flags=nan_arr )
+                                   data=nan_arr
+                                 )
     nan_img.band = 'Y106'
+    nan_img.pointing = -1  # So it's not real and doesn't interpret.
+    nan_img.sca = 1
 
     return nan_img
