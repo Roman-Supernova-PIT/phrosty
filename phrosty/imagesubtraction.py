@@ -1,6 +1,7 @@
 __all__ = [ 'sky_subtract', 'stampmaker' ]
 
 # IMPORTS Standard:
+from astropy.io import fits
 import numpy as np
 import pathlib
 import random
@@ -63,9 +64,10 @@ def sky_subtract( img, temp_dir=None ):
         if isinstance( origimg, snappl.image.FITSImageOnDisk ):
             img = origimg.uncompressed_version( include=['data'] )
         else:
-            img = snappl.image.FITSImageOnDisk( path=tmpimpath )
+            # Can take out header arg when snappl issue #77 is resolved.
+            img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
             img.data = origimg.data
-            img.save_data()
+            img.save_data( which='data' )
 
         SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
         ( _SKYDIP, _SKYPEAK, _PixA_skysub,
@@ -78,10 +80,12 @@ def sky_subtract( img, temp_dir=None ):
                                                          DETECT_THRESH=1.5, DETECT_MINAREA=5,
                                                          DETECT_MAXAREA=0,
                                                          VERBOSE_LEVEL=2, MDIR=None)
+
+
         SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
 
-        subim = snappl.image.FITSImageOnDisk( path=tmpsubpath )
-        detmaskim = snappl.image.FITSImageOnDisk( path=tmpdetmaskpath )
+        subim = snappl.image.FITSImage( path=tmpsubpath )
+        detmaskim = snappl.image.FITSImage( path=tmpdetmaskpath )
         skyrms = np.median( PixA_skyrms )
         return subim, detmaskim, skyrms
 

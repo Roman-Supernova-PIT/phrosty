@@ -1,6 +1,10 @@
+import numpy as np
 import os
+import pathlib
 import pytest
+
 from phrosty.pipeline import Pipeline
+from snappl.image import FITSImageStdHeaders
 
 # TODO : separate tests for PipelineImage, for all the functions in#
 #   PipelineImage and Pipeline.  Right now we just have this regression
@@ -19,7 +23,7 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     with open( ltcv ) as ifp:
         hdrline = ifp.readline().strip()
         assert hdrline == ( 'ra,dec,mjd,filter,pointing,sca,template_pointing,template_sca,zpt,'
-                            'aperture_sum,flux_fit,flux_fit_err,mag_fit,mag_fit_err' )
+                            'aperture_sum,flux_fit,flux_fit_err,mag_fit,mag_fit_err,success' )
         kws = hdrline.split( "," )
         pairs = []
         for line in ifp:
@@ -36,8 +40,10 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         assert int(pair['sca']) == int(img.sca)
         assert int(pair['template_pointing']) == int(one_ou2024_template_image.pointing)
         assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
-        # TODO : fix the zeropoint!
-        assert pair['zpt'] == ''
+        # TODO : fix the zeropoint! This tolerance is huge...
+        zpt = float( pair['zpt'] )
+        assert zpt == pytest.approx( 32, abs=1 )
+        assert pair['success'] == 'True'
 
     # Tests aren't exactly reproducible from one run to the next,
     #   because some classes (including the galsim PSF that we use right
@@ -67,3 +73,70 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     # TODO : cleanup output directories!  This is scary if you're using the same
     #   directories for tests and for running... so don't do that... but the
     #   way we're set up right now, you probably are.
+
+
+@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
+def test_pipeline_failures( object_for_tests, ou2024_image_collection,
+                            one_ou2024_template_image, two_ou2024_science_images):
+
+    nprocss = [1, 3]
+    nwrites = [1, 3]
+
+    # for i in nprocss:
+    #     for j in nwrites:
+    #         pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+    #                         science_images=two_ou2024_science_images,
+    #                         template_images=[one_ou2024_template_image],
+    #                         nprocs=i, nwrite=j )
+
+    #         lctv = pip()
+
+    #         # First, check the images as-is. Make sure there are no failures.
+    #         for key in pip.failures:
+    #             assert len(pip.failures[key]) == 0
+    
+    # try:
+    nan_image = FITSImageStdHeaders( path='/phrosty_temp/test_nan_img', 
+                                     data=np.full(one_ou2024_template_image.image_shape, np.nan),
+                                     flags=np.zeros(one_ou2024_template_image.image_shape),
+                                     std_imagenames=True
+                                    )
+
+    nan_image._wcs = one_ou2024_template_image.get_wcs()
+    nan_image.noise = nan_image.data
+    nan_image.band = 'Y106'
+    nan_image.pointing = -1  # Give it a fake pointing on purpose
+    nan_image.sca = 1
+    nan_image.save( which='data', overwrite=True )
+
+    # pytest.set_trace()
+
+    new_test_imgs = [nan_image, two_ou2024_science_images[1]]
+
+    pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                        science_images=new_test_imgs,
+                        template_images=[one_ou2024_template_image],
+                        nprocs=1, nwrite=1 )
+    lctv = pip()
+
+    for key in pip.failures:
+        print(key)
+        print(len(pip.failures[key]))
+
+    # finally:
+    #     for path in nanpaths:
+    #         path.unlink()
+
+
+
+    # for i in nprocss:
+    #     for j in nwrites:
+    #         pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+    #                     science_images=new_test_imgs,
+    #                     template_images=[one_ou2024_template_image],
+    #                     nprocs=i, nwrite=j )
+
+    #         for key in pip.failures:
+    #             print(key)
+    #             print(len(pip.failures[key]))
+    #             assert len(pip.failures[key]) == 0 

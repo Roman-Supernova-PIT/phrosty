@@ -94,6 +94,20 @@ class PipelineImage:
         self.psf_data = None
 
     def run_sky_subtract( self, mp=True ):
+        """Run sky subtraction using Source Extractor.
+
+        Parameters
+        ----------
+        mp : bool, optional
+            Toggle multiprocessing, by default True
+
+        Returns
+        -------
+        tuple
+            Tuple containing sky subtracted image, detection
+            mask array, and sky RMS value. 
+            Output of phrosty.imagesubtraction.sky_subtract().
+        """
         try:
             return sky_subtract( self.image )
         except Exception as ex:
@@ -101,6 +115,16 @@ class PipelineImage:
             raise
 
     def save_sky_subtract_info( self, info ):
+        """Saves the sky-subtracted image, detection mask array,
+        and sky RMS values to attributes. 
+
+        Parameters
+        ----------
+        info : tuple
+            Output of self.run_sky_subtract(). See documentation
+            for phrosty.imagesubtraction.sky_subtract().
+        """
+
         SNLogger.debug( f"Saving sky_subtract info for path {info[0]}" )
         self.skysub_img = info[0]
         self.detmask_img = info[1]
@@ -113,6 +137,11 @@ class PipelineImage:
         ----------
           ra, dec : float
              The coordinates in decimal degrees where we want the PSF.
+        
+        Returns
+        -------
+        np.array
+            PSF stamp. If this function fails, None is returned.
 
         """
 
@@ -121,24 +150,37 @@ class PipelineImage:
         #   the psf... and it's different for each type of
         #   PSF.  We need to fix that... somehow....
 
-        wcs = self.image.get_wcs()
-        x, y = wcs.world_to_pixel( ra, dec )
+        try:
+            wcs = self.image.get_wcs()
+            x, y = wcs.world_to_pixel( ra, dec )
 
-        if self.psfobj is None:
-            psftype = self.config.value( 'photometry.phrosty.psf.type' )
-            self.psfobj = PSF.get_psf_object( psftype, x=x, y=y,
-                                              band=self.image.band,
-                                              pointing=self.image.pointing,
-                                              sca=self.image.sca )
+            if self.psfobj is None:
+                psftype = self.config.value( 'photometry.phrosty.psf.type' )
+                self.psfobj = PSF.get_psf_object( psftype, x=x, y=y,
+                                                band=self.image.band,
+                                                pointing=self.image.pointing,
+                                                sca=self.image.sca )
 
-        stamp = self.psfobj.get_stamp( x, y )
-        if self.keep_intermediate:
-            outfile = self.save_dir / f"psf_{self.image.name}.fits"
-            fitsio.write( outfile, stamp, clobber=True )
+            stamp = self.psfobj.get_stamp( x, y )
+            if self.keep_intermediate:
+                outfile = self.save_dir / f"psf_{self.image.name}.fits"
+                fitsio.write( outfile, stamp, clobber=True )
 
-        return stamp
+            return stamp
+
+        except:
+            return None
 
     def keep_psf_data( self, psf_data ):
+        """Save PSF data to attribute. 
+
+        Parameters
+        ----------
+        psf_data : np.array
+            PSF stamp.
+
+        """
+
         self.psf_data = psf_data
 
     def free( self ):
@@ -166,6 +208,9 @@ class Pipeline:
         ----------
            diaobj : DiaObject
              The object we're building a lightcurve for
+
+           imgcol : ImageCollection
+             snappl.imagecollection.ImageCollection
 
            band: str
              One of R062, Z087, Y106, J129, H158, F184, K213
@@ -197,8 +242,11 @@ class Pipeline:
            nwrite: int, default 5
              Number of asynchronous FITS writer processes.
 
-        """
+           verbose: bool, default True
+             Toggle verbose output.
 
+        """
+        
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.config = Config.get()
         self.imgcol = imgcol
@@ -225,6 +273,21 @@ class Pipeline:
         self.science_images = [ PipelineImage( i, self ) for i in science_images ]
         self.template_images = [ PipelineImage( i, self ) for i in template_images ]
 
+        # All of our failures.
+        # LA NOTE: I want to add keys for when this fails in sky subtraction and PSF retrieval
+        # as well. But that is slightly more involved because those things happen in
+        # PipelineImage, not Pipeline. So, for now, anything that fails at 'make_lightcurve'
+        # may have failed at earlier steps first. Also, source extractor doesn't fail on
+        # an image full of NaNs for some reason. It just reports 0 sources. I would expect
+        # that it should fail, here...
+        self.failures = {'align_and_preconvolve': [],
+                         'find_decorrelation': [],
+                         'subtract': [],
+                         'variance': [],
+                         'apply_decorrelation': [],
+                         'make_lightcurve': [],
+                         'make_stamps': []}
+
         self.nprocs = nprocs
         self.nwrite = nwrite
 
@@ -234,6 +297,25 @@ class Pipeline:
 
 
     def _read_csv( self, csvfile ):
+        """Reads input csv files with columns:
+        'path pointing sca mjd band'.
+
+        Parameters
+        ----------
+        csvfile : str
+            Path to an input csv file. 
+
+        Returns
+        -------
+        list of snappl.image.Image
+
+        Raises
+        ------
+        ValueError
+            If the first line of the csv file doesn't match
+            'path pointing sca mjd band', a ValueError is raised.
+        """
+
         imlist = []
         with open( csvfile ) as ifp:
             hdrline = ifp.readline()
@@ -248,16 +330,21 @@ class Pipeline:
 
 
     def sky_sub_all_images( self ):
+        """Sky subtracts all snappl.image.Image objects in 
+        self.science_images and self.template_images using
+        Source Extractor.
+
+        Contains its own error logging function, log_error().
+
+        """
+
         # Currently, this writes out a bunch of FITS files.  Further refactoring needed
         #   to support more general image types.
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
-        self._omg = False
-
         def log_error( img, x ):
-            SNLogger.error( f"Sky subtraction subprocess failure: {x} for image {img.image.path}" )
-            self._omg = True
+            SNLogger.error( f"Sky subtraction failure on {img.image.path}: {x}" )
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
@@ -271,35 +358,32 @@ class Pipeline:
             for img in all_imgs:
                 img.save_sky_subtract_info( img.run_sky_subtract( mp=False ) )
 
-        if self._omg:
-            raise RuntimeError( "Sky subtraction errors." )
-
-
     def get_psfs( self ):
+        """Retrieve PSFs for all snappl.image.Image objects in
+        self.science_images and self.template_images.
+
+        Contains its own error logging function, log_error().
+
+        """
+
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
 
-        self._omg = False
-
-        def log_error( x ):
-            SNLogger.error( f"get_psf subprocess failure: {x}" )
-            self._omg = True    # noqa: F841
+        def log_error( img, x ):
+            SNLogger.error( f"get_psf failure on {img.image.path}: {x}" )
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
                 for img in all_imgs:
                     # callback_partial = partial( img.save_psf_path, all_imgs )
                     pool.apply_async( img.get_psf, (self.diaobj.ra, self.diaobj.dec), {},
-                                      img.keep_psf_data, log_error )
+                                      callback=img.keep_psf_data,
+                                      error_callback=partial(log_error, img) )
                 pool.close()
                 pool.join()
         else:
             for img in all_imgs:
                 img.keep_psf_data( img.get_psf(self.diaobj.ra, self.diaobj.dec) )
-
-        if self._omg:
-            raise RuntimeError( "get_psf errors." )
-
 
     def align_and_pre_convolve(self, templ_image, sci_image ):
         """Align and pre convolve a single template/science pair.
@@ -401,7 +485,7 @@ class Pipeline:
         mag_err = (2.5 / np.log(10)) * np.abs(final["flux_err"][0] / final["flux_fit"][0])
 
         results_dict = {
-                        'aperture_sum': init['flux_init'][0],
+                        'aperture_sum': init['flux_init'][0],  # Has to be renamed and named back because photutils.
                         'flux_fit': flux,
                         'flux_fit_err': flux_err,
                         'mag_fit': mag,
@@ -411,7 +495,9 @@ class Pipeline:
         return results_dict
 
     def make_phot_info_dict( self, sci_image, templ_image, ap_r=4 ):
-        """"Do things.
+        """"
+        Do photometry on a difference image generated from sci_image
+        and templ_image. Collect the output in a dictionary.
 
         Parmaeters
         ----------
@@ -422,12 +508,15 @@ class Pipeline:
             template image wrapper
 
           ap_r: float, default 4
-             Radius of aperture to use in something
+             Radius of aperture to use in aperture photometry.
 
         Returns
         -------
-          something: dict
-            It has things in it
+          results_dict: dict
+            Dictionary with keys sci_name, templ_name, success, ra,
+            dec, mjd, filter, pointing, sca, template_pointing,
+            template_sca, zpt, aperture_sum, flux_fit, flux_fit_err,
+            mag_fit, and mag_fit_err.
 
         """
 
@@ -465,7 +554,7 @@ class Pipeline:
                               f"{self.band}_{templ_image.image.pointing}_{templ_image.image.sca} "
                               f"do not exist.  Skipping." )
             results_dict['zpt'] = np.nan
-            results_dict['ap_zpt'] = np.nan
+            # results_dict['ap_zpt'] = np.nan
             results_dict['aperture_sum'] = np.nan
             results_dict['flux_fit'] = np.nan
             results_dict['flux_fit_err'] = np.nan
@@ -480,56 +569,132 @@ class Pipeline:
                                   oversample_factor=1.,
                                   data=psf_img.data )
         SNLogger.debug( "...make_phot_info_dict doing photometry" )
-        results_dict.update( self.phot_at_coords( diff_img, psf, pxcoords=pxcoords, ap_r=ap_r) )
+        try:
+            results_dict.update( self.phot_at_coords( diff_img, psf, pxcoords=pxcoords, ap_r=ap_r) )
+            # Add additional info to the results dictionary so it can be merged into a nice file later.
+            SNLogger.debug( "...make_phot_info_dict getting zeropoint" )
+            results_dict['zpt'] = sci_image.image.zeropoint
+            results_dict['success'] = True
 
-        # Add additional info to the results dictionary so it can be merged into a nice file later.
-        SNLogger.debug( "...make_phot_info_dict getting zeropoint" )
-        results_dict['zpt'] = sci_image.image.zeropoint
-        results_dict['success'] = True
+        except:
+            results_dict['zpt'] = np.nan
+            # results_dict['ap_zpt'] = np.nan
+            results_dict['aperture_sum'] = np.nan
+            results_dict['flux_fit'] = np.nan
+            results_dict['flux_fit_err'] = np.nan
+            results_dict['mag_fit'] = np.nan
+            results_dict['mag_fit_err'] = np.nan
+            results_dict['zpt'] = np.nan
+            results_dict['success'] = False
 
         SNLogger.debug( "...make_phot_info_dict done." )
         return results_dict
 
     def add_to_results_dict( self, one_pair ):
+        """Record results from self.make_phot_info_dict() to the
+        aggregate dictionary for the entire light curve.
+
+        Parameters
+        ----------
+        one_pair : dict
+            Dictionary output from self.make_phot_info_dict().
+        """
+
         for key, arr in self.results_dict.items():
             arr.append( one_pair[ key ] )
+
+        if not one_pair['success']:
+            self.failures['make_lightcurve'].append({'science': f"{one_pair['filter']} {one_pair['pointing']} {one_pair['sca']}",
+                                                     'template': f"{one_pair['filter']} {one_pair['template_pointing']} {one_pair['template_sca']}"
+                                                    })
+
         SNLogger.debug( "Done adding to results dict" )
 
     def save_stamp_paths( self, sci_image, templ_image, paths ):
+        """Helper function for recording the stamp paths returned in
+        self.do_stamps.
+
+        Parameters
+        ----------
+        sci_image : snappl.image.Image
+            Science image with supernova.
+        
+        templ_image : snappl.image.Image
+            Template image without supernova.
+
+        paths : list of pathlib.Path
+            Output from self.do_stamps().
+
+        """
         sci_image.zpt_stamp_path[ templ_image.image.name ] = paths[0]
         sci_image.diff_stamp_path[ templ_image.image.name ] = paths[1]
         sci_image.diff_var_stamp_path[ templ_image.image.name ] = paths[2]
 
     def do_stamps( self, sci_image, templ_image ):
+        """Make stamps from the zero point image, decorrelated
+        difference image, and variance image centered at the
+        location of the supernova.
 
-        zptim = FITSImageOnDisk( sci_image.decorr_zptimg_path[ templ_image.image.name ] )
-        zpt_stampname = stampmaker( self.diaobj.ra, self.diaobj.dec, np.array([100, 100]),
-                                    zptim,
-                                    savedir=self.dia_out_dir,
-                                    savename=f"stamp_{zptim.path.name}" )
-        zptim.free()
+        Parameters
+        ----------
+        sci_image : snappl.image.Image
+            Science image with supernova.
+        templ_image : snappl.image.Image
+            Template image without supernova.
 
-        diffim = FITSImageOnDisk( sci_image.decorr_diff_path[ templ_image.image.name ] )
-        diff_stampname = stampmaker( self.diaobj.ra, self.diaobj.dec, np.array([100, 100]),
-                                     diffim,
-                                     savedir=self.dia_out_dir,
-                                     savename=f"stamp_{diffim.path.name}" )
-        diffim.free()
+        Returns
+        -------
+        list of pathlib.Path
+            Paths to the stamps corresponding to the zero point image,
+            decorrelated difference image, and variance image centered
+            at the location of the supernova.
+        """
 
-        diffvarim = FITSImageOnDisk( sci_image.diff_var_path[ templ_image.image.name ] )
-        diffvar_stampname = stampmaker( self.diaobj.ra, self.diaobj.dec, np.array([100, 100]),
-                                        diffvarim,
+        try:
+            zptim = FITSImageOnDisk( sci_image.decorr_zptimg_path[ templ_image.image.name ] )
+            zpt_stampname = stampmaker( self.diaobj.ra, self.diaobj.dec, np.array([100, 100]),
+                                        zptim,
                                         savedir=self.dia_out_dir,
-                                        savename=f"stamp_{diffvarim.path.name}" )
-        diffvarim.free()
+                                        savename=f"stamp_{zptim.path.name}" )
+            zptim.free()
 
-        SNLogger.info(f"Decorrelated diff stamp path: {pathlib.Path( diff_stampname )}")
-        SNLogger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
-        SNLogger.info(f"Decorrelated diff variance stamp path: {pathlib.Path( diffvar_stampname )}")
+            diffim = FITSImageOnDisk( sci_image.decorr_diff_path[ templ_image.image.name ] )
+            diff_stampname = stampmaker( self.diaobj.ra, self.diaobj.dec, np.array([100, 100]),
+                                        diffim,
+                                        savedir=self.dia_out_dir,
+                                        savename=f"stamp_{diffim.path.name}" )
+            diffim.free()
 
-        return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname ), pathlib.Path( diffvar_stampname )
+            diffvarim = FITSImageOnDisk( sci_image.diff_var_path[ templ_image.image.name ] )
+            diffvar_stampname = stampmaker( self.diaobj.ra, self.diaobj.dec, np.array([100, 100]),
+                                            diffvarim,
+                                            savedir=self.dia_out_dir,
+                                            savename=f"stamp_{diffvarim.path.name}" )
+            diffvarim.free()
+
+            SNLogger.info(f"Decorrelated diff stamp path: {pathlib.Path( diff_stampname )}")
+            SNLogger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
+            SNLogger.info(f"Decorrelated diff variance stamp path: {pathlib.Path( diffvar_stampname )}")
+
+            return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname ), pathlib.Path( diffvar_stampname )
+
+        except:
+            SNLogger.error( f"do_stamps failure for {sci_image.image.pointing} {sci_image.image.sca} - {templ_image.image.pointing} {templ_image.image.sca}: {x} " )
+            self.failures['make_stamps'].append({'science': f'{sci_image.image.band} {sci_image.image.pointing} {sci_image.image.sca}',
+                                                 'template': f'{templ_image.image.band} {templ_image.image.pointing} {templ_image.image.sca}'
+                                                })
 
     def make_lightcurve( self ):
+        """Collect all results from photometry in one dictionary.
+        Write the output to a csv as a table.
+
+        Contains its own error logging function, log_error().
+
+        Returns
+        -------
+        pathlib.Path
+            Path to output csv file that contains a light curve.
+        """
         SNLogger.info( "Making lightcurve." )
 
         self.results_dict = {
@@ -547,21 +712,23 @@ class Pipeline:
             'flux_fit_err': [],
             'mag_fit': [],
             'mag_fit_err': [],
+            'success': []
         }
 
-        self._omg = False
-
-        def log_error( x ):
-            SNLogger.error( f"make_phot_info_dict subprocess failure: {x}" )
-            self._omg = True
+        def log_error( sci_image, templ_image, x ):
+            SNLogger.error( f"make_phot_info_dict failure for {sci_image.image.pointing} {sci_image.image.sca} - {templ_image.image.pointing} {templ_image.image.sca}: {x}" )
+            self.failures['make_lightcurve'].append({'science': f'{sci_image.image.band} {sci_image.image.pointing} {sci_image.image.sca}',
+                                                     'template': f'{templ_image.image.band} {templ_image.image.pointing} {templ_image.image.sca}'
+                                                    })
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
                 for sci_image in self.science_images:
                     for templ_image in self.template_images:
+                        logerr_partial = partial(log_error, sci_image, templ_image)
                         pool.apply_async( self.make_phot_info_dict, (sci_image, templ_image), {},
                                           self.add_to_results_dict,
-                                          error_callback=log_error )
+                                          error_callback=logerr_partial )
                 pool.close()
                 pool.join()
         else:
@@ -569,9 +736,6 @@ class Pipeline:
                 SNLogger.debug( f"Doing science image {i} of {len(self.science_images)}" )
                 for templ_image in self.template_images:
                     self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
-
-        if self._omg:
-            raise RuntimeError( "make_phot_info_dict failed" )
 
         SNLogger.debug( "Saving results..." )
         results_tab = Table(self.results_dict)
@@ -585,6 +749,18 @@ class Pipeline:
         return results_savepath
 
     def write_fits_file( self, data, header, savepath ):
+        """Helper function for writing fits files.
+
+        Parameters
+        ----------
+        data : np.array
+            Image array.
+        header : _type_
+            FITS header.
+        savepath : str
+            Savepath for FITS file.
+        """
+
         try:
             if header is not None:
                 hdr_dict = dict(header.items())
@@ -596,6 +772,14 @@ class Pipeline:
             raise
 
     def clear_contents( self, directory ):
+        """Delete contents of a directory. Used to clear temporary
+        files.
+
+        Parameters
+        ----------
+        directory : pathlib.Path
+            Path to directory to empty.
+        """
         for f in directory.iterdir():
             try:
                 if f.is_dir():
@@ -674,56 +858,80 @@ class Pipeline:
                 for sci_image in self.science_images:
                     SNLogger.info( f"Processing {sci_image.image.name} minus {templ_image.image.name}" )
                     sfftifier = None
+                    fail_info = {'science': f'{sci_image.image.band} {sci_image.image.pointing} {sci_image.image.sca}',
+                                 'template': f'{templ_image.image.band} {templ_image.image.pointing} {templ_image.image.sca}'
+                                }
+                    i_failed = False
 
                     if 'align_and_preconvolve' in steps:
                         SNLogger.info( "...align_and_preconvolve" )
                         with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
-                            sfftifier = self.align_and_pre_convolve( templ_image, sci_image )
+                            try:
+                                sfftifier = self.align_and_pre_convolve( templ_image, sci_image )
+                            except:
+                                i_failed = True
+                                self.failures['align_and_preconvolve'].append(fail_info)
 
-                    if 'subtract' in steps:
+                    if 'subtract' in steps and not i_failed:
                         SNLogger.info( "...subtract" )
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
-                            sfftifier.sfft_subtraction()
+                            try:
+                                sfftifier.sfft_subtraction()
+                            except:
+                                i_failed = True
+                                self.failures['subtract'].append(fail_info)
 
-                    if 'find_decorrelation' in steps:
+                    if 'find_decorrelation' in steps and not i_failed:
                         SNLogger.info( "...find_decorrelation" )
                         with nvtx.annotate( "find_decor", color=0xcc44ff ):
-                            sfftifier.find_decorrelation()
+                            try:
+                                sfftifier.find_decorrelation()
+                            except:
+                                i_failed = True
+                                self.failures['find_decorrelation'].append(fail_info)
 
                         SNLogger.info( "...generate variance image" )
                         with nvtx.annotate( "variance", color=0x44ccff ):
-                            diff_var = sfftifier.create_variance_image()
+                            try:
+                                diff_var = sfftifier.create_variance_image()
+                                mess = f"{sci_image.image.name}-{templ_image.image.name}"
+                                diff_var_path = self.dia_out_dir / f"diff_var_{mess}"
+                            except:
+                                i_failed = True
+                                self.failures['variance'].append(fail_info)
+
+                    if 'apply_decorrelation' in steps and not i_failed:
+                        try:
                             mess = f"{sci_image.image.name}-{templ_image.image.name}"
-                            diff_var_path = self.dia_out_dir / f"diff_var_{mess}"
+                            decorr_psf_path = self.dia_out_dir / f"decorr_psf_{mess}"
+                            decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
+                            decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
 
-                    if 'apply_decorrelation' in steps:
-                        mess = f"{sci_image.image.name}-{templ_image.image.name}"
-                        decorr_psf_path = self.dia_out_dir / f"decorr_psf_{mess}"
-                        decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
-                        decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
+                            images =    [ sfftifier.PixA_DIFF_GPU,    diff_var,
+                                        sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ]
+                            savepaths = [ decorr_diff_path,           diff_var_path,
+                                        decorr_zptimg_path,         decorr_psf_path ]
+                            headers =   [ sfftifier.hdr_target,       sfftifier.hdr_target,
+                                        sfftifier.hdr_target,       None ]
 
-                        images =    [ sfftifier.PixA_DIFF_GPU,    diff_var,
-                                      sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ]
-                        savepaths = [ decorr_diff_path,           diff_var_path,
-                                      decorr_zptimg_path,         decorr_psf_path ]
-                        headers =   [ sfftifier.hdr_target,       sfftifier.hdr_target,
-                                      sfftifier.hdr_target,       None ]
+                            for img, savepath, hdr in zip( images, savepaths, headers ):
+                                with nvtx.annotate( "apply_decor", color=0xccccff ):
+                                    SNLogger.info( f"...apply_decor to {savepath}" )
+                                    decorimg = sfftifier.apply_decorrelation( img )
+                                with nvtx.annotate( "submit writefits", color=0xff8888 ):
+                                    SNLogger.info( f"...writefits {savepath}" )
+                                    fits_writer_pool.apply_async( self.write_fits_file,
+                                                                ( cp.asnumpy( decorimg ).T, hdr, savepath ), {},
+                                                                error_callback=partial(log_fits_write_error, savepath) )
+                            sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
+                            sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
+                            sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
+                            sci_image.diff_var_path[ templ_image.image.name ] = diff_var_path
+                        except:
+                            i_failed = True
+                            self.failures['apply_decorrelation'].append(fail_info)
 
-                        for img, savepath, hdr in zip( images, savepaths, headers ):
-                            with nvtx.annotate( "apply_decor", color=0xccccff ):
-                                SNLogger.info( f"...apply_decor to {savepath}" )
-                                decorimg = sfftifier.apply_decorrelation( img )
-                            with nvtx.annotate( "submit writefits", color=0xff8888 ):
-                                SNLogger.info( f"...writefits {savepath}" )
-                                fits_writer_pool.apply_async( self.write_fits_file,
-                                                              ( cp.asnumpy( decorimg ).T, hdr, savepath ), {},
-                                                              error_callback=partial(log_fits_write_error, savepath) )
-                        sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
-                        sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
-                        sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
-                        sci_image.diff_var_path[ templ_image.image.name ] = diff_var_path
-
-                    if self.keep_intermediate:
+                    if self.keep_intermediate and not i_failed:
                         # Each key is the file prefix addition.
                         # Each list has [descriptive filetype, image file name, data, header].
 
@@ -791,14 +999,15 @@ class Pipeline:
                 fits_writer_pool.join()
             SNLogger.info( "...FITS writer processes done." )
 
-        if 'make_stamps' in steps:
+        if 'make_stamps' in steps and not i_failed:
             SNLogger.info( "Starting to make stamps..." )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
-                self._omg = False
 
-                def log_stamp_err( x ):
-                    SNLogger.error( f"do_stamps subprocess failure: {x} " )
-                    self._omg = True
+                def log_stamp_err( sci_image, templ_image, x ):
+                    SNLogger.error( f"do_stamps failure for {sci_image.image.pointing} {sci_image.image.sca} - {templ_image.image.pointing} {templ_image.image.sca}: {x} " )
+                    self.failures['make_stamps'].append({'science': f'{sci_image.image.band} {sci_image.image.pointing} {sci_image.image.sca}',
+                                                         'template': f'{templ_image.image.band} {templ_image.image.pointing} {templ_image.image.sca}'
+                                                        })
 
                 partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
                 # template path, savedir, savename
@@ -815,10 +1024,11 @@ class Pipeline:
                         for sci_image in self.science_images:
                             for templ_image in self.template_images:
                                 pair = (sci_image, templ_image)
+                                stamperr_partial = partial(log_stamp_err, sci_image, templ_image)
                                 sci_stamp_pool.apply_async( self.do_stamps, pair, {},
                                                             callback = partial(self.save_stamp_paths,
                                                                                sci_image, templ_image),
-                                                            error_callback=log_stamp_err )
+                                                            error_callback=stamperr_partial )
                         sci_stamp_pool.close()
                         sci_stamp_pool.join()
 
@@ -831,16 +1041,13 @@ class Pipeline:
                             stamp_paths = self.do_stamps( sci_image, templ_image)
                             self.save_stamp_paths( sci_image, templ_image, stamp_paths )
 
-                if self._omg:
-                    raise RuntimeError( "Error making stamps." )
-
             SNLogger.info('...finished making stamps.')
 
         if self.mem_trace:
             SNLogger.info( f"After make_stamps, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
         lightcurve_path = None
-        if 'make_lightcurve' in steps:
+        if 'make_lightcurve' in steps and not i_failed:
             with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
                 lightcurve_path = self.make_lightcurve()
 
@@ -850,6 +1057,12 @@ class Pipeline:
 
         if self.remove_temp_dir:
             self.clear_contents( self.temp_dir )
+
+        if np.sum( [len(x) for x in self.failures.values()] ) > 0:
+            SNLogger.info( f"There were some failures here! They were:\n{self.failures}" )
+
+        else:
+            SNLogger.info( f"No failures here! Fail list:\n{self.failures}" )
 
         return lightcurve_path
 
