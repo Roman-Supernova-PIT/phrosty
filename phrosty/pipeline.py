@@ -105,7 +105,7 @@ class PipelineImage:
         -------
         tuple
             Tuple containing sky subtracted image, detection
-            mask array, and sky RMS value. 
+            mask array, and sky RMS value.
             Output of phrosty.imagesubtraction.sky_subtract().
         """
         try:
@@ -116,7 +116,7 @@ class PipelineImage:
 
     def save_sky_subtract_info( self, info ):
         """Saves the sky-subtracted image, detection mask array,
-        and sky RMS values to attributes. 
+        and sky RMS values to attributes.
 
         Parameters
         ----------
@@ -137,7 +137,7 @@ class PipelineImage:
         ----------
           ra, dec : float
              The coordinates in decimal degrees where we want the PSF.
-        
+
         Returns
         -------
         np.array
@@ -172,7 +172,7 @@ class PipelineImage:
             return None
 
     def keep_psf_data( self, psf_data ):
-        """Save PSF data to attribute. 
+        """Save PSF data to attribute.
 
         Parameters
         ----------
@@ -246,7 +246,7 @@ class Pipeline:
              Toggle verbose output.
 
         """
-        
+
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
         self.config = Config.get()
         self.imgcol = imgcol
@@ -303,7 +303,7 @@ class Pipeline:
         Parameters
         ----------
         csvfile : str
-            Path to an input csv file. 
+            Path to an input csv file.
 
         Returns
         -------
@@ -330,7 +330,7 @@ class Pipeline:
 
 
     def sky_sub_all_images( self ):
-        """Sky subtracts all snappl.image.Image objects in 
+        """Sky subtracts all snappl.image.Image objects in
         self.science_images and self.template_images using
         Source Extractor.
 
@@ -604,8 +604,12 @@ class Pipeline:
             arr.append( one_pair[ key ] )
 
         if not one_pair['success']:
-            self.failures['make_lightcurve'].append({'science': f"{one_pair['filter']} {one_pair['pointing']} {one_pair['sca']}",
-                                                     'template': f"{one_pair['filter']} {one_pair['template_pointing']} {one_pair['template_sca']}"
+            self.failures['make_lightcurve'].append({'science': f"{one_pair['filter']} \
+                                                                  {one_pair['pointing']} \
+                                                                  {one_pair['sca']}",
+                                                     'template': f"{one_pair['filter']} \
+                                                                   {one_pair['template_pointing']} \
+                                                                   {one_pair['template_sca']}"
                                                     })
 
         SNLogger.debug( "Done adding to results dict" )
@@ -618,7 +622,7 @@ class Pipeline:
         ----------
         sci_image : snappl.image.Image
             Science image with supernova.
-        
+
         templ_image : snappl.image.Image
             Template image without supernova.
 
@@ -679,9 +683,16 @@ class Pipeline:
             return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname ), pathlib.Path( diffvar_stampname )
 
         except:
-            SNLogger.error( f"do_stamps failure for {sci_image.image.pointing} {sci_image.image.sca} - {templ_image.image.pointing} {templ_image.image.sca}: {x} " )
-            self.failures['make_stamps'].append({'science': f'{sci_image.image.band} {sci_image.image.pointing} {sci_image.image.sca}',
-                                                 'template': f'{templ_image.image.band} {templ_image.image.pointing} {templ_image.image.sca}'
+            SNLogger.error( f"do_stamps failure for {sci_image.image.pointing} \
+                                                    {sci_image.image.sca} - \
+                                                    {templ_image.image.pointing} \
+                                                    {templ_image.image.sca}: {x} " )
+            self.failures['make_stamps'].append({'science': f'{sci_image.image.band} \
+                                                              {sci_image.image.pointing} \
+                                                              {sci_image.image.sca}',
+                                                 'template': f'{templ_image.image.band} \
+                                                               {templ_image.image.pointing} \
+                                                               {templ_image.image.sca}'
                                                 })
 
     def make_lightcurve( self ):
@@ -716,9 +727,16 @@ class Pipeline:
         }
 
         def log_error( sci_image, templ_image, x ):
-            SNLogger.error( f"make_phot_info_dict failure for {sci_image.image.pointing} {sci_image.image.sca} - {templ_image.image.pointing} {templ_image.image.sca}: {x}" )
-            self.failures['make_lightcurve'].append({'science': f'{sci_image.image.band} {sci_image.image.pointing} {sci_image.image.sca}',
-                                                     'template': f'{templ_image.image.band} {templ_image.image.pointing} {templ_image.image.sca}'
+            SNLogger.error( f"make_phot_info_dict failure for {sci_image.image.pointing} \
+                                                              {sci_image.image.sca} - \
+                                                              {templ_image.image.pointing} \
+                                                              {templ_image.image.sca}: {x}" )
+            self.failures['make_lightcurve'].append({'science': f'{sci_image.image.band} \
+                                                                  {sci_image.image.pointing} \
+                                                                  {sci_image.image.sca}',
+                                                     'template': f'{templ_image.image.band} \
+                                                                   {templ_image.image.pointing} \
+                                                                   {templ_image.image.sca}'
                                                     })
 
         if self.nprocs > 1:
@@ -858,8 +876,12 @@ class Pipeline:
                 for sci_image in self.science_images:
                     SNLogger.info( f"Processing {sci_image.image.name} minus {templ_image.image.name}" )
                     sfftifier = None
-                    fail_info = {'science': f'{sci_image.image.band} {sci_image.image.pointing} {sci_image.image.sca}',
-                                 'template': f'{templ_image.image.band} {templ_image.image.pointing} {templ_image.image.sca}'
+                    fail_info = {'science': f'{sci_image.image.band} \
+                                              {sci_image.image.pointing} \
+                                              {sci_image.image.sca}',
+                                 'template': f'{templ_image.image.band} \
+                                               {templ_image.image.pointing} \
+                                               {templ_image.image.sca}'
                                 }
                     i_failed = False
 
@@ -1004,9 +1026,16 @@ class Pipeline:
             with nvtx.annotate( "make stamps", color=0xff8888 ):
 
                 def log_stamp_err( sci_image, templ_image, x ):
-                    SNLogger.error( f"do_stamps failure for {sci_image.image.pointing} {sci_image.image.sca} - {templ_image.image.pointing} {templ_image.image.sca}: {x} " )
-                    self.failures['make_stamps'].append({'science': f'{sci_image.image.band} {sci_image.image.pointing} {sci_image.image.sca}',
-                                                         'template': f'{templ_image.image.band} {templ_image.image.pointing} {templ_image.image.sca}'
+                    SNLogger.error( f"do_stamps failure for {sci_image.image.pointing} \
+                                                            {sci_image.image.sca} - \
+                                                            {templ_image.image.pointing} \
+                                                            {templ_image.image.sca}: {x} " )
+                    self.failures['make_stamps'].append({'science': f'{sci_image.image.band} \
+                                                                      {sci_image.image.pointing} \
+                                                                      {sci_image.image.sca}',
+                                                         'template': f'{templ_image.image.band} \
+                                                                       {templ_image.image.pointing} \
+                                                                       {templ_image.image.sca}'
                                                         })
 
                 partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
