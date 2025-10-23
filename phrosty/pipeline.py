@@ -29,8 +29,8 @@ from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 from snappl.image import FITSImageOnDisk
 from snappl.psf import PSF
-from snpit_utils.config import Config
-from snpit_utils.logger import SNLogger
+from snappl.config import Config
+from snappl.logger import SNLogger
 
 
 class PipelineImage:
@@ -1127,7 +1127,7 @@ def main():
     # Get the DiaObject, update the RA and Dec
 
     diaobjs = DiaObject.find_objects( collection=args.object_collection, subset=args.object_subset,
-                                      id=args.oid, ra=args.ra, dec=args.dec )
+                                      name=args.oid, ra=args.ra, dec=args.dec )
     if len( diaobjs ) == 0:
         raise ValueError( f"Could not find DiaObject with id={args.id}, ra={args.ra}, dec={args.dec}." )
     if len( diaobjs ) > 1:
