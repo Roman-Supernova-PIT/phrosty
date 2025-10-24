@@ -527,18 +527,27 @@ class Pipeline:
                                     noisepath=sci_image.diff_var_stamp_path[ templ_image.image.name ] )
         psf_img = FITSImageOnDisk( sci_image.decorr_psf_path[ templ_image.image.name ] )
 
-        results_dict = {}
-        results_dict['sci_name'] = sci_image.image.name
-        results_dict['templ_name'] = templ_image.image.name
-        results_dict['success'] = False
-        results_dict['ra'] = self.diaobj.ra
-        results_dict['dec'] = self.diaobj.dec
+        # Required results keys
+        req_results_keys = ['mjd', 'flux', 'flux_err', 'zpt', 'NEA', 'sky_rms',
+                            'pointing', 'sca', 'pix_x', 'pix_y']
+        phrosty_results_keys = ['science_name', 'template_name',
+                                'science_id', 'template_id',
+                                'template_pointing', 'template_sca',
+                                'aperture_sum', 'mag', 'mag_err', 'success']
+
+        results_keys = req_results_keys + phrosty_results_keys
+        results_dict = {key: np.nan for key in results_keys}
         results_dict['mjd'] = sci_image.image.mjd
-        results_dict['filter'] = self.band
         results_dict['pointing'] = sci_image.image.pointing
-        results_dict['sca'] = sci_image.image.sca
+
+        # Additional phrosty keys
+        results_dict['science_name'] = sci_image.image.name
+        results_dict['template_name'] = templ_image.image.name
+        results_dict['science_id'] = sci_image.image.id
+        results_dict['template_id'] = templ_image.image.id
         results_dict['template_pointing'] = templ_image.image.pointing
         results_dict['template_sca'] = templ_image.image.sca
+        results_dict['success'] = False
 
         try:
             # Make sure the files are there.  Has side effect of loading the header and data.
@@ -553,13 +562,7 @@ class Pipeline:
                               f"{self.band}_{sci_image.image.pointing}_{sci_image.image.sca}-"
                               f"{self.band}_{templ_image.image.pointing}_{templ_image.image.sca} "
                               f"do not exist.  Skipping." )
-            results_dict['zpt'] = np.nan
             # results_dict['ap_zpt'] = np.nan
-            results_dict['aperture_sum'] = np.nan
-            results_dict['flux_fit'] = np.nan
-            results_dict['flux_fit_err'] = np.nan
-            results_dict['mag_fit'] = np.nan
-            results_dict['mag_fit_err'] = np.nan
 
         SNLogger.debug( "...make_phot_info_dict getting psf" )
         coord = SkyCoord(ra=self.diaobj.ra * u.deg, dec=self.diaobj.dec * u.deg)
@@ -577,15 +580,9 @@ class Pipeline:
             results_dict['success'] = True
 
         except:
-            results_dict['zpt'] = np.nan
             # results_dict['ap_zpt'] = np.nan
-            results_dict['aperture_sum'] = np.nan
-            results_dict['flux_fit'] = np.nan
-            results_dict['flux_fit_err'] = np.nan
-            results_dict['mag_fit'] = np.nan
-            results_dict['mag_fit_err'] = np.nan
-            results_dict['zpt'] = np.nan
-            results_dict['success'] = False
+            SNLogger.debug( f"...make_phot_info_dict failed for \
+                             {sci_image.image.name} - {templ_image.image.name}." )
 
         SNLogger.debug( "...make_phot_info_dict done." )
         return results_dict
@@ -708,21 +705,44 @@ class Pipeline:
         """
         SNLogger.info( "Making lightcurve." )
 
+        self.metadata = {
+            'provenance_id': diaobj.provenance_id,
+            'diaobject_id': diaobj.id,
+            'diaobject_position_id': None, 
+            'iau_name': diaobj.iauname,
+            'band': sci_image.image.band,
+            'ra': diaobj.ra,
+            'ra_err': None,
+            'dec': diaobj.dec,
+            'dec_err': None,
+            'ra_dec_covar': None,
+            f'local_surface_brightness_{sci_image.image.band}': None
+
+        }
+
         self.results_dict = {
-            'ra': [],
-            'dec': [],
-            'mjd': [],
-            'filter': [],
-            'pointing': [],
-            'sca': [],
+            # Required keys in specified order
+            'mjd': [],  # Days, float
+            'flux': [],  # DN/s, float
+            'flux_err': [],  # DN/s, float
+            'zpt': [],  # AB mag of object is m = -2.5 * log(flux) + zpt, float
+            'NEA': [],  # px^2, float
+            'sky_rms': [],  # DN/s, float
+            'pointing': [],  # int/string, temporary name
+            'sca': [],  # int
+            'pix_x': [],  # x-position of SN on detector w/ 0-offset, float
+            'pix_y': [],  # y-position of SN on detector w/ 0-offset, float
+
+            # Additional phrosty keys
+            'science_name': [],
+            'template_name': [],
+            'science_id': [],
+            'template_id': [],
             'template_pointing': [],
             'template_sca': [],
-            'zpt': [],
             'aperture_sum': [],
-            'flux_fit': [],
-            'flux_fit_err': [],
-            'mag_fit': [],
-            'mag_fit_err': [],
+            'mag': [],
+            'mag_err': [],
             'success': []
         }
 
@@ -761,7 +781,7 @@ class Pipeline:
         results_savedir = self.ltcv_dir / 'data' / str(self.diaobj.id)
         results_savedir.mkdir( exist_ok=True, parents=True )
         results_savepath = results_savedir / f'{self.diaobj.id}_{self.band}_all.csv'
-        results_tab.write(results_savepath, format='csv', overwrite=True)
+        results_tab.write(results_savepath, format='parquet', overwrite=True)
         SNLogger.info(f'Results saved to {results_savepath}')
 
         return results_savepath
