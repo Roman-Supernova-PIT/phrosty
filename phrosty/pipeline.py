@@ -485,11 +485,11 @@ class Pipeline:
         mag_err = (2.5 / np.log(10)) * np.abs(final["flux_err"][0] / final["flux_fit"][0])
 
         results_dict = {
+                        'flux': flux,
+                        'flux_err': flux_err,
                         'aperture_sum': init['flux_init'][0],  # Has to be renamed and named back because photutils.
-                        'flux_fit': flux,
-                        'flux_fit_err': flux_err,
-                        'mag_fit': mag,
-                        'mag_fit_err': mag_err
+                        'mag': mag,
+                        'mag_err': mag_err
                         }
 
         return results_dict
