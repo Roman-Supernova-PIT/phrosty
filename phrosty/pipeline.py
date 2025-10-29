@@ -30,6 +30,7 @@ from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 from snappl.image import FITSImageOnDisk
 from snappl.lightcurve import Lightcurve
+from snappl.provenance import Provenance
 from snappl.psf import PSF
 from snappl.config import Config
 from snappl.logger import SNLogger
@@ -250,7 +251,6 @@ class Pipeline:
         """
 
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
-        dbclient = SNPITDBClient()
 
         self.config = Config.get()
         self.imgcol = imgcol
@@ -1189,7 +1189,7 @@ def main():
     parser.add_argument( '-lpt', '--ltcv-provenance-tag', type=str, default=None,
                          help="Provenance tag for lightcurve. Required to use SN PIT database. \
                                Invalid if --image-collection is not snpitdb." )
-    parser.add_argument( '-lp', '--ltcv-process', type=str, default=None,
+    parser.add_argument( '-lp', '--ltcv-process', type=str, default='phrosty',
                          help="Process for light curve. Required to use SN PIT database. \
                                Invalid if --image-collection is not snpitdb." )
     parser.add_argument( '-clp', '--create-ltcv-provenance', action='store_true',
@@ -1228,12 +1228,25 @@ def main():
         SNLogger.error( 'Must provide --base-path if --image-collection is manual_fits.' )
         raise ValueError( f'args.base_path is {args.base_path}.' )
 
+    if args.ltcv_provenance_id is not None and args.create_ltcv_provenance:
+        SNLogger.error( 'Cannot provide both --ltcv-provenance-id and toggle --create-ltcv-provenance \
+                         simultaneously. Choose one.' )
+        raise ValueError( f'Conflicting inputs for --ltcv-provenance-id ({args.ltcv_provenance_id}) \
+                            and --create-ltcv-provenance ({args.create_ltcv_provenance}).' )
+    elif args.create_ltcv_provenance and args.ltcv_provenance_id is None:
+        SNLogger.error( 'If you are creating a provenance, you must provide a provenance ID OR both a \
+                         provenance tag and process.' )
+        raise ValueError( f'Conflicting inputs for --create-ltcv-provenance ({args.create_ltcv_provenance}) \
+                            and --ltcv-provenance-id ({args.ltcv_provenance_id}).' )
+
     # Get the DiaObject, update the RA and Dec
-    diaobjs = DiaObject.find_objects( collection=args.object_collection, subset=args.object_subset,
-                                      provenance_id=args.diaobject_id,
-                                      provenance_tag=args.diaobject_provenance_tag,
-                                      process=args.diaobject_process,
-                                      name=args.oid, ra=args.ra, dec=args.dec )
+    if args.diaobject_id is None:
+        diaobjs = DiaObject.find_objects( collection=args.object_collection, 
+                                          subset=args.object_subset,
+                                          provenance_tag=args.diaobject_provenance_tag,
+                                          process=args.diaobject_process,
+                                          name=args.oid, ra=args.ra, dec=args.dec )
+
     if len( diaobjs ) == 0:
         raise ValueError( f"Could not find DiaObject with id={args.id}, ra={args.ra}, dec={args.dec}." )
     if len( diaobjs ) > 1:
@@ -1249,11 +1262,28 @@ def main():
         diaobj.dec = args.dec
 
     # Get the image collection
+    dbclient = SNPITDBClient()
     imgcol = ImageCollection.get_collection( collection=args.image_collection,
                                              subset=args.image_subset,
                                              provenance_tag=args.image_provenance_tag,
                                              process=args.image_process,
-                                             base_path=args.base_path )
+                                             base_path=args.base_path,
+                                             dbclient=dbclient
+                                           )
+
+    found_images = ImageCollection.find_images( ra=diaobj.ra,
+                                                dec=diaobj.dec,
+                                                band=args.band
+                                              )
+
+    print(found_images)
+
+
+    fetched_prov = Provenance.get_provs_for_tag( tag=args.diaobject_provenance_tag,
+                                                 process=args.diaobject_process
+                                               )
+
+    print('fetched prov:', fetched_prov)
 
     # Create and launch the pipeline
     pipeline = Pipeline( diaobj, imgcol, args.band,
