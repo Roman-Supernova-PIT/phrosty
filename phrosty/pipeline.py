@@ -25,9 +25,11 @@ import fitsio
 # Imports INTERNAL
 from phrosty.imagesubtraction import sky_subtract, stampmaker
 from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
+from snappl.dbclient import SNPITDBClient
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 from snappl.image import FITSImageOnDisk
+from snappl.lightcurve import Lightcurve
 from snappl.psf import PSF
 from snappl.config import Config
 from snappl.logger import SNLogger
@@ -248,6 +250,8 @@ class Pipeline:
         """
 
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
+        dbclient = SNPITDBClient()
+
         self.config = Config.get()
         self.imgcol = imgcol
         self.diaobj = diaobj
@@ -706,14 +710,14 @@ class Pipeline:
         SNLogger.info( "Making lightcurve." )
 
         self.metadata = {
-            'provenance_id': diaobj.provenance_id,
-            'diaobject_id': diaobj.id,
+            'provenance_id': self.diaobj.provenance_id,
+            'diaobject_id': self.diaobj.id,
             'diaobject_position_id': None, 
-            'iau_name': diaobj.iauname,
+            'iau_name': self.diaobj.iauname,
             'band': sci_image.image.band,
-            'ra': diaobj.ra,
+            'ra': self.diaobj.ra,
             'ra_err': None,
-            'dec': diaobj.dec,
+            'dec': self.diaobj.dec,
             'dec_err': None,
             'ra_dec_covar': None,
             f'local_surface_brightness_{sci_image.image.band}': None
@@ -1142,10 +1146,22 @@ def main():
     parser = argparse.ArgumentParser()
     # Put in the config_file argument, even though it will never be found, so it shows up in help
     parser.add_argument( '-c', '--config-file', help="Location of the .yaml config file" )
-    parser.add_argument( '--object-collection', '--oc', required=True,
-                         help='Collection of the object.  Currently only "ou2024" and "manual" supported.' )
-    parser.add_argument( '--object-subset', '--os', default=None,
+
+    # Running options
+    parser.add_argument( '-p', '--nprocs', type=int, default=1,
+                         help="Number of process for multiprocessing steps (e.g. skysub)" )
+    parser.add_argument( '-w', '--nwrite', type=int, default=5, help="Number of parallel FITS writing processes" )
+    parser.add_argument( '-v', '--verbose', action='store_true', default=False, help="Show debug log info" )
+    parser.add_argument( '--through-step', default='make_lightcurve',
+                         help="Stop after this step; one of (see above)" )
+
+    # Object collections
+    parser.add_argument( '-oc', '--object-collection', default='snpitdb',
+                         help='Collection of the object.  Currently, "snpitdb", "ou2024", and "manual" supported.' )
+    parser.add_argument( '-os', '--object-subset', default=None,
                          help="Collection subset.  Not used by all collections." )
+
+    # SN and observation information
     parser.add_argument( '--oid', type=int, required=True,
                          help="Object ID.  Meaning is collection-dependent." )
     parser.add_argument( '-r', '--ra', type=float, default=None,
@@ -1154,28 +1170,69 @@ def main():
                          help="Object Dec.  By default, uses the one found for the object." )
     parser.add_argument( '-b', '--band', type=str, required=True,
                          help="Band: R062, Z087, Y106, J129, H158, F184, or K213" )
-    parser.add_argument( '--image-collection', '--ic', required=True, help="Collection of the images we're using" )
-    parser.add_argument( '--image-subset', '--is', default=None, help="Image collection subset" )
+
+    # Required args for using SN PIT database
+    # DiaObj
+    parser.add_argument( '-did', '--diaobject-id', type=str, default=None,
+                         help="ID for DiaObject. Required to use SN PIT database. \
+                               Invalid if --image-collection is not snpitdb." )
+    parser.add_argument( '-dpt', '--diaobject-provenance-tag', type=str, default=None,
+                         help="Provenance tag for DiaObject. Required to use SN PIT database. \
+                               Invalid if --image-collection is not snpitdb." )
+    parser.add_argument( '-dp', '--diaobject-process', type=str, required=False, default=None,
+                         help="Process for DiaObject. Required to use SN PIT database. \
+                               Invalid if --image-collection is not snpitdb.")
+    # Lightcurve
+    parser.add_argument( '-lpi', '--ltcv-provenance-id', type=str, default=None,
+                         help="Provenance ID for lightcurve. Required to use SN PIT database. \
+                               Invalid if --image-collection is not snpitdb." )
+    parser.add_argument( '-lpt', '--ltcv-provenance-tag', type=str, default=None,
+                         help="Provenance tag for lightcurve. Required to use SN PIT database. \
+                               Invalid if --image-collection is not snpitdb." )
+    parser.add_argument( '-lp', '--ltcv-process', type=str, default=None,
+                         help="Process for light curve. Required to use SN PIT database. \
+                               Invalid if --image-collection is not snpitdb." )
+    parser.add_argument( '-clp', '--create-ltcv-provenance', action='store_true',
+                         help="Toggle creating lightcurve provenance. \
+                               Required to save to SN PIT database. \
+                               Invalid if --image-collection is not snpitdb." )
+
+    # Image collection
+    parser.add_argument( '-ic', '--image-collection', default='snpitdb',
+                         help="Collection of the images we're using. For SN PIT database, use snpitdb. \
+                               Currently supported: ou2024, manual_fits, snpitdb (default)." )
+    parser.add_argument( '-is', '--image-subset', default=None,
+                         help="Image collection subset. To use SN PIT database, must be None." )
+
+    # Image
+    parser.add_argument( '-ipt', '--image-provenance-tag', default=None,
+                         help='Provenance tag for images. Required to use SN PIT database. \
+                               Invalid if --image-collection is not snpitdb.' )
+    parser.add_argument( '-ip', '--image-process', default=None,
+                         help='Image process. Required to use SN PIT database. \
+                               Invalid if --image-collection is not snpitdb.' )
+
+    # Path-based options
     parser.add_argument( '--base-path', type=str, default=None,
-                         help='Base path for images.  Required for "manual_fits" image collection' )
-    parser.add_argument( '-t', '--template-images', type=str, required=True,
+                         help='Base path for images.  Required for "manual_fits" image collection.' )
+    parser.add_argument( '-t', '--template-images', type=str, default=None,
                          help="Path to file with, per line, ( path_to_image, pointing, sca, mjd, band )" )
-    parser.add_argument( '-s', '--science-images', type=str, required=True,
+    parser.add_argument( '-s', '--science-images', type=str, default=None,
                          help="Path to file with, per line, ( path_to_image, pointing, sca, mjd, band )" )
-    parser.add_argument( '-p', '--nprocs', type=int, default=1,
-                         help="Number of process for multiprocessing steps (e.g. skysub)" )
-    parser.add_argument( '-w', '--nwrite', type=int, default=5, help="Number of parallel FITS writing processes" )
-    parser.add_argument( '-v', '--verbose', action='store_true', default=False, help="Show debug log info" )
-    parser.add_argument( '--through-step', default='make_lightcurve',
-                         help="Stop after this step; one of (see above)" )
 
     cfg.augment_argparse( parser )
     args = parser.parse_args( leftovers )
     cfg.parse_args( args )
 
-    # Get the DiaObject, update the RA and Dec
+    if args.base_path is None and args.image_collection == 'manual_fits':
+        SNLogger.error( 'Must provide --base-path if --image-collection is manual_fits.' )
+        raise ValueError( f'args.base_path is {args.base_path}.' )
 
+    # Get the DiaObject, update the RA and Dec
     diaobjs = DiaObject.find_objects( collection=args.object_collection, subset=args.object_subset,
+                                      provenance_id=args.diaobject_id,
+                                      provenance_tag=args.diaobject_provenance_tag,
+                                      process=args.diaobject_process,
                                       name=args.oid, ra=args.ra, dec=args.dec )
     if len( diaobjs ) == 0:
         raise ValueError( f"Could not find DiaObject with id={args.id}, ra={args.ra}, dec={args.dec}." )
@@ -1192,12 +1249,13 @@ def main():
         diaobj.dec = args.dec
 
     # Get the image collection
-
-    imgcol = ImageCollection.get_collection( collection=args.image_collection, subset=args.image_subset,
+    imgcol = ImageCollection.get_collection( collection=args.image_collection,
+                                             subset=args.image_subset,
+                                             provenance_tag=args.image_provenance_tag,
+                                             process=args.image_process,
                                              base_path=args.base_path )
 
     # Create and launch the pipeline
-
     pipeline = Pipeline( diaobj, imgcol, args.band,
                          science_csv=args.science_images, template_csv=args.template_images,
                          nprocs=args.nprocs, nwrite=args.nwrite, verbose=args.verbose )
