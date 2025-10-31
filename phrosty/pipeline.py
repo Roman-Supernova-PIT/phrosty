@@ -5,11 +5,14 @@ import sys
 import argparse
 import cupy as cp
 from functools import partial
+import json
 import logging
 from multiprocessing import Pool
 import numpy as np
 import nvtx
 import pathlib
+import pyarrow as pa
+import pyarrow.parquet as pq
 import re
 import shutil
 import tracemalloc
@@ -202,6 +205,7 @@ class Pipeline:
                   template_images=None,
                   science_csv=None,
                   template_csv=None,
+                  oid=None,
                   nprocs=1, nwrite=5,
                   verbose=False ):
 
@@ -238,6 +242,11 @@ class Pipeline:
            template_csv: Path or str
              CSV file with template images.  Same format as science_csv.
 
+           oid: str
+             Object ID. This is probably a temporary argument. It is only used
+             if diaobj is None, and is really only used to build a filepath
+             without "None" in it when saving the light curve parquet file.
+
            nprocs: int, default 1
              Number of cpus for the CPU multiprocessing segments of the pipeline.
              (GPU segments will run a single process.)
@@ -256,6 +265,7 @@ class Pipeline:
         self.imgcol = imgcol
         self.diaobj = diaobj
         self.band = band
+        self.oid = oid
 
         self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
         self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
@@ -714,13 +724,13 @@ class Pipeline:
             'diaobject_id': self.diaobj.id,
             'diaobject_position_id': None, 
             'iau_name': self.diaobj.iauname,
-            'band': sci_image.image.band,
+            'band': self.band,
             'ra': self.diaobj.ra,
             'ra_err': None,
             'dec': self.diaobj.dec,
             'dec_err': None,
             'ra_dec_covar': None,
-            f'local_surface_brightness_{sci_image.image.band}': None
+            f'local_surface_brightness_{self.band}': None
 
         }
 
@@ -780,12 +790,27 @@ class Pipeline:
                     self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
 
         SNLogger.debug( "Saving results..." )
+
+        if self.diaobj.id is not None:
+            save_subfolder = str(self.diaobj.id)
+        else:
+            save_subfolder = str(self.oid)
+
         results_tab = Table(self.results_dict)
         results_tab.sort('mjd')
-        results_savedir = self.ltcv_dir / 'data' / str(self.diaobj.id)
+        results_tab = results_tab.to_pandas()
+        results_tab = pa.Table.from_pandas(results_tab)
+        
+        meta_key = 'snpitmeta'
+        meta_json = json.dumps(self.metadata)
+        existing_meta = results_tab.schema.metadata
+        combined_meta = { meta_key.encode() : meta_json.encode(), **existing_meta}
+        results_tab.replace_schema_metadata(combined_meta)
+
+        results_savedir = self.ltcv_dir / 'data' / save_subfolder
         results_savedir.mkdir( exist_ok=True, parents=True )
-        results_savepath = results_savedir / f'{self.diaobj.id}_{self.band}_all.csv'
-        results_tab.write(results_savepath, format='parquet', overwrite=True)
+        results_savepath = results_savedir / f'{save_subfolder}_{self.band}_all.parquet'
+        pq.write_table(results_tab, results_savepath)
         SNLogger.info(f'Results saved to {results_savepath}')
 
         return results_savepath
@@ -1271,23 +1296,26 @@ def main():
                                              dbclient=dbclient
                                            )
 
-    found_images = ImageCollection.find_images( ra=diaobj.ra,
-                                                dec=diaobj.dec,
-                                                band=args.band
-                                              )
-
-    print(found_images)
-
+    if args.image_collection == 'snpitdb':
+        found_images = imgcol.find_images( ra=diaobj.ra,
+                                           dec=diaobj.dec,
+                                           band=args.band,
+                                           dbclient=dbclient
+                                         )
+    else:
+        found_images = imgcol.find_images( ra=diaobj.ra,
+                                           dec=diaobj.dec,
+                                           band=args.band
+                                         )
 
     fetched_prov = Provenance.get_provs_for_tag( tag=args.diaobject_provenance_tag,
                                                  process=args.diaobject_process
                                                )
 
-    print('fetched prov:', fetched_prov)
-
     # Create and launch the pipeline
     pipeline = Pipeline( diaobj, imgcol, args.band,
                          science_csv=args.science_images, template_csv=args.template_images,
+                         oid=args.oid,
                          nprocs=args.nprocs, nwrite=args.nwrite, verbose=args.verbose )
     pipeline( args.through_step )
 
