@@ -553,12 +553,13 @@ class Pipeline:
         results_dict = {key: np.nan for key in results_keys}
         results_dict['mjd'] = sci_image.image.mjd
         results_dict['pointing'] = sci_image.image.pointing
+        results_dict['sca'] = sci_image.image.sca
 
         # Additional phrosty keys
         results_dict['science_name'] = sci_image.image.name
         results_dict['template_name'] = templ_image.image.name
-        results_dict['science_id'] = sci_image.image.id
-        results_dict['template_id'] = templ_image.image.id
+        results_dict['science_id'] = str(sci_image.image.id)
+        results_dict['template_id'] = str(templ_image.image.id)
         results_dict['template_pointing'] = templ_image.image.pointing
         results_dict['template_sca'] = templ_image.image.sca
         results_dict['success'] = False
@@ -720,17 +721,17 @@ class Pipeline:
         SNLogger.info( "Making lightcurve." )
 
         self.metadata = {
-            'provenance_id': self.diaobj.provenance_id,
+            'provenance_id': str(self.diaobj.provenance_id),
             'diaobject_id': self.diaobj.id,
             'diaobject_position_id': None, 
             'iau_name': self.diaobj.iauname,
             'band': self.band,
             'ra': self.diaobj.ra,
-            'ra_err': None,
             'dec': self.diaobj.dec,
+            'ra_err': None,
             'dec_err': None,
             'ra_dec_covar': None,
-            f'local_surface_brightness_{self.band}': None
+            f'local_surface_brightness_{self.band}': 0.  # phrosty does not output this value!
 
         }
 
@@ -792,26 +793,22 @@ class Pipeline:
         SNLogger.debug( "Saving results..." )
 
         if self.diaobj.id is not None:
-            save_subfolder = str(self.diaobj.id)
+            save_basename = str(self.diaobj.id)
         else:
-            save_subfolder = str(self.oid)
+            save_basename = str(self.oid)
 
-        results_tab = Table(self.results_dict)
-        results_tab.sort('mjd')
-        results_tab = results_tab.to_pandas()
-        results_tab = pa.Table.from_pandas(results_tab)
+        lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata)
+        lc_obj.diaobj = self.diaobj
+
+        filepath = pathlib.Path(f'data/{self.oid}/{save_basename}')
         
-        meta_key = 'snpitmeta'
-        meta_json = json.dumps(self.metadata)
-        existing_meta = results_tab.schema.metadata
-        combined_meta = { meta_key.encode() : meta_json.encode(), **existing_meta}
-        results_tab.replace_schema_metadata(combined_meta)
+        # import pdb; pdb.set_trace()
+        lc_obj.write(base_dir=self.ltcv_dir, filepath=filepath,
+                     filetype='parquet', overwrite=True )
 
-        results_savedir = self.ltcv_dir / 'data' / save_subfolder
-        results_savedir.mkdir( exist_ok=True, parents=True )
-        results_savepath = results_savedir / f'{save_subfolder}_{self.band}_all.parquet'
-        pq.write_table(results_tab, results_savepath)
-        SNLogger.info(f'Results saved to {results_savepath}')
+        results_savepath = f'{self.ltcv_dir}/{filepath}'
+
+        SNLogger.info(f'Results saved to {results_savepath}.')
 
         return results_savepath
 
@@ -1253,6 +1250,10 @@ def main():
         SNLogger.error( 'Must provide --base-path if --image-collection is manual_fits.' )
         raise ValueError( f'args.base_path is {args.base_path}.' )
 
+    if args.image_collection == 'snpitdb' and args.image_provenance_tag is None:
+        SNLogger.error( 'Must provide --image-provenance-tag if --image-collection is snpitdb.' )
+        raise ValueError( f'args.image_provenance_tag is {args.image_provenance_tag}.' )
+
     if args.ltcv_provenance_id is not None and args.create_ltcv_provenance:
         SNLogger.error( 'Cannot provide both --ltcv-provenance-id and toggle --create-ltcv-provenance \
                          simultaneously. Choose one.' )
@@ -1267,7 +1268,7 @@ def main():
     # Get the DiaObject, update the RA and Dec
     if args.diaobject_id is None:
         diaobjs = DiaObject.find_objects( collection=args.object_collection, 
-                                          subset=args.object_subset,
+                                        #   subset=args.object_subset,
                                           provenance_tag=args.diaobject_provenance_tag,
                                           process=args.diaobject_process,
                                           name=args.oid, ra=args.ra, dec=args.dec )
@@ -1288,6 +1289,8 @@ def main():
 
     # Get the image collection
     dbclient = SNPITDBClient()
+
+    # import pdb; pdb.set_trace()
     imgcol = ImageCollection.get_collection( collection=args.image_collection,
                                              subset=args.image_subset,
                                              provenance_tag=args.image_provenance_tag,
