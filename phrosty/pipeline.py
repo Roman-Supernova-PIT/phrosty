@@ -26,6 +26,7 @@ from astropy.wcs.utils import skycoord_to_pixel
 import fitsio
 
 # Imports INTERNAL
+import phrosty
 from phrosty.imagesubtraction import sky_subtract, stampmaker
 from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
 from snappl.dbclient import SNPITDBClient
@@ -59,7 +60,7 @@ class PipelineImage:
         self.temp_dir = pipeline.temp_dir
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         if self.keep_intermediate:
-            self.save_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
+            self.save_dir = pathlib.Path( self.config.value( 'system.paths.scratch_dir' ) )
         elif not self.keep_intermediate:
             self.save_dir = self.temp_dir
 
@@ -206,8 +207,13 @@ class Pipeline:
                   science_csv=None,
                   template_csv=None,
                   oid=None,
+                  ltcv_prov_tag=None,
+                  create_prov=False,
+                  dbsave=False,
+                  dbclient=None,
                   nprocs=1, nwrite=5,
-                  verbose=False ):
+                  verbose=False,
+                  memtrace=False ):
 
         """Create the a pipeline object.
 
@@ -247,6 +253,19 @@ class Pipeline:
              if diaobj is None, and is really only used to build a filepath
              without "None" in it when saving the light curve parquet file.
 
+           ltcv_prov_tag: str
+             Provenance tag for light curve. Required to use SN PIT database.
+
+           create_prov: bool
+             Are we creating and saving a new provenance to the database?
+             Default False.
+
+           dbsave: bool
+             Are we saving to the database?
+             Default False.
+
+           dbclient: snappl.dbclient.SNPITDBClient
+
            nprocs: int, default 1
              Number of cpus for the CPU multiprocessing segments of the pipeline.
              (GPU segments will run a single process.)
@@ -256,6 +275,9 @@ class Pipeline:
 
            verbose: bool, default True
              Toggle verbose output.
+
+           memtrace: bool, default False
+             Toggle memory tracing.
 
         """
 
@@ -267,12 +289,12 @@ class Pipeline:
         self.band = band
         self.oid = oid
 
-        self.dia_out_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
-        self.scratch_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.scratch_dir' ) )
-        self.temp_dir_parent = pathlib.Path( self.config.value( 'photometry.phrosty.paths.temp_dir' ) )
+        self.dia_out_dir = pathlib.Path( self.config.value( 'system.paths.dia_out_dir' ) )
+        self.scratch_dir = pathlib.Path( self.config.value( 'system.paths.scratch_dir' ) )
+        self.temp_dir_parent = pathlib.Path( self.config.value( 'system.paths.temp_dir' ) )
         self.temp_dir = self.temp_dir_parent / str(uuid.uuid1())
         self.temp_dir.mkdir()
-        self.ltcv_dir = pathlib.Path( self.config.value( 'photometry.phrosty.paths.ltcv_dir' ) )
+        self.ltcv_dir = pathlib.Path( self.config.value( 'system.paths.ltcv_dir' ) )
 
         if ( science_images is None) == ( science_csv is None ):
             raise ValueError( "Pass exactly one of science_images or science_csv" )
@@ -302,13 +324,16 @@ class Pipeline:
                          'make_lightcurve': [],
                          'make_stamps': []}
 
+        self.ltcv_prov_tag = ltcv_prov_tag
+        self.create_prov = create_prov
+        self.dbsave = dbsave
+        self.dbclient = dbclient
         self.nprocs = nprocs
         self.nwrite = nwrite
 
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         self.remove_temp_dir = self.config.value( 'photometry.phrosty.remove_temp_dir' )
-        self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
-
+        self.mem_trace = memtrace
 
     def _read_csv( self, csvfile ):
         """Reads input csv files with columns:
@@ -731,8 +756,8 @@ class Pipeline:
             'ra_err': None,
             'dec_err': None,
             'ra_dec_covar': None,
-            f'local_surface_brightness_{self.band}': 0.  # phrosty does not output this value!
-
+            f'local_surface_brightness_{self.band}': -999.  # phrosty does not output this value!
+                                                            # add it later!
         }
 
         self.results_dict = {
@@ -790,8 +815,7 @@ class Pipeline:
                 for templ_image in self.template_images:
                     self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
 
-        SNLogger.debug( "Saving results..." )
-
+        SNLogger.debug( "Saving results using paths..." )
         if self.diaobj.id is not None:
             save_basename = str(self.diaobj.id)
         else:
@@ -800,15 +824,34 @@ class Pipeline:
         lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata)
         lc_obj.diaobj = self.diaobj
 
-        filepath = pathlib.Path(f'data/{self.oid}/{save_basename}')
+        filepath = pathlib.Path(f'data/{self.oid}/{save_basename}.pq')
         
-        # import pdb; pdb.set_trace()
-        lc_obj.write(base_dir=self.ltcv_dir, filepath=filepath,
-                     filetype='parquet', overwrite=True )
+        lc_obj.write( base_dir=self.ltcv_dir, filepath=filepath,
+                      filetype='parquet', overwrite=True )
 
         results_savepath = f'{self.ltcv_dir}/{filepath}'
 
         SNLogger.info(f'Results saved to {results_savepath}.')
+
+        if self.dbsave:
+            SNLogger.debug( "Saving results to database..." )
+
+            if self.create_prov:
+                imgprov = Provenance.get_by_id( self.science_images[0].image.provenance_id, dbclient=self.dbclient )
+                objprov = Provenance.get_by_id( self.diaobj.provenance_id, dbclient=self.dbclient )
+                
+                phrosty_version = phrosty.__version__
+                major = phrosty_version.split('.')[0]
+                minor = phrosty_version.split('.')[1]
+
+                ltcvprov = Provenance( process='phrosty',
+                                       major=major, 
+                                       minor=minor,
+                                       params=Config.get(),
+                                       upstreams=[imgprov, objprov],
+                                      )
+
+                ltcvprov.save_to_db( tag=self.ltcv_prov_tag )
 
         return results_savepath
 
@@ -1172,10 +1215,16 @@ def main():
     # Running options
     parser.add_argument( '-p', '--nprocs', type=int, default=1,
                          help="Number of process for multiprocessing steps (e.g. skysub)" )
-    parser.add_argument( '-w', '--nwrite', type=int, default=5, help="Number of parallel FITS writing processes" )
-    parser.add_argument( '-v', '--verbose', action='store_true', default=False, help="Show debug log info" )
+    parser.add_argument( '-w', '--nwrite', type=int, default=5,
+                         help="Number of parallel FITS writing processes" )
+    parser.add_argument( '-v', '--verbose', action='store_true', default=False,
+                         help="Show debug log info" )
     parser.add_argument( '--through-step', default='make_lightcurve',
                          help="Stop after this step; one of (see above)" )
+    parser.add_argument( '--dbsave', action='store_true',
+                         help="Toggle saving to the database." )
+    parser.add_argument( '--memtrace', action='store_true',
+                         help="Toggle memory tracing with tracemalloc.")
 
     # Object collections
     parser.add_argument( '-oc', '--object-collection', default='snpitdb',
@@ -1204,6 +1253,11 @@ def main():
     parser.add_argument( '-dp', '--diaobject-process', type=str, required=False, default=None,
                          help="Process for DiaObject. Required to use SN PIT database. \
                                Invalid if --image-collection is not snpitdb.")
+    parser.add_argument( '-dppt', '--diaobject-position-provenance-tag', type=str, default=None,
+                         help="Provenance tag for the position of the DiaObject." )
+    parser.add_argument( '-dpp', '--diaobject-position-process', type=str, default=None,
+                         help="The process where the DiaObject position originated." )
+
     # Lightcurve
     parser.add_argument( '-lpi', '--ltcv-provenance-id', type=str, default=None,
                          help="Provenance ID for lightcurve. Required to use SN PIT database. \
@@ -1214,7 +1268,7 @@ def main():
     parser.add_argument( '-lp', '--ltcv-process', type=str, default='phrosty',
                          help="Process for light curve. Required to use SN PIT database. \
                                Invalid if --image-collection is not snpitdb." )
-    parser.add_argument( '-clp', '--create-ltcv-provenance', action='store_true',
+    parser.add_argument( '--create-ltcv-provenance', action='store_true',
                          help="Toggle creating lightcurve provenance. \
                                Required to save to SN PIT database. \
                                Invalid if --image-collection is not snpitdb." )
@@ -1236,7 +1290,7 @@ def main():
 
     # Path-based options
     parser.add_argument( '--base-path', type=str, default=None,
-                         help='Base path for images.  Required for "manual_fits" image collection.' )
+                         help='Base path for reading images. Required for "manual_fits" image collection.' )
     parser.add_argument( '-t', '--template-images', type=str, default=None,
                          help="Path to file with, per line, ( path_to_image, pointing, sca, mjd, band )" )
     parser.add_argument( '-s', '--science-images', type=str, default=None,
@@ -1259,12 +1313,12 @@ def main():
                          simultaneously. Choose one.' )
         raise ValueError( f'Conflicting inputs for --ltcv-provenance-id ({args.ltcv_provenance_id}) \
                             and --create-ltcv-provenance ({args.create_ltcv_provenance}).' )
-    elif args.create_ltcv_provenance and args.ltcv_provenance_id is None:
-        SNLogger.error( 'If you are creating a provenance, you must provide a provenance ID OR both a \
-                         provenance tag and process.' )
+    elif args.create_ltcv_provenance and args.ltcv_provenance_id is not None:
+        SNLogger.error( 'If you are creating a provenance, you should not provide a ltcv_provenance_id.' )
         raise ValueError( f'Conflicting inputs for --create-ltcv-provenance ({args.create_ltcv_provenance}) \
                             and --ltcv-provenance-id ({args.ltcv_provenance_id}).' )
 
+    dbclient = SNPITDBClient()
     # Get the DiaObject, update the RA and Dec
     if args.diaobject_id is None:
         diaobjs = DiaObject.find_objects( collection=args.object_collection, 
@@ -1288,9 +1342,6 @@ def main():
         diaobj.dec = args.dec
 
     # Get the image collection
-    dbclient = SNPITDBClient()
-
-    # import pdb; pdb.set_trace()
     imgcol = ImageCollection.get_collection( collection=args.image_collection,
                                              subset=args.image_subset,
                                              provenance_tag=args.image_provenance_tag,
@@ -1317,9 +1368,17 @@ def main():
 
     # Create and launch the pipeline
     pipeline = Pipeline( diaobj, imgcol, args.band,
-                         science_csv=args.science_images, template_csv=args.template_images,
+                         science_csv=args.science_images,
+                         template_csv=args.template_images,
                          oid=args.oid,
-                         nprocs=args.nprocs, nwrite=args.nwrite, verbose=args.verbose )
+                         ltcv_prov_tag=args.ltcv_provenance_tag,
+                         create_prov=args.create_ltcv_provenance,
+                         dbsave=args.dbsave,
+                         dbclient=dbclient,
+                         nprocs=args.nprocs,
+                         nwrite=args.nwrite,
+                         verbose=args.verbose,
+                         memtrace=args.memtrace )
     pipeline( args.through_step )
 
 
