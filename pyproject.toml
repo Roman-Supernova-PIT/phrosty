@@ -26,7 +26,6 @@ dependencies = [
   "nvtx",
   "pandas",
   "photutils",
-  "snpit-utils",
   "roman-snpit-snappl",
   "sfft-romansnpit",
   "towncrier",
