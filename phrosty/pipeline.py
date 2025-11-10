@@ -208,10 +208,10 @@ class Pipeline:
                   template_csv=None,
                   oid=None,
                   ltcv_prov_tag=None,
-                  create_prov=False,
                   dbsave=False,
                   dbclient=None,
-                  nprocs=1, nwrite=5,
+                  nprocs=1,
+                  nwrite=5,
                   verbose=False,
                   memtrace=False ):
 
@@ -255,10 +255,6 @@ class Pipeline:
 
            ltcv_prov_tag: str
              Provenance tag for light curve. Required to use SN PIT database.
-
-           create_prov: bool
-             Are we creating and saving a new provenance to the database?
-             Default False.
 
            dbsave: bool
              Are we saving to the database?
@@ -325,7 +321,6 @@ class Pipeline:
                          'make_stamps': []}
 
         self.ltcv_prov_tag = ltcv_prov_tag
-        self.create_prov = create_prov
         self.dbsave = dbsave
         self.dbclient = dbclient
         self.nprocs = nprocs
@@ -746,7 +741,7 @@ class Pipeline:
         SNLogger.info( "Making lightcurve." )
 
         self.metadata = {
-            'provenance_id': str(self.diaobj.provenance_id),
+            'provenance_id': None,
             'diaobject_id': self.diaobj.id,
             'diaobject_position_id': None, 
             'iau_name': self.diaobj.iauname,
@@ -815,45 +810,47 @@ class Pipeline:
                 for templ_image in self.template_images:
                     self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
 
-        SNLogger.debug( "Saving results using paths..." )
-        if self.diaobj.id is not None:
-            save_basename = str(self.diaobj.id)
-        else:
-            save_basename = str(self.oid)
+        imgprov = Provenance.get_by_id( self.science_images[0].image.provenance_id, dbclient=self.dbclient )
+        objprov = Provenance.get_by_id( self.diaobj.provenance_id, dbclient=self.dbclient )
+        
+        phrosty_version = phrosty.__version__
+        major = int(phrosty_version.split('.')[0])
+        minor = int(phrosty_version.split('.')[1])
 
+        ltcvprov = Provenance( process='phrosty',
+                                major=major, 
+                                minor=minor,
+                                params=Config.get(),
+                                keepkeys=[ 'photometry.phrosty' ],
+                                omitkeys=None,
+                                upstreams=[imgprov, objprov],
+                                )
+
+        self.metadata['provenance_id'] = ltcvprov.id
         lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata)
         lc_obj.diaobj = self.diaobj
-
-        filepath = pathlib.Path(f'data/{self.oid}/{save_basename}.pq')
-        
-        lc_obj.write( base_dir=self.ltcv_dir, filepath=filepath,
-                      filetype='parquet', overwrite=True )
-
-        results_savepath = f'{self.ltcv_dir}/{filepath}'
-
-        SNLogger.info(f'Results saved to {results_savepath}.')
+        lc_obj.provenance_object = ltcvprov
 
         if self.dbsave:
             SNLogger.debug( "Saving results to database..." )
+            ltcvprov.save_to_db( tag=self.ltcv_prov_tag )
+            lc_obj.write()
+            lc_obj.save_to_db( dbclient=self.dbclient )
 
-            if self.create_prov:
-                imgprov = Provenance.get_by_id( self.science_images[0].image.provenance_id, dbclient=self.dbclient )
-                objprov = Provenance.get_by_id( self.diaobj.provenance_id, dbclient=self.dbclient )
-                
-                phrosty_version = phrosty.__version__
-                major = phrosty_version.split('.')[0]
-                minor = phrosty_version.split('.')[1]
+        else:
+            SNLogger.debug( "Saving results using paths..." )
+            if self.diaobj.id is not None:
+                save_basename = str(self.diaobj.id)
+            else:
+                save_basename = str(self.oid)
 
-                ltcvprov = Provenance( process='phrosty',
-                                       major=major, 
-                                       minor=minor,
-                                       params=Config.get(),
-                                       upstreams=[imgprov, objprov],
-                                      )
+            filepath = pathlib.Path(f'data/{self.oid}/{save_basename}.pq')
+            results_savepath = f'{self.ltcv_dir}/{filepath}'
+            lc_obj.write( base_dir=self.ltcv_dir, filepath=filepath, overwrite=True)
 
-                ltcvprov.save_to_db( tag=self.ltcv_prov_tag )
+            SNLogger.info(f'Results saved to {results_savepath}.')
 
-        return results_savepath
+            return results_savepath
 
     def write_fits_file( self, data, header, savepath ):
         """Helper function for writing fits files.
@@ -1182,6 +1179,9 @@ class Pipeline:
         else:
             SNLogger.info( f"No failures here! Fail list:\n{self.failures}" )
 
+        if lightcurve_path is None:
+            SNLogger.info( f"Light curves saved to database!" )
+
         return lightcurve_path
 
 
@@ -1268,10 +1268,6 @@ def main():
     parser.add_argument( '-lp', '--ltcv-process', type=str, default='phrosty',
                          help="Process for light curve. Required to use SN PIT database. \
                                Invalid if --image-collection is not snpitdb." )
-    parser.add_argument( '--create-ltcv-provenance', action='store_true',
-                         help="Toggle creating lightcurve provenance. \
-                               Required to save to SN PIT database. \
-                               Invalid if --image-collection is not snpitdb." )
 
     # Image collection
     parser.add_argument( '-ic', '--image-collection', default='snpitdb',
@@ -1307,16 +1303,6 @@ def main():
     if args.image_collection == 'snpitdb' and args.image_provenance_tag is None:
         SNLogger.error( 'Must provide --image-provenance-tag if --image-collection is snpitdb.' )
         raise ValueError( f'args.image_provenance_tag is {args.image_provenance_tag}.' )
-
-    if args.ltcv_provenance_id is not None and args.create_ltcv_provenance:
-        SNLogger.error( 'Cannot provide both --ltcv-provenance-id and toggle --create-ltcv-provenance \
-                         simultaneously. Choose one.' )
-        raise ValueError( f'Conflicting inputs for --ltcv-provenance-id ({args.ltcv_provenance_id}) \
-                            and --create-ltcv-provenance ({args.create_ltcv_provenance}).' )
-    elif args.create_ltcv_provenance and args.ltcv_provenance_id is not None:
-        SNLogger.error( 'If you are creating a provenance, you should not provide a ltcv_provenance_id.' )
-        raise ValueError( f'Conflicting inputs for --create-ltcv-provenance ({args.create_ltcv_provenance}) \
-                            and --ltcv-provenance-id ({args.ltcv_provenance_id}).' )
 
     dbclient = SNPITDBClient()
     # Get the DiaObject, update the RA and Dec
@@ -1372,13 +1358,13 @@ def main():
                          template_csv=args.template_images,
                          oid=args.oid,
                          ltcv_prov_tag=args.ltcv_provenance_tag,
-                         create_prov=args.create_ltcv_provenance,
                          dbsave=args.dbsave,
                          dbclient=dbclient,
                          nprocs=args.nprocs,
                          nwrite=args.nwrite,
                          verbose=args.verbose,
                          memtrace=args.memtrace )
+
     pipeline( args.through_step )
 
 
