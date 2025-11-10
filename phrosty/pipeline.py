@@ -157,18 +157,9 @@ class PipelineImage:
         #   the psf... and it's different for each type of
         #   PSF.  We need to fix that... somehow....
 
-        try:
-            wcs = self.image.get_wcs()
-            x, y = wcs.world_to_pixel( ra, dec )
+        wcs = self.image.get_wcs()
+        x, y = wcs.world_to_pixel( ra, dec )
 
-<<<<<<< HEAD
-            if self.psfobj is None:
-                psftype = self.config.value( 'photometry.phrosty.psf.type' )
-                self.psfobj = PSF.get_psf_object( psftype, x=x, y=y,
-                                                band=self.image.band,
-                                                pointing=self.image.pointing,
-                                                sca=self.image.sca )
-=======
         if self.psfobj is None:
             psftype = self.config.value( 'photometry.phrosty.psf.type' )
             psfparams = self.config.value( 'photometry.phrosty.psf.params' )
@@ -177,17 +168,13 @@ class PipelineImage:
                                               pointing=self.image.pointing,
                                               sca=self.image.sca,
                                               **psfparams )
->>>>>>> main
 
-            stamp = self.psfobj.get_stamp( x, y )
-            if self.keep_intermediate:
-                outfile = self.save_dir / f"psf_{self.image.name}.fits"
-                fitsio.write( outfile, stamp, clobber=True )
+        stamp = self.psfobj.get_stamp( x, y )
+        if self.keep_intermediate:
+            outfile = self.save_dir / f"psf_{self.image.name}.fits"
+            fitsio.write( outfile, stamp, clobber=True )
 
-            return stamp
-
-        except:
-            return None
+        return stamp
 
     def keep_psf_data( self, psf_data ):
         """Save PSF data to attribute.
@@ -1031,16 +1018,12 @@ class Pipeline:
                                 i_failed = True
                                 self.failures['align_and_preconvolve'].append(fail_info)
 
-<<<<<<< HEAD
-                    if 'subtract' in steps and not i_failed:
-=======
                     if 'subtract' in steps:
                         # After this step is done, two more fields in sfftifier are set:
                         #    Solution_GPU  : --something--??
                         #    PixA_DIFF_GPU : difference image ??
                         # Get Lei to write docs on PureCupy_Customized_Packet.PCCP so
                         #   we can figure out what these are
->>>>>>> main
                         SNLogger.info( "...subtract" )
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
                             try:
@@ -1049,9 +1032,6 @@ class Pipeline:
                                 i_failed = True
                                 self.failures['subtract'].append(fail_info)
 
-<<<<<<< HEAD
-                    if 'find_decorrelation' in steps and not i_failed:
-=======
                     if 'find_decorrelation' in steps:
                         # This step does ...
                         # After it's done, the following fields of sfftifier are set:
@@ -1064,7 +1044,6 @@ class Pipeline:
                         # In addition the two local varaibles diff_var and diff_var_path are set.
                         #   diff_var : variance in difference image (I THINK), on GPU
                         #   diff_var_path : where we want to write diff_var in self.dia_out_dir
->>>>>>> main
                         SNLogger.info( "...find_decorrelation" )
                         with nvtx.annotate( "find_decor", color=0xcc44ff ):
                             try:
@@ -1090,25 +1069,12 @@ class Pipeline:
                             decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
                             decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
 
-<<<<<<< HEAD
                             images =    [ sfftifier.PixA_DIFF_GPU,    diff_var,
                                         sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ]
                             savepaths = [ decorr_diff_path,           diff_var_path,
                                         decorr_zptimg_path,         decorr_psf_path ]
                             headers =   [ sfftifier.hdr_target,       sfftifier.hdr_target,
                                         sfftifier.hdr_target,       None ]
-=======
-                    if 'apply_decorrelation' in steps:
-                        # After this step is done, the following FITS files will be written in self.dia_out_dir:
-                        #   decorr_diff_* : difference image convolved with FKDECO_GPU
-                        #   diff_var_* : variance of difference image convolved with FKDECO_GPU
-                        #   decorr_zpt_path_* : preconvolved science image (PixA_Ctarget_GPU) convolved with FKDECO_GPU
-                        #   decor_psf_path_* : PSF stamp for science image, convolved with FKDECO_GPU
-                        mess = f"{sci_image.image.name}-{templ_image.image.name}"
-                        decorr_psf_path = self.dia_out_dir / f"decorr_psf_{mess}"
-                        decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
-                        decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
->>>>>>> main
 
                             for img, savepath, hdr in zip( images, savepaths, headers ):
                                 with nvtx.annotate( "apply_decor", color=0xccccff ):

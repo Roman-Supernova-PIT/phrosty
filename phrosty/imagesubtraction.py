@@ -14,10 +14,7 @@ from sfft.utils.StampGenerator import Stamp_Generator
 from snappl.config import Config
 import snappl.image
 from snappl.logger import SNLogger
-<<<<<<< HEAD
 from snappl.config import Config
-=======
->>>>>>> main
 
 
 def sky_subtract( img, temp_dir=None ):
@@ -68,16 +65,10 @@ def sky_subtract( img, temp_dir=None ):
         if isinstance( origimg, snappl.image.FITSImageOnDisk ):
             img = origimg.uncompressed_version( include=['data'] )
         else:
-<<<<<<< HEAD
             # Can take out header arg when snappl issue #77 is resolved.
             img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
             img.data = origimg.data
             img.save_data( which='data' )
-=======
-            img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
-            img.data = origimg.data
-            img.save( which='data' )
->>>>>>> main
 
         SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
         radius_cut_detmask = Config.get().value( 'photometry.phrosty.sfft.radius_cut_detmask' )

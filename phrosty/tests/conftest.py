@@ -5,13 +5,8 @@ import pathlib
 import tox # noqa: F401
 from tox.pytest import init_fixture # noqa: F401
 
-<<<<<<< HEAD
-from snpit_utils.config import Config
-from snappl.image import FITSImageOnDisk, FITSImageStdHeaders
-=======
 from snappl.config import Config
 from snappl.image import FITSImageOnDisk
->>>>>>> main
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 
@@ -58,10 +53,10 @@ def config():
         cfg._static = False
         # Edit the config.
         cfg.set_value( 'photometry.snappl.temp_dir', str(temp_dir) )
-        cfg.set_value( 'photometry.phrosty.paths.scratch_dir', str(temp_dir) )
-        cfg.set_value( 'photometry.phrosty.paths.temp_dir', str(temp_dir) )
-        cfg.set_value( 'photometry.phrosty.paths.dia_out_dir', str(dia_out_dir) )
-        cfg.set_value( 'photometry.phrosty.paths.ltcv_dir', str(ltcv_dir) )
+        cfg.set_value( 'system.paths.scratch_dir', str(temp_dir) )
+        cfg.set_value( 'system.paths.temp_dir', str(temp_dir) )
+        cfg.set_value( 'system.paths.dia_out_dir', str(dia_out_dir) )
+        cfg.set_value( 'system.paths.ltcv_dir', str(ltcv_dir) )
         # Reset the config to static
         cfg._static = True
 
