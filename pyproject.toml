@@ -17,22 +17,11 @@ classifiers = [
   "Programming Language :: Python"
 ]
 dependencies = [
-  "astropy",
   "cupy-cuda12x",
-  "fitsio",
-  "galsim",
   "matplotlib",
-  "numpy",
   "nvtx",
-  "pandas",
-  "photutils",
-  "snpit-utils",
-  "roman-snpit-snappl",
-  "sfft-romansnpit",
-  "towncrier",
-  "setuptools_scm",
-  "cruft",
-  "coverage",
+  "roman-snpit-snappl>=0.26.0,<1.0.0",
+  "sfft-romansnpit>=1.6.4dev11",
 ]
 license-files = ["LICENSE"]
 
@@ -72,6 +61,9 @@ repository = "https://github.com/Roman-Supernova-PIT"
 
 [build-system]
 requires = [
+  "towncrier",
+  "cruft",
+  "coverage",
   "setuptools>=62.1",
   "setuptools_scm[tomli]>=6.2",
   "wheel",

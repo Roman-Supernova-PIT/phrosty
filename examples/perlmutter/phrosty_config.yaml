@@ -26,3 +26,4 @@ photometry:
 
     psf:
       type: ou24PSF
+      params: {}

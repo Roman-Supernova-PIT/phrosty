@@ -4,7 +4,7 @@ import pathlib
 import tox # noqa: F401
 from tox.pytest import init_fixture # noqa: F401
 
-from snpit_utils.config import Config
+from snappl.config import Config
 from snappl.image import FITSImageOnDisk
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
@@ -128,7 +128,7 @@ def dia_out_dir( config ):
 
 @pytest.fixture( scope="session" )
 def object_for_tests():
-    return DiaObject.find_objects( collection='ou2024', id=20172782 )[0]
+    return DiaObject.find_objects( collection='ou2024', name=20172782 )[0]
 
 
 @pytest.fixture( scope="session" )
@@ -143,7 +143,7 @@ def one_science_image( scope="session" ):
     try:
         img = FITSImageOnDisk( path=('/photometry_test_data/ou2024/images/simple_model/'
                                      'Y106/35198/Roman_TDS_simple_model_Y106_35198_2.fits.gz'),
-                               imhdu=1,
+                               imagehdu=1,
                                pointing=35198,
                                sca=2 ).uncompressed_version()
         yield img

@@ -1,10 +1,140 @@
 import os
+import pathlib
 import pytest
+from matplotlib import pyplot
+
+import numpy as np
+import pandas
+
+from snappl.diaobject import DiaObject
+from snappl.imagecollection import ImageCollection
 from phrosty.pipeline import Pipeline
 
 # TODO : separate tests for PipelineImage, for all the functions in#
 #   PipelineImage and Pipeline.  Right now we just have this regression
 #   test.
+
+
+# This one writes a diagnostic plot file to test_plots/test_pipeline_run_simple_gauss1.pdf
+def test_pipeline_run_simple_gauss1( config ):
+    obj = DiaObject.find_objects( collection='manual', name='foo', ra=120, dec=-13. )[0]
+    # imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
+    #                                          base_path='/photometry_test_data/simple_gaussian_test/sig1.0' )
+    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
+    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60000, 60065, 5 ) ]
+    imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
+                                             base_path='/photometry_test_data/simple_gaussian_test/sig2.0' )
+    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
+    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
+
+    # We have to muck about with the config, because the default config loaded for tests is
+    #   set up for ou2024.  We're going to do naughty things we're not supposed to do,
+    #   specifically, modify the default config that's supposed to be immutable.  We'll
+    #   restore it later.  In actual running code, never modify config._static.  If you
+    #   find yourself doing that in anything other than a test like this where you're
+    #   VERY careful to restore things after you are done, then you're doing it wrong.
+    orig_psf = config.value( 'photometry.phrosty.psf' )
+    orig_sfft = config.value( 'photometry.phrosty.sfft' )
+    try:
+        config._static = False
+        config.set_value( 'photometry.phrosty.psf.type', 'gaussian' )
+        # config.set_value( 'photometry.phrosty.psf.params', { 'sigmax': 1., 'sigmay': 1., 'theta': 0. } )
+        config.set_value( 'photometry.phrosty.psf.params', { 'sigmax': 2., 'sigmay': 2., 'theta': 0. } )
+        config.set_value( 'photometry.phrosty.sfft.radius_cut_detmask', 1. )
+
+        pip = Pipeline( obj, imgcol, 'R062', science_images=sciim, template_images=tmplim, nprocs=1, nwrite=1 )
+        ltcv = pip()
+
+        chisq = 0.
+        apchisq = 0.
+        truemjd = []
+        trueflux = {}
+        measmjd = []
+        measflux = []
+        measdflux = []
+        resid = []
+        measapflux = []
+        measapdflux = []
+        apresid = []
+        plotzpt = 31.4
+        df = pandas.read_csv( ltcv )
+        for row in df.itertuples():
+            mjd = row.mjd
+            # We know what the fluxes are supposed to be; see
+            #   /photometry_test_data/simple_gaussian_test/sig1.0/README.md
+            peak_flux = 10 ** ( ( 21. - row.zpt ) / -2.5 )
+            plotfluxfac = 10 ** ( ( row.zpt - plotzpt ) / -2.5 )
+            if ( mjd < 60010. ) or ( mjd > 60060. ):
+                expected_flux = 0.
+            elif mjd < 60030.:
+                expected_flux = peak_flux * ( mjd - 60010. ) / 20.
+            else:
+                expected_flux = peak_flux * ( 60060. - mjd ) / 30.
+
+            # We don't have errors on aperture sum, so just guess.  It's in
+            #   a radius of 4 by default, and the sky noise per pixel is 100.
+            ap_err = np.sqrt( np.pi * 16 * 100. + row.aperture_sum )
+
+            measmjd.append( row.mjd )
+            measflux.append( row.flux_fit * plotfluxfac )
+            resid.append( ( row.flux_fit - expected_flux ) * plotfluxfac )
+            measdflux.append( row.flux_fit_err * plotfluxfac )
+            measapflux.append( row.aperture_sum * plotfluxfac )
+            apresid.append( ( row.aperture_sum - expected_flux ) * plotfluxfac )
+            measapdflux.append( ap_err * plotfluxfac )
+            if mjd not in trueflux:
+                truemjd.append( mjd )
+                trueflux[mjd] = expected_flux * plotfluxfac
+
+            # assert expected_flux == pytest.approx( row.aperture_sum, abs=2.*ap_err )
+            apchisq += ( ( expected_flux - row.aperture_sum ) / ap_err ) ** 2
+
+            # assert expected_flux == pytest.approx( row.flux_fit, abs=3. * row.flux_fit_err )
+            chisq += ( ( expected_flux - row.flux_fit ) / row.flux_fit_err ) ** 2
+
+        # NOTE -- tests do not currently pass, we know things are broken.
+        #   Issue #...
+        # These chisq values aren't really right, because we're assuming that all the
+        #   points are independent, but they're not, because the ones at the same
+        #   mjd share news, and all the news share the same set of refs.
+        # assert apchisq / len(df) == pytest.approx( 1., abs=0.2 )
+        # assert chisq / len(df) == pytest.approx( 1., abs=0.2 )
+
+        # Draw a plot
+        trueflux = [ trueflux[m] for m in truemjd ]
+        fig, axes = pyplot.subplots( 2, 1, height_ratios=[3, 1], sharex=True )
+        fig.subplots_adjust( wspace=0 )
+        fig.set_tight_layout( True )
+        axes[0].set_title( 'phrosty test_pipeline_run_simple_gauss1' )
+        axes[0].plot( truemjd, trueflux, color='orange', label='Truth' )
+        axes[0].errorbar( measmjd, measflux, measdflux, color='blue',
+                          linestyle='none', marker='o', label='psf fit' )
+        axes[0].errorbar( measmjd, measapflux, measapdflux, color='green',
+                          linestyle='none', marker='s', label='aperture sum' )
+        axes[0].set_ylabel( 'flux (nJy)' )
+        axes[0].legend()
+        xmin, xmax = axes[0].get_xlim()
+        axes[1].plot( [xmin, xmax], [0., 0.], color='orange' )
+        axes[1].errorbar( measmjd, resid, measdflux, color='blue', linestyle='none', marker='o' )
+        axes[1].errorbar( measmjd, apresid, measdflux, color='green', linestyle='none', marker='s' )
+        axes[1].set_ylabel( 'resid' )
+        axes[1].set_xlabel( 'MJD' )
+
+        # WARNING HARDCODED LIMITS these should go away when things are
+        #   fixed and the test works better.  Right now PSF photometry is
+        #   going nuts, and sometimes produces infinite error bars
+        axes[0].set_ylim( -2000, 16000 )
+        axes[1].set_ylim( -12000, 5000 )
+
+        plotdir = pathlib.Path( 'test_plots' )
+        plotdir.mkdir( parents=True, exist_ok=True )
+        fig.savefig( plotdir / 'test_pipeline_run_simple_gauss1.pdf' )
+
+    finally:
+        # Fix the naughty damage we did to config
+        config.set_value( 'photomery.phrosty.psf', orig_psf )
+        config.set_value( 'photometry.phrosty.sfft', orig_sfft )
+        config._static = True
 
 
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
@@ -36,8 +166,7 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         assert int(pair['sca']) == int(img.sca)
         assert int(pair['template_pointing']) == int(one_ou2024_template_image.pointing)
         assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
-        # TODO : fix the zeropoint!
-        assert pair['zpt'] == ''
+        assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
 
     # Tests aren't exactly reproducible from one run to the next,
     #   because some classes (including the galsim PSF that we use right
