@@ -176,14 +176,15 @@ def two_ou2024_science_images( ou2024_image_collection ):
     img2 = ou2024_image_collection.get_image( pointing=39790, sca=15, band='Y106' )
     return img1, img2
 
+
 @pytest.fixture
 def nan_image():
-    nan_arr = np.empty((4088,4088))
+    nan_arr = np.empty((4088, 4088))
     nan_arr[:] = np.nan
 
     # NOTE: path='/dev/null' because at this time, snappl requires a path to instantiate
     # a FITSImage object.
-    nan_img = FITSImageStdHeaders( path='/dev/null', 
+    nan_img = FITSImageStdHeaders( path='/dev/null',
                                    data=nan_arr
                                  )
     nan_img.band = 'Y106'
