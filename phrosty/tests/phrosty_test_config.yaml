@@ -1,33 +1,45 @@
-ou24:
-  tds_base: /photometry_test_data/ou2024
-  config_file: /photometry_test_data/ou2024/tds.yaml
+# THIS WHOLE CONFIG NEEDS TO BE REVIEWED TO MAKE IT UP TO DATE
+system:
+  db:
+    url: https://webserver:8080/
+    username: test
+    # In an actual config, you should set password to null
+    #   and create a single-line text file with your
+    #   password in a secure location.  Put the
+    #   location of that file in password_file.
+    password: test_password
+    password_file: null
 
-  sn_truth_dir: /photometry_test_data/ou2024/snana_truth
-  # sn_truth_dir: /snana_pq_dir
+  paths:
+    spectra1d: /data/spectra1d
+    lightcurves: /data/lightcurves
+    segmaps: /data/segmaps
+    images: /data/images
 
-  images: /photometry_test_data/ou2024/images/simple_model
+    temp_dir: /snpit_temp
 
-  sims_sed_library: /photometry_test_data/ou2024/sims_sed_library
-  # Comment from Cole & Rob: This is a path to the SEDs that were used to generate the
-  # OU24 simulations.  Only a subset of the files are stored in
-  # photometry_test_data, so if you want to use it for real, you'll need
-  # to get the file yourself.  If you are interested in getting the SEDs yourself,
-  # go into the directory where you want it to live and run the command:
-  # curl https://s3df.slac.stanford.edu/groups/rubin/static/sim-data/sed_library/seds_170124.tar.gz  | tar xv
-  # Courtesy of M. Troxel ^^^
+    snappl:
+      A25ePSF_path: /a25epsf
+
+  ou24:
+    simdex_server: https://roman-desc-simdex.rknop.net
+    tds_base: /ou2024/RomanTDS
+    config_file: /ou2024/RomanTDS/tds.yaml
+    sn_truth_dir: /ou2024_snana
+    images: /ou2024/RomanTDS/images/simple_model
+    sims_sed_library: /ou2024_sims_sed_library
+
 
 photometry:
-  snappl:
-      A25ePSF_path: /snappl/snappl/tests/testdata/A25ePSF
-      temp_dir: /phrosty_temp
-
   phrosty:
-    image_type: ou2024fits
     force_sky_subtract: true
     keep_intermediate: true
     remove_temp_dir: false
     mem_trace: false
     kerpolyorder: 2
+
+    sfft:
+      radius_cut_detmask: 2
 
     paths:
       scratch_dir: /phrosty_temp
@@ -37,3 +49,4 @@ photometry:
 
     psf:
       type: ou24PSF
+      params: {}

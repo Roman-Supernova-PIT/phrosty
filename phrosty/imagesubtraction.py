@@ -11,9 +11,13 @@ from sfft.utils.SExSkySubtract import SEx_SkySubtract
 from sfft.utils.StampGenerator import Stamp_Generator
 
 # IMPORTS internal
+from snappl.config import Config
 import snappl.image
 from snappl.logger import SNLogger
+<<<<<<< HEAD
 from snappl.config import Config
+=======
+>>>>>>> main
 
 
 def sky_subtract( img, temp_dir=None ):
@@ -64,12 +68,19 @@ def sky_subtract( img, temp_dir=None ):
         if isinstance( origimg, snappl.image.FITSImageOnDisk ):
             img = origimg.uncompressed_version( include=['data'] )
         else:
+<<<<<<< HEAD
             # Can take out header arg when snappl issue #77 is resolved.
             img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
             img.data = origimg.data
             img.save_data( which='data' )
+=======
+            img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
+            img.data = origimg.data
+            img.save( which='data' )
+>>>>>>> main
 
         SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
+        radius_cut_detmask = Config.get().value( 'photometry.phrosty.sfft.radius_cut_detmask' )
         ( _SKYDIP, _SKYPEAK, _PixA_skysub,
           _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=img.path,
                                                          FITS_skysub=tmpsubpath,
@@ -79,6 +90,7 @@ def sky_subtract( img, temp_dir=None ):
                                                          BACK_SIZE=64, BACK_FILTERSIZE=3,
                                                          DETECT_THRESH=1.5, DETECT_MINAREA=5,
                                                          DETECT_MAXAREA=0,
+                                                         RADIUS_CUT_DETMASK=radius_cut_detmask,
                                                          VERBOSE_LEVEL=2, MDIR=None)
 
 
@@ -149,10 +161,15 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None):
         if isinstance( origimg, snappl.image.FITSImageOnDisk ):
             img = origimg.uncompressed_version( include=['data'] )
         else:
-            barf = "".join( random.choices( "0123456789abcdef:", k=10 ) )
-            img = snappl.image.FITSImageOnDisk( path=savedir / f"{barf}.fits" )
+            barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
+            # NOTE : this next line will break if not using an image type that
+            #   can return a FITS header!  The real solution is to fix SFFT
+            #   so that it's not dependent on FITS images; just pass what's
+            #   needed to Stamp_Generator.SG instead of assuming it will read
+            #   all the right things out of the header.
+            img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
             img.data = origimg.data
-            img.save_data()
+            img.save_data( which='data' )
 
         # TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()
         Stamp_Generator.SG(FITS_obj=img.path, EXTINDEX=0, COORD=pxradec, COORD_TYPE='IMAGE',
