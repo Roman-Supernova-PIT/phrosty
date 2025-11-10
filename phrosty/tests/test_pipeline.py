@@ -17,7 +17,7 @@ from phrosty.pipeline import Pipeline
 
 # This one writes a diagnostic plot file to test_plots/test_pipeline_run_simple_gauss1.pdf
 def test_pipeline_run_simple_gauss1( config ):
-    obj = DiaObject.find_objects( collection='manual', id=1, ra=120, dec=-13. )[0]
+    obj = DiaObject.find_objects( collection='manual', name='foo', ra=120, dec=-13. )[0]
     # imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
     #                                          base_path='/photometry_test_data/simple_gaussian_test/sig1.0' )
     # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
