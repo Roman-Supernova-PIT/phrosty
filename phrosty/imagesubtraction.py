@@ -11,10 +11,9 @@ from sfft.utils.SExSkySubtract import SEx_SkySubtract
 from sfft.utils.StampGenerator import Stamp_Generator
 
 # IMPORTS internal
+from snappl.config import Config
 import snappl.image
-from snpit_utils.logger import SNLogger
-from snpit_utils.config import Config
-
+from snappl.logger import SNLogger
 
 def sky_subtract( img, temp_dir=None ):
     """Subtracts background, found with Source Extractor.

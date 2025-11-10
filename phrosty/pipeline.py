@@ -29,8 +29,8 @@ from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 from snappl.image import FITSImageOnDisk
 from snappl.psf import PSF
-from snpit_utils.config import Config
-from snpit_utils.logger import SNLogger
+from snappl.config import Config
+from snappl.logger import SNLogger
 
 
 class PipelineImage:

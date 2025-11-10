@@ -4,7 +4,7 @@ import pathlib
 import tox # noqa: F401
 from tox.pytest import init_fixture # noqa: F401
 
-from snpit_utils.config import Config
+from snappl.config import Config
 from snappl.image import FITSImageOnDisk
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
