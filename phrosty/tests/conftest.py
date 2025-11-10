@@ -128,7 +128,7 @@ def dia_out_dir( config ):
 
 @pytest.fixture( scope="session" )
 def object_for_tests():
-    return DiaObject.find_objects( collection='ou2024', id=20172782 )[0]
+    return DiaObject.find_objects( collection='ou2024', name=20172782 )[0]
 
 
 @pytest.fixture( scope="session" )
