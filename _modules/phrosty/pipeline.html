@@ -4,12 +4,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phrosty.pipeline &#8212; phrosty 0.1.dev1+g66e9c84bf documentation</title>
+    <title>phrosty.pipeline &#8212; phrosty 0.1.dev1+g1967b9f9a documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
-    <script src="../../_static/documentation_options.js?v=f2852674"></script>
+    <script src="../../_static/documentation_options.js?v=61af7c44"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -118,8 +118,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">snappl.imagecollection</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCollection</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">snappl.image</span><span class="w"> </span><span class="kn">import</span> <span class="n">FITSImageOnDisk</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">snappl.psf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSF</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">snpit_utils.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">snpit_utils.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">SNLogger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">snappl.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">snappl.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">SNLogger</span>
 
 
 <div class="viewcode-block" id="PipelineImage">
@@ -225,10 +225,12 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">psfobj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">psftype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;photometry.phrosty.psf.type&#39;</span> <span class="p">)</span>
+            <span class="n">psfparams</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">&#39;photometry.phrosty.psf.params&#39;</span> <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">psfobj</span> <span class="o">=</span> <span class="n">PSF</span><span class="o">.</span><span class="n">get_psf_object</span><span class="p">(</span> <span class="n">psftype</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
                                               <span class="n">band</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">band</span><span class="p">,</span>
                                               <span class="n">pointing</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">pointing</span><span class="p">,</span>
-                                              <span class="n">sca</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span> <span class="p">)</span>
+                                              <span class="n">sca</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span><span class="p">,</span>
+                                              <span class="o">**</span><span class="n">psfparams</span> <span class="p">)</span>
 
         <span class="n">stamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">psfobj</span><span class="o">.</span><span class="n">get_stamp</span><span class="p">(</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_intermediate</span><span class="p">:</span>
@@ -246,12 +248,13 @@
 
 <div class="viewcode-block" id="PipelineImage.free">
 <a class="viewcode-back" href="../../api/phrosty.pipeline.PipelineImage.html#phrosty.pipeline.PipelineImage.free">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">free</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">free</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">free_psf_data</span><span class="o">=</span><span class="kc">False</span> <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Try to free memory.  More might be done here.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">free</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">skysub_img</span><span class="o">.</span><span class="n">free</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">detmask_img</span><span class="o">.</span><span class="n">free</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">psf_data</span> <span class="o">=</span> <span class="kc">None</span></div>
+        <span class="k">if</span> <span class="n">free_psf_data</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">psf_data</span> <span class="o">=</span> <span class="kc">None</span></div>
 </div>
 
 
@@ -349,7 +352,7 @@
             <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span> <span class="sa">r</span><span class="s2">&quot;^\s*path\s+pointing\s+sca\s+mjd\s+band\s*$&quot;</span><span class="p">,</span> <span class="n">hdrline</span> <span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;First line of list file </span><span class="si">{</span><span class="n">csvfile</span><span class="si">}</span><span class="s2"> didn&#39;t match what was expected.&quot;</span> <span class="p">)</span>
             <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">ifp</span><span class="p">:</span>
-                <span class="n">path</span><span class="p">,</span> <span class="n">pointing</span><span class="p">,</span> <span class="n">sca</span><span class="p">,</span> <span class="n">mjd</span><span class="p">,</span> <span class="n">band</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                <span class="n">path</span><span class="p">,</span> <span class="n">pointing</span><span class="p">,</span> <span class="n">sca</span><span class="p">,</span> <span class="n">_mjd</span><span class="p">,</span> <span class="n">band</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
                 <span class="k">if</span> <span class="n">band</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="p">:</span>
                     <span class="c1"># This should yell at us if the pointing or sca doesn&#39;t match what is read from the path</span>
                     <span class="n">imlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">imgcol</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">pointing</span><span class="o">=</span><span class="n">pointing</span><span class="p">,</span> <span class="n">sca</span><span class="o">=</span><span class="n">sca</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="n">band</span> <span class="p">)</span> <span class="p">)</span>
@@ -790,6 +793,11 @@
         <span class="n">steps</span> <span class="o">=</span> <span class="n">steps</span><span class="p">[:</span><span class="n">stepdex</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="s1">&#39;sky_subtract&#39;</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+            <span class="c1"># After this step is done, all images (both science and template)</span>
+            <span class="c1">#   will have the following fields set:</span>
+            <span class="c1">#     .skysub_img : sub-subtracted image</span>
+            <span class="c1">#     .detmask_img : deteciton mask image</span>
+            <span class="c1">#     .skyrms : float, median of sky image calculated by SExtractor</span>
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">&quot;Running sky subtraction&quot;</span> <span class="p">)</span>
             <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">&quot;skysub&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0xff8888</span> <span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">sky_sub_all_images</span><span class="p">()</span>
@@ -798,6 +806,9 @@
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;After sky_subtract, memory usage = </span><span class="si">{</span><span class="n">tracemalloc</span><span class="o">.</span><span class="n">get_traced_memory</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span> <span class="p">)</span>
 
         <span class="k">if</span> <span class="s1">&#39;get_psfs&#39;</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+            <span class="c1"># After this step, all images (both science and template) will</span>
+            <span class="c1">#   have the .psf_data field set with the image-resolution PSF stamp data</span>
+            <span class="c1">#   (from a PSF.get_stamp() call.)</span>
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">&quot;Getting PSFs&quot;</span> <span class="p">)</span>
             <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">&quot;getpsfs&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0xff8888</span> <span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">get_psfs</span><span class="p">()</span>
@@ -820,16 +831,63 @@
                     <span class="n">sfftifier</span> <span class="o">=</span> <span class="kc">None</span>
 
                     <span class="k">if</span> <span class="s1">&#39;align_and_preconvolve&#39;</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+                        <span class="c1"># After this step, sfftifier will be a SpaceSFFT_CupyFlow</span>
+                        <span class="c1">#  object with the following fields filled.  All cupy arrays</span>
+                        <span class="c1">#  are float64 (even the DMASK!), and all of them are Transposed</span>
+                        <span class="c1">#  from what&#39;s stored in the PipelineImage object</span>
+                        <span class="c1">#    hdr_target : FITS header of science image</span>
+                        <span class="c1">#    hdr_object : FITS header of template image</span>
+                        <span class="c1">#    target_skyrms : float, median of sky for science image</span>
+                        <span class="c1">#    object_skyrms : float, median of sky for template image</span>
+                        <span class="c1">#    PixA_target_GPU  : science image data on GPU</span>
+                        <span class="c1">#    PixA_Ctarget_GPU : cross-convolved [with what?] science image on GPU</span>
+                        <span class="c1">#    PixA_object_GPU  : template image data on GPU</span>
+                        <span class="c1">#    PixA_resamp_object_GPU : warped template image data on GPU</span>
+                        <span class="c1">#    PixA_Cresampl_object_GPU : cross-convolved template image on GPU</span>
+                        <span class="c1">#    BlankMask_GPU : boolean array, True where PixA_resampl_object_GPU is 0.</span>
+                        <span class="c1">#    PixA_targetVar_GPU : noise CHECK THIS image for science image, on GPU</span>
+                        <span class="c1">#    PixA_objectVar_GPU : noise CHECK THIS image for template image, on GPU</span>
+                        <span class="c1">#    PiXA_resampl_objectVar_GPU : warped template variance data on GPU</span>
+                        <span class="c1">#    PixA_target_DMASK_GPU : detmask for science image, on GPU</span>
+                        <span class="c1">#    PixA_object_DMASK_GPU : detmask for template image, on GPU</span>
+                        <span class="c1">#    PixA_resampl_object_DMASK_GPU : warped dmask for template image, on GPU</span>
+                        <span class="c1">#    PSF_target_GPU : PSF stamp for science image</span>
+                        <span class="c1">#    PSF_object_GPU : PSF stamp for template image</span>
+                        <span class="c1">#    PSF_resampl_object_GPU : PSF stamp for template image rotated &amp; resampled, on GPU</span>
+                        <span class="c1">#    sci_is_target : True</span>
+                        <span class="c1">#    GKerHW : 9 (int half-width of matching kernel, full width is 2*GKerHW+1)</span>
+                        <span class="c1">#    KerPolyOrder : config value of photometry.phrosty.kerpolyorder</span>
+                        <span class="c1">#    BGPolyOrder : 0</span>
+                        <span class="c1">#    ConstPhotRatio : True</span>
+                        <span class="c1">#    CUDA_DEVICE_4SUBTRACT : &#39;0&#39;</span>
+                        <span class="c1">#    GAIN : 1.0</span>
+                        <span class="c1">#    RANDOM_SEED : 10086</span>
                         <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">&quot;...align_and_preconvolve&quot;</span> <span class="p">)</span>
                         <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">&quot;align_and_pre_convolve&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0x8888ff</span> <span class="p">):</span>
                             <span class="n">sfftifier</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">align_and_pre_convolve</span><span class="p">(</span> <span class="n">templ_image</span><span class="p">,</span> <span class="n">sci_image</span> <span class="p">)</span>
 
                     <span class="k">if</span> <span class="s1">&#39;subtract&#39;</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+                        <span class="c1"># After this step is done, two more fields in sfftifier are set:</span>
+                        <span class="c1">#    Solution_GPU  : --something--??</span>
+                        <span class="c1">#    PixA_DIFF_GPU : difference image ??</span>
+                        <span class="c1"># Get Lei to write docs on PureCupy_Customized_Packet.PCCP so</span>
+                        <span class="c1">#   we can figure out what these are</span>
                         <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">&quot;...subtract&quot;</span> <span class="p">)</span>
                         <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">&quot;subtraction&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0x44ccff</span> <span class="p">):</span>
                             <span class="n">sfftifier</span><span class="o">.</span><span class="n">sfft_subtraction</span><span class="p">()</span>
 
                     <span class="k">if</span> <span class="s1">&#39;find_decorrelation&#39;</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+                        <span class="c1"># This step does ...</span>
+                        <span class="c1"># After it&#39;s done, the following fields of sfftifier are set:</span>
+                        <span class="c1">#   Solution : CPU copy of Solution_GPU</span>
+                        <span class="c1">#   FKDECO_GPU : result of PureCupy_Decorrelation_Calculator.PCDC</span>
+                        <span class="c1"># Get Lei to write documentation on P:ureCupy_DeCorrelation_Calculator</span>
+                        <span class="c1">#   so we can figure out what this is, but I THINK it&#39;s a</span>
+                        <span class="c1">#   kernel that is used to convolve with things to &quot;decorrelate&quot;.</span>
+                        <span class="c1">#   (From what?)</span>
+                        <span class="c1"># In addition the two local varaibles diff_var and diff_var_path are set.</span>
+                        <span class="c1">#   diff_var : variance in difference image (I THINK), on GPU</span>
+                        <span class="c1">#   diff_var_path : where we want to write diff_var in self.dia_out_dir</span>
                         <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">&quot;...find_decorrelation&quot;</span> <span class="p">)</span>
                         <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">&quot;find_decor&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0xcc44ff</span> <span class="p">):</span>
                             <span class="n">sfftifier</span><span class="o">.</span><span class="n">find_decorrelation</span><span class="p">()</span>
@@ -841,6 +899,11 @@
                             <span class="n">diff_var_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dia_out_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;diff_var_</span><span class="si">{</span><span class="n">mess</span><span class="si">}</span><span class="s2">&quot;</span>
 
                     <span class="k">if</span> <span class="s1">&#39;apply_decorrelation&#39;</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+                        <span class="c1"># After this step is done, the following FITS files will be written in self.dia_out_dir:</span>
+                        <span class="c1">#   decorr_diff_* : difference image convolved with FKDECO_GPU</span>
+                        <span class="c1">#   diff_var_* : variance of difference image convolved with FKDECO_GPU</span>
+                        <span class="c1">#   decorr_zpt_path_* : preconvolved science image (PixA_Ctarget_GPU) convolved with FKDECO_GPU</span>
+                        <span class="c1">#   decor_psf_path_* : PSF stamp for science image, convolved with FKDECO_GPU</span>
                         <span class="n">mess</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
                         <span class="n">decorr_psf_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dia_out_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;decorr_psf_</span><span class="si">{</span><span class="n">mess</span><span class="si">}</span><span class="s2">&quot;</span>
                         <span class="n">decorr_zptimg_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dia_out_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;decorr_zptimg_</span><span class="si">{</span><span class="n">mess</span><span class="si">}</span><span class="s2">&quot;</span>
