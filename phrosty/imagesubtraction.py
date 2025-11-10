@@ -15,6 +15,7 @@ from snappl.config import Config
 import snappl.image
 from snappl.logger import SNLogger
 
+
 def sky_subtract( img, temp_dir=None ):
     """Subtracts background, found with Source Extractor.
 
