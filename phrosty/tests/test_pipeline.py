@@ -1,6 +1,5 @@
 import numpy as np
 import os
-import pathlib
 import pytest
 
 from phrosty.pipeline import Pipeline
@@ -94,9 +93,9 @@ def test_pipeline_failures( object_for_tests, ou2024_image_collection,
     #         # First, check the images as-is. Make sure there are no failures.
     #         for key in pip.failures:
     #             assert len(pip.failures[key]) == 0
-    
+
     # try:
-    nan_image = FITSImageStdHeaders( path='/phrosty_temp/test_nan_img', 
+    nan_image = FITSImageStdHeaders( path='/phrosty_temp/test_nan_img',
                                      data=np.full(one_ou2024_template_image.image_shape, np.nan),
                                      flags=np.zeros(one_ou2024_template_image.image_shape),
                                      std_imagenames=True
@@ -139,4 +138,4 @@ def test_pipeline_failures( object_for_tests, ou2024_image_collection,
     #         for key in pip.failures:
     #             print(key)
     #             print(len(pip.failures[key]))
-    #             assert len(pip.failures[key]) == 0 
+    #             assert len(pip.failures[key]) == 0
