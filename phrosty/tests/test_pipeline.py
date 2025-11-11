@@ -4,22 +4,22 @@ import pathlib
 import pytest
 from matplotlib import pyplot
 
-import numpy as np
-import pandas
+import astropy.units as u
 
+from phrosty.pipeline import Pipeline
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
-from phrosty.pipeline import Pipeline
+from snappl.lightcurve import Lightcurve
 from snappl.image import FITSImageStdHeaders
 
 # TODO : separate tests for PipelineImage, for all the functions in#
 #   PipelineImage and Pipeline.  Right now we just have this regression
 #   test.
 
-
 # This one writes a diagnostic plot file to test_plots/test_pipeline_run_simple_gauss1.pdf
 def test_pipeline_run_simple_gauss1( config ):
     obj = DiaObject.find_objects( collection='manual', name='foo', ra=120, dec=-13. )[0]
+    # LA to RK: What's the difference between the commented-out part and the not-commented stuff below?
     # imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
     #                                          base_path='/photometry_test_data/simple_gaussian_test/sig1.0' )
     # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
@@ -59,40 +59,46 @@ def test_pipeline_run_simple_gauss1( config ):
         measapdflux = []
         apresid = []
         plotzpt = 31.4
-        df = pandas.read_csv( ltcv )
-        for row in df.itertuples():
-            mjd = row.mjd
+        lc_obj = Lightcurve( filepath=ltcv )
+        for row in lc_obj.lightcurve:
+            mjd = row['mjd']
             # We know what the fluxes are supposed to be; see
             #   /photometry_test_data/simple_gaussian_test/sig1.0/README.md
-            peak_flux = 10 ** ( ( 21. - row.zpt ) / -2.5 )
-            plotfluxfac = 10 ** ( ( row.zpt - plotzpt ) / -2.5 )
-            if ( mjd < 60010. ) or ( mjd > 60060. ):
+
+            # LA: snappl enforces astropy units in the columns. I have tried to preserve
+            # where it makes sense to have units vs. dimensionless quantities below when
+            # deciding where to put .value, or where to add units back in.
+            # Or, I did things to make the plot work.
+            peak_flux = 10 ** ( ( 21. - row['zpt'].value ) / -2.5 ) * u.count / u.s
+            plotfluxfac = 10 ** ( ( row['zpt'].value - plotzpt ) / -2.5 ) * u.count / u.s
+            if ( mjd.value < 60010. ) or ( mjd.value > 60060. ):
                 expected_flux = 0.
-            elif mjd < 60030.:
-                expected_flux = peak_flux * ( mjd - 60010. ) / 20.
+            elif mjd.value < 60030.:
+                expected_flux = peak_flux * ( mjd.value - 60010. ) / 20.
             else:
-                expected_flux = peak_flux * ( 60060. - mjd ) / 30.
+                expected_flux = peak_flux * ( 60060. - mjd.value ) / 30.
 
             # We don't have errors on aperture sum, so just guess.  It's in
             #   a radius of 4 by default, and the sky noise per pixel is 100.
-            ap_err = np.sqrt( np.pi * 16 * 100. + row.aperture_sum )
+            ap_err = np.sqrt( np.pi * 16 * 100. + row['aperture_sum'] )
 
-            measmjd.append( row.mjd )
-            measflux.append( row.flux_fit * plotfluxfac )
-            resid.append( ( row.flux_fit - expected_flux ) * plotfluxfac )
-            measdflux.append( row.flux_fit_err * plotfluxfac )
-            measapflux.append( row.aperture_sum * plotfluxfac )
-            apresid.append( ( row.aperture_sum - expected_flux ) * plotfluxfac )
-            measapdflux.append( ap_err * plotfluxfac )
+            # LA: I stripped the units off of everything below to make the plot work.
+            measmjd.append( row['mjd'].value )
+            measflux.append( row['flux'].value * plotfluxfac.value )
+            resid.append( ( row['flux'].value - expected_flux.value ) * plotfluxfac.value )
+            measdflux.append( row['flux_err'].value * plotfluxfac.value )
+            measapflux.append( row['aperture_sum'] * plotfluxfac.value )
+            apresid.append( ( row['aperture_sum'] - expected_flux.value ) * plotfluxfac.value )
+            measapdflux.append( ap_err * plotfluxfac.value )
             if mjd not in trueflux:
-                truemjd.append( mjd )
-                trueflux[mjd] = expected_flux * plotfluxfac
+                truemjd.append( mjd.value )
+                trueflux[mjd.value] = expected_flux.value * plotfluxfac.value
 
-            # assert expected_flux == pytest.approx( row.aperture_sum, abs=2.*ap_err )
-            apchisq += ( ( expected_flux - row.aperture_sum ) / ap_err ) ** 2
+            # assert expected_flux == pytest.approx( row['aperture_sum'], abs=2.*ap_err )
+            apchisq += ( ( expected_flux.value - row['aperture_sum'] ) / ap_err ) ** 2
 
-            # assert expected_flux == pytest.approx( row.flux_fit, abs=3. * row.flux_fit_err )
-            chisq += ( ( expected_flux - row.flux_fit ) / row.flux_fit_err ) ** 2
+            # assert expected_flux == pytest.approx( row['flux'], abs=3. * row['flux_err'] )
+            chisq += ( ( expected_flux.value - row['flux'].value ) / row['flux_err'] ) ** 2
 
         # NOTE -- tests do not currently pass, we know things are broken.
         #   Issue #...
@@ -104,6 +110,7 @@ def test_pipeline_run_simple_gauss1( config ):
 
         # Draw a plot
         trueflux = [ trueflux[m] for m in truemjd ]
+
         fig, axes = pyplot.subplots( 2, 1, height_ratios=[3, 1], sharex=True )
         fig.subplots_adjust( wspace=0 )
         fig.set_tight_layout( True )

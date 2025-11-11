@@ -809,26 +809,30 @@ class Pipeline:
                 for templ_image in self.template_images:
                     self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
 
-        imgprov = Provenance.get_by_id( self.science_images[0].image.provenance_id, dbclient=self.dbclient )
-        objprov = Provenance.get_by_id( self.diaobj.provenance_id, dbclient=self.dbclient )
+        if self.dbsave:
+            imgprov = Provenance.get_by_id( self.science_images[0].image.provenance_id, dbclient=self.dbclient )
+            objprov = Provenance.get_by_id( self.diaobj.provenance_id, dbclient=self.dbclient )
         
-        phrosty_version = phrosty.__version__
-        major = int(phrosty_version.split('.')[0])
-        minor = int(phrosty_version.split('.')[1])
+            phrosty_version = phrosty.__version__
+            major = int(phrosty_version.split('.')[0])
+            minor = int(phrosty_version.split('.')[1])
 
-        ltcvprov = Provenance( process='phrosty',
-                                major=major, 
-                                minor=minor,
-                                params=Config.get(),
-                                keepkeys=[ 'photometry.phrosty' ],
-                                omitkeys=None,
-                                upstreams=[imgprov, objprov],
-                                )
+            ltcvprov = Provenance( process='phrosty',
+                                    major=major, 
+                                    minor=minor,
+                                    params=Config.get(),
+                                    keepkeys=[ 'photometry.phrosty' ],
+                                    omitkeys=None,
+                                    upstreams=[imgprov, objprov],
+                                    )
 
-        self.metadata['provenance_id'] = ltcvprov.id
-        lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata)
-        lc_obj.diaobj = self.diaobj
-        lc_obj.provenance_object = ltcvprov
+            self.metadata['provenance_id'] = ltcvprov.id
+            lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata)
+            lc_obj.diaobj = self.diaobj
+            lc_obj.provenance_object = ltcvprov
+
+        else:
+            lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata)
 
         if self.dbsave:
             SNLogger.debug( "Saving results to database..." )
@@ -1402,9 +1406,9 @@ def main():
                                            band=args.band
                                          )
 
-    fetched_prov = Provenance.get_provs_for_tag( tag=args.diaobject_provenance_tag,
-                                                 process=args.diaobject_process
-                                               )
+    # fetched_prov = Provenance.get_provs_for_tag( tag=args.diaobject_provenance_tag,
+    #                                              process=args.diaobject_process
+    #                                            )
 
     # Create and launch the pipeline
     pipeline = Pipeline( diaobj, imgcol, args.band,
