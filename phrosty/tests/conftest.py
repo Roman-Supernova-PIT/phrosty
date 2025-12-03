@@ -1,3 +1,4 @@
+import numpy as np
 import pytest # noqa: F401
 import pathlib
 
@@ -52,10 +53,10 @@ def config():
         cfg._static = False
         # Edit the config.
         cfg.set_value( 'photometry.snappl.temp_dir', str(temp_dir) )
-        cfg.set_value( 'photometry.phrosty.paths.scratch_dir', str(temp_dir) )
-        cfg.set_value( 'photometry.phrosty.paths.temp_dir', str(temp_dir) )
-        cfg.set_value( 'photometry.phrosty.paths.dia_out_dir', str(dia_out_dir) )
-        cfg.set_value( 'photometry.phrosty.paths.ltcv_dir', str(ltcv_dir) )
+        cfg.set_value( 'system.paths.scratch_dir', str(temp_dir) )
+        cfg.set_value( 'system.paths.temp_dir', str(temp_dir) )
+        cfg.set_value( 'system.paths.dia_out_dir', str(dia_out_dir) )
+        cfg.set_value( 'system.paths.ltcv_dir', str(ltcv_dir) )
         # Reset the config to static
         cfg._static = True
 
@@ -174,3 +175,20 @@ def two_ou2024_science_images( ou2024_image_collection ):
     img1 = ou2024_image_collection.get_image( pointing=35198, sca=2, band='Y106' )
     img2 = ou2024_image_collection.get_image( pointing=39790, sca=15, band='Y106' )
     return img1, img2
+
+
+@pytest.fixture
+def nan_image():
+    nan_arr = np.empty((4088, 4088))
+    nan_arr[:] = np.nan
+
+    # NOTE: path='/dev/null' because at this time, snappl requires a path to instantiate
+    # a FITSImage object.
+    nan_img = FITSImageStdHeaders( path='/dev/null',
+                                   data=nan_arr
+                                 )
+    nan_img.band = 'Y106'
+    nan_img.pointing = -1  # So it's not real and doesn't interpret.
+    nan_img.sca = 1
+
+    return nan_img

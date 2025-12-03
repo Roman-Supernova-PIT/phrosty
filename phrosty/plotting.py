@@ -10,7 +10,6 @@ from astropy.io import fits
 from astropy.visualization import ZScaleInterval
 
 # IMPORTS Internal:
-from phrosty.utils import _build_filepath
 import phrosty.plotaesthetics  # noqa: F401   (We need this for the commands run when it's imported.)
 
 roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'W146', 'K213']
@@ -19,9 +18,13 @@ roman_bands = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184', 'W146', 'K213']
 def showimage(path=None, band=None, pointing=None, sca=None,
               xycoords=None, box=False, boxsize=1000, data_ext=1,
               cmap='Greys', return_fig=False, **kwargs):
-    """Quickly display an original RomanDESC image from either a filepath or a filter, pointing, and SCA ID."""
+    """Quickly display an original RomanDESC image from either a filepath or a filter, pointing, and SCA ID.
+    
+       NOTE: This no longer works as intended with the deprecation of phrosty.utils._build_filepath.
+             Fix another time. This is minor.
+    """
 
-    path =_build_filepath(path=path, band=band, pointing=pointing, sca=sca, filetype='image')
+    # path =_build_filepath(path=path, band=band, pointing=pointing, sca=sca, filetype='image')
     hdu = fits.open(path)
     img = hdu[data_ext].data
     z1, z2 = ZScaleInterval(n_samples=1000,
