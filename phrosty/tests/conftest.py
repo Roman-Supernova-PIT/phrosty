@@ -6,7 +6,7 @@ import tox # noqa: F401
 from tox.pytest import init_fixture # noqa: F401
 
 from snappl.config import Config
-from snappl.image import FITSImageOnDisk
+from snappl.image import CompressedFITSImage
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 
@@ -142,7 +142,7 @@ def ou2024_image_collection():
 @pytest.fixture
 def one_science_image( scope="session" ):
     try:
-        img = FITSImageOnDisk( path=('/photometry_test_data/ou2024/images/simple_model/'
+        img = CompressedFITSImage( path=('/photometry_test_data/ou2024/images/simple_model/'
                                      'Y106/35198/Roman_TDS_simple_model_Y106_35198_2.fits.gz'),
                                imagehdu=1,
                                pointing=35198,
@@ -155,11 +155,11 @@ def one_science_image( scope="session" ):
 @pytest.fixture
 def one_template_image( scope="session" ):
     try:
-        img = FITSImageOnDisk( path=('/photometry_test_data/ou2024/images/simple_model/'
+        img = CompressedFITSImage( path=('/photometry_test_data/ou2024/images/simple_model/'
                                      'Y106/5934/Roman_TDS_simple_model_Y106_5934_3.fits.gz' ),
-                               imhdu=1,
-                               pointing=5934,
-                               sca=3 ).uncompressed_version()
+                                   imhdu=1,
+                                   pointing=5934,
+                                   sca=3 ).uncompressed_version()
         yield img
     finally:
         img.path.unlink( missing_ok=True )

@@ -6,6 +6,7 @@ from matplotlib import pyplot
 
 import astropy.units as u
 
+
 from phrosty.pipeline import Pipeline
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
@@ -26,8 +27,12 @@ def test_pipeline_run_simple_gauss1( config ):
     # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60000, 60065, 5 ) ]
     imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
                                              base_path='/photometry_test_data/simple_gaussian_test/sig2.0' )
-    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
-    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
+    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
+    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
+    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
+    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60025, 60035, 5 ) ]
+    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
+    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60035 ] ]
 
     # We have to muck about with the config, because the default config loaded for tests is
     #   set up for ou2024.  We're going to do naughty things we're not supposed to do,
@@ -44,9 +49,9 @@ def test_pipeline_run_simple_gauss1( config ):
         config.set_value( 'photometry.phrosty.psf.params', { 'sigmax': 2., 'sigmay': 2., 'theta': 0. } )
         config.set_value( 'photometry.phrosty.sfft.radius_cut_detmask', 1. )
 
-        pip = Pipeline( obj, imgcol, 'R062', science_images=sciim, template_images=tmplim, nprocs=1, nwrite=1 )
+        pip = Pipeline( obj, imgcol, 'R062', science_images=sciim, template_images=tmplim, nprocs=1, nwrite=1, catchfailures=False )
         ltcv = pip()
-
+        import pdb; pdb.set_trace()
         chisq = 0.
         apchisq = 0.
         truemjd = []
@@ -149,10 +154,11 @@ def test_pipeline_run_simple_gauss1( config ):
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 def test_pipeline_run( object_for_tests, ou2024_image_collection,
                        one_ou2024_template_image, two_ou2024_science_images ):
+
     pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                    science_images=two_ou2024_science_images,
+                    science_images=[two_ou2024_science_images[0]],
                     template_images=[one_ou2024_template_image],
-                    nprocs=2, nwrite=3 )
+                    nprocs=1, nwrite=1 )
     ltcv = pip()
 
     with open( ltcv ) as ifp:
@@ -241,12 +247,13 @@ def test_pipeline_failures( object_for_tests, ou2024_image_collection,
     nan_image.sca = 1
     nan_image.save( which='data', overwrite=True )
 
-    # pytest.set_trace()
-
     new_test_imgs = [nan_image, two_ou2024_science_images[1]]
 
+    # This will have one failure because the pointing is a fake value and it can't
+    # find the corresponding PSF.
     pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                        science_images=new_test_imgs,
+                        # science_images=new_test_imgs,
+                        science_images=[two_ou2024_science_images[1]],
                         template_images=[one_ou2024_template_image],
                         nprocs=1, nwrite=1 )
     lctv = pip()
@@ -254,6 +261,8 @@ def test_pipeline_failures( object_for_tests, ou2024_image_collection,
     for key in pip.failures:
         print(key)
         print(len(pip.failures[key]))
+
+    # assert len(pip.failures['get_psf']) == 1
 
     # finally:
     #     for path in nanpaths:

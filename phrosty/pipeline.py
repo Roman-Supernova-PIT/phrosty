@@ -32,7 +32,7 @@ from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
 from snappl.dbclient import SNPITDBClient
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
-from snappl.image import FITSImageOnDisk
+from snappl.image import CompressedFITSImage
 from snappl.lightcurve import Lightcurve
 from snappl.provenance import Provenance
 from snappl.psf import PSF
@@ -186,7 +186,7 @@ class PipelineImage:
 
         """
 
-        self.psf_data = psf_data
+        self.psf_data = psf_data/np.sum(psf_data)
 
     def free( self, free_psf_data=False ):
         """Try to free memory.  More might be done here."""
@@ -212,7 +212,8 @@ class Pipeline:
                   nprocs=1,
                   nwrite=5,
                   verbose=False,
-                  memtrace=False ):
+                  memtrace=False,
+                  catchfailures=False ):
 
         """Create the a pipeline object.
 
@@ -274,6 +275,11 @@ class Pipeline:
            memtrace: bool, default False
              Toggle memory tracing.
 
+           catchfailures: bool, default False
+             Toggle collection of information for images that fail. If true, pipeline
+             will not crash if one image fails. If false, pipeline crashes if one image
+             in a given set fails (useful for debugging and tests).
+
         """
 
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
@@ -305,19 +311,22 @@ class Pipeline:
         self.template_images = [ PipelineImage( i, self ) for i in template_images ]
 
         # All of our failures.
-        # LA NOTE: I want to add keys for when this fails in sky subtraction and PSF retrieval
-        # as well. But that is slightly more involved because those things happen in
-        # PipelineImage, not Pipeline. So, for now, anything that fails at 'make_lightcurve'
+        # LA NOTE: I want to add keys for when this fails in sky subtraction
+        # as well. But that is slightly more involved because that happens in
+        # PipelineImage, not Pipeline. So, for now, anything that fails
         # may have failed at earlier steps first. Also, source extractor doesn't fail on
         # an image full of NaNs for some reason. It just reports 0 sources. I would expect
         # that it should fail, here...
-        self.failures = {'align_and_preconvolve': [],
-                         'find_decorrelation': [],
-                         'subtract': [],
-                         'variance': [],
-                         'apply_decorrelation': [],
-                         'make_lightcurve': [],
-                         'make_stamps': []}
+        self.catchfailures = catchfailures
+        if self.catchfailures:
+            self.failures = {'get_psf': [],
+                            'align_and_preconvolve': [],
+                            'find_decorrelation': [],
+                            'subtract': [],
+                            'variance': [],
+                            'apply_decorrelation': [],
+                            'make_lightcurve': [],
+                            'make_stamps': []}
 
         self.ltcv_prov_tag = ltcv_prov_tag
         self.dbsave = dbsave
@@ -325,9 +334,13 @@ class Pipeline:
         self.nprocs = nprocs
         self.nwrite = nwrite
 
-        self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
+        # self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
+        self.keep_intermediate = True
         self.remove_temp_dir = self.config.value( 'photometry.phrosty.remove_temp_dir' )
         self.mem_trace = memtrace
+
+        # Debug LNA 20251202
+        self.resid_img = None
 
     def _read_csv( self, csvfile ):
         """Reads input csv files with columns:
@@ -416,7 +429,15 @@ class Pipeline:
                 pool.join()
         else:
             for img in all_imgs:
-                img.keep_psf_data( img.get_psf(self.diaobj.ra, self.diaobj.dec) )
+                try:
+                    img.keep_psf_data( img.get_psf(self.diaobj.ra, self.diaobj.dec) )
+                except OSError: # OSError because if get_psf can't open a file, it does this
+                                # (for example, if the file does not exist)
+                    if self.catchfailures:
+                        self.failures['get_psf'].append(f"{img.image.band} \
+                                                        {img.image.pointing} \
+                                                        {img.image.sca}"
+                                                    )
 
     def align_and_pre_convolve(self, templ_image, sci_image ):
         """Align and pre convolve a single template/science pair.
@@ -460,14 +481,20 @@ class Pipeline:
         templ_detmask = cp.array( np.ascontiguousarray( templ_image.detmask_img.data.T ) )
 
         sfftifier = SpaceSFFT_CupyFlow(
-            hdr_sci, hdr_templ,
-            sci_image.skyrms, templ_image.skyrms,
-            data_sci, data_templ,
-            noise_sci, noise_templ,
-            sci_detmask, templ_detmask,
-            sci_psf, templ_psf,
-            KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
-        )
+                                        hdr_target=hdr_sci,
+                                        hdr_object=hdr_templ,
+                                        target_skyrms=sci_image.skyrms,
+                                        object_skyrms=templ_image.skyrms,
+                                        PixA_target_GPU=data_sci,
+                                        PixA_object_GPU=data_templ,
+                                        PixA_targetVar_GPU=noise_sci,
+                                        PixA_objectVar_GPU=noise_templ,
+                                        PixA_target_DMASK_GPU=sci_detmask,
+                                        PixA_object_DMASK_GPU=templ_detmask,
+                                        PSF_target_GPU=sci_psf,
+                                        PSF_object_GPU=templ_psf,
+                                        KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
+                                      )
 
         sfftifier.resampling_image_mask_psf()
         sfftifier.cross_convolution()
@@ -510,7 +537,11 @@ class Pipeline:
         init.rename_column( 'aperture_sum', 'flux_init' )
         init.rename_column( 'xcenter', 'xcentroid' )
         init.rename_column( 'ycenter', 'ycentroid' )
-        final = img.psf_phot( init, psf, forced_phot=True )
+        final = img.psf_phot( init_params=init,
+                              psf=psf,
+                              forced_phot=True 
+                            )
+        self.resid_img = img.resid_img
 
         flux = final['flux_fit'][0]
         flux_err = final['flux_err'][0]
@@ -547,7 +578,7 @@ class Pipeline:
         -------
           results_dict: dict
             Dictionary with keys sci_name, templ_name, success, ra,
-            dec, mjd, filter, pointing, sca, template_pointing,
+            dec, mjd, band, pointing, sca, template_pointing,
             template_sca, zpt, aperture_sum, flux_fit, flux_fit_err,
             mag_fit, and mag_fit_err.
 
@@ -556,9 +587,10 @@ class Pipeline:
         # Do photometry on stamp because it will read faster.
         # (We hope.  But CFS latency will kill you at 1 byte.)
         SNLogger.debug( "...make_phot_info_dict reading stamp and psf" )
-        diff_img = FITSImageOnDisk( sci_image.diff_stamp_path[ templ_image.image.name ],
-                                    noisepath=sci_image.diff_var_stamp_path[ templ_image.image.name ] )
-        psf_img = FITSImageOnDisk( sci_image.decorr_psf_path[ templ_image.image.name ] )
+        diff_img = CompressedFITSImage( filepath=sci_image.diff_stamp_path[ templ_image.image.name ],
+                                        noisepath=sci_image.diff_var_stamp_path[ templ_image.image.name ]
+                                      )
+        psf_img = CompressedFITSImage( filepath=sci_image.decorr_psf_path[ templ_image.image.name ] )
 
         # Required results keys
         req_results_keys = ['mjd', 'flux', 'flux_err', 'zpt', 'NEA', 'sky_rms',
@@ -635,15 +667,21 @@ class Pipeline:
             arr.append( one_pair[ key ] )
 
         if not one_pair['success']:
-            self.failures['make_lightcurve'].append({'science': f"{one_pair['filter']} \
-                                                                  {one_pair['pointing']} \
-                                                                  {one_pair['sca']}",
-                                                     'template': f"{one_pair['filter']} \
-                                                                   {one_pair['template_pointing']} \
-                                                                   {one_pair['template_sca']}"
-                                                    })
+            SNLogger.debug( "Failure in make_lightcurve!" )
+            if self.catchfailures:
+                self.failures['make_lightcurve'].append({'science': f"{one_pair['band']} \
+                                                                    {one_pair['pointing']} \
+                                                                    {one_pair['sca']}",
+                                                        'template': f"{one_pair['band']} \
+                                                                    {one_pair['template_pointing']} \
+                                                                    {one_pair['template_sca']}"
+                                                        })
 
         SNLogger.debug( "Done adding to results dict" )
+        if self.mem_trace:
+            SNLogger.info( f"After adding to results dict for {one_pair['pointing']} {one_pair['sca']}, memory usage = \
+                            {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
+
 
     def save_stamp_paths( self, sci_image, templ_image, paths ):
         """Helper function for recording the stamp paths returned in
@@ -686,25 +724,37 @@ class Pipeline:
         """
 
         try:
-            zptim = FITSImageOnDisk( sci_image.decorr_zptimg_path[ templ_image.image.name ] )
-            zpt_stampname = stampmaker( self.diaobj.ra, self.diaobj.dec, np.array([100, 100]),
-                                        zptim,
+            zptim = CompressedFITSImage( filepath=sci_image.decorr_zptimg_path[ templ_image.image.name ] )
+            zpt_stampname = stampmaker( 
+                                        ra=self.diaobj.ra,
+                                        dec=self.diaobj.dec,
+                                        shape=np.array([100, 100]),
+                                        img=zptim,
                                         savedir=self.dia_out_dir,
-                                        savename=f"stamp_{zptim.path.name}" )
+                                        savename=f"stamp_{zptim.path.name}"
+                                      )
             zptim.free()
 
-            diffim = FITSImageOnDisk( sci_image.decorr_diff_path[ templ_image.image.name ] )
-            diff_stampname = stampmaker( self.diaobj.ra, self.diaobj.dec, np.array([100, 100]),
-                                        diffim,
-                                        savedir=self.dia_out_dir,
-                                        savename=f"stamp_{diffim.path.name}" )
+            diffim = CompressedFITSImage( filepath=sci_image.decorr_diff_path[ templ_image.image.name ] )
+            diff_stampname = stampmaker( 
+                                         ra=self.diaobj.ra,
+                                         dec=self.diaobj.dec,
+                                         shape=np.array([100, 100]),
+                                         img=diffim,
+                                         savedir=self.dia_out_dir,
+                                         savename=f"stamp_{diffim.path.name}"
+                                       )
             diffim.free()
 
-            diffvarim = FITSImageOnDisk( sci_image.diff_var_path[ templ_image.image.name ] )
-            diffvar_stampname = stampmaker( self.diaobj.ra, self.diaobj.dec, np.array([100, 100]),
-                                            diffvarim,
+            diffvarim = CompressedFITSImage( filepath=sci_image.diff_var_path[ templ_image.image.name ] )
+            diffvar_stampname = stampmaker( 
+                                            ra=self.diaobj.ra,
+                                            dec=self.diaobj.dec,
+                                            shape=np.array([100, 100]),
+                                            img=diffvarim,
                                             savedir=self.dia_out_dir,
-                                            savename=f"stamp_{diffvarim.path.name}" )
+                                            savename=f"stamp_{diffvarim.path.name}"
+                                           )
             diffvarim.free()
 
             SNLogger.info(f"Decorrelated diff stamp path: {pathlib.Path( diff_stampname )}")
@@ -718,13 +768,14 @@ class Pipeline:
                                                     {sci_image.image.sca} - \
                                                     {templ_image.image.pointing} \
                                                     {templ_image.image.sca}: {x} " )
-            self.failures['make_stamps'].append({'science': f'{sci_image.image.band} \
-                                                              {sci_image.image.pointing} \
-                                                              {sci_image.image.sca}',
-                                                 'template': f'{templ_image.image.band} \
-                                                               {templ_image.image.pointing} \
-                                                               {templ_image.image.sca}'
-                                                })
+            if self.catchfailures:
+                self.failures['make_stamps'].append({'science': f'{sci_image.image.band} \
+                                                                {sci_image.image.pointing} \
+                                                                {sci_image.image.sca}',
+                                                    'template': f'{templ_image.image.band} \
+                                                                {templ_image.image.pointing} \
+                                                                {templ_image.image.sca}'
+                                                    })
 
     def make_lightcurve( self ):
         """Collect all results from photometry in one dictionary.
@@ -785,13 +836,14 @@ class Pipeline:
                                                               {sci_image.image.sca} - \
                                                               {templ_image.image.pointing} \
                                                               {templ_image.image.sca}: {x}" )
-            self.failures['make_lightcurve'].append({'science': f'{sci_image.image.band} \
-                                                                  {sci_image.image.pointing} \
-                                                                  {sci_image.image.sca}',
-                                                     'template': f'{templ_image.image.band} \
-                                                                   {templ_image.image.pointing} \
-                                                                   {templ_image.image.sca}'
-                                                    })
+            if self.catchfailures:
+                self.failures['make_lightcurve'].append({'science': f'{sci_image.image.band} \
+                                                                    {sci_image.image.pointing} \
+                                                                    {sci_image.image.sca}',
+                                                        'template': f'{templ_image.image.band} \
+                                                                    {templ_image.image.pointing} \
+                                                                    {templ_image.image.sca}'
+                                                        })
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
@@ -801,8 +853,10 @@ class Pipeline:
                         pool.apply_async( self.make_phot_info_dict, (sci_image, templ_image), {},
                                           self.add_to_results_dict,
                                           error_callback=logerr_partial )
+                        SNLogger.debug( f"pool.apply async done for {sci_image.image.pointing} {sci_image.image.sca}" )
                 pool.close()
                 pool.join()
+                SNLogger.debug('Make phot info dict pool closed and joined.')
         else:
             for i, sci_image in enumerate( self.science_images ):
                 SNLogger.debug( f"Doing science image {i} of {len(self.science_images)}" )
@@ -810,13 +864,16 @@ class Pipeline:
                     self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
 
         if self.dbsave:
+            SNLogger.debug('About to get image provenance.')
             imgprov = Provenance.get_by_id( self.science_images[0].image.provenance_id, dbclient=self.dbclient )
+            SNLogger.debug('About to get object provenance.')
             objprov = Provenance.get_by_id( self.diaobj.provenance_id, dbclient=self.dbclient )
         
             phrosty_version = phrosty.__version__
             major = int(phrosty_version.split('.')[0])
             minor = int(phrosty_version.split('.')[1])
 
+            SNLogger.debug('About to make LC provenance.')
             ltcvprov = Provenance( process='phrosty',
                                     major=major, 
                                     minor=minor,
@@ -827,6 +884,7 @@ class Pipeline:
                                     )
 
             self.metadata['provenance_id'] = ltcvprov.id
+            SNLogger.debug('About to make LC object.')
             lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata)
             lc_obj.diaobj = self.diaobj
             lc_obj.provenance_object = ltcvprov
@@ -868,15 +926,16 @@ class Pipeline:
             Savepath for FITS file.
         """
 
-        try:
-            if header is not None:
-                hdr_dict = dict(header.items())
-            else:
-                hdr_dict = None
-            fitsio.write( savepath, data, header=hdr_dict, clobber=True )
-        except Exception as e:
-            SNLogger.exception( f"Exception writing FITS image {savepath}: {e}" )
-            raise
+        # try:
+        if header is not None:
+            hdr_dict = dict(header.items())
+        else:
+            hdr_dict = None
+
+        fitsio.write( savepath, data, header=hdr_dict, clobber=True )
+        # except Exception as e:
+        #     SNLogger.exception( f"Exception writing FITS image {savepath}: {e}" )
+        #     raise
 
     def clear_contents( self, directory ):
         """Delete contents of a directory. Used to clear temporary
@@ -1017,10 +1076,14 @@ class Pipeline:
                         SNLogger.info( "...align_and_preconvolve" )
                         with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
                             try:
-                                sfftifier = self.align_and_pre_convolve( templ_image, sci_image )
+                                sfftifier = self.align_and_pre_convolve( templ_image=templ_image,
+                                                                         sci_image=sci_image
+                                                                       )
                             except:
                                 i_failed = True
-                                self.failures['align_and_preconvolve'].append(fail_info)
+                                SNLogger.debug('Failure in align_and_preconvolve!')
+                                if self.catchfailures:
+                                    self.failures['align_and_preconvolve'].append(fail_info)
 
                     if 'subtract' in steps:
                         # After this step is done, two more fields in sfftifier are set:
@@ -1034,14 +1097,16 @@ class Pipeline:
                                 sfftifier.sfft_subtraction()
                             except:
                                 i_failed = True
-                                self.failures['subtract'].append(fail_info)
+                                SNLogger.debug('Failure in subtraction!')
+                                if self.catchfailures:
+                                    self.failures['subtract'].append(fail_info)
 
                     if 'find_decorrelation' in steps:
                         # This step does ...
                         # After it's done, the following fields of sfftifier are set:
                         #   Solution : CPU copy of Solution_GPU
                         #   FKDECO_GPU : result of PureCupy_Decorrelation_Calculator.PCDC
-                        # Get Lei to write documentation on P:ureCupy_DeCorrelation_Calculator
+                        # Get Lei to write documentation on PureCupy_DeCorrelation_Calculator
                         #   so we can figure out what this is, but I THINK it's a
                         #   kernel that is used to convolve with things to "decorrelate".
                         #   (From what?)
@@ -1054,7 +1119,9 @@ class Pipeline:
                                 sfftifier.find_decorrelation()
                             except:
                                 i_failed = True
-                                self.failures['find_decorrelation'].append(fail_info)
+                                SNLogger.debug('Failure in find_decorrelation!')
+                                if self.catchfailures:
+                                    self.failures['find_decorrelation'].append(fail_info)
 
                         SNLogger.info( "...generate variance image" )
                         with nvtx.annotate( "variance", color=0x44ccff ):
@@ -1064,7 +1131,9 @@ class Pipeline:
                                 diff_var_path = self.dia_out_dir / f"diff_var_{mess}"
                             except:
                                 i_failed = True
-                                self.failures['variance'].append(fail_info)
+                                SNLogger.debug('Failure in generate variance')
+                                if self.catchfailures:
+                                    self.failures['variance'].append(fail_info)
 
                     if 'apply_decorrelation' in steps and not i_failed:
                         try:
@@ -1080,10 +1149,25 @@ class Pipeline:
                             headers =   [ sfftifier.hdr_target,       sfftifier.hdr_target,
                                         sfftifier.hdr_target,       None ]
 
-                            for img, savepath, hdr in zip( images, savepaths, headers ):
+                            # import pdb; pdb.set_trace()
+                            import matplotlib.pyplot as plt
+                            from astropy.visualization import MinMaxInterval, ZScaleInterval
+                            fig, ax = plt.subplots(1, 4, figsize=(15,5))
+
+                            for i, (img, savepath, hdr) in enumerate(zip( images, savepaths, headers )):
                                 with nvtx.annotate( "apply_decor", color=0xccccff ):
                                     SNLogger.info( f"...apply_decor to {savepath}" )
                                     decorimg = sfftifier.apply_decorrelation( img )
+                                    norm = ZScaleInterval().get_limits(cp.asnumpy(decorimg))
+
+                                    if 'decorr_psf_' in str(savepath):
+                                        decorimg /= np.sum(decorimg)
+                                        norm = MinMaxInterval().get_limits(cp.asnumpy(decorimg))
+
+                                    ax[i].imshow(cp.asnumpy(decorimg), origin='lower', vmin=norm[0], vmax=norm[1])
+                                    ax[i].set_title(str(savepath).split('/')[-1])
+
+
                                 with nvtx.annotate( "submit writefits", color=0xff8888 ):
                                     SNLogger.info( f"...writefits {savepath}" )
                                     fits_writer_pool.apply_async( self.write_fits_file,
@@ -1093,9 +1177,35 @@ class Pipeline:
                             sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
                             sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
                             sci_image.diff_var_path[ templ_image.image.name ] = diff_var_path
+
+                            plt.tight_layout()
+                            plt.savefig('/home/apply_decor.pdf', format='pdf')
+                            plt.close()
+
+                            fig, ax = plt.subplots(1, 3, figsize=(5,5))
+                            PSF_target_GPU = cp.asnumpy(sfftifier.PSF_target_GPU)
+                            PSF_object_GPU = cp.asnumpy(sfftifier.PSF_object_GPU)
+                            PSF_resamp_object_GPU = cp.asnumpy(sfftifier.PSF_resamp_object_GPU)
+
+                            norm = MinMaxInterval().get_limits(PSF_target_GPU)
+
+                            ax[0].imshow(PSF_target_GPU, origin='lower', vmin=norm[0], vmax=norm[1])
+                            ax[1].imshow(PSF_object_GPU, origin='lower', vmin=norm[0], vmax=norm[1])
+                            ax[2].imshow(PSF_resamp_object_GPU, origin='lower', vmin=norm[0], vmax=norm[1])
+
+                            ax[0].set_title('PSF_target_GPU')
+                            ax[1].set_title('PSF_object_GPU')
+                            ax[2].set_title('PSF_resamp_object_GPU')
+
+                            plt.tight_layout()
+                            plt.savefig('/home/orig_psfs.pdf', format='pdf')
+                            plt.close()
+
                         except:
                             i_failed = True
-                            self.failures['apply_decorrelation'].append(fail_info)
+                            SNLogger.debug( "Failure in apply_decorrelation!" )
+                            if self.catchfailures:
+                                self.failures['apply_decorrelation'].append(fail_info)
 
                     if self.keep_intermediate and not i_failed:
                         # Each key is the file prefix addition.
@@ -1115,7 +1225,7 @@ class Pipeline:
                                                          sfftifier.hdr_target],
                                                        ['psf',
                                                         f'{templ_image.image.name}_-_{sci_image.image.name}.fits',
-                                                        cp.asnumpy(sfftifier.PSF_resamp_object_GPU.T),
+                                                        cp.asnumpy(sfftifier.PSF_target_GPU.T),
                                                         sfftifier.hdr_target],
                                                        ['detmask',
                                                         f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
@@ -1136,11 +1246,15 @@ class Pipeline:
                                                         cp.asnumpy(sfftifier.PixA_DIFF_GPU.T),
                                                         sfftifier.hdr_target]
                                                        ],
-                                           'decorr':   [['kernel',
-                                                        f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                                        cp.asnumpy(sfftifier.FKDECO_GPU.T),
-                                                        sfftifier.hdr_target]
-                                                       ]
+                                        # LNA 20251121: Lei says the decorrelation kernel is not a useful intermediate
+                                        # product, so I am commenting this out for now in light of the issues we
+                                        # encountered with saving complex arrays with fitsio. He says we can save the
+                                        # norm if we want, so that's why np.linalg.norm() is in there below.
+                                        #    'decorr':   [['kernel',
+                                        #                 f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
+                                        #                 np.array(np.linalg.norm(cp.asnumpy(sfftifier.FKDECO_GPU.T))),
+                                        #                 sfftifier.hdr_target]
+                                        #                ]
                                           }
                         # Write the aligned images
                         for key in write_filepaths.keys():
@@ -1174,13 +1288,14 @@ class Pipeline:
                                                             {sci_image.image.sca} - \
                                                             {templ_image.image.pointing} \
                                                             {templ_image.image.sca}: {x} " )
-                    self.failures['make_stamps'].append({'science': f'{sci_image.image.band} \
-                                                                      {sci_image.image.pointing} \
-                                                                      {sci_image.image.sca}',
-                                                         'template': f'{templ_image.image.band} \
-                                                                       {templ_image.image.pointing} \
-                                                                       {templ_image.image.sca}'
-                                                        })
+                    if self.catchfailures:
+                        self.failures['make_stamps'].append({'science': f'{sci_image.image.band} \
+                                                                        {sci_image.image.pointing} \
+                                                                        {sci_image.image.sca}',
+                                                            'template': f'{templ_image.image.band} \
+                                                                        {templ_image.image.pointing} \
+                                                                        {templ_image.image.sca}'
+                                                            })
 
                 partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
                 # template path, savedir, savename
@@ -1224,6 +1339,32 @@ class Pipeline:
             with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
                 lightcurve_path = self.make_lightcurve()
 
+                # Debugging stuff below for checking phot location...
+                import matplotlib.pyplot as plt
+                from astropy.visualization import MinMaxInterval
+
+                check_image = self.science_images[0]
+                check_templ = self.template_images[0]
+                check_diff_path = check_image.diff_stamp_path[ check_templ.image.name ]
+                check_diff = fitsio.FITS(check_diff_path)
+                check_image_data = check_diff[0].read()
+
+                fig, ax = plt.subplots(nrows=1, ncols=4, figsize=(15, 5))
+                norm = MinMaxInterval().get_limits(check_image_data)
+                ax[0].imshow(check_image_data, origin='lower', vmin=norm[0], vmax=norm[1])
+                ax[1].imshow(check_image_data - self.resid_img, origin='lower', vmin=norm[0], vmax=norm[1])
+                ax[2].imshow(check_image.psf_data, origin='lower')
+                im = ax[3].imshow(self.resid_img, origin='lower', vmin=norm[0], vmax=norm[1])
+                ax[0].set_title('Decorr diff')
+                ax[1].set_title('Decorr PSF')
+                ax[2].set_title('True PSF')
+                ax[3].set_title('Decorr diff - Decorr PSF')
+                ax[2].set_xlim(-25,75)
+                ax[2].set_ylim(-25,75)
+                plt.tight_layout()
+
+                plt.savefig('/home/psf_gaussian_resids.pdf', format='pdf')
+
         if self.mem_trace:
             SNLogger.info( f"After make_lightcurve, memory usage = \
                             {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
@@ -1231,11 +1372,11 @@ class Pipeline:
         if self.remove_temp_dir:
             self.clear_contents( self.temp_dir )
 
-        if np.sum( [len(x) for x in self.failures.values()] ) > 0:
-            SNLogger.info( f"There were some failures here! They were:\n{self.failures}" )
-
-        else:
-            SNLogger.info( f"No failures here! Fail list:\n{self.failures}" )
+        if self.catchfailures:
+            if np.sum( [len(x) for x in self.failures.values()] ) > 0:
+                SNLogger.info( f"There were some failures here! They were:\n{self.failures}" )
+            else:
+                SNLogger.info( f"No failures here! Fail list:\n{self.failures}" )
 
         if lightcurve_path is None:
             SNLogger.info( f"Light curves saved to database!" )
@@ -1283,6 +1424,10 @@ def main():
                          help="Toggle saving to the database." )
     parser.add_argument( '--memtrace', action='store_true',
                          help="Toggle memory tracing with tracemalloc.")
+    parser.add_argument( '--catchfailures', action='store_true',
+                         help="Toggle failure collection. If true, pipeline does not \
+                               cancel if one image fails. If false, pipeline crashes if \
+                               one image fails (useful for debugging)." )
 
     # Object collections
     parser.add_argument( '-oc', '--object-collection', default='snpitdb',
@@ -1421,7 +1566,8 @@ def main():
                          nprocs=args.nprocs,
                          nwrite=args.nwrite,
                          verbose=args.verbose,
-                         memtrace=args.memtrace )
+                         memtrace=args.memtrace,
+                         catchfailures=args.catchfailures )
 
     pipeline( args.through_step )
 

@@ -31,7 +31,7 @@ def sky_subtract( img, temp_dir=None ):
 
     Returns
     -------
-      skysubim: snappl.image.FITSImageOnDisk, detmask: snappl.image.FITSImageOnDisk, skyrms: float
+      skysubim: snappl.image.CompressedFITSImage, detmask: snappl.image.CompressedFITSImage, skyrms: float
 
          skysubim is the sky-subtracted image.  Its location on disk
          will be underneath temp_dir. It's the caller's responsibility
@@ -51,7 +51,7 @@ def sky_subtract( img, temp_dir=None ):
 
     # SEx_SkySubtract.SSS requires FITS files to chew on.  At some point
     # we should refactor this so that we can pass data to it.  However,
-    # for now, write a snappl.image.FITSImageOnDisk so we have something
+    # for now, write a snappl.image.CompressedFITSImage so we have something
     # to give to it.
 
     temp_dir = pathlib.Path( temp_dir if temp_dir is not None else Config.get().value( 'photometry.snappl.temp_dir' ) )
@@ -62,9 +62,16 @@ def sky_subtract( img, temp_dir=None ):
 
     origimg = img
     try:
-        if isinstance( origimg, snappl.image.FITSImageOnDisk ):
+        if isinstance( origimg, snappl.image.CompressedFITSImage ):
             img = origimg.uncompressed_version( include=['data'] )
         else:
+            # TODO, MAYBE MAKE THIS BETTER WHEN SNAPPL SUPPORTS MORE THINGS
+            # We need to exract just the image data (not the noise or flags)
+            # to send to image subtraction.
+            # Lauren, make an issue about this, mauybe also a snappl image
+            # that says that we need a way of making imgaes from other
+            # images including only data... compressedfitsimage supports
+            # that right now but not fitsimage).
             # Can take out header arg when snappl issue #77 is resolved.
             img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
             img.data = origimg.data
@@ -149,7 +156,7 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None):
     # Give Stamp_Generator.SG a FITS image to chew on
     origimg = img
     try:
-        if isinstance( origimg, snappl.image.FITSImageOnDisk ):
+        if isinstance( origimg, snappl.image.CompressedFITSImage ):
             img = origimg.uncompressed_version( include=['data'] )
         else:
             barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
