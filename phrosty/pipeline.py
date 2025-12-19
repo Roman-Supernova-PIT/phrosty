@@ -1143,7 +1143,7 @@ class Pipeline:
                             decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
 
                             images =    [ sfftifier.PixA_DIFF_GPU,    diff_var,
-                                        sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_target_GPU ]
+                                        sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_Ctarget_GPU ]
                             savepaths = [ decorr_diff_path,           diff_var_path,
                                         decorr_zptimg_path,         decorr_psf_path ]
                             headers =   [ sfftifier.hdr_target,       sfftifier.hdr_target,
