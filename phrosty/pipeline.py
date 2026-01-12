@@ -340,7 +340,7 @@ class Pipeline:
         self.mem_trace = memtrace
 
         # Debug LNA 20251202
-        self.resid_img = None
+        # self.resid_img = None
 
     def _read_csv( self, csvfile ):
         """Reads input csv files with columns:
@@ -541,7 +541,7 @@ class Pipeline:
                               psf=psf,
                               forced_phot=True 
                             )
-        self.resid_img = img.resid_img
+        # self.resid_img = img.resid_img
 
         flux = final['flux_fit'][0]
         flux_err = final['flux_err'][0]
@@ -874,14 +874,14 @@ class Pipeline:
             minor = int(phrosty_version.split('.')[1])
 
             SNLogger.debug('About to make LC provenance.')
-            ltcvprov = Provenance( process='phrosty',
+            ltcvprov = Provenance(  process='phrosty',
                                     major=major, 
                                     minor=minor,
                                     params=Config.get(),
                                     keepkeys=[ 'photometry.phrosty' ],
                                     omitkeys=None,
                                     upstreams=[imgprov, objprov],
-                                    )
+                                  )
 
             self.metadata['provenance_id'] = ltcvprov.id
             SNLogger.debug('About to make LC object.')
@@ -905,7 +905,7 @@ class Pipeline:
             else:
                 save_basename = str(self.oid)
 
-            filepath = pathlib.Path(f'data/{self.oid}/{save_basename}.pq')
+            filepath = pathlib.Path(f'data/{self.oid}/{save_basename}_{self.metadata["band"]}.pq')
             results_savepath = f'{self.ltcv_dir}/{filepath}'
             lc_obj.write( base_dir=self.ltcv_dir, filepath=filepath, overwrite=True)
 
@@ -1149,7 +1149,6 @@ class Pipeline:
                             headers =   [ sfftifier.hdr_target,       sfftifier.hdr_target,
                                         sfftifier.hdr_target,       None ]
 
-                            # import pdb; pdb.set_trace()
                             import matplotlib.pyplot as plt
                             from astropy.visualization import MinMaxInterval, ZScaleInterval
                             fig, ax = plt.subplots(1, 4, figsize=(15,5))
@@ -1158,15 +1157,6 @@ class Pipeline:
                                 with nvtx.annotate( "apply_decor", color=0xccccff ):
                                     SNLogger.info( f"...apply_decor to {savepath}" )
                                     decorimg = sfftifier.apply_decorrelation( img )
-                                    norm = ZScaleInterval().get_limits(cp.asnumpy(decorimg))
-
-                                    if 'decorr_psf_' in str(savepath):
-                                        decorimg /= np.sum(decorimg)
-                                        norm = MinMaxInterval().get_limits(cp.asnumpy(decorimg))
-
-                                    ax[i].imshow(cp.asnumpy(decorimg), origin='lower', vmin=norm[0], vmax=norm[1])
-                                    ax[i].set_title(str(savepath).split('/')[-1])
-
 
                                 with nvtx.annotate( "submit writefits", color=0xff8888 ):
                                     SNLogger.info( f"...writefits {savepath}" )
@@ -1177,29 +1167,6 @@ class Pipeline:
                             sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
                             sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
                             sci_image.diff_var_path[ templ_image.image.name ] = diff_var_path
-
-                            plt.tight_layout()
-                            plt.savefig('/home/apply_decor.pdf', format='pdf')
-                            plt.close()
-
-                            fig, ax = plt.subplots(1, 3, figsize=(5,5))
-                            PSF_target_GPU = cp.asnumpy(sfftifier.PSF_target_GPU)
-                            PSF_object_GPU = cp.asnumpy(sfftifier.PSF_object_GPU)
-                            PSF_resamp_object_GPU = cp.asnumpy(sfftifier.PSF_resamp_object_GPU)
-
-                            norm = MinMaxInterval().get_limits(PSF_target_GPU)
-
-                            ax[0].imshow(PSF_target_GPU, origin='lower', vmin=norm[0], vmax=norm[1])
-                            ax[1].imshow(PSF_object_GPU, origin='lower', vmin=norm[0], vmax=norm[1])
-                            ax[2].imshow(PSF_resamp_object_GPU, origin='lower', vmin=norm[0], vmax=norm[1])
-
-                            ax[0].set_title('PSF_target_GPU')
-                            ax[1].set_title('PSF_object_GPU')
-                            ax[2].set_title('PSF_resamp_object_GPU')
-
-                            plt.tight_layout()
-                            plt.savefig('/home/orig_psfs.pdf', format='pdf')
-                            plt.close()
 
                         except:
                             i_failed = True
@@ -1340,30 +1307,30 @@ class Pipeline:
                 lightcurve_path = self.make_lightcurve()
 
                 # Debugging stuff below for checking phot location...
-                import matplotlib.pyplot as plt
-                from astropy.visualization import MinMaxInterval
+                # import matplotlib.pyplot as plt
+                # from astropy.visualization import MinMaxInterval
 
-                check_image = self.science_images[0]
-                check_templ = self.template_images[0]
-                check_diff_path = check_image.diff_stamp_path[ check_templ.image.name ]
-                check_diff = fitsio.FITS(check_diff_path)
-                check_image_data = check_diff[0].read()
+                # check_image = self.science_images[0]
+                # check_templ = self.template_images[0]
+                # check_diff_path = check_image.diff_stamp_path[ check_templ.image.name ]
+                # check_diff = fitsio.FITS(check_diff_path)
+                # check_image_data = check_diff[0].read()
 
-                fig, ax = plt.subplots(nrows=1, ncols=4, figsize=(15, 5))
-                norm = MinMaxInterval().get_limits(check_image_data)
-                ax[0].imshow(check_image_data, origin='lower', vmin=norm[0], vmax=norm[1])
-                ax[1].imshow(check_image_data - self.resid_img, origin='lower', vmin=norm[0], vmax=norm[1])
-                ax[2].imshow(check_image.psf_data, origin='lower')
-                im = ax[3].imshow(self.resid_img, origin='lower', vmin=norm[0], vmax=norm[1])
-                ax[0].set_title('Decorr diff')
-                ax[1].set_title('Decorr PSF')
-                ax[2].set_title('True PSF')
-                ax[3].set_title('Decorr diff - Decorr PSF')
-                ax[2].set_xlim(-25,75)
-                ax[2].set_ylim(-25,75)
-                plt.tight_layout()
+                # fig, ax = plt.subplots(nrows=1, ncols=4, figsize=(15, 5))
+                # norm = MinMaxInterval().get_limits(check_image_data)
+                # ax[0].imshow(check_image_data, origin='lower', vmin=norm[0], vmax=norm[1])
+                # ax[1].imshow(check_image_data - self.resid_img, origin='lower', vmin=norm[0], vmax=norm[1])
+                # ax[2].imshow(check_image.psf_data, origin='lower')
+                # im = ax[3].imshow(self.resid_img, origin='lower', vmin=norm[0], vmax=norm[1])
+                # ax[0].set_title('Decorr diff')
+                # ax[1].set_title('Decorr PSF')
+                # ax[2].set_title('True PSF')
+                # ax[3].set_title('Decorr diff - Decorr PSF')
+                # ax[2].set_xlim(-25,75)
+                # ax[2].set_ylim(-25,75)
+                # plt.tight_layout()
 
-                plt.savefig('/home/psf_gaussian_resids.pdf', format='pdf')
+                # plt.savefig('/home/psf_gaussian_resids.pdf', format='pdf')
 
         if self.mem_trace:
             SNLogger.info( f"After make_lightcurve, memory usage = \
