@@ -25,14 +25,14 @@ def test_pipeline_run_simple_gauss1( config ):
     #                                          base_path='/photometry_test_data/simple_gaussian_test/sig1.0' )
     imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
                                              base_path='/photometry_test_data/simple_gaussian_test/sig2.0' )
-    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
-    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60000, 60065, 5 ) ]
+
+    # Use for longer test with full "lightcurve" and two templates:
     # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
     # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
-    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
-    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60025, 60035, 5 ) ]
-    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
-    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60035 ] ]
+ 
+    # Use for shorter test with only two "observations":
+    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
+    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60030, 60035 ] ]
 
     # We have to muck about with the config, because the default config loaded for tests is
     #   set up for ou2024.  We're going to do naughty things we're not supposed to do,
@@ -51,7 +51,7 @@ def test_pipeline_run_simple_gauss1( config ):
 
         pip = Pipeline( obj, imgcol, 'R062', science_images=sciim, template_images=tmplim, nprocs=1, nwrite=1, catchfailures=False )
         ltcv = pip()
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         chisq = 0.
         apchisq = 0.
         truemjd = []
