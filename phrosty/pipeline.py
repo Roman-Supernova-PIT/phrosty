@@ -163,6 +163,7 @@ class PipelineImage:
         if self.psfobj is None:
             psftype = self.config.value( 'photometry.phrosty.psf.type' )
             psfparams = self.config.value( 'photometry.phrosty.psf.params' )
+            # import pdb; pdb.set_trace()
             self.psfobj = PSF.get_psf_object( psftype, x=x, y=y,
                                               band=self.image.band,
                                               pointing=self.image.pointing,
@@ -466,6 +467,7 @@ class Pipeline:
         hdr_sci.insert( 'NAXIS1', ('NAXIS2', sci_image.image.data.shape[0] ), after=True )
         data_sci = cp.array( np.ascontiguousarray(sci_image.image.data.T), dtype=cp.float64 )
         noise_sci = cp.array( np.ascontiguousarray(sci_image.image.noise.T), dtype=cp.float64 )
+        var_sci = noise_sci ** 2
 
         hdr_templ = templ_image.image.get_wcs().get_astropy_wcs().to_header( relax=True )
         hdr_templ.insert( 0, ('NAXIS', 2) )
@@ -473,6 +475,7 @@ class Pipeline:
         hdr_templ.insert( 'NAXIS1', ('NAXIS2', templ_image.image.data.shape[0] ), after=True )
         data_templ = cp.array( np.ascontiguousarray(templ_image.image.data.T), dtype=cp.float64 )
         noise_templ = cp.array( np.ascontiguousarray(templ_image.image.noise.T), dtype=cp.float64 )
+        var_templ = noise_templ ** 2
 
         sci_psf = cp.ascontiguousarray( cp.array( sci_image.psf_data.T, dtype=cp.float64 ) )
         templ_psf = cp.ascontiguousarray( cp.array( templ_image.psf_data.T, dtype=cp.float64 ) )
@@ -487,8 +490,8 @@ class Pipeline:
                                         object_skyrms=templ_image.skyrms,
                                         PixA_target_GPU=data_sci,
                                         PixA_object_GPU=data_templ,
-                                        PixA_targetVar_GPU=noise_sci,
-                                        PixA_objectVar_GPU=noise_templ,
+                                        PixA_targetVar_GPU=var_sci,
+                                        PixA_objectVar_GPU=var_templ,
                                         PixA_target_DMASK_GPU=sci_detmask,
                                         PixA_object_DMASK_GPU=templ_detmask,
                                         PSF_target_GPU=sci_psf,
@@ -620,7 +623,8 @@ class Pipeline:
             diff_img.get_data( which='data', cache=True )
             diff_img.get_data( which='noise', cache=True )
             # The thing written to disk was actually variance, so fix that
-            diff_img.noise = np.sqrt( diff_img.noise )
+            # import pdb; pdb.set_trace()
+            diff_img.noise = np.sqrt( diff_img.noise)
             psf_img.get_data( which='data', cache=True )
         except Exception:
             # TODO : change this to a more specific exception
@@ -1126,6 +1130,7 @@ class Pipeline:
                         SNLogger.info( "...generate variance image" )
                         with nvtx.annotate( "variance", color=0x44ccff ):
                             try:
+                                # import pdb; pdb.set_trace()
                                 diff_var = sfftifier.create_variance_image()
                                 mess = f"{sci_image.image.name}-{templ_image.image.name}"
                                 diff_var_path = self.dia_out_dir / f"diff_var_{mess}"
@@ -1213,15 +1218,23 @@ class Pipeline:
                                                         cp.asnumpy(sfftifier.PixA_DIFF_GPU.T),
                                                         sfftifier.hdr_target]
                                                        ],
-                                        # LNA 20251121: Lei says the decorrelation kernel is not a useful intermediate
-                                        # product, so I am commenting this out for now in light of the issues we
-                                        # encountered with saving complex arrays with fitsio. He says we can save the
-                                        # norm if we want, so that's why np.linalg.norm() is in there below.
-                                        #    'decorr':   [['kernel',
-                                        #                 f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                        #                 np.array(np.linalg.norm(cp.asnumpy(sfftifier.FKDECO_GPU.T))),
-                                        #                 sfftifier.hdr_target]
-                                        #                ]
+                                           'match_kernel': [['img',
+                                                             f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
+                                                                cp.asnumpy(sfftifier.MATCH_KERNEL.T),
+                                                                sfftifier.hdr_target]
+                                                            ],
+                                        # LNA 20260131: There are issues with saving complex arrays using fitsio.
+                                        #               But the imaginary part of the decorrelation kernel is real.
+                                        #               Don't worry about it.
+                                           'decorr':   [['kernel_real',
+                                                        f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
+                                                        cp.asnumpy(sfftifier.FKDECO_GPU.T).real,
+                                                        sfftifier.hdr_target],
+                                                        ['kernel_imag',
+                                                        f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
+                                                        cp.asnumpy(sfftifier.FKDECO_GPU.T).imag,
+                                                        sfftifier.hdr_target],
+                                                       ]
                                           }
                         # Write the aligned images
                         for key in write_filepaths.keys():
@@ -1304,6 +1317,7 @@ class Pipeline:
         lightcurve_path = None
         if 'make_lightcurve' in steps and not i_failed:
             with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
+                # import pdb; pdb.set_trace()
                 lightcurve_path = self.make_lightcurve()
 
                 # Debugging stuff below for checking phot location...
