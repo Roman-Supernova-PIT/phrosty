@@ -163,10 +163,9 @@ class PipelineImage:
         if self.psfobj is None:
             psftype = self.config.value( 'photometry.phrosty.psf.type' )
             psfparams = self.config.value( 'photometry.phrosty.psf.params' )
-            # import pdb; pdb.set_trace()
             self.psfobj = PSF.get_psf_object( psftype, x=x, y=y,
                                               band=self.image.band,
-                                              pointing=self.image.pointing,
+                                              observation_id=self.image.observation_id,
                                               sca=self.image.sca,
                                               **psfparams )
 
@@ -238,7 +237,7 @@ class Pipeline:
            science_csv: Path or str
              CSV file with the science images.  The first line must be::
 
-               path pointing sca mjd band
+               path observation_id sca mjd band
 
              subsequent lines must have that information for all the
              science images.  path must be relative to ou24.images in
@@ -343,9 +342,12 @@ class Pipeline:
         # Debug LNA 20251202
         # self.resid_img = None
 
+        # Debug LNA20260225
+        # self.aperture = None
+
     def _read_csv( self, csvfile ):
         """Reads input csv files with columns:
-        'path pointing sca mjd band'.
+        'path observation_id sca mjd band'.
 
         Parameters
         ----------
@@ -360,19 +362,19 @@ class Pipeline:
         ------
         ValueError
             If the first line of the csv file doesn't match
-            'path pointing sca mjd band', a ValueError is raised.
+            'path observation_id sca mjd band', a ValueError is raised.
         """
 
         imlist = []
         with open( csvfile ) as ifp:
             hdrline = ifp.readline()
-            if not re.search( r"^\s*path\s+pointing\s+sca\s+mjd\s+band\s*$", hdrline ):
+            if not re.search( r"^\s*path\s+observation_id\s+sca\s+mjd\s+band\s*$", hdrline ):
                 raise ValueError( f"First line of list file {csvfile} didn't match what was expected." )
             for line in ifp:
-                path, pointing, sca, _mjd, band = line.split()
+                path, observation_id, sca, _mjd, band = line.split()
                 if band == self.band:
-                    # This should yell at us if the pointing or sca doesn't match what is read from the path
-                    imlist.append( self.imgcol.get_image( path=path, pointing=pointing, sca=sca, band=band ) )
+                    # This should yell at us if the observation_id or sca doesn't match what is read from the path
+                    imlist.append( self.imgcol.get_image( path=path, observation_id=observation_id, sca=sca, band=band ) )
         return imlist
 
 
@@ -436,7 +438,7 @@ class Pipeline:
                                 # (for example, if the file does not exist)
                     if self.catchfailures:
                         self.failures['get_psf'].append(f"{img.image.band} \
-                                                        {img.image.pointing} \
+                                                        {img.image.observation_id} \
                                                         {img.image.sca}"
                                                     )
 
@@ -544,6 +546,11 @@ class Pipeline:
                               psf=psf,
                               forced_phot=True 
                             )
+
+        # Debug LNA 20250225
+        # self.aperture = img.apertures
+
+        # Debug LNA 20251202
         # self.resid_img = img.resid_img
 
         flux = final['flux_fit'][0]
@@ -581,7 +588,7 @@ class Pipeline:
         -------
           results_dict: dict
             Dictionary with keys sci_name, templ_name, success, ra,
-            dec, mjd, band, pointing, sca, template_pointing,
+            dec, mjd, band, observation_id, sca, template_observation_id,
             template_sca, zpt, aperture_sum, flux_fit, flux_fit_err,
             mag_fit, and mag_fit_err.
 
@@ -590,6 +597,7 @@ class Pipeline:
         # Do photometry on stamp because it will read faster.
         # (We hope.  But CFS latency will kill you at 1 byte.)
         SNLogger.debug( "...make_phot_info_dict reading stamp and psf" )
+        print('Path for diff_var_stamp_path in make_phot_info_dict RIGHT BEFORE we reopen the file', sci_image.diff_var_stamp_path[ templ_image.image.name ])
         diff_img = CompressedFITSImage( filepath=sci_image.diff_stamp_path[ templ_image.image.name ],
                                         noisepath=sci_image.diff_var_stamp_path[ templ_image.image.name ]
                                       )
@@ -597,16 +605,16 @@ class Pipeline:
 
         # Required results keys
         req_results_keys = ['mjd', 'flux', 'flux_err', 'zpt', 'NEA', 'sky_rms',
-                            'pointing', 'sca', 'pix_x', 'pix_y']
+                            'observation_id', 'sca', 'pix_x', 'pix_y']
         phrosty_results_keys = ['science_name', 'template_name',
                                 'science_id', 'template_id',
-                                'template_pointing', 'template_sca',
+                                'template_observation_id', 'template_sca',
                                 'aperture_sum', 'mag', 'mag_err', 'success']
 
         results_keys = req_results_keys + phrosty_results_keys
         results_dict = {key: np.nan for key in results_keys}
         results_dict['mjd'] = sci_image.image.mjd
-        results_dict['pointing'] = sci_image.image.pointing
+        results_dict['observation_id'] = sci_image.image.observation_id
         results_dict['sca'] = sci_image.image.sca
 
         # Additional phrosty keys
@@ -614,7 +622,7 @@ class Pipeline:
         results_dict['template_name'] = templ_image.image.name
         results_dict['science_id'] = str(sci_image.image.id)
         results_dict['template_id'] = str(templ_image.image.id)
-        results_dict['template_pointing'] = templ_image.image.pointing
+        results_dict['template_observation_id'] = templ_image.image.observation_id
         results_dict['template_sca'] = templ_image.image.sca
         results_dict['success'] = False
 
@@ -623,14 +631,14 @@ class Pipeline:
             diff_img.get_data( which='data', cache=True )
             diff_img.get_data( which='noise', cache=True )
             # The thing written to disk was actually variance, so fix that
-            # import pdb; pdb.set_trace()
-            diff_img.noise = np.sqrt( diff_img.noise)
+            print(f"Minimum value of variance diff_img.noise AFTER reopening the file:", np.min(diff_img.noise))
+            diff_img.noise = np.sqrt( diff_img.noise )
             psf_img.get_data( which='data', cache=True )
         except Exception:
             # TODO : change this to a more specific exception
             SNLogger.warning( f"Post-processed image files for "
-                              f"{self.band}_{sci_image.image.pointing}_{sci_image.image.sca}-"
-                              f"{self.band}_{templ_image.image.pointing}_{templ_image.image.sca} "
+                              f"{self.band}_{sci_image.image.observation_id}_{sci_image.image.sca}-"
+                              f"{self.band}_{templ_image.image.observation_id}_{templ_image.image.sca} "
                               f"do not exist.  Skipping." )
             # results_dict['ap_zpt'] = np.nan
 
@@ -674,16 +682,16 @@ class Pipeline:
             SNLogger.debug( "Failure in make_lightcurve!" )
             if self.catchfailures:
                 self.failures['make_lightcurve'].append({'science': f"{one_pair['band']} \
-                                                                    {one_pair['pointing']} \
+                                                                    {one_pair['observation_id']} \
                                                                     {one_pair['sca']}",
                                                         'template': f"{one_pair['band']} \
-                                                                    {one_pair['template_pointing']} \
+                                                                    {one_pair['template_observation_id']} \
                                                                     {one_pair['template_sca']}"
                                                         })
 
         SNLogger.debug( "Done adding to results dict" )
         if self.mem_trace:
-            SNLogger.info( f"After adding to results dict for {one_pair['pointing']} {one_pair['sca']}, memory usage = \
+            SNLogger.info( f"After adding to results dict for {one_pair['observation_id']} {one_pair['sca']}, memory usage = \
                             {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
 
@@ -705,6 +713,8 @@ class Pipeline:
         """
         sci_image.zpt_stamp_path[ templ_image.image.name ] = paths[0]
         sci_image.diff_stamp_path[ templ_image.image.name ] = paths[1]
+        print('diff_var_stamp_path from when we SAVE THE STAMP PATHS', paths[2])
+
         sci_image.diff_var_stamp_path[ templ_image.image.name ] = paths[2]
 
     def do_stamps( self, sci_image, templ_image ):
@@ -750,7 +760,9 @@ class Pipeline:
                                        )
             diffim.free()
 
+            print('Path that stampmaker is opening', sci_image.diff_var_path[ templ_image.image.name ] )
             diffvarim = CompressedFITSImage( filepath=sci_image.diff_var_path[ templ_image.image.name ] )
+            print('Minimum value that is in the full-frame image that stampmaker opens:', np.min(diffvarim.data))
             diffvar_stampname = stampmaker( 
                                             ra=self.diaobj.ra,
                                             dec=self.diaobj.dec,
@@ -768,16 +780,16 @@ class Pipeline:
             return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname ), pathlib.Path( diffvar_stampname )
 
         except:
-            SNLogger.error( f"do_stamps failure for {sci_image.image.pointing} \
+            SNLogger.error( f"do_stamps failure for {sci_image.image.observation_id} \
                                                     {sci_image.image.sca} - \
-                                                    {templ_image.image.pointing} \
+                                                    {templ_image.image.observation_id} \
                                                     {templ_image.image.sca}: {x} " )
             if self.catchfailures:
                 self.failures['make_stamps'].append({'science': f'{sci_image.image.band} \
-                                                                {sci_image.image.pointing} \
+                                                                {sci_image.image.observation_id} \
                                                                 {sci_image.image.sca}',
                                                     'template': f'{templ_image.image.band} \
-                                                                {templ_image.image.pointing} \
+                                                                {templ_image.image.observation_id} \
                                                                 {templ_image.image.sca}'
                                                     })
 
@@ -817,7 +829,7 @@ class Pipeline:
             'zpt': [],  # AB mag of object is m = -2.5 * log(flux) + zpt, float
             'NEA': [],  # px^2, float
             'sky_rms': [],  # DN/s, float
-            'pointing': [],  # int/string, temporary name
+            'observation_id': [],  # int/string, temporary name
             'sca': [],  # int
             'pix_x': [],  # x-position of SN on detector w/ 0-offset, float
             'pix_y': [],  # y-position of SN on detector w/ 0-offset, float
@@ -827,7 +839,7 @@ class Pipeline:
             'template_name': [],
             'science_id': [],
             'template_id': [],
-            'template_pointing': [],
+            'template_observation_id': [],
             'template_sca': [],
             'aperture_sum': [],
             'mag': [],
@@ -836,16 +848,16 @@ class Pipeline:
         }
 
         def log_error( sci_image, templ_image, x ):
-            SNLogger.error( f"make_phot_info_dict failure for {sci_image.image.pointing} \
+            SNLogger.error( f"make_phot_info_dict failure for {sci_image.image.observation_id} \
                                                               {sci_image.image.sca} - \
-                                                              {templ_image.image.pointing} \
+                                                              {templ_image.image.observation_id} \
                                                               {templ_image.image.sca}: {x}" )
             if self.catchfailures:
                 self.failures['make_lightcurve'].append({'science': f'{sci_image.image.band} \
-                                                                    {sci_image.image.pointing} \
+                                                                    {sci_image.image.observation_id} \
                                                                     {sci_image.image.sca}',
                                                         'template': f'{templ_image.image.band} \
-                                                                    {templ_image.image.pointing} \
+                                                                    {templ_image.image.observation_id} \
                                                                     {templ_image.image.sca}'
                                                         })
 
@@ -857,7 +869,7 @@ class Pipeline:
                         pool.apply_async( self.make_phot_info_dict, (sci_image, templ_image), {},
                                           self.add_to_results_dict,
                                           error_callback=logerr_partial )
-                        SNLogger.debug( f"pool.apply async done for {sci_image.image.pointing} {sci_image.image.sca}" )
+                        SNLogger.debug( f"pool.apply async done for {sci_image.image.observation_id} {sci_image.image.sca}" )
                 pool.close()
                 pool.join()
                 SNLogger.debug('Make phot info dict pool closed and joined.')
@@ -1037,10 +1049,10 @@ class Pipeline:
                     SNLogger.info( f"Processing {sci_image.image.name} minus {templ_image.image.name}" )
                     sfftifier = None
                     fail_info = {'science': f'{sci_image.image.band} \
-                                              {sci_image.image.pointing} \
+                                              {sci_image.image.observation_id} \
                                               {sci_image.image.sca}',
                                  'template': f'{templ_image.image.band} \
-                                               {templ_image.image.pointing} \
+                                               {templ_image.image.observation_id} \
                                                {templ_image.image.sca}'
                                 }
                     i_failed = False
@@ -1130,10 +1142,14 @@ class Pipeline:
                         SNLogger.info( "...generate variance image" )
                         with nvtx.annotate( "variance", color=0x44ccff ):
                             try:
-                                # import pdb; pdb.set_trace()
                                 diff_var = sfftifier.create_variance_image()
+                                print(f"Minimum value of variance diff_var in phrosty:", np.min(diff_var))
                                 mess = f"{sci_image.image.name}-{templ_image.image.name}"
                                 diff_var_path = self.dia_out_dir / f"diff_var_{mess}"
+                                print('diff_var_path', diff_var_path)
+                                sci_image.diff_var_path[ templ_image.image.name ] = diff_var_path
+                                self.write_fits_file(cp.asnumpy(diff_var).T, sfftifier.hdr_target, diff_var_path)
+
                             except:
                                 i_failed = True
                                 SNLogger.debug('Failure in generate variance')
@@ -1147,11 +1163,11 @@ class Pipeline:
                             decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
                             decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
 
-                            images =    [ sfftifier.PixA_DIFF_GPU,    diff_var,
+                            images =    [ sfftifier.PixA_DIFF_GPU,
                                         sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_Ctarget_GPU ]
-                            savepaths = [ decorr_diff_path,           diff_var_path,
+                            savepaths = [ decorr_diff_path,
                                         decorr_zptimg_path,         decorr_psf_path ]
-                            headers =   [ sfftifier.hdr_target,       sfftifier.hdr_target,
+                            headers =   [ sfftifier.hdr_target,
                                         sfftifier.hdr_target,       None ]
 
                             import matplotlib.pyplot as plt
@@ -1171,7 +1187,6 @@ class Pipeline:
                             sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
                             sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
                             sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
-                            sci_image.diff_var_path[ templ_image.image.name ] = diff_var_path
 
                         except:
                             i_failed = True
@@ -1264,16 +1279,16 @@ class Pipeline:
             with nvtx.annotate( "make stamps", color=0xff8888 ):
 
                 def log_stamp_err( sci_image, templ_image, x ):
-                    SNLogger.error( f"do_stamps failure for {sci_image.image.pointing} \
+                    SNLogger.error( f"do_stamps failure for {sci_image.image.observation_id} \
                                                             {sci_image.image.sca} - \
-                                                            {templ_image.image.pointing} \
+                                                            {templ_image.image.observation_id} \
                                                             {templ_image.image.sca}: {x} " )
                     if self.catchfailures:
                         self.failures['make_stamps'].append({'science': f'{sci_image.image.band} \
-                                                                        {sci_image.image.pointing} \
+                                                                        {sci_image.image.observation_id} \
                                                                         {sci_image.image.sca}',
                                                             'template': f'{templ_image.image.band} \
-                                                                        {templ_image.image.pointing} \
+                                                                        {templ_image.image.observation_id} \
                                                                         {templ_image.image.sca}'
                                                             })
 
@@ -1317,12 +1332,11 @@ class Pipeline:
         lightcurve_path = None
         if 'make_lightcurve' in steps and not i_failed:
             with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
-                # import pdb; pdb.set_trace()
                 lightcurve_path = self.make_lightcurve()
 
                 # Debugging stuff below for checking phot location...
                 # import matplotlib.pyplot as plt
-                # from astropy.visualization import MinMaxInterval
+                # from astropy.visualization import ZScaleInterval
 
                 # check_image = self.science_images[0]
                 # check_templ = self.template_images[0]
@@ -1331,7 +1345,7 @@ class Pipeline:
                 # check_image_data = check_diff[0].read()
 
                 # fig, ax = plt.subplots(nrows=1, ncols=4, figsize=(15, 5))
-                # norm = MinMaxInterval().get_limits(check_image_data)
+                # norm = ZScaleInterval().get_limits(check_image_data)
                 # ax[0].imshow(check_image_data, origin='lower', vmin=norm[0], vmax=norm[1])
                 # ax[1].imshow(check_image_data - self.resid_img, origin='lower', vmin=norm[0], vmax=norm[1])
                 # ax[2].imshow(check_image.psf_data, origin='lower')
@@ -1345,6 +1359,11 @@ class Pipeline:
                 # plt.tight_layout()
 
                 # plt.savefig('/home/psf_gaussian_resids.pdf', format='pdf')
+
+                # fig, ax = plt.subplots(1,1)
+                # ax.imshow(check_image_data, origin='lower', vmin=norm[0], vmax=norm[1])
+                # self.aperture.plot(color='red', lw='2', ax=ax)
+                # plt.savefig('/home/aperture_stamp.pdf')
 
         if self.mem_trace:
             SNLogger.info( f"After make_lightcurve, memory usage = \
@@ -1472,9 +1491,9 @@ def main():
     parser.add_argument( '--base-path', type=str, default=None,
                          help='Base path for reading images. Required for "manual_fits" image collection.' )
     parser.add_argument( '-t', '--template-images', type=str, default=None,
-                         help="Path to file with, per line, ( path_to_image, pointing, sca, mjd, band )" )
+                         help="Path to file with, per line, ( path_to_image, observation_id, sca, mjd, band )" )
     parser.add_argument( '-s', '--science-images', type=str, default=None,
-                         help="Path to file with, per line, ( path_to_image, pointing, sca, mjd, band )" )
+                         help="Path to file with, per line, ( path_to_image, observation_id, sca, mjd, band )" )
 
     cfg.augment_argparse( parser )
     args = parser.parse_args( leftovers )

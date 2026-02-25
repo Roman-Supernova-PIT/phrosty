@@ -24,12 +24,16 @@ def test_pipeline_run_simple_gauss1( config ):
                                              base_path='/photometry_test_data/simple_gaussian_test/sig2.0' )
 
     # Use for longer test with full "lightcurve" and two templates:
-    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
-    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
+    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
+    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
  
     # Use for shorter test with only two "observations":
     # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
     # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60030, 60035 ] ]
+
+    # Shortest test with only one template and one science:
+    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
+    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60035 ] ]
 
     # We have to muck about with the config, because the default config loaded for tests is
     #   set up for ou2024.  We're going to do naughty things we're not supposed to do,
@@ -134,8 +138,8 @@ def test_pipeline_run_simple_gauss1( config ):
         # WARNING HARDCODED LIMITS these should go away when things are
         #   fixed and the test works better.  Right now PSF photometry is
         #   going nuts, and sometimes produces infinite error bars
-        axes[0].set_ylim( -2000, 16000 )
-        axes[1].set_ylim( -12000, 5000 )
+        # axes[0].set_ylim( -2000, 16000 )
+        # axes[1].set_ylim( -1000, 1000 )
 
         plotdir = pathlib.Path( 'test_plots' )
         plotdir.mkdir( parents=True, exist_ok=True )
@@ -160,7 +164,7 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
 
     with open( ltcv ) as ifp:
         hdrline = ifp.readline().strip()
-        assert hdrline == ( 'ra,dec,mjd,filter,pointing,sca,template_pointing,template_sca,zpt,'
+        assert hdrline == ( 'ra,dec,mjd,filter,observation_id,sca,template_observation_id,template_sca,zpt,'
                             'aperture_sum,flux_fit,flux_fit_err,mag_fit,mag_fit_err,success' )
         kws = hdrline.split( "," )
         pairs = []
@@ -174,9 +178,9 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         assert float(pair['dec']) == pytest.approx( object_for_tests.dec, abs=0.1/3600. )
         assert float(pair['mjd']) == pytest.approx( img.mjd, abs=1e-3 )
         assert pair['filter'] == 'Y106'
-        assert int(pair['pointing']) == int(img.pointing)
+        assert int(pair['observation_id']) == int(img.observation_id)
         assert int(pair['sca']) == int(img.sca)
-        assert int(pair['template_pointing']) == int(one_ou2024_template_image.pointing)
+        assert int(pair['template_observation_id']) == int(one_ou2024_template_image.observation_id)
         assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
         assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
 
@@ -240,13 +244,13 @@ def test_pipeline_failures( object_for_tests, ou2024_image_collection,
     nan_image._wcs = one_ou2024_template_image.get_wcs()
     nan_image.noise = nan_image.data
     nan_image.band = 'Y106'
-    nan_image.pointing = -1  # Give it a fake pointing on purpose
+    nan_image.observation_id = -1  # Give it a fake observation_id on purpose
     nan_image.sca = 1
     nan_image.save( which='data', overwrite=True )
 
     new_test_imgs = [nan_image, two_ou2024_science_images[1]]
 
-    # This will have one failure because the pointing is a fake value and it can't
+    # This will have one failure because the observation_id is a fake value and it can't
     # find the corresponding PSF.
     pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
                         # science_images=new_test_imgs,
