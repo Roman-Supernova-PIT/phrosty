@@ -597,7 +597,6 @@ class Pipeline:
         # Do photometry on stamp because it will read faster.
         # (We hope.  But CFS latency will kill you at 1 byte.)
         SNLogger.debug( "...make_phot_info_dict reading stamp and psf" )
-        print('Path for diff_var_stamp_path in make_phot_info_dict RIGHT BEFORE we reopen the file', sci_image.diff_var_stamp_path[ templ_image.image.name ])
         diff_img = CompressedFITSImage( filepath=sci_image.diff_stamp_path[ templ_image.image.name ],
                                         noisepath=sci_image.diff_var_stamp_path[ templ_image.image.name ]
                                       )
@@ -631,7 +630,6 @@ class Pipeline:
             diff_img.get_data( which='data', cache=True )
             diff_img.get_data( which='noise', cache=True )
             # The thing written to disk was actually variance, so fix that
-            print(f"Minimum value of variance diff_img.noise AFTER reopening the file:", np.min(diff_img.noise))
             diff_img.noise = np.sqrt( diff_img.noise )
             psf_img.get_data( which='data', cache=True )
         except Exception:
@@ -713,7 +711,6 @@ class Pipeline:
         """
         sci_image.zpt_stamp_path[ templ_image.image.name ] = paths[0]
         sci_image.diff_stamp_path[ templ_image.image.name ] = paths[1]
-        print('diff_var_stamp_path from when we SAVE THE STAMP PATHS', paths[2])
 
         sci_image.diff_var_stamp_path[ templ_image.image.name ] = paths[2]
 
@@ -760,9 +757,7 @@ class Pipeline:
                                        )
             diffim.free()
 
-            print('Path that stampmaker is opening', sci_image.diff_var_path[ templ_image.image.name ] )
             diffvarim = CompressedFITSImage( filepath=sci_image.diff_var_path[ templ_image.image.name ] )
-            print('Minimum value that is in the full-frame image that stampmaker opens:', np.min(diffvarim.data))
             diffvar_stampname = stampmaker( 
                                             ra=self.diaobj.ra,
                                             dec=self.diaobj.dec,
@@ -1143,10 +1138,8 @@ class Pipeline:
                         with nvtx.annotate( "variance", color=0x44ccff ):
                             try:
                                 diff_var = sfftifier.create_variance_image()
-                                print(f"Minimum value of variance diff_var in phrosty:", np.min(diff_var))
                                 mess = f"{sci_image.image.name}-{templ_image.image.name}"
                                 diff_var_path = self.dia_out_dir / f"diff_var_{mess}"
-                                print('diff_var_path', diff_var_path)
                                 sci_image.diff_var_path[ templ_image.image.name ] = diff_var_path
                                 self.write_fits_file(cp.asnumpy(diff_var).T, sfftifier.hdr_target, diff_var_path)
 
@@ -1169,10 +1162,6 @@ class Pipeline:
                                         decorr_zptimg_path,         decorr_psf_path ]
                             headers =   [ sfftifier.hdr_target,
                                         sfftifier.hdr_target,       None ]
-
-                            import matplotlib.pyplot as plt
-                            from astropy.visualization import MinMaxInterval, ZScaleInterval
-                            fig, ax = plt.subplots(1, 4, figsize=(15,5))
 
                             for i, (img, savepath, hdr) in enumerate(zip( images, savepaths, headers )):
                                 with nvtx.annotate( "apply_decor", color=0xccccff ):
