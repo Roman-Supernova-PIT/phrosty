@@ -74,17 +74,16 @@ class PipelineImage:
             # Set to None. The path gets defined later on.
             # They have to be defined here in __init__ so that they exist
             # and are accessible in later functions.
-            self.skysub_img = None
-            self.detmask_img = None
-            self.input_sci_psf_path = None
-            self.input_templ_psf_path = None
-            self.aligned_templ_img_path = None
-            self.aligned_templ_var_path = None
-            self.aligned_templ_psf_path = None
-            self.crossconv_sci_path = None
-            self.crossconv_templ_path = None
-            self.diff_path = None
-            self.decorr_kernel_path = None
+            self.skysub_img = {}
+            self.detmask_img = {}
+            self.input_sci_psf_path = {}
+            self.input_templ_psf_path = {}
+            self.aligned_templ_var_path = {}
+            self.aligned_templ_psf_path = {}
+            self.crossconv_sci_path = {}
+            self.crossconv_templ_path = {}
+            self.diff_path = {}
+            self.decorr_kernel_path = {}
 
         # Always save and output these
         self.decorr_psf_path = {}
@@ -94,6 +93,12 @@ class PipelineImage:
         self.diff_var_path = {}
         self.diff_var_stamp_path = {}
         self.diff_stamp_path = {}
+
+        # Lauren added these for debugging...
+        self.aligned_templ_img_path = {}
+        self.aligned_templ_stamp_path = {}
+        self.diff_undecorr_img_path = {}
+        self.diff_undecorr_stamp_path = {}
 
         # Held in memory
         self.skyrms = None
@@ -132,7 +137,7 @@ class PipelineImage:
             for phrosty.imagesubtraction.sky_subtract().
         """
 
-        SNLogger.debug( f"Saving sky_subtract info for path {info[0]}" )
+        SNLogger.debug( f"Saving sky_subtract info for path {info[0].path}" )
         self.skysub_img = info[0]
         self.detmask_img = info[1]
         self.skyrms = info[2]
@@ -340,7 +345,7 @@ class Pipeline:
         self.mem_trace = memtrace
 
         # Debug LNA 20251202
-        # self.resid_img = None
+        self.resid_img = None
 
         # Debug LNA20260225
         # self.aperture = None
@@ -467,7 +472,8 @@ class Pipeline:
         hdr_sci.insert( 0, ('NAXIS', 2) )
         hdr_sci.insert( 'NAXIS', ('NAXIS1', sci_image.image.data.shape[1] ), after=True )
         hdr_sci.insert( 'NAXIS1', ('NAXIS2', sci_image.image.data.shape[0] ), after=True )
-        data_sci = cp.array( np.ascontiguousarray(sci_image.image.data.T), dtype=cp.float64 )
+        # data_sci = cp.array( np.ascontiguousarray(sci_image.image.data.T), dtype=cp.float64 )
+        data_sci = cp.array( np.ascontiguousarray(sci_image.skysub_img.data.T), dtype=cp.float64 )
         noise_sci = cp.array( np.ascontiguousarray(sci_image.image.noise.T), dtype=cp.float64 )
         var_sci = noise_sci ** 2
 
@@ -475,7 +481,8 @@ class Pipeline:
         hdr_templ.insert( 0, ('NAXIS', 2) )
         hdr_templ.insert( 'NAXIS', ('NAXIS1', templ_image.image.data.shape[1] ), after=True )
         hdr_templ.insert( 'NAXIS1', ('NAXIS2', templ_image.image.data.shape[0] ), after=True )
-        data_templ = cp.array( np.ascontiguousarray(templ_image.image.data.T), dtype=cp.float64 )
+        # data_templ = cp.array( np.ascontiguousarray(templ_image.image.data.T), dtype=cp.float64 )
+        data_templ = cp.array( np.ascontiguousarray(templ_image.skysub_img.data.T), dtype=cp.float64 )
         noise_templ = cp.array( np.ascontiguousarray(templ_image.image.noise.T), dtype=cp.float64 )
         var_templ = noise_templ ** 2
 
@@ -506,7 +513,7 @@ class Pipeline:
 
         return sfftifier
 
-    def phot_at_coords( self, img, psf, pxcoords=(50, 50), ap_r=4 ):
+    def phot_at_coords( self, img, psf, pxcoords=(50, 50), ap_r=3 ):
         """Do photometry at forced set of pixel coordinates.
 
         Parameters
@@ -544,14 +551,15 @@ class Pipeline:
         init.rename_column( 'ycenter', 'ycentroid' )
         final = img.psf_phot( init_params=init,
                               psf=psf,
-                              forced_phot=True 
+                              forced_phot=True
+                            #   return_resid_image=True
                             )
 
         # Debug LNA 20250225
         # self.aperture = img.apertures
 
         # Debug LNA 20251202
-        # self.resid_img = img.resid_img
+        # self.resid_img = resid_img
 
         flux = final['flux_fit'][0]
         flux_err = final['flux_err'][0]
@@ -568,7 +576,7 @@ class Pipeline:
 
         return results_dict
 
-    def make_phot_info_dict( self, sci_image, templ_image, ap_r=4 ):
+    def make_phot_info_dict( self, sci_image, templ_image, ap_r=3 ):
         """"
         Do photometry on a difference image generated from sci_image
         and templ_image. Collect the output in a dictionary.
@@ -613,7 +621,7 @@ class Pipeline:
         results_keys = req_results_keys + phrosty_results_keys
         results_dict = {key: np.nan for key in results_keys}
         results_dict['mjd'] = sci_image.image.mjd
-        results_dict['observation_id'] = sci_image.image.observation_id
+        results_dict['observation_id'] = str(sci_image.image.observation_id)
         results_dict['sca'] = sci_image.image.sca
 
         # Additional phrosty keys
@@ -621,7 +629,7 @@ class Pipeline:
         results_dict['template_name'] = templ_image.image.name
         results_dict['science_id'] = str(sci_image.image.id)
         results_dict['template_id'] = str(templ_image.image.id)
-        results_dict['template_observation_id'] = templ_image.image.observation_id
+        results_dict['template_observation_id'] = str(templ_image.image.observation_id)
         results_dict['template_sca'] = templ_image.image.sca
         results_dict['success'] = False
 
@@ -655,10 +663,10 @@ class Pipeline:
             results_dict['zpt'] = sci_image.image.zeropoint
             results_dict['success'] = True
 
-        except:
+        except Exception as e:
             # results_dict['ap_zpt'] = np.nan
             SNLogger.debug( f"...make_phot_info_dict failed for \
-                             {sci_image.image.name} - {templ_image.image.name}." )
+                             {sci_image.image.name} - {templ_image.image.name}. Reason: {e}" )
 
         SNLogger.debug( "...make_phot_info_dict done." )
         return results_dict
@@ -677,7 +685,7 @@ class Pipeline:
             arr.append( one_pair[ key ] )
 
         if not one_pair['success']:
-            SNLogger.debug( "Failure in make_lightcurve!" )
+            SNLogger.debug( f"Failure in make_lightcurve!" )
             if self.catchfailures:
                 self.failures['make_lightcurve'].append({'science': f"{one_pair['band']} \
                                                                     {one_pair['observation_id']} \
@@ -711,8 +719,11 @@ class Pipeline:
         """
         sci_image.zpt_stamp_path[ templ_image.image.name ] = paths[0]
         sci_image.diff_stamp_path[ templ_image.image.name ] = paths[1]
-
         sci_image.diff_var_stamp_path[ templ_image.image.name ] = paths[2]
+
+        # Lauren added these for debugging...
+        sci_image.aligned_templ_stamp_path[ templ_image.image.name ] = paths[3]
+        sci_image.diff_undecorr_stamp_path[ templ_image.image.name ] = paths[4]
 
     def do_stamps( self, sci_image, templ_image ):
         """Make stamps from the zero point image, decorrelated
@@ -768,11 +779,37 @@ class Pipeline:
                                            )
             diffvarim.free()
 
+            # Lauren added these for debugging...
+            alignedtemplim = CompressedFITSImage( filepath=sci_image.aligned_templ_img_path[ templ_image.image.name ] )
+            alignedtempl_stampname = stampmaker(
+                                                ra=self.diaobj.ra,
+                                                dec=self.diaobj.dec,
+                                                shape=np.array([100, 100]),
+                                                img=alignedtemplim,
+                                                savedir=self.dia_out_dir,
+                                                savename=f"stamp_{alignedtemplim.path.name}"
+                                               )
+            alignedtemplim.free()
+
+            regdiffim = CompressedFITSImage( sci_image.diff_undecorr_img_path [ templ_image.image.name ] )
+            regdiffim_stampname = stampmaker(
+                                                ra=self.diaobj.ra,
+                                                dec=self.diaobj.dec,
+                                                shape=np.array([100, 100]),
+                                                img=regdiffim,
+                                                savedir=self.dia_out_dir,
+                                                savename=f"stamp_{regdiffim.path.name}"
+                                               )
+            regdiffim.free()
+
             SNLogger.info(f"Decorrelated diff stamp path: {pathlib.Path( diff_stampname )}")
             SNLogger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
             SNLogger.info(f"Decorrelated diff variance stamp path: {pathlib.Path( diffvar_stampname )}")
+            SNLogger.info(f"Aligned template stamp path: {pathlib.Path( alignedtempl_stampname )}")
+            SNLogger.info(f"Undecorrelated diff stamp path: {pathlib.Path( regdiffim_stampname )}")
 
-            return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname ), pathlib.Path( diffvar_stampname )
+
+            return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname ), pathlib.Path( diffvar_stampname ), pathlib.Path( alignedtempl_stampname ), pathlib.Path( regdiffim_stampname )
 
         except:
             SNLogger.error( f"do_stamps failure for {sci_image.image.observation_id} \
@@ -824,7 +861,7 @@ class Pipeline:
             'zpt': [],  # AB mag of object is m = -2.5 * log(flux) + zpt, float
             'NEA': [],  # px^2, float
             'sky_rms': [],  # DN/s, float
-            'observation_id': [],  # int/string, temporary name
+            'observation_id': [],  # string, temporary name
             'sca': [],  # int
             'pix_x': [],  # x-position of SN on detector w/ 0-offset, float
             'pix_y': [],  # y-position of SN on detector w/ 0-offset, float
@@ -936,7 +973,6 @@ class Pipeline:
         savepath : str
             Savepath for FITS file.
         """
-
         # try:
         if header is not None:
             hdr_dict = dict(header.items())
@@ -998,6 +1034,8 @@ class Pipeline:
 
         if through_step is None:
             through_step = 'make_lightcurve'
+
+        i_failed = False # We haven't failed yet.
 
         steps = [ 'sky_subtract', 'get_psfs', 'align_and_preconvolve', 'subtract', 'find_decorrelation',
                   'apply_decorrelation', 'make_stamps', 'make_lightcurve' ]
@@ -1090,9 +1128,15 @@ class Pipeline:
                                 sfftifier = self.align_and_pre_convolve( templ_image=templ_image,
                                                                          sci_image=sci_image
                                                                        )
-                            except:
+                                mess = f"{sci_image.image.name}-{templ_image.image.name}"
+                                aligned_templ_path = self.dia_out_dir / f"aligned_{mess}"
+                                sci_image.aligned_templ_img_path[ templ_image.image.name ] = aligned_templ_path
+                                self.write_fits_file(cp.asnumpy(sfftifier.PixA_resamp_object_GPU.T), 
+                                                                sfftifier.hdr_target, aligned_templ_path)
+
+                            except Exception as e:
                                 i_failed = True
-                                SNLogger.debug('Failure in align_and_preconvolve!')
+                                SNLogger.debug(f'Failure in align_and_preconvolve! Reason: {e}')
                                 if self.catchfailures:
                                     self.failures['align_and_preconvolve'].append(fail_info)
 
@@ -1106,9 +1150,14 @@ class Pipeline:
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
                             try:
                                 sfftifier.sfft_subtraction()
-                            except:
+                                mess = f"{sci_image.image.name}-{templ_image.image.name}"
+                                undecorr_diff_path = self.dia_out_dir / f"diff_{mess}"
+                                sci_image.diff_undecorr_img_path[ templ_image.image.name ] = undecorr_diff_path
+                                self.write_fits_file(cp.asnumpy(sfftifier.PixA_DIFF_GPU.T),
+                                                                sfftifier.hdr_target, undecorr_diff_path)
+                            except Exception as e:
                                 i_failed = True
-                                SNLogger.debug('Failure in subtraction!')
+                                SNLogger.debug(f'Failure in subtraction! Failure is: {e}')
                                 if self.catchfailures:
                                     self.failures['subtract'].append(fail_info)
 
@@ -1128,9 +1177,9 @@ class Pipeline:
                         with nvtx.annotate( "find_decor", color=0xcc44ff ):
                             try:
                                 sfftifier.find_decorrelation()
-                            except:
+                            except Exception as e:
                                 i_failed = True
-                                SNLogger.debug('Failure in find_decorrelation!')
+                                SNLogger.debug(f'Failure in find_decorrelation! Reason: {e}')
                                 if self.catchfailures:
                                     self.failures['find_decorrelation'].append(fail_info)
 
@@ -1143,9 +1192,9 @@ class Pipeline:
                                 sci_image.diff_var_path[ templ_image.image.name ] = diff_var_path
                                 self.write_fits_file(cp.asnumpy(diff_var).T, sfftifier.hdr_target, diff_var_path)
 
-                            except:
+                            except Exception as e:
                                 i_failed = True
-                                SNLogger.debug('Failure in generate variance')
+                                SNLogger.debug(f'Failure in generate variance! Reason: {e}')
                                 if self.catchfailures:
                                     self.failures['variance'].append(fail_info)
 
@@ -1177,9 +1226,9 @@ class Pipeline:
                             sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
                             sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
 
-                        except:
+                        except Exception as e:
                             i_failed = True
-                            SNLogger.debug( "Failure in apply_decorrelation!" )
+                            SNLogger.debug( f"Failure in apply_decorrelation! Reason: {e}" )
                             if self.catchfailures:
                                 self.failures['apply_decorrelation'].append(fail_info)
 
@@ -1192,19 +1241,19 @@ class Pipeline:
                         # instead of saving it all for the end of the SFFT stuff.
 
                         write_filepaths = {'aligned': [['img',
-                                                        f'{templ_image.image.name}_-_{sci_image.image.name}.fits',
+                                                        f'{templ_image.image.name}_-_{sci_image.image.name}',
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_GPU.T),
                                                         sfftifier.hdr_target],
                                                         ['var',
-                                                         f'{templ_image.image.name}_-_{sci_image.image.name}.fits',
+                                                         f'{templ_image.image.name}_-_{sci_image.image.name}',
                                                          cp.asnumpy(sfftifier.PixA_resamp_objectVar_GPU.T),
                                                          sfftifier.hdr_target],
                                                        ['psf',
-                                                        f'{templ_image.image.name}_-_{sci_image.image.name}.fits',
+                                                        f'{templ_image.image.name}_-_{sci_image.image.name}',
                                                         cp.asnumpy(sfftifier.PSF_target_GPU.T),
                                                         sfftifier.hdr_target],
                                                        ['detmask',
-                                                        f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
+                                                        f'{sci_image.image.name}_-_{templ_image.image.name}',
                                                         cp.asnumpy(sfftifier.PixA_resamp_object_DMASK_GPU.T),
                                                         sfftifier.hdr_target]
                                                        ],
@@ -1240,7 +1289,7 @@ class Pipeline:
                                                         sfftifier.hdr_target],
                                                        ]
                                           }
-                        # Write the aligned images
+                        # Write the intermediate files
                         for key in write_filepaths.keys():
                             for (imgtype, name, data, header) in write_filepaths[key]:
                                 savepath = self.scratch_dir / f'{key}_{imgtype}_{name}'
@@ -1282,16 +1331,29 @@ class Pipeline:
                                                             })
 
                 partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
+                # original sci path, savedir, savename
+                sci_orig_stamp_args = ( (si.image, self.dia_out_dir, f'stamp_{str(si.image.name)}', 'data') 
+                                         for si in self.science_images)
                 # template path, savedir, savename
-                templstamp_args = ( (ti.image, self.dia_out_dir, f'stamp_{str(ti.image.name)}')
+                templstamp_args = ( (ti.image, self.dia_out_dir, f'stamp_{str(ti.image.name)}', 'data')
                                     for ti in self.template_images )
                 if self.nwrite > 1:
+                    # Save stamps for original template images.
                     with Pool( self.nwrite ) as templ_stamp_pool:
                         templ_stamp_pool.starmap_async( partialstamp, templstamp_args,
                                                         error_callback=log_stamp_err )
                         templ_stamp_pool.close()
                         templ_stamp_pool.join()
 
+                    # Save stamps for original science images. 
+                    with Pool( self.nwrite ) as sci_orig_stamp_pool:
+                        sci_orig_stamp_pool.starmap_async( partialstamp, sci_orig_stamp_args,
+                                                           error_callback=log_stamp_err )
+                        sci_orig_stamp_pool.close()
+                        sci_orig_stamp_pool.join()
+
+                    # Save stamps for decorrelated difference image, zero point image (decorrelated sky-subtracted
+                    # science image), and variance image for decorrelated difference image
                     with Pool( self.nwrite ) as sci_stamp_pool:
                         for sci_image in self.science_images:
                             for templ_image in self.template_images:
@@ -1300,13 +1362,16 @@ class Pipeline:
                                 sci_stamp_pool.apply_async( self.do_stamps, pair, {},
                                                             callback = partial(self.save_stamp_paths,
                                                                                sci_image, templ_image),
-                                                            error_callback=stamperr_partial )
+                                                                               error_callback=stamperr_partial )
                         sci_stamp_pool.close()
                         sci_stamp_pool.join()
 
                 else:
                     for tsargs in templstamp_args:
                         partialstamp(*tsargs)
+
+                    for sosargs in sci_orig_stamp_args:
+                        partialstamp(*sosargs)
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
@@ -1341,13 +1406,13 @@ class Pipeline:
                 # im = ax[3].imshow(self.resid_img, origin='lower', vmin=norm[0], vmax=norm[1])
                 # ax[0].set_title('Decorr diff')
                 # ax[1].set_title('Decorr PSF')
-                # ax[2].set_title('True PSF')
+                # ax[2].set_title('Original PSF')
                 # ax[3].set_title('Decorr diff - Decorr PSF')
-                # ax[2].set_xlim(-25,75)
-                # ax[2].set_ylim(-25,75)
+                # # ax[2].set_xlim(-25,75)
+                # # ax[2].set_ylim(-25,75)
                 # plt.tight_layout()
 
-                # plt.savefig('/home/psf_gaussian_resids.pdf', format='pdf')
+                # plt.savefig('/home/psf_resids.pdf', format='pdf')
 
                 # fig, ax = plt.subplots(1,1)
                 # ax.imshow(check_image_data, origin='lower', vmin=norm[0], vmax=norm[1])

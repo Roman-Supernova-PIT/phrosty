@@ -105,7 +105,7 @@ def sky_subtract( img, temp_dir=None ):
             img.path.unlink( missing_ok=True )
 
 
-def stampmaker(ra, dec, shape, img, savedir=None, savename=None):
+def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data'):
     """Make stamps.
 
     TODO : pass an array of ra and dec to make this more efficient;
@@ -156,21 +156,22 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None):
     # Give Stamp_Generator.SG a FITS image to chew on
     origimg = img
     try:
-        if isinstance( origimg, snappl.image.CompressedFITSImage ):
-            img = origimg.uncompressed_version( include=['data'] )
-        else:
-            barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
-            # NOTE : this next line will break if not using an image type that
-            #   can return a FITS header!  The real solution is to fix SFFT
-            #   so that it's not dependent on FITS images; just pass what's
-            #   needed to Stamp_Generator.SG instead of assuming it will read
-            #   all the right things out of the header.
-            img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
-            img.data = origimg.data
-            img.save_data( which='data' )
+        # if isinstance( origimg, snappl.image.CompressedFITSImage ):
+        #     img = origimg.uncompressed_version( include=[ext_type] )
+        # else:
+        barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
+        # NOTE : this next line will break if not using an image type that
+        #   can return a FITS header!  The real solution is to fix SFFT
+        #   so that it's not dependent on FITS images; just pass what's
+        #   needed to Stamp_Generator.SG instead of assuming it will read
+        #   all the right things out of the header.
+        img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
+        # import pdb; pdb.set_trace()
+        img.data = getattr(origimg, data_prop)
+        img.save_data( which='data' )
 
         # TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()
-        Stamp_Generator.SG(FITS_obj=img.path, EXTINDEX=0, COORD=pxradec, COORD_TYPE='IMAGE',
+        Stamp_Generator.SG(FITS_obj=img.path, COORD=pxradec, COORD_TYPE='IMAGE',
                            STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=str(savepath))
 
         return savepath
