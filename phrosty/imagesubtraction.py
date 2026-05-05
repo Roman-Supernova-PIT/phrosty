@@ -14,7 +14,6 @@ from sfft.utils.StampGenerator import Stamp_Generator
 from snappl.config import Config
 import snappl.image
 from snappl.logger import SNLogger
-from snappl.config import Config
 
 
 def sky_subtract( img, temp_dir=None ):

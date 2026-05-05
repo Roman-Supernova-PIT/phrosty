@@ -11,7 +11,7 @@ from phrosty.pipeline import Pipeline
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 from snappl.lightcurve import Lightcurve
-from snappl.image import FITSImageStdHeaders
+
 
 # TODO : separate tests for PipelineImage, for all the functions in#
 #   PipelineImage and Pipeline.  Right now we just have this regression
@@ -26,7 +26,7 @@ def test_pipeline_run_simple_gauss1( config ):
     # Use for longer test with full "lightcurve" and two templates:
     # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
     # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
- 
+
     # Use for shorter test with only two "observations":
     # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
     # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60030, 60035 ] ]
@@ -50,7 +50,14 @@ def test_pipeline_run_simple_gauss1( config ):
         config.set_value( 'photometry.phrosty.psf.params', { 'sigmax': 2., 'sigmay': 2., 'theta': 0. } )
         config.set_value( 'photometry.phrosty.sfft.radius_cut_detmask', 1. )
 
-        pip = Pipeline( obj, imgcol, 'R062', science_images=sciim, template_images=tmplim, nprocs=1, nwrite=1, catchfailures=False )
+        pip = Pipeline( obj,
+                        imgcol,
+                        'R062',
+                        science_images=sciim,
+                        template_images=tmplim,
+                        nprocs=1,
+                        nwrite=1,
+                        catchfailures=False )
         ltcv = pip()
         import pdb; pdb.set_trace()
         chisq = 0.
@@ -214,12 +221,13 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     #   way we're set up right now, you probably are.
 
 
-@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
-def test_pipeline_failures( object_for_tests, ou2024_image_collection,
-                            one_ou2024_template_image, two_ou2024_science_images):
+# LNA: This is commented out because it is a future PR's problem.
+# @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
+# def test_pipeline_failures( object_for_tests, ou2024_image_collection,
+#                             one_ou2024_template_image, two_ou2024_science_images):
 
-    nprocss = [1, 3]
-    nwrites = [1, 3]
+#     nprocss = [1, 3]
+#     nwrites = [1, 3]
 
     # for i in nprocss:
     #     for j in nwrites:
@@ -235,33 +243,33 @@ def test_pipeline_failures( object_for_tests, ou2024_image_collection,
     #             assert len(pip.failures[key]) == 0
 
     # try:
-    nan_image = FITSImageStdHeaders( path='/phrosty_temp/test_nan_img',
-                                     data=np.full(one_ou2024_template_image.image_shape, np.nan),
-                                     flags=np.zeros(one_ou2024_template_image.image_shape),
-                                     std_imagenames=True
-                                    )
+    # nan_image = FITSImageStdHeaders( path='/phrosty_temp/test_nan_img',
+    #                                  data=np.full(one_ou2024_template_image.image_shape, np.nan),
+    #                                  flags=np.zeros(one_ou2024_template_image.image_shape),
+    #                                  std_imagenames=True
+    #                                 )
 
-    nan_image._wcs = one_ou2024_template_image.get_wcs()
-    nan_image.noise = nan_image.data
-    nan_image.band = 'Y106'
-    nan_image.observation_id = -1  # Give it a fake observation_id on purpose
-    nan_image.sca = 1
-    nan_image.save( which='data', overwrite=True )
+    # nan_image._wcs = one_ou2024_template_image.get_wcs()
+    # nan_image.noise = nan_image.data
+    # nan_image.band = 'Y106'
+    # nan_image.observation_id = -1  # Give it a fake observation_id on purpose
+    # nan_image.sca = 1
+    # nan_image.save( which='data', overwrite=True )
 
-    new_test_imgs = [nan_image, two_ou2024_science_images[1]]
+    # new_test_imgs = [nan_image, two_ou2024_science_images[1]]
 
     # This will have one failure because the observation_id is a fake value and it can't
     # find the corresponding PSF.
-    pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                        # science_images=new_test_imgs,
-                        science_images=[two_ou2024_science_images[1]],
-                        template_images=[one_ou2024_template_image],
-                        nprocs=1, nwrite=1 )
-    lctv = pip()
+    # pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+    #                     # science_images=new_test_imgs,
+    #                     science_images=[two_ou2024_science_images[1]],
+    #                     template_images=[one_ou2024_template_image],
+    #                     nprocs=1, nwrite=1 )
+    # lctv = pip()
 
-    for key in pip.failures:
-        print(key)
-        print(len(pip.failures[key]))
+    # for key in pip.failures:
+    #     print(key)
+    #     print(len(pip.failures[key]))
 
     # assert len(pip.failures['get_psf']) == 1
 

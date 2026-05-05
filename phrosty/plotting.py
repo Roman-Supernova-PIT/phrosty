@@ -19,8 +19,8 @@ def showimage(path=None, band=None, pointing=None, sca=None,
               xycoords=None, box=False, boxsize=1000, data_ext=1,
               cmap='Greys', return_fig=False, **kwargs):
     """Quickly display an original RomanDESC image from either a filepath or a filter, pointing, and SCA ID.
-    
-       NOTE: This no longer works as intended with the deprecation of phrosty.utils._build_filepath.
+
+           NOTE: This no longer works as intended with the deprecation of phrosty.utils._build_filepath.
              Fix another time. This is minor.
     """
 

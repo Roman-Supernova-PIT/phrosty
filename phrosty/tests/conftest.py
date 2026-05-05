@@ -6,7 +6,7 @@ import tox # noqa: F401
 from tox.pytest import init_fixture # noqa: F401
 
 from snappl.config import Config
-from snappl.image import CompressedFITSImage
+from snappl.image import CompressedFITSImage, FITSImageStdHeaders
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 
