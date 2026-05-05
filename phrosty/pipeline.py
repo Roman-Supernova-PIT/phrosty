@@ -1605,17 +1605,17 @@ def main():
                                              dbclient=dbclient
                                            )
 
-    if args.image_collection == 'snpitdb':
-        _found_images = imgcol.find_images( ra=diaobj.ra,
-                                           dec=diaobj.dec,
-                                           band=args.band,
-                                           dbclient=dbclient
-                                         )
-    else:
-        _found_images = imgcol.find_images( ra=diaobj.ra,
-                                           dec=diaobj.dec,
-                                           band=args.band
-                                         )
+    # if args.image_collection == 'snpitdb':
+    #     _found_images = imgcol.find_images( ra=diaobj.ra,
+    #                                        dec=diaobj.dec,
+    #                                        band=args.band,
+    #                                        dbclient=dbclient
+    #                                      )
+    # else:
+    #     _found_images = imgcol.find_images( ra=diaobj.ra,
+    #                                        dec=diaobj.dec,
+    #                                        band=args.band
+    #                                      )
 
     # fetched_prov = Provenance.get_provs_for_tag( tag=args.diaobject_provenance_tag,
     #                                              process=args.diaobject_process
