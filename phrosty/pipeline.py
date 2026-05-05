@@ -5,14 +5,11 @@ import sys
 import argparse
 import cupy as cp
 from functools import partial
-import json
 import logging
 from multiprocessing import Pool
 import numpy as np
 import nvtx
 import pathlib
-import pyarrow as pa
-import pyarrow.parquet as pq
 import re
 import shutil
 import tracemalloc
@@ -378,8 +375,12 @@ class Pipeline:
             for line in ifp:
                 path, observation_id, sca, _mjd, band = line.split()
                 if band == self.band:
-                    # This should yell at us if the observation_id or sca doesn't match what is read from the path
-                    imlist.append( self.imgcol.get_image( path=path, observation_id=observation_id, sca=sca, band=band ) )
+                    # This should yell at us if the observation_id
+                    # or sca doesn't match what is read from the path
+                    imlist.append( self.imgcol.get_image( path=path,
+                                                          observation_id=observation_id,
+                                                          sca=sca,
+                                                          band=band ) )
         return imlist
 
 
@@ -439,8 +440,9 @@ class Pipeline:
             for img in all_imgs:
                 try:
                     img.keep_psf_data( img.get_psf(self.diaobj.ra, self.diaobj.dec) )
-                except OSError: # OSError because if get_psf can't open a file, it does this
-                                # (for example, if the file does not exist)
+                except OSError:
+                    # OSError because if get_psf can't open a file, it does this
+                    # (for example, if the file does not exist)
                     if self.catchfailures:
                         self.failures['get_psf'].append(f"{img.image.band} \
                                                         {img.image.observation_id} \
@@ -685,7 +687,7 @@ class Pipeline:
             arr.append( one_pair[ key ] )
 
         if not one_pair['success']:
-            SNLogger.debug( f"Failure in make_lightcurve!" )
+            SNLogger.debug( "Failure in make_lightcurve!" )
             if self.catchfailures:
                 self.failures['make_lightcurve'].append({'science': f"{one_pair['band']} \
                                                                     {one_pair['observation_id']} \
@@ -697,7 +699,8 @@ class Pipeline:
 
         SNLogger.debug( "Done adding to results dict" )
         if self.mem_trace:
-            SNLogger.info( f"After adding to results dict for {one_pair['observation_id']} {one_pair['sca']}, memory usage = \
+            SNLogger.info( f"After adding to results dict for \
+                            {one_pair['observation_id']} {one_pair['sca']}, memory usage = \
                             {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
 
@@ -747,7 +750,7 @@ class Pipeline:
 
         try:
             zptim = CompressedFITSImage( filepath=sci_image.decorr_zptimg_path[ templ_image.image.name ] )
-            zpt_stampname = stampmaker( 
+            zpt_stampname = stampmaker(
                                         ra=self.diaobj.ra,
                                         dec=self.diaobj.dec,
                                         shape=np.array([100, 100]),
@@ -755,10 +758,11 @@ class Pipeline:
                                         savedir=self.dia_out_dir,
                                         savename=f"stamp_{zptim.path.name}"
                                       )
+            zpt_path = pathlib.Path( zpt_stampname )
             zptim.free()
 
             diffim = CompressedFITSImage( filepath=sci_image.decorr_diff_path[ templ_image.image.name ] )
-            diff_stampname = stampmaker( 
+            diff_stampname = stampmaker(
                                          ra=self.diaobj.ra,
                                          dec=self.diaobj.dec,
                                          shape=np.array([100, 100]),
@@ -766,10 +770,11 @@ class Pipeline:
                                          savedir=self.dia_out_dir,
                                          savename=f"stamp_{diffim.path.name}"
                                        )
+            diff_path = pathlib.Path( diff_stampname )
             diffim.free()
 
             diffvarim = CompressedFITSImage( filepath=sci_image.diff_var_path[ templ_image.image.name ] )
-            diffvar_stampname = stampmaker( 
+            diffvar_stampname = stampmaker(
                                             ra=self.diaobj.ra,
                                             dec=self.diaobj.dec,
                                             shape=np.array([100, 100]),
@@ -777,6 +782,7 @@ class Pipeline:
                                             savedir=self.dia_out_dir,
                                             savename=f"stamp_{diffvarim.path.name}"
                                            )
+            diffvar_path = pathlib.Path( diffvar_stampname )
             diffvarim.free()
 
             # Lauren added these for debugging...
@@ -789,6 +795,7 @@ class Pipeline:
                                                 savedir=self.dia_out_dir,
                                                 savename=f"stamp_{alignedtemplim.path.name}"
                                                )
+            alignedtempl_path = pathlib.Path( alignedtempl_stampname )
             alignedtemplim.free()
 
             regdiffim = CompressedFITSImage( sci_image.diff_undecorr_img_path [ templ_image.image.name ] )
@@ -800,29 +807,32 @@ class Pipeline:
                                                 savedir=self.dia_out_dir,
                                                 savename=f"stamp_{regdiffim.path.name}"
                                                )
+            regdiff_path = pathlib.Path( regdiffim_stampname )
             regdiffim.free()
 
-            SNLogger.info(f"Decorrelated diff stamp path: {pathlib.Path( diff_stampname )}")
-            SNLogger.info(f"Zpt image stamp path: {pathlib.Path( zpt_stampname )}")
-            SNLogger.info(f"Decorrelated diff variance stamp path: {pathlib.Path( diffvar_stampname )}")
-            SNLogger.info(f"Aligned template stamp path: {pathlib.Path( alignedtempl_stampname )}")
-            SNLogger.info(f"Undecorrelated diff stamp path: {pathlib.Path( regdiffim_stampname )}")
+            SNLogger.info(f"Decorrelated diff stamp path: {diff_path}")
+            SNLogger.info(f"Zpt image stamp path: {zpt_path}")
+            SNLogger.info(f"Decorrelated diff variance stamp path: {diffvar_path}")
+            SNLogger.info(f"Aligned template stamp path: {alignedtempl_path}")
+            SNLogger.info(f"Undecorrelated diff stamp path: {regdiff_path}")
 
 
-            return pathlib.Path( zpt_stampname ), pathlib.Path( diff_stampname ), pathlib.Path( diffvar_stampname ), pathlib.Path( alignedtempl_stampname ), pathlib.Path( regdiffim_stampname )
+            return zpt_path, diff_path, diffvar_path, alignedtempl_path, regdiff_path
 
-        except:
+        except Exception as e:
             SNLogger.error( f"do_stamps failure for {sci_image.image.observation_id} \
                                                     {sci_image.image.sca} - \
                                                     {templ_image.image.observation_id} \
-                                                    {templ_image.image.sca}: {x} " )
+                                                    {templ_image.image.sca}: {e} " )
             if self.catchfailures:
-                self.failures['make_stamps'].append({'science': f'{sci_image.image.band} \
-                                                                {sci_image.image.observation_id} \
-                                                                {sci_image.image.sca}',
-                                                    'template': f'{templ_image.image.band} \
-                                                                {templ_image.image.observation_id} \
-                                                                {templ_image.image.sca}'
+                self.failures['make_stamps'].append({'science':
+                                                     f'{sci_image.image.band} \
+                                                       {sci_image.image.observation_id} \
+                                                       {sci_image.image.sca}',
+                                                    'template':
+                                                    f'{templ_image.image.band} \
+                                                      {templ_image.image.observation_id} \
+                                                      {templ_image.image.sca}'
                                                     })
 
     def make_lightcurve( self ):
@@ -841,7 +851,7 @@ class Pipeline:
         self.metadata = {
             'provenance_id': None,
             'diaobject_id': self.diaobj.id,
-            'diaobject_position_id': None, 
+            'diaobject_position_id': None,
             'iau_name': self.diaobj.iauname,
             'band': self.band,
             'ra': self.diaobj.ra,
@@ -901,7 +911,9 @@ class Pipeline:
                         pool.apply_async( self.make_phot_info_dict, (sci_image, templ_image), {},
                                           self.add_to_results_dict,
                                           error_callback=logerr_partial )
-                        SNLogger.debug( f"pool.apply async done for {sci_image.image.observation_id} {sci_image.image.sca}" )
+                        SNLogger.debug( f"pool.apply async done for \
+                                          {sci_image.image.observation_id} \
+                                          {sci_image.image.sca}" )
                 pool.close()
                 pool.join()
                 SNLogger.debug('Make phot info dict pool closed and joined.')
@@ -916,14 +928,14 @@ class Pipeline:
             imgprov = Provenance.get_by_id( self.science_images[0].image.provenance_id, dbclient=self.dbclient )
             SNLogger.debug('About to get object provenance.')
             objprov = Provenance.get_by_id( self.diaobj.provenance_id, dbclient=self.dbclient )
-        
+
             phrosty_version = phrosty.__version__
             major = int(phrosty_version.split('.')[0])
             minor = int(phrosty_version.split('.')[1])
 
             SNLogger.debug('About to make LC provenance.')
             ltcvprov = Provenance(  process='phrosty',
-                                    major=major, 
+                                    major=major,
                                     minor=minor,
                                     params=Config.get(),
                                     keepkeys=[ 'photometry.phrosty' ],
@@ -1131,7 +1143,7 @@ class Pipeline:
                                 mess = f"{sci_image.image.name}-{templ_image.image.name}"
                                 aligned_templ_path = self.dia_out_dir / f"aligned_{mess}"
                                 sci_image.aligned_templ_img_path[ templ_image.image.name ] = aligned_templ_path
-                                self.write_fits_file(cp.asnumpy(sfftifier.PixA_resamp_object_GPU.T), 
+                                self.write_fits_file(cp.asnumpy(sfftifier.PixA_resamp_object_GPU.T),
                                                                 sfftifier.hdr_target, aligned_templ_path)
 
                             except Exception as e:
@@ -1332,7 +1344,7 @@ class Pipeline:
 
                 partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
                 # original sci path, savedir, savename
-                sci_orig_stamp_args = ( (si.image, self.dia_out_dir, f'stamp_{str(si.image.name)}', 'data') 
+                sci_orig_stamp_args = ( (si.image, self.dia_out_dir, f'stamp_{str(si.image.name)}', 'data')
                                          for si in self.science_images)
                 # template path, savedir, savename
                 templstamp_args = ( (ti.image, self.dia_out_dir, f'stamp_{str(ti.image.name)}', 'data')
@@ -1345,7 +1357,7 @@ class Pipeline:
                         templ_stamp_pool.close()
                         templ_stamp_pool.join()
 
-                    # Save stamps for original science images. 
+                    # Save stamps for original science images.
                     with Pool( self.nwrite ) as sci_orig_stamp_pool:
                         sci_orig_stamp_pool.starmap_async( partialstamp, sci_orig_stamp_args,
                                                            error_callback=log_stamp_err )
@@ -1433,7 +1445,7 @@ class Pipeline:
                 SNLogger.info( f"No failures here! Fail list:\n{self.failures}" )
 
         if lightcurve_path is None:
-            SNLogger.info( f"Light curves saved to database!" )
+            SNLogger.info( "Light curves saved to database!" )
 
         return lightcurve_path
 
@@ -1564,7 +1576,7 @@ def main():
     dbclient = SNPITDBClient()
     # Get the DiaObject, update the RA and Dec
     if args.diaobject_id is None:
-        diaobjs = DiaObject.find_objects( collection=args.object_collection, 
+        diaobjs = DiaObject.find_objects( collection=args.object_collection,
                                         #   subset=args.object_subset,
                                           provenance_tag=args.diaobject_provenance_tag,
                                           process=args.diaobject_process,
@@ -1594,13 +1606,13 @@ def main():
                                            )
 
     if args.image_collection == 'snpitdb':
-        found_images = imgcol.find_images( ra=diaobj.ra,
+        _found_images = imgcol.find_images( ra=diaobj.ra,
                                            dec=diaobj.dec,
                                            band=args.band,
                                            dbclient=dbclient
                                          )
     else:
-        found_images = imgcol.find_images( ra=diaobj.ra,
+        _found_images = imgcol.find_images( ra=diaobj.ra,
                                            dec=diaobj.dec,
                                            band=args.band
                                          )
