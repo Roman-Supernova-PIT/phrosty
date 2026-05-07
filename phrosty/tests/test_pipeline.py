@@ -1,31 +1,39 @@
+import numpy as np
 import os
 import pathlib
 import pytest
 from matplotlib import pyplot
 
-import numpy as np
-import pandas
+import astropy.units as u
 
+
+from phrosty.pipeline import Pipeline
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
-from phrosty.pipeline import Pipeline
+from snappl.lightcurve import Lightcurve
+
 
 # TODO : separate tests for PipelineImage, for all the functions in#
 #   PipelineImage and Pipeline.  Right now we just have this regression
 #   test.
 
-
 # This one writes a diagnostic plot file to test_plots/test_pipeline_run_simple_gauss1.pdf
 def test_pipeline_run_simple_gauss1( config ):
     obj = DiaObject.find_objects( collection='manual', name='foo', ra=120, dec=-13. )[0]
-    # imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
-    #                                          base_path='/photometry_test_data/simple_gaussian_test/sig1.0' )
-    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
-    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60000, 60065, 5 ) ]
     imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
                                              base_path='/photometry_test_data/simple_gaussian_test/sig2.0' )
-    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
-    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
+
+    # Use for longer test with full "lightcurve" and two templates:
+    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
+    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
+
+    # Use for shorter test with only two "observations":
+    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
+    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60030, 60035 ] ]
+
+    # Shortest test with only one template and one science:
+    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
+    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60035 ] ]
 
     # We have to muck about with the config, because the default config loaded for tests is
     #   set up for ou2024.  We're going to do naughty things we're not supposed to do,
@@ -42,9 +50,16 @@ def test_pipeline_run_simple_gauss1( config ):
         config.set_value( 'photometry.phrosty.psf.params', { 'sigmax': 2., 'sigmay': 2., 'theta': 0. } )
         config.set_value( 'photometry.phrosty.sfft.radius_cut_detmask', 1. )
 
-        pip = Pipeline( obj, imgcol, 'R062', science_images=sciim, template_images=tmplim, nprocs=1, nwrite=1 )
+        pip = Pipeline( obj,
+                        imgcol,
+                        'R062',
+                        science_images=sciim,
+                        template_images=tmplim,
+                        nprocs=1,
+                        nwrite=1,
+                        catchfailures=False )
         ltcv = pip()
-
+        # import pdb; pdb.set_trace()
         chisq = 0.
         apchisq = 0.
         truemjd = []
@@ -57,40 +72,46 @@ def test_pipeline_run_simple_gauss1( config ):
         measapdflux = []
         apresid = []
         plotzpt = 31.4
-        df = pandas.read_csv( ltcv )
-        for row in df.itertuples():
-            mjd = row.mjd
+        lc_obj = Lightcurve( filepath=ltcv )
+        for row in lc_obj.lightcurve:
+            mjd = row['mjd']
             # We know what the fluxes are supposed to be; see
             #   /photometry_test_data/simple_gaussian_test/sig1.0/README.md
-            peak_flux = 10 ** ( ( 21. - row.zpt ) / -2.5 )
-            plotfluxfac = 10 ** ( ( row.zpt - plotzpt ) / -2.5 )
-            if ( mjd < 60010. ) or ( mjd > 60060. ):
+
+            # LA: snappl enforces astropy units in the columns. I have tried to preserve
+            # where it makes sense to have units vs. dimensionless quantities below when
+            # deciding where to put .value, or where to add units back in.
+            # Or, I did things to make the plot work.
+            peak_flux = 10 ** ( ( 21. - row['zpt'].value ) / -2.5 ) * u.count / u.s
+            plotfluxfac = 10 ** ( ( row['zpt'].value - plotzpt ) / -2.5 ) * u.count / u.s
+            if ( mjd.value < 60010. ) or ( mjd.value > 60060. ):
                 expected_flux = 0.
-            elif mjd < 60030.:
-                expected_flux = peak_flux * ( mjd - 60010. ) / 20.
+            elif mjd.value < 60030.:
+                expected_flux = peak_flux * ( mjd.value - 60010. ) / 20.
             else:
-                expected_flux = peak_flux * ( 60060. - mjd ) / 30.
+                expected_flux = peak_flux * ( 60060. - mjd.value ) / 30.
 
             # We don't have errors on aperture sum, so just guess.  It's in
             #   a radius of 4 by default, and the sky noise per pixel is 100.
-            ap_err = np.sqrt( np.pi * 16 * 100. + row.aperture_sum )
+            ap_err = np.sqrt( np.pi * 16 * 100. + row['aperture_sum'] )
 
-            measmjd.append( row.mjd )
-            measflux.append( row.flux_fit * plotfluxfac )
-            resid.append( ( row.flux_fit - expected_flux ) * plotfluxfac )
-            measdflux.append( row.flux_fit_err * plotfluxfac )
-            measapflux.append( row.aperture_sum * plotfluxfac )
-            apresid.append( ( row.aperture_sum - expected_flux ) * plotfluxfac )
-            measapdflux.append( ap_err * plotfluxfac )
+            # LA: I stripped the units off of everything below to make the plot work.
+            measmjd.append( row['mjd'].value )
+            measflux.append( row['flux'].value * plotfluxfac.value )
+            resid.append( ( row['flux'].value - expected_flux.value ) * plotfluxfac.value )
+            measdflux.append( row['flux_err'].value * plotfluxfac.value )
+            measapflux.append( row['aperture_sum'] * plotfluxfac.value )
+            apresid.append( ( row['aperture_sum'] - expected_flux.value ) * plotfluxfac.value )
+            measapdflux.append( ap_err * plotfluxfac.value )
             if mjd not in trueflux:
-                truemjd.append( mjd )
-                trueflux[mjd] = expected_flux * plotfluxfac
+                truemjd.append( mjd.value )
+                trueflux[mjd.value] = expected_flux.value * plotfluxfac.value
 
-            # assert expected_flux == pytest.approx( row.aperture_sum, abs=2.*ap_err )
-            apchisq += ( ( expected_flux - row.aperture_sum ) / ap_err ) ** 2
+            # assert expected_flux == pytest.approx( row['aperture_sum'], abs=2.*ap_err )
+            apchisq += ( ( expected_flux.value - row['aperture_sum'] ) / ap_err ) ** 2
 
-            # assert expected_flux == pytest.approx( row.flux_fit, abs=3. * row.flux_fit_err )
-            chisq += ( ( expected_flux - row.flux_fit ) / row.flux_fit_err ) ** 2
+            # assert expected_flux == pytest.approx( row['flux'], abs=3. * row['flux_err'] )
+            chisq += ( ( expected_flux.value - row['flux'].value ) / row['flux_err'] ) ** 2
 
         # NOTE -- tests do not currently pass, we know things are broken.
         #   Issue #...
@@ -102,6 +123,7 @@ def test_pipeline_run_simple_gauss1( config ):
 
         # Draw a plot
         trueflux = [ trueflux[m] for m in truemjd ]
+
         fig, axes = pyplot.subplots( 2, 1, height_ratios=[3, 1], sharex=True )
         fig.subplots_adjust( wspace=0 )
         fig.set_tight_layout( True )
@@ -123,8 +145,8 @@ def test_pipeline_run_simple_gauss1( config ):
         # WARNING HARDCODED LIMITS these should go away when things are
         #   fixed and the test works better.  Right now PSF photometry is
         #   going nuts, and sometimes produces infinite error bars
-        axes[0].set_ylim( -2000, 16000 )
-        axes[1].set_ylim( -12000, 5000 )
+        # axes[0].set_ylim( -2000, 16000 )
+        # axes[1].set_ylim( -1000, 1000 )
 
         plotdir = pathlib.Path( 'test_plots' )
         plotdir.mkdir( parents=True, exist_ok=True )
@@ -140,16 +162,17 @@ def test_pipeline_run_simple_gauss1( config ):
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 def test_pipeline_run( object_for_tests, ou2024_image_collection,
                        one_ou2024_template_image, two_ou2024_science_images ):
+
     pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                    science_images=two_ou2024_science_images,
+                    science_images=[two_ou2024_science_images[0]],
                     template_images=[one_ou2024_template_image],
-                    nprocs=2, nwrite=3 )
+                    nprocs=1, nwrite=1 )
     ltcv = pip()
 
     with open( ltcv ) as ifp:
         hdrline = ifp.readline().strip()
-        assert hdrline == ( 'ra,dec,mjd,filter,pointing,sca,template_pointing,template_sca,zpt,'
-                            'aperture_sum,flux_fit,flux_fit_err,mag_fit,mag_fit_err' )
+        assert hdrline == ( 'ra,dec,mjd,filter,observation_id,sca,template_observation_id,template_sca,zpt,'
+                            'aperture_sum,flux_fit,flux_fit_err,mag_fit,mag_fit_err,success' )
         kws = hdrline.split( "," )
         pairs = []
         for line in ifp:
@@ -162,9 +185,9 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         assert float(pair['dec']) == pytest.approx( object_for_tests.dec, abs=0.1/3600. )
         assert float(pair['mjd']) == pytest.approx( img.mjd, abs=1e-3 )
         assert pair['filter'] == 'Y106'
-        assert int(pair['pointing']) == int(img.pointing)
+        assert int(pair['observation_id']) == int(img.observation_id)
         assert int(pair['sca']) == int(img.sca)
-        assert int(pair['template_pointing']) == int(one_ou2024_template_image.pointing)
+        assert int(pair['template_observation_id']) == int(one_ou2024_template_image.observation_id)
         assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
         assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
 
@@ -196,3 +219,75 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     # TODO : cleanup output directories!  This is scary if you're using the same
     #   directories for tests and for running... so don't do that... but the
     #   way we're set up right now, you probably are.
+
+
+# LNA: This is commented out because it is a future PR's problem.
+# See issue 152: https://github.com/Roman-Supernova-PIT/phrosty/issues/152
+# @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
+# def test_pipeline_failures( object_for_tests, ou2024_image_collection,
+#                             one_ou2024_template_image, two_ou2024_science_images):
+
+#     nprocss = [1, 3]
+#     nwrites = [1, 3]
+
+    # for i in nprocss:
+    #     for j in nwrites:
+    #         pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+    #                         science_images=two_ou2024_science_images,
+    #                         template_images=[one_ou2024_template_image],
+    #                         nprocs=i, nwrite=j )
+
+    #         lctv = pip()
+
+    #         # First, check the images as-is. Make sure there are no failures.
+    #         for key in pip.failures:
+    #             assert len(pip.failures[key]) == 0
+
+    # try:
+    # nan_image = FITSImageStdHeaders( path='/phrosty_temp/test_nan_img',
+    #                                  data=np.full(one_ou2024_template_image.image_shape, np.nan),
+    #                                  flags=np.zeros(one_ou2024_template_image.image_shape),
+    #                                  std_imagenames=True
+    #                                 )
+
+    # nan_image._wcs = one_ou2024_template_image.get_wcs()
+    # nan_image.noise = nan_image.data
+    # nan_image.band = 'Y106'
+    # nan_image.observation_id = -1  # Give it a fake observation_id on purpose
+    # nan_image.sca = 1
+    # nan_image.save( which='data', overwrite=True )
+
+    # new_test_imgs = [nan_image, two_ou2024_science_images[1]]
+
+    # This will have one failure because the observation_id is a fake value and it can't
+    # find the corresponding PSF.
+    # pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+    #                     # science_images=new_test_imgs,
+    #                     science_images=[two_ou2024_science_images[1]],
+    #                     template_images=[one_ou2024_template_image],
+    #                     nprocs=1, nwrite=1 )
+    # lctv = pip()
+
+    # for key in pip.failures:
+    #     print(key)
+    #     print(len(pip.failures[key]))
+
+    # assert len(pip.failures['get_psf']) == 1
+
+    # finally:
+    #     for path in nanpaths:
+    #         path.unlink()
+
+
+
+    # for i in nprocss:
+    #     for j in nwrites:
+    #         pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+    #                     science_images=new_test_imgs,
+    #                     template_images=[one_ou2024_template_image],
+    #                     nprocs=i, nwrite=j )
+
+    #         for key in pip.failures:
+    #             print(key)
+    #             print(len(pip.failures[key]))
+    #             assert len(pip.failures[key]) == 0

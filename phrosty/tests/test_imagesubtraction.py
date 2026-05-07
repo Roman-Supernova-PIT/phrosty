@@ -8,7 +8,7 @@ import numpy.random as random
 from astropy.io import fits
 from astropy.wcs import WCS
 
-from snappl.image import FITSImageOnDisk
+from snappl.image import CompressedFITSImage
 import phrosty.imagesubtraction
 
 
@@ -24,7 +24,7 @@ def test_sky_subtract( dia_out_dir ):
         imdata = rng.normal( 100., 10., ( 512, 512 ) )
         hdr = fits.header.Header()
         fits.writeto( in_path, imdata, header=hdr )
-        img = FITSImageOnDisk( path=in_path )
+        img = CompressedFITSImage( path=in_path )
 
         subim, _detmask, skymedrms = phrosty.imagesubtraction.sky_subtract( img, temp_dir=dia_out_dir )
         assert skymedrms == pytest.approx( 10., abs=0.2 )

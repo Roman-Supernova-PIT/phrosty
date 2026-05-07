@@ -20,7 +20,7 @@ dependencies = [
   "cupy-cuda12x",
   "matplotlib",
   "nvtx",
-  "roman-snpit-snappl>=0.26.0,<1.0.0",
+  "roman-snpit-snappl>=0.28.0,<1.0.0",
   "sfft-romansnpit>=1.6.4dev11",
 ]
 license-files = ["LICENSE"]

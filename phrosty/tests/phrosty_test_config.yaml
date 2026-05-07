@@ -15,6 +15,7 @@ system:
     lightcurves: /data/lightcurves
     segmaps: /data/segmaps
     images: /data/images
+    dia_out_dir: /dia_out_dir
 
     temp_dir: /snpit_temp
 
