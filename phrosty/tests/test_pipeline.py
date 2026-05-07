@@ -59,7 +59,7 @@ def test_pipeline_run_simple_gauss1( config ):
                         nwrite=1,
                         catchfailures=False )
         ltcv = pip()
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         chisq = 0.
         apchisq = 0.
         truemjd = []
@@ -222,6 +222,7 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
 
 
 # LNA: This is commented out because it is a future PR's problem.
+# See issue 152: https://github.com/Roman-Supernova-PIT/phrosty/issues/152
 # @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 # def test_pipeline_failures( object_for_tests, ou2024_image_collection,
 #                             one_ou2024_template_image, two_ou2024_science_images):

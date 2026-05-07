@@ -30,7 +30,7 @@ def sky_subtract( img, temp_dir=None ):
 
     Returns
     -------
-      skysubim: snappl.image.CompressedFITSImage, detmask: snappl.image.CompressedFITSImage, skyrms: float
+      skysubim: snappl.image.FITSImage, detmask: snappl.image.FITSImage, skyrms: float
 
          skysubim is the sky-subtracted image.  Its location on disk
          will be underneath temp_dir. It's the caller's responsibility
@@ -50,7 +50,7 @@ def sky_subtract( img, temp_dir=None ):
 
     # SEx_SkySubtract.SSS requires FITS files to chew on.  At some point
     # we should refactor this so that we can pass data to it.  However,
-    # for now, write a snappl.image.CompressedFITSImage so we have something
+    # for now, write a snappl.image.FITSImage so we have something
     # to give to it.
 
     temp_dir = pathlib.Path( temp_dir if temp_dir is not None else Config.get().value( 'photometry.snappl.temp_dir' ) )
@@ -164,8 +164,8 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data
         #   so that it's not dependent on FITS images; just pass what's
         #   needed to Stamp_Generator.SG instead of assuming it will read
         #   all the right things out of the header.
+        # See issue 177: https://github.com/Roman-Supernova-PIT/phrosty/issues/177
         img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
-        # import pdb; pdb.set_trace()
         img.data = getattr(origimg, data_prop)
         img.save_data( which='data' )
 
