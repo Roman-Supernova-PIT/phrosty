@@ -1,0 +1,1 @@
+Delete redundant documentation page (development).
