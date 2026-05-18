@@ -6,6 +6,8 @@ Usage
 
 Phrosty may be run from the command line by running ``python phrosty/pipeline.py`` (assuming you are in the top level of a github checkout).  If you're in :ref:`the necessary environment to run phrosty<phrosty-installation-prerequisites>`, then try running::
 
+  cd /home/phrosty
+  pip install -e .
   python phrosty/pipeline.py -c phrosty/tests/phrosty_test_config.yaml --help
 
 phrosty's behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find two examples of these files in:
@@ -63,14 +65,16 @@ You should see all the options you can pass to phrosty.  There are a lot, becaus
 Try running::
 
   SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
-    --oc ou2024 \
-    --oid 20172782 \
-    -b Y106 \
-    --ic ou2024 \
-    -t phrosty/tests/20172782_instances_templates_1.csv \
-    -s phrosty/tests/20172782_instances_science_2.csv \
-    -p 3 -w 3 \
-    -v
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
 
 If all is well, after it's done running the output will end with something like::
 
@@ -186,16 +190,17 @@ to see how it works, and to see what the various parameters you can specify are.
 
 Run this on your example lightcurve with::
 
-  python phrosty/phrosty/pipeline.py \
-    -c phrosty/examples/perlmutter/phrosty_config.yaml \
-    --oc ou2024 \
-    --oid 20172782 \
-    -b R062 \
-    --ic ou2024 \
-    -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv \
-    -s phrosty/examples/perlmutter/20172782_instances_science_2.csv \
-    -p 3 \
-    -w 3
+  python phrosty/pipeline.py \
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
 
 (If you run with ``.csv`` files that have larger number of images, you probably want to pass a larger number to `-p`; this is a number of parallel CPU processes that will run at once, and is limited by how many CPUs and how much memory you have available.  The code will only run one GPU process at once.  You can also try increasing `-w`, but this is more limited by filesystem performance than the number of CPUs and the amount of memory you have available.  We've set these both to 3 right now because there are only 3 files being processed (one template and two science images).  Empirically, on Perlmutter nodes, you can go up to something like `-p 15`; while there are (many) more CPUs than that, memory is the limiting factor.  Also, empirically, on Perlmutter, you can go up to something like `-w 5` before you reach the point of diminishing returns.  This is more variable, because whereas you have the node's CPUs to yourself, you're sharing the filesystem with the rest of the users of the system.)
 
