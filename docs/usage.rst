@@ -90,9 +90,7 @@ On your host system (as well as inside the container), you should see new files 
 Running on Perlmutter
 ---------------------
 
-While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn't use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren't in the right unix groups.
-
-This example will *probably* not work on a login node.  It might.  However, there is only a single GPU on each login node, and because of how some very annoying python libraries are written (jax, I'm looking at you), often people have allocated a large fraction of the available GPU memory even if they don't really need it.  You will probably need to run on a compute node.  This is described below.
+While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn't use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren't in the right unix groups. This example will not work on a login node. 
 
 Setting up the environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -102,7 +100,7 @@ Get your environment set up as described under the :ref:`phrosty installation pr
 Pick a place to work
 ^^^^^^^^^^^^^^^^^^^^
 
-Work in one of two places.  You make yourself a subdirectory underneath ``/pscratch/sd/<u>/<username>``, where ``<username>`` is your NERSC username and `<u>` is the first letter of your username.  (You can get to this directory with ``cd $SCRATCH``; this is your top-level scratch directory, and NERSC sets the ``SCRATCH`` environment variable to point to it.)  Alternatively, you can create yourself a subdirectory somewhere underneath ``/global/cfs/cdirs/m4385/users``.  This is the shared SNPIT space on the NERSC community file system, so if you're going to work there, be aware that you're using up our shared file allocation.  At the moment, that's not a worry.
+Work in one of two places.  You make yourself a subdirectory underneath ``/pscratch/sd/<u>/<username>``, where ``<username>`` is your NERSC username and `<u>` is the first letter of your username.  (You can get to this directory with ``cd $SCRATCH``; this is your top-level scratch directory, and NERSC sets the ``SCRATCH`` environment variable to point to it.)  Alternatively, if you are on the SN PIT, you can create yourself a subdirectory somewhere underneath ``/global/cfs/cdirs/m4385/users``.  This is the shared SNPIT space on the NERSC community file system, so if you're going to work there, be aware that you're using up our shared file allocation.  At the moment, that's not a worry.
 
 I'm going to call the place you've picked to work your "parent" directory.
 
@@ -388,8 +386,14 @@ If you ran the ``apptainer pull`` command above in a different place from where 
 
 
 
-Phrosty Functionality
-=====================
+.. Phrosty Functionality
+.. =====================
 
-<<ALSO DOCUMENT FUNCTIONALITY &>>
+.. Running on OpenUniverse data
+.. ----------------------------
 
+.. Running on arbitrary images
+.. ---------------------------
+
+.. Using ASDF
+.. ----------

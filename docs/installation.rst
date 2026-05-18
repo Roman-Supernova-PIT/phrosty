@@ -26,7 +26,7 @@ Currently, phrosty is designed inside a container built from the the `Roman Supe
 
 You can pull the necessary container image from one of the following two sources:
 
-* ``registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev``
+* ``registry.nersc.gov/m4385/roman-snpit-env:cuda-dev``
 * ``docker.io/rknop/roman-snpit-env:cuda-dev``
 
 The latter image location should work for everybody.  For members of the Roman SN PIT, the first image location should be more efficient when you're running on NERSC Perlmutter; see below.the image, 
