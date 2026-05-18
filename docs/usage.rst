@@ -170,7 +170,30 @@ after a minute or so, that should log you into one of the nodes with a session t
 
 cd into your "parent" directory (if you're not there already).
 
-Now do::
+If you are not a member of the Roman SN PIT (i.e., assuming you pulled your container from :ref:`docker.io<phrosty-installation-prerequisites>`), do::
+
+  podman-hpc run --gpu \
+    --mount type=bind,source=$PWD,target=/home \
+    --mount type=bind,source=$PSCRATCH,target=/scratch \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/ou2024 \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/ou2024_snana \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/ou2024_snana_lc_dir \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library,target=/ou2024_sims_sed_library \
+    --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
+    --env PYTHONPATH=/roman_imsim \
+    --env OPENBLAS_NUM_THREADS=1 \
+    --env MKL_NUM_THREADS=1 \
+    --env NUMEXPR_NUM_THREADS=1 \
+    --env OMP_NUM_THREADS=1 \
+    --env VECLIB_MAXIMUM_THREADS=1 \
+    --env TERM=xterm \
+    --env SNPIT_CONFIG=/home/phrosty/phrosty/tests/phrosty_test_config.yaml \
+    --annotation run.oci.keep_original_groups=1 \
+    -it \
+    docker.io/rknop/roman-snpit-env:cuda-dev \
+    /bin/bash
+
+If you are in the Roman SN PIT (i.e., assuming you pulled your container from :ref:`registry.nersc.gov<phrosty-installation-prerequisites>`), instead do::
 
   WHICHROMANENV=cuda-dev bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh
 
@@ -189,13 +212,13 @@ Next, install phrosty and SFFT::
 
 The main Python executable for running the pipeline is ``phrosty/phrosty/pipeline.py``.  Run::
 
-  SNPIT_CONFIG=phrosty/examples/perlmutter/phrosty_config.yaml python phrosty/phrosty/pipeline.py --help
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py --help
 
 to see how it works, and to see what the various parameters you can specify are.  The output will be long, becasue everything that's in the config file is included as something you can override on the command line.  The arguments near the top are the ones you're more likely to want to think about.  You might want to pipe the output of this ``-help`` into ``less`` so you can see what's going on.
 
 Run this on your example lightcurve with::
 
-  python phrosty/pipeline.py \
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
         --oid 20172782 \
         -oc ou2024 \
         -b Y106 \
@@ -397,3 +420,6 @@ If you ran the ``apptainer pull`` command above in a different place from where 
 
 .. Using ASDF
 .. ----------
+
+.. Using the A25 ePSFs
+.. -------------------

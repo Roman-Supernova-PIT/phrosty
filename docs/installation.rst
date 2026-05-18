@@ -58,7 +58,7 @@ In particular, notice that there is both a R/O "true" and R/O "false" version.  
 
 If you've pulled images before, and you're now working on a new login node, you will only see the ``R/O=true`` image.  That's the only image you really need, so in that case there's no need to pull the image again.  (You will only see the ``R/O=true`` image on compute nodes.)
 
-**If you have trouble with podman**: Podman is, as of this writing, still a beta feature on Nersc, and has some warts.  Refer to `NERSC's documentation on podman-hpc <https://docs.nersc.gov/development/containers/podman-hpc/overview/>`_.  In particular, if you want to clean the slate and start over, try running::
+**If you have trouble with podman**: Podman is, as of this writing, still a beta feature on NERSC, and has some warts.  Refer to `NERSC's documentation on podman-hpc <https://docs.nersc.gov/development/containers/podman-hpc/overview/>`_.  In particular, if you want to clean the slate and start over, try running::
 
   podman-hpc system reset
   
@@ -138,7 +138,7 @@ Assuming you're currently in the directory which is the parent of your ``phrosty
     rknop/roman-snpit-env:cuda-dev \
     /bin/bash
 
-(Substitute ``registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev`` for ``rknop/roman-snpit-env:cuda-dev`` if you pulled the docker image from there.)
+(Substitute ``registry.nersc.gov/m4385/roman-snpit-env:cuda-dev`` for ``rknop/roman-snpit-env:cuda-dev`` if you pulled the docker image from there.)
 
 If all is well, this will put you in a docker container.  You can tell you're in the container because your prompt will change to something like ``root@47394bd41fbe:/#`` (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you've got access to the GPUs by running, inside the container::
 
