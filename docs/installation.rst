@@ -88,6 +88,12 @@ Currently, the only way to install phrosty is to download it from the `github re
 
 (you can also clone it via the ``git@`` code link if you know what you're doing.)
 
+You will also need the Roman SNPIT SFFT fork::
+
+    https://github.com/Roman-Supernova-PIT/sfft.git
+
+Make sure you check these out to the same parent folder. 
+
 Installing the photometry test data
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -51,6 +51,8 @@ This system has a NVIDIA RTX 3080 Ti consumer graphics card.  Notice that it onl
 
 Inside the container, run::
 
+  cd /home/sfft
+  pip install -e .
   cd /home/phrosty
   pip install -e .
 
@@ -107,7 +109,7 @@ I'm going to call the place you've picked to work your "parent" directory.
 Get phrosty
 ^^^^^^^^^^^
 
-In your parent directory, :ref:`clone the phrosty repository<install-from-sources>`.  For this example, you do not need to install the photometry test data.
+In your parent directory, :ref:`clone the phrosty and Roman SNPIT SFFT repositories<install-from-sources>`.  For this example, you do not need to install the photometry test data.
 
 Locate existing directories
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -170,17 +172,22 @@ after a minute or so, that should log you into one of the nodes with a session t
 
 cd into your "parent" directory (if you're not there already).
 
-Look at the file ``phrosty/examples/perlmutter/interactive_podman.sh``.  (There's no need to edit it; this is so you can see what's going on.  If you read all of the :ref:`installation instructions<phrosty-installation>`, you will recognize a lot of what's there.)  You'll see number of ``--mount`` parameters.  Each of these takes a directory on the host machine (the ``source``) and maps it to a directory inside the podman container (the ``target``); this is "bind mounting".  For example, you will see your phrosty checkout goes to ``/phrosty`` inside the container.  In addition, several environment variables are set, and an "annotation" that is needed for ``podman-hpc`` to be able to handle accessing directories that are group-readable, but not world-readable.
-
 Now do::
 
-  bash phrosty/examples/perlmutter/interactive_podman.sh
+  WHICHROMANENV=cuda-dev bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh
 
-This will create a container from the ``roman-snpit-env`` image, and put in a bash shell inside the container.  This will put you inside the container.  Your prompt will change to something like ``root@56356f1a4b9b:/usr/src#`` (where the hex barf will be different every time).  At any time, run ``ls -F /``; if you see directories ``phrosty``, ``phrosty_temp``, ``dia_out_dir``, and the others that were mounted by ``interactive_podman.sh``, then you know you're working inside the container, rather than on the host machine.  Verify that the GPUs are visible inside the container with ``nvidia-smi``.
+This will create a container image, and put in a bash shell inside the container.  This will put you inside the container.  Your prompt will change to something like ``root@56356f1a4b9b:/usr/src#`` (where the hex barf will be different every time).  At any time, run ``ls -F /``; if you see directories ``phrosty``, ``phrosty_temp``, ``dia_out_dir``, and the others that were mounted by ``interactive_podman.sh``, then you know you're working inside the container, rather than on the host machine.  Verify that the GPUs are visible inside the container with ``nvidia-smi``.
 
 Go to the ``/home`` directory, which is where your parent directory should be mounted::
 
   cd /home
+
+Next, install phrosty and SFFT::
+
+  cd /home/sfft
+  pip install -e .
+  cd /home/phrosty
+  pip install -e .
 
 The main Python executable for running the pipeline is ``phrosty/phrosty/pipeline.py``.  Run::
 
