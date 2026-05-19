@@ -10,7 +10,7 @@ Phrosty may be run from the command line by running ``python phrosty/pipeline.py
   pip install -e .
   python phrosty/pipeline.py -c phrosty/tests/phrosty_test_config.yaml --help
 
-phrosty's behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find two examples of these files in::
+phrosty's behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find two examples of these files in:
 
 * ``examples/perlmutter/phrosty_config.yaml``
 * ``phrosty/tests/phrosty_test_config.yaml``
@@ -81,7 +81,7 @@ Try running::
 
 If all is well, after it's done running the output will end with something like::
 
-  [2025-08-13 17:35:24 - INFO] - Results saved to /lc_out_dir/data/20172782/20172782_Y106_all.csv
+  [2025-08-13 17:35:24 - INFO] - Results saved to /lc_out_dir/data/20172782/40753b1b-9248-4e58-a625-a9354dac18aa_Y106.pq
 
 On your host system (as well as inside the container), you should see new files in wherever you put ``lc_out_dir``, ``dia_out_dir``, and ``phrosty_temp``.  (Inside the container, these are at ``/lc_out_dir``, ``/dia_out_dir``, and ``/phrosty_temp``.)
 
@@ -237,17 +237,15 @@ Run this on your example lightcurve with::
 
 If all is well, you should see a final line that looks something like::
 
-  [2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.csv
+  [2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.pq
 
-Outside the container (i.e. on Perlmutter), you should be able to find the file ``data/20172782/20172782_R062_all.csv`` underneath the ``lc_out_dir`` subdirectory of your parent directory.  Congratulations, this has the lightcurve!  (TODO: document the columns of this ``.csv`` file, but you can approximately guess what they are based on the column headers.)
+Outside the container (i.e. on Perlmutter), you should be able to find the file ``data/20172782/20172782_R062_all.pq`` underneath the ``lc_out_dir`` subdirectory of your parent directory.  Congratulations, this has the lightcurve!
 
 You will also find new files in the ``dia_out_dir`` subdirectory, including several large ``.fits`` files.
 
 
 Running with the NSight Profiler
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-**WARNING**: this section has not been tested recently so may be out of date.  TODO: try this again and update the docs after so doing.
 
 When developing/debugging the pipeline, it's useful to run with a profiler, so you can see where the code is spending most of its time.  The huge ``roman-snpit-env:cuda-dev`` Docker image includes the NVIDIA NSight Systems profiler, and the ``phrosty`` code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in :ref:`perlmutter-interactive` above, only replacing the final ``python`` command with::
 
@@ -299,7 +297,8 @@ At the top are the directives that control how the job is submitted.  Many of th
 
 You can probably leave the rest of the flags as is.  The ``--cpus-per-task`` and ``--gpus-per-task`` flags are set so that it will only ask for a quarter of a node.  (The queue manager is very particular about numbers passed to GPU nodes on the shared queue.  It needs you to ask for exactly 32 CPU cores for each GPU, and it needs you to ask for _exactly_ the right amount of memory.  The extra comment marks on the ``####SBATCH --mem`` line tell slurm to ignore it, as it seems to get the default right, and it's not worth fiddling with it to figure out what you should ask for.  A simple calculation would suggest that 64GB per GPU is what you should ask for, but when you do that, slurm thinks you're asking for 36 CPUs worth of memory, not 32 CPUs worth of memory.  The actual number is something like 56.12GB, but again, since the default seems to do the right thing, it's not worth fiddling with this.)
 
-If look look at the bottom of the script, you will see that the number of parallel worker jobs that phrosty uses is set to 9 (``-p 9`` as a flag to ``python phrosty/phrosty/pipeline.py``).  The total number of processes that the python program runs at once is this, plus the number of FITS writer threads (given by ``-w``), plus one for the master process that launches all of the others.   You will notice that this total is less than the 32 CPUs that we nominally have.  To be safe, assume that each of the ``-p`` processes will use ~6GB of memory.  By limiting ourselves to 9 processes, we should safely fit within the amount of CPU memory allocated to the job (allowing for some overhead for the driver process and the FITS writer processes).  (TODO: we really want to get this memory usage down.)   Based on performance, you might want to play with the number of FITS writing threads (the number after ``-w``); assume that each FITS writer process will use ~1GB of memory.  (TODO: investigate how much they really use.)
+If look look at the bottom of the script, you will see that the number of parallel worker jobs that phrosty uses is set to 9 (``-p 9`` as a flag to ``python phrosty/phrosty/pipeline.py``).  The total number of processes that the python program runs at once is this, plus the number of FITS writer threads (given by ``-w``), plus one for the master process that launches all of the others.   You will notice that this total is less than the 32 CPUs that we nominally have.  To be safe, assume that each of the ``-p`` processes will use ~6GB of memory.  By limiting ourselves to 9 processes, we should safely fit within the amount of CPU memory allocated to the job (allowing for some overhead for the driver process and the FITS writer processes). Based on performance, you might want to play with the number of FITS writing threads (the number after ``-w``); assume that each FITS writer process will use ~1GB of memory.  
+.. (TODO: investigate how much they really use; get memory usage down.)
 
 **Make sure expected directories exists**: If you look at the batch script, you'll see a number of ``--mount`` flags that bind-mount directories inside the container.  From the location where you submit your job, all of the ``source=`` part of those ``--mount`` directives must be available.  For the demo, you will need to create the following directories underneath where you plan to submit the script::
 
@@ -338,11 +337,11 @@ If you want to see the status of jobs that have completed, there are a few jobs 
 
 **Checking job results:** Look at your output file.  The last line should be something like::
 
-  [2025-02-10 15:43:32 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.csv
+  [2025-02-10 15:43:32 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/40753b1b-9248-4e58-a625-a9354dac18aa_R062.pq
 
 and, ideally, there should be no lines anywhere in the file with ``ERROR`` near the beginning of the log message.
 
-Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.csv`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
+Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.pq`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
 
 .. Running on SMCE
 .. ---------------
@@ -435,7 +434,7 @@ Let's break down the command you were instructed to use earlier. Recall::
         -p 3 -w 3 \
         -v
 
-Arg-by-arg...
+Arg-by-arg...:
 
 * ``SNPIT_CONFIG`` points to your config file.
 * ``oid`` stands for "object ID". 
@@ -451,6 +450,37 @@ Arg-by-arg...
 * ``v`` toggles "verbose". 
 
 To briefly elaborate on the "image collection" and "object collection"--this can be confusing. The image collection describes the images, and the object collection describes the objects of interest in the images. For example, if you used ``ou2024`` for both ``ic`` and ``oc``, you would be doing analysis on an SN Ia in the OpenUniverse 2024 FITS images. However, if you set ``-ic ou2024`` and ``-oc manual``, that would enable you to run the pipeline on any object you wanted in the OpenUniverse2024 images as long as you specified its RA and Dec.  
+
+Reading the output file
+-----------------------
+
+The output files, which will be named like ``[observation_id]/[a bunch of random characters]_[band].pq``, are parquet files and can easily be read by doing::
+
+  from astropy.table import Table
+  lc = Table.read('40753b1b-9248-4e58-a625-a9354dac18aa_R062.pq', format='parquet')
+
+The column headers in the output ``pq`` files are:
+
+* ``mjd``
+* ``flux``
+* ``flux_err``
+* ``zpt``
+* ``NEA``
+* ``sky_rms``
+* ``observation_id``
+* ``sca``
+* ``pix_x``
+* ``pix_y``
+* ``science_name``
+* ``template_name``
+* ``science_id``
+* ``template_id``
+* ``template_observation_id``
+* ``template_sca``
+* ``aperture_sum``
+* ``mag``
+* ``mag_err``
+* ``success``
 
 .. Running on OpenUniverse data
 .. ----------------------------
