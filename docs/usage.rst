@@ -10,7 +10,8 @@ Phrosty may be run from the command line by running ``python phrosty/pipeline.py
   pip install -e .
   python phrosty/pipeline.py -c phrosty/tests/phrosty_test_config.yaml --help
 
-phrosty's behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find two examples of these files in:
+phrosty's behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find two examples of these files in::
+
 * ``examples/perlmutter/phrosty_config.yaml``
 * ``phrosty/tests/phrosty_test_config.yaml``
   
@@ -136,7 +137,7 @@ This directory will be mounted to ``/phrosty_temp`` inside the container.  (The 
 Secure lists of images for your supernova
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Pick a supernova to run on.  TODO: more information.
+Step one: Pick a supernova to run on. 
 
 For this example, we're going to run on the object with id 20172782.  In the ``examples/perlmutter`` directory under your ``phrosty`` checkout), you can find three ``.csv`` files that have information about the template and/or science images we're going to use:
 * ``20172782_instances_templates_1.csv`` — a single R-band template image
@@ -148,12 +149,14 @@ For this example, we're going to run on the object with id 20172782.  In the ``e
 
 For this example, you don't have to do anything, you will just use the files that are there.  However, if you are pushing this further, you will need to know how to find files, and how to construct your own ``.csv`` files.
 
-If you look at these ``.csv`` files, there are give pieces of information on each line:
+If you look at these ``.csv`` files, there are five pieces of information on each line::
 * The filename of the OpenUniverse image, relative to ``/ou2024/RomanTDS/images`` inside the container (see below).  On Perlmutter outside the container, these are relative to ``/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images``.
-* The pointing of the image
-* The SCA on which the supernova is present for this pointing
-* The MJD of the pointing
-* The band (filter) of the exposure
+* The observation_id of the image (for OpenUniverse 2024, this corresponds to "pointing")
+* The SCA on which the supernova is present for this observation_id (1-18)
+* The MJD of the observation_id
+* The band (filter) of the exposure (R062, Z087, Y106, J129, H158, F184, or K213)
+
+These files must start with header ``path observation_id sca mjd band``. Columns are separated by spaces.
 
 .. _perlmutter-interactive:
 
@@ -168,7 +171,7 @@ First, get yourself a session on an interactive GPU node with::
 
 after a minute or so, that should log you into one of the nodes with a session that will last 4 hours.  (This is overkill; if you know it won't be that long, shorten the time after the ``-t`` flag.)  You can verify that you're on a compute node by running ``nvidia-smi``; you should see four different GPUs listed each with either 40MB or 80GB of memory, but no GPU processes running.
 
-cd into your "parent" directory (if you're not there already).
+`cd` into your "parent" directory (if you're not there already).
 
 If you are not a member of the Roman SN PIT (i.e., assuming you pulled your container from :ref:`docker.io<phrosty-installation-prerequisites>`), do::
 
@@ -339,6 +342,9 @@ and, ideally, there should be no lines anywhere in the file with ``ERROR`` near 
 
 Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.csv`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
 
+.. Running on SMCE
+.. ---------------
+
 Running on a HPC system that uses apptainer/singularity
 -------------------------------------------------------
 
@@ -407,10 +413,42 @@ Do::
 
 If you ran the ``apptainer pull`` command above in a different place from where you are now, replaced ``roman-snpit-env_cuda-dev.sif`` above with the full path to that ``.sif`` file.
 
+Phrosty Functionality
+=====================
 
+Command line arguments, explained
+---------------------------------
 
-.. Phrosty Functionality
-.. =====================
+Let's break down the command you were instructed to use earlier. Recall::
+
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
+
+Arg-by-arg...
+
+* ``SNPIT_CONFIG`` points to your config file.
+* ``oid`` stands for "object ID". 
+* ``oc`` stands for "object collection". This is a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 images), ``manual_fits`` (your chosen input FITS image), or ``snpitdb`` (SN PIT only).
+* ``b`` stands for "band". This will be any one of: R062, Z087, Y106, J129, H158, F184, or K213.
+* ``r`` is the RA of your object.
+* ``d`` is the Dec of your object.
+* ``ic`` stands for "image collection". This is also a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 SN Ia catalog), ``manual`` (any object you want),  ``snpitdb`` (SN PIT only).
+* ``t`` is for "templates". This is your list of image templates.
+* ``s`` is for "science". This is a list of images that contain your SN (science object).
+* ``p`` is the number of computation processes. e.g., if you do ``-p 3``, you will have 3 parallel sky subtraction processes going on. This does not apply to the GPU-based portion of the code, which is serial.
+* ``w`` is the number of file writing processes. 
+* ``v`` toggles "verbose". 
+
+To briefly elaborate on the "image collection" and "object collection"--this can be confusing. The image collection describes the images, and the object collection describes the objects of interest in the images. For example, if you used ``ou2024`` for both ``ic`` and ``oc``, you would be doing analysis on an SN Ia in the OpenUniverse 2024 FITS images. However, if you set ``-ic ou2024`` and ``-oc manual``, that would enable you to run the pipeline on any object you wanted in the OpenUniverse2024 images as long as you specified its RA and Dec.  
 
 .. Running on OpenUniverse data
 .. ----------------------------
@@ -423,3 +461,9 @@ If you ran the ``apptainer pull`` command above in a different place from where 
 
 .. Using the A25 ePSFs
 .. -------------------
+
+.. SN PIT section
+.. ==============
+
+.. Using the database
+.. ------------------

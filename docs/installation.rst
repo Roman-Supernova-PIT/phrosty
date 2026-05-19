@@ -64,6 +64,29 @@ If you've pulled images before, and you're now working on a new login node, you 
   
 to delete all of your podman images and contexts.  Then try pulling the image again.
 
+Run the container with::
+
+    podman-hpc run --gpu \
+    --mount type=bind,source=$PWD,target=/home \
+    --mount type=bind,source=$PSCRATCH,target=/scratch \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/ou2024 \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/ou2024_snana \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/ou2024_snana_lc_dir \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library,target=/ou2024_sims_sed_library \
+    --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
+    --env PYTHONPATH=/roman_imsim \
+    --env OPENBLAS_NUM_THREADS=1 \
+    --env MKL_NUM_THREADS=1 \
+    --env NUMEXPR_NUM_THREADS=1 \
+    --env OMP_NUM_THREADS=1 \
+    --env VECLIB_MAXIMUM_THREADS=1 \
+    --env TERM=xterm \
+    --env SNPIT_CONFIG=/home/phrosty/phrosty/tests/phrosty_test_config.yaml \
+    --annotation run.oci.keep_original_groups=1 \
+    -it \
+    docker.io/rknop/roman-snpit-env:cuda-dev \
+    /bin/bash
+
 On other HPC Systems
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -103,14 +126,13 @@ If you want to :ref:`run tests<running-tests>`, and some of the examples, then y
 
 .. _running-snpit-container:
 
-Running the SNPIT container
----------------------------
+Running the SNPIT container (not on NERSC Perlmutter)
+-----------------------------------------------------
 
 To use phrosty inside the container, you will need to run it with ``docker`` or ``podman``, and bind-mount the directory where you've cloned phrosty.  Phrosty requires a handful of additional directories:
 * ``lc_out_dir`` : a place to write output lightcurves
 * ``dia_out_dir`` : a place to write output difference images
 * ``phrosty_temp`` : a place to write temp files; you want this on a fast filesystem
-* ``phrosty_intermediate`` : a place to write intermediate data products for diagnostic purposes; you want this on a fast filesystem
 
 You configure these directories with the phrosty config ``.yaml`` file.  For the config file we use for tests, inside the container these directories must show up at ``/lc_out_dir``, ``/dia_out_dir``, and ``/phrosty_temp``.  (The test environment unifies ``phrosty_intermediate`` and ``phrosty_temp``.)  You can make all of these diretories as subdirectories of your current directory::
 
@@ -124,17 +146,19 @@ Assuming you're currently in the directory which is the parent of your ``phrosty
 
   docker run --gpus=all -it \
     --mount type=bind,source=$PWD,target=/home \
+    --mount type=bind,source=$PSCRATCH,target=/scratch \
     --mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data \
     --mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp \
     --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
     --mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir \
-    --env PYTHONPATH=/roman_imsim \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
     --env OPENBLAS_NUM_THREADS=1 \
     --env MKL_NUM_THREADS=1 \
     --env NUMEXPR_NUM_THREADS=1 \
     --env OMP_NUM_THREADS=1 \
     --env VECLIB_MAXIMUM_THREADS=1 \
+    --env TERM=xterm \
+    --annotation run.oci.keep_original_groups=1 \
     rknop/roman-snpit-env:cuda-dev \
     /bin/bash
 
