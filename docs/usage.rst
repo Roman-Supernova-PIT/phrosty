@@ -269,13 +269,13 @@ When developing/debugging the pipeline, it's useful to run with a profiler, so y
         -p 3 -w 3 \
         -v
 
-*Ideally*, this would create a file ``report1.nsys-rep`` (or ``report2.nsys-rep``, or higher numbers based on what files are already in the directory), but something about that is broken; I'm not sure what.  If that file is created, be happy.  If not, should leave behind a file ``report<n>.qdstrm``.  You can couple that file to another system and manually convert it to a ``.nsys-rep`` file.  On a Linux system, if you've installed the ``nsight-compute`` and ``nsight-systems`` packages (see `Nvidia's Nsight Systems installation guide <https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)>`_), you can download the ``.qdstrm`` file to your system and run::
+*Ideally*, this would create a file ``report1.nsys-rep`` (or ``report2.nsys-rep``, or higher numbers based on what files are already in the directory), but something about that is broken; I'm not sure what.  If that file is created, be happy.  If not, it will say something like "Importer error status: Importation failed," and will leave behind a file ``report<n>.qdstrm``.  You can couple that file to another system and manually convert it to a ``.nsys-rep`` file.  On a Linux system, if you've installed the ``nsight-compute`` and ``nsight-systems`` packages (see `Nvidia's Nsight Systems installation guide <https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)>`_), you can download the ``.qdstrm`` file to your system and run::
 
   /opt/nvidia/nsight-systems/2025.3.2/host-linux-x64/QdstrmImporter -i <name>.qdstrm
 
 where ``<name>.qstrm`` is the file you downloaded.  (Note that the directory may have something other than ``2025.3.2`` in it, depending on what version you've installed.  For best comptibility with the version of Nsight in the current (as of this writing) snpit docker image, I recommend trying to install something close to ``nsight-compute-2025.3.0`` and  ``nsight-systems-2025.3.2``; exactly what is avialable seems to vary with time.)  This should produce a file ``<name>.nsys-rep``.
 
-Once you, somehow, have a ``<name>.nsys-rep`` file, copy it down to your local desktop if it's not there already, and run::
+Once you have a ``<name>.nsys-rep`` file, copy it down to your local desktop if it's not there already, and run::
 
   nsys-ui <name>.nsys-rep
 
