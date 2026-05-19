@@ -338,7 +338,7 @@ class Pipeline:
 
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         self.remove_temp_dir = self.config.value( 'photometry.phrosty.remove_temp_dir' )
-        self.mem_trace = self.config_value( 'photometry.phrosty.mem_trace' )
+        self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
 
         # Debug LNA 20251202
         # self.resid_img = None
