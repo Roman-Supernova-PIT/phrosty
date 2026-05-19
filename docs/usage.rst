@@ -249,23 +249,25 @@ Running with the NSight Profiler
 
 **WARNING**: this section has not been tested recently so may be out of date.  TODO: try this again and update the docs after so doing.
 
-When developing/debugging the pipeline, it's useful to run with a profiler, so you can see where the code is spending most of its time.  The huge ``roman-snpit-env:cuda-dev`` Docker image includes the NVIDIA NSight Systems profiler, and (at least as of this writing) the *phrosty* code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in :ref:`perlmutter-interactive` above, only replacing the final ``python`` command with::
+When developing/debugging the pipeline, it's useful to run with a profiler, so you can see where the code is spending most of its time.  The huge ``roman-snpit-env:cuda-dev`` Docker image includes the NVIDIA NSight Systems profiler, and the ``phrosty`` code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in :ref:`perlmutter-interactive` above, only replacing the final ``python`` command with::
 
   nsys profile \
     --trace-fork-before-exec=true \
     --python-backtrace=cuda \
     --python-sampling=true \
     --trace=cuda,nvtx,cublas,cusparse,cudnn,cudla,cusolver,opengl,openacc,openmp,osrt,mpi,nvvideo,vulkan,python-gil \
-    python phrosty/phrosty/pipeline.py \
-      -c phrosty/examples/perlmutter/phrosty_config.yaml \
-      --oc ou2024 \
-      --oid 20172782 \
-      -b R062 \
-      --ic ou2024 \
-      -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv \
-      -s phrosty/examples/perlmutter/20172782_instances_science_2.csv \
-      -p 3 \
-      -w 3
+    -e SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml \
+    python phrosty/pipeline.py \
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
 
 *Ideally*, this would create a file ``report1.nsys-rep`` (or ``report2.nsys-rep``, or higher numbers based on what files are already in the directory), but something about that is broken; I'm not sure what.  If that file is created, be happy.  If not, should leave behind a file ``report<n>.qdstrm``.  You can couple that file to another system and manually convert it to a ``.nsys-rep`` file.  On a Linux system, if you've installed the ``nsight-compute`` and ``nsight-systems`` packages (see `Nvidia's Nsight Systems installation guide <https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)>`_), you can download the ``.qdstrm`` file to your system and run::
 
