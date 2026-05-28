@@ -33,8 +33,8 @@ The latter image location should work for everybody.  For members of the Roman S
 
 Because phrosty (and other libraries it depends on, such as snappl) is under heavy development, it's possible that the latest container will not work properly with phrosty at any given moment.
 
-On NERSC Perlmutter
-^^^^^^^^^^^^^^^^^^^
+Pulling the container image on NERSC Perlmutter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you're on NERSC Perlmutter, use ``podman-hpc`` in place of ``docker``.  Pull the image with::
 
@@ -58,52 +58,23 @@ In particular, notice that there is both a R/O "true" and R/O "false" version.  
 
 If you've pulled images before, and you're now working on a new login node, you will only see the ``R/O=true`` image.  That's the only image you really need, so in that case there's no need to pull the image again.  (You will only see the ``R/O=true`` image on compute nodes.)
 
-**If you have trouble with podman**: Podman is, as of this writing, still a beta feature on NERSC, and has some warts.  Refer to `NERSC's documentation on podman-hpc <https://docs.nersc.gov/development/containers/podman-hpc/overview/>`_.  In particular, if you want to clean the slate and start over, try running::
+**If you have trouble with podman**: Refer to `NERSC's documentation on podman-hpc <https://docs.nersc.gov/development/containers/podman-hpc/overview/>`_.  In particular, if you want to clean the slate and start over, try running::
 
   podman-hpc system reset
   
 to delete all of your podman images and contexts.  Then try pulling the image again.
 
-Run the container with::
-
-    podman-hpc run --gpu \
-    --mount type=bind,source=$PWD,target=/home \
-    --mount type=bind,source=$PSCRATCH,target=/scratch \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/ou2024 \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/ou2024_snana \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/ou2024_snana_lc_dir \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library,target=/ou2024_sims_sed_library \
-    --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
-    --env PYTHONPATH=/roman_imsim \
-    --env OPENBLAS_NUM_THREADS=1 \
-    --env MKL_NUM_THREADS=1 \
-    --env NUMEXPR_NUM_THREADS=1 \
-    --env OMP_NUM_THREADS=1 \
-    --env VECLIB_MAXIMUM_THREADS=1 \
-    --env TERM=xterm \
-    --env SNPIT_CONFIG=/home/phrosty/phrosty/tests/phrosty_test_config.yaml \
-    --annotation run.oci.keep_original_groups=1 \
-    -it \
-    docker.io/rknop/roman-snpit-env:cuda-dev \
-    /bin/bash
-
-On other HPC Systems
-^^^^^^^^^^^^^^^^^^^^
+Pulling the container image on other HPC Systems
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If your HPC system doesn't support containers, then you're out of luck.  Most HPC systems support containers using ``apptainer`` (previously known as ``singularity``).  This system is not a drop-in replacment for docker, as the way you obtain images, and the semantics for running containers, are different.  (There are also differences in terms of how isolated the environment is; singularity is less of a "real" isolated container than docker, usually.)
 
 TODO : document use of singularity.
 
-
-Stable release
---------------
-
-phrosty is under heavy development and does not currently have stable releases.  Eventually it will be released on pypi either under the name ``phrosty`` or ``roman-snpit-phrosty`` (depending on what's available).
-
 .. _install-from-sources:
 
-From sources
-------------
+Installing from sources
+-----------------------
 
 Currently, the only way to install phrosty is to download it from the `github repo <https://github.com/Roman-Supernova-PIT/phrosty>`_.  Clone it with::
 
@@ -111,16 +82,16 @@ Currently, the only way to install phrosty is to download it from the `github re
 
 (you can also clone it via the ``git@`` code link if you know what you're doing.)
 
-You will also need the Roman SNPIT SFFT fork::
+For SNPIT development only: If you need a more recent version of SFFT than what's in the docker image, use the Roman SNPIT SFFT fork::
 
     https://github.com/Roman-Supernova-PIT/sfft.git
 
 Make sure you check these out to the same parent folder. 
 
-Installing the photometry test data
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Installing the photometry test data (optional)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you want to :ref:`run tests<running-tests>`, and some of the examples, then you will also need to pull the photometry test data::
+If you want to run tests, and some of the examples, then you will also need to pull the photometry test data::
 
   git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
 

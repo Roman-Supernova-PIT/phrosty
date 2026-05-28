@@ -50,10 +50,13 @@ This shows a NVIDIA A100 GPU with 40GB of memory.  A different system might show
 
 This system has a NVIDIA RTX 3080 Ti consumer graphics card.  Notice that it only has 12288MiB of memory; 12GB of memory is not enough to run the example.
 
-Inside the container, run::
+For Roman SNPIT development, if you need a more recent version of SFFT than what's in the docker container, inside the container, run::
 
   cd /home/sfft
   pip install -e .
+
+For everybody, inside the container, run::
+
   cd /home/phrosty
   pip install -e .
 
@@ -108,7 +111,9 @@ I'm going to call the place you've picked to work your "parent" directory.
 Get phrosty
 ^^^^^^^^^^^
 
-In your parent directory, :ref:`clone the phrosty and Roman SNPIT SFFT repositories<install-from-sources>`.  For this example, you do not need to install the photometry test data.
+In your parent directory, :ref:`clone the phrosty repository<install-from-sources>`.  For this example, you do not need to install the photometry test data.
+
+If you are doing Roman SNPIT-related development and you need a more recent version of SFFT than what's in the docker container, :ref:`also clone the Roman SNPIT SFFT repository<install-from-sources>`.
 
 Locate existing directories
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,10 +211,13 @@ Go to the ``/home`` directory, which is where your parent directory should be mo
 
   cd /home
 
-Next, install phrosty and SFFT::
-
+Next, if you are doing Roman SNPIT development, install SFFT::
+  
   cd /home/sfft
   pip install -e .
+
+For everyone, install phrosty::
+
   cd /home/phrosty
   pip install -e .
 
