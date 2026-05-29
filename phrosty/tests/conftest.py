@@ -101,7 +101,7 @@ def dia_out_dir( config ):
 # def test_dia_image():
 #     # This is the first image from the csv file in 20172782_instances_science_2.csv
 #     return { 'relpath': 'simple_model/Y106/35198/Roman_TDS_simple_model_Y106_35198_2.fits.gz',
-#              'observation_id': 35198,
+#              'observation_id': '35198',
 #              'sca': 2,
 #              'mjd': 62455.669,
 #              'band': 'Y106'
@@ -145,7 +145,7 @@ def one_science_image( scope="session" ):
         img = CompressedFITSImage( path=('/photometry_test_data/ou2024/images/simple_model/'
                                      'Y106/35198/Roman_TDS_simple_model_Y106_35198_2.fits.gz'),
                                    imagehdu=1,
-                                   observation_id=35198,
+                                   observation_id='35198',
                                    sca=2 ).uncompressed_version()
         yield img
     finally:
@@ -158,7 +158,7 @@ def one_template_image( scope="session" ):
         img = CompressedFITSImage( path=('/photometry_test_data/ou2024/images/simple_model/'
                                      'Y106/5934/Roman_TDS_simple_model_Y106_5934_3.fits.gz' ),
                                    imhdu=1,
-                                   observation_id=5934,
+                                   observation_id='5934',
                                    sca=3 ).uncompressed_version()
         yield img
     finally:
@@ -167,13 +167,13 @@ def one_template_image( scope="session" ):
 
 @pytest.fixture
 def one_ou2024_template_image( ou2024_image_collection ):
-    return ou2024_image_collection.get_image( observation_id=5934, sca=3, band='Y106' )
+    return ou2024_image_collection.get_image( observation_id='5934', sca=3, band='Y106' )
 
 
 @pytest.fixture
 def two_ou2024_science_images( ou2024_image_collection ):
-    img1 = ou2024_image_collection.get_image( observation_id=35198, sca=2, band='Y106' )
-    img2 = ou2024_image_collection.get_image( observation_id=39790, sca=15, band='Y106' )
+    img1 = ou2024_image_collection.get_image( observation_id='35198', sca=2, band='Y106' )
+    img2 = ou2024_image_collection.get_image( observation_id='39790', sca=15, band='Y106' )
     return img1, img2
 
 
@@ -188,7 +188,7 @@ def nan_image():
                                    data=nan_arr
                                  )
     nan_img.band = 'Y106'
-    nan_img.observation_id = -1  # So it's not real and doesn't interpret.
+    nan_img.observation_id = '-1'  # So it's not real and doesn't interpret.
     nan_img.sca = 1
 
     return nan_img
