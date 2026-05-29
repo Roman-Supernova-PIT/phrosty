@@ -95,7 +95,7 @@ def two_science_csv():
 
 @pytest.fixture( scope="session" )
 def dia_out_dir( config ):
-    return pathlib.Path( config.value( 'photometry.phrosty.paths.dia_out_dir' ) )
+    return pathlib.Path( config.value( 'system.paths.dia_out_dir' ) )
 
 # @pytest.fixture( scope='session' )
 # def test_dia_image():
