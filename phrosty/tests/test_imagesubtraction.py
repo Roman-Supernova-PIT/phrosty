@@ -1,4 +1,3 @@
-import os
 import pathlib
 import pytest
 
@@ -10,6 +9,7 @@ from astropy.wcs import WCS
 
 from snappl.image import CompressedFITSImage
 import phrosty.imagesubtraction
+
 
 def test_sky_subtract( dia_out_dir ):
     in_path = dia_out_dir / "random.fits"
@@ -64,6 +64,7 @@ def _check_resampled_image( templ, resamp ):
         assert np.sum( tdata ) == pytest.approx( np.sum( rdata ), rel=0.01 )
         # The standard deviation goes down quite a bit... correlated pixel errors from the warping doing that.
         assert tdata.std() == pytest.approx( rdata.std(), rel=0.5 )
+
 
 def test_stampmaker( object_for_tests, one_science_image, dia_out_dir ):
     savedir = dia_out_dir
