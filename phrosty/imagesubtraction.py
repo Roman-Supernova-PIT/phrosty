@@ -97,6 +97,7 @@ def sky_subtract( img, temp_dir=None ):
     skyrms = np.median( PixA_skyrms )
     return subim, detmaskim, skyrms
 
+
 def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data'):
     """Make stamps.
 
