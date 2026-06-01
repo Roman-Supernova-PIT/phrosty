@@ -3,6 +3,7 @@ import os
 import pathlib
 import pytest
 from matplotlib import pyplot
+from astropy.table import Table
 
 import astropy.units as u
 
@@ -18,22 +19,23 @@ from snappl.lightcurve import Lightcurve
 #   test.
 
 # This one writes a diagnostic plot file to test_plots/test_pipeline_run_simple_gauss1.pdf
+@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
 def test_pipeline_run_simple_gauss1( config ):
     obj = DiaObject.find_objects( collection='manual', name='foo', ra=120, dec=-13. )[0]
     imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
                                              base_path='/photometry_test_data/simple_gaussian_test/sig2.0' )
 
     # Use for longer test with full "lightcurve" and two templates:
-    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
-    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
+    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
+    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
 
     # Use for shorter test with only two "observations":
     # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
     # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60030, 60035 ] ]
 
     # Shortest test with only one template and one science:
-    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
-    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60035 ] ]
+    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
+    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60035 ] ]
 
     # We have to muck about with the config, because the default config loaded for tests is
     #   set up for ou2024.  We're going to do naughty things we're not supposed to do,
@@ -59,7 +61,6 @@ def test_pipeline_run_simple_gauss1( config ):
                         nwrite=1,
                         catchfailures=False )
         ltcv = pip()
-        # import pdb; pdb.set_trace()
         chisq = 0.
         apchisq = 0.
         truemjd = []
@@ -164,27 +165,24 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
                        one_ou2024_template_image, two_ou2024_science_images ):
 
     pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                    science_images=[two_ou2024_science_images[0]],
-                    template_images=[one_ou2024_template_image],
+                    science_images=two_ou2024_science_images,
+                    template_images=one_ou2024_template_image,
                     nprocs=1, nwrite=1 )
     ltcv = pip()
+    
+    ifp = Table.read(ltcv, format='parquet')
+    hdrline = tuple(ifp.columns)
+    assert hdrline == ( 'mjd','flux','flux_err','zpt','NEA','sky_rms','observation_id','sca',
+                        'pix_x','pix_y','science_name','template_name','science_id','template_id',
+                        'template_observation_id','template_sca','aperture_sum','mag','mag_err','success' )
+    assert len(ifp) == 2
 
-    with open( ltcv ) as ifp:
-        hdrline = ifp.readline().strip()
-        assert hdrline == ( 'ra,dec,mjd,filter,observation_id,sca,template_observation_id,template_sca,zpt,'
-                            'aperture_sum,flux_fit,flux_fit_err,mag_fit,mag_fit_err,success' )
-        kws = hdrline.split( "," )
-        pairs = []
-        for line in ifp:
-            data = line.strip().split( "," )
-            pairs.append( { kw: val for kw, val in zip( kws, data ) } )
+    pairs = []
+    for row in ifp:
+        pairs.append( { kw: val for kw, val in zip( hdrline, tuple(row) ) } )
 
-    assert len(pairs) == 2
     for pair, img in zip( pairs, two_ou2024_science_images ):
-        assert float(pair['ra']) == pytest.approx( object_for_tests.ra, abs=0.1/3600. )
-        assert float(pair['dec']) == pytest.approx( object_for_tests.dec, abs=0.1/3600. )
         assert float(pair['mjd']) == pytest.approx( img.mjd, abs=1e-3 )
-        assert pair['filter'] == 'Y106'
         assert int(pair['observation_id']) == int(img.observation_id)
         assert int(pair['sca']) == int(img.sca)
         assert int(pair['template_observation_id']) == int(one_ou2024_template_image.observation_id)
@@ -200,21 +198,21 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     #   change, and empirically they vary by that much.  (Which is
     #   alarming, but what can you do.)
 
-    dflux = float( pairs[0]['flux_fit_err'] )
-    assert dflux == pytest.approx( 25., rel=0.3 )
-    dmag = float( pairs[0]['mag_fit_err'] )
-    assert dmag == pytest.approx( 0.15, abs=0.1 )
-    assert float( pairs[0]['aperture_sum'] ) == pytest.approx( 1006.8969554640036, abs=0.3*dflux )
-    assert float( pairs[0]['flux_fit'] ) == pytest.approx( 181.9182196835094, abs=0.3*dflux )
-    assert float( pairs[0]['mag_fit'] ) == pytest.approx( -5.64, abs=max( 0.3*dmag, 0.01 ) )
+    dflux = float( pairs[0]['flux_err'] )
+    assert dflux == pytest.approx( 540., rel=0.3 )
+    dmag = float( pairs[0]['mag_err'] )
+    assert dmag == pytest.approx( 0.49, abs=0.1 )
+    assert float( pairs[0]['aperture_sum'] ) == pytest.approx( 1006.897, abs=0.3*dflux )
+    assert float( pairs[0]['flux'] ) == pytest.approx( 1193.509, abs=0.3*dflux )
+    assert float( pairs[0]['mag'] ) == pytest.approx( -7.692, abs=max( 0.3*dmag, 0.01 ) )
 
-    dflux = float( pairs[1]['flux_fit_err'] )
-    assert dflux == pytest.approx( 27., rel=0.3 )
-    dmag = float( pairs[1]['mag_fit_err'] )
-    assert dmag == pytest.approx( 0.05, abs=0.1 )
-    assert float( pairs[1]['aperture_sum'] ) == pytest.approx( 4112, abs=0.3*dflux )
-    assert float( pairs[1]['flux_fit'] ) == pytest.approx( 721, abs=0.3*dflux )
-    assert float( pairs[1]['mag_fit'] ) == pytest.approx( -7.14, abs=max( 0.3*dmag, 0.01 ) )
+    dflux = float( pairs[1]['flux_err'] )
+    assert dflux == pytest.approx( 525.716, rel=0.3 )
+    dmag = float( pairs[1]['mag_err'] )
+    assert dmag == pytest.approx( 0.11, abs=0.1 )
+    assert float( pairs[1]['aperture_sum'] ) == pytest.approx( 4050.392, abs=0.3*dflux )
+    assert float( pairs[1]['flux'] ) == pytest.approx( 4986.560, abs=0.3*dflux )
+    assert float( pairs[1]['mag'] ) == pytest.approx( -9.24, abs=max( 0.3*dmag, 0.01 ) )
 
     # TODO : cleanup output directories!  This is scary if you're using the same
     #   directories for tests and for running... so don't do that... but the

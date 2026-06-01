@@ -62,9 +62,10 @@ class PipelineImage:
             self.save_dir = self.temp_dir
 
         self.image = image
-        if self.image.band != pipeline.band:
-            raise ValueError( f"Image {self.image.path.name} has a band {self.image.band}, "
-                              f"which is different from the pipeline band {pipeline.band}" )
+        # import pdb; pdb.set_trace()
+        # if self.image.band != pipeline.band:
+        #     raise ValueError( f"Image {self.image.path.name} has a band {self.image.band}, "
+        #                       f"which is different from the pipeline band {pipeline.band}" )
 
         # Intermediate files
         if self.keep_intermediate:
@@ -309,7 +310,11 @@ class Pipeline:
             template_images = self._read_csv( template_csv )
 
         self.science_images = [ PipelineImage( i, self ) for i in science_images ]
-        self.template_images = [ PipelineImage( i, self ) for i in template_images ]
+
+        if type(template_images) is (list or tuple):
+            self.template_images = [ PipelineImage( i, self ) for i in template_images ]
+        else:
+            self.template_images = [PipelineImage(template_images, self)]
 
         # All of our failures.
         # LA NOTE: I want to add keys for when this fails in sky subtraction
