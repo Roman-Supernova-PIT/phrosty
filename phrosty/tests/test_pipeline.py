@@ -169,12 +169,12 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
                     template_images=one_ou2024_template_image,
                     nprocs=1, nwrite=1 )
     ltcv = pip()
-    
+
     ifp = Table.read(ltcv, format='parquet')
     hdrline = tuple(ifp.columns)
-    assert hdrline == ( 'mjd','flux','flux_err','zpt','NEA','sky_rms','observation_id','sca',
-                        'pix_x','pix_y','science_name','template_name','science_id','template_id',
-                        'template_observation_id','template_sca','aperture_sum','mag','mag_err','success' )
+    assert hdrline == ( 'mjd', 'flux', 'flux_err', 'zpt', 'NEA', 'sky_rms', 'observation_id', 'sca',
+                        'pix_x', 'pix_y', 'science_name', 'template_name', 'science_id', 'template_id',
+                        'template_observation_id', 'template_sca', 'aperture_sum', 'mag', 'mag_err', 'success' )
     assert len(ifp) == 2
 
     pairs = []
