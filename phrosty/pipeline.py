@@ -118,7 +118,7 @@ class PipelineImage:
             Output of phrosty.imagesubtraction.sky_subtract().
         """
         try:
-            return sky_subtract( self.image )
+            return sky_subtract( self.image, temp_dir=self.temp_dir )
         except Exception as ex:
             SNLogger.exception( ex )
             raise
@@ -133,7 +133,6 @@ class PipelineImage:
             Output of self.run_sky_subtract(). See documentation
             for phrosty.imagesubtraction.sky_subtract().
         """
-
         SNLogger.debug( f"Saving sky_subtract info for path {info[0].path}" )
         self.skysub_img = info[0]
         self.detmask_img = info[1]
@@ -846,7 +845,6 @@ class Pipeline:
             Path to output csv file that contains a light curve.
         """
         SNLogger.info( "Making lightcurve." )
-
         self.metadata = {
             'provenance_id': None,
             'diaobject_id': self.diaobj.id,
@@ -1116,8 +1114,8 @@ class Pipeline:
                         #    PixA_resamp_object_GPU : warped template image data on GPU
                         #    PixA_Cresampl_object_GPU : cross-convolved template image on GPU
                         #    BlankMask_GPU : boolean array, True where PixA_resampl_object_GPU is 0.
-                        #    PixA_targetVar_GPU : noise CHECK THIS image for science image, on GPU
-                        #    PixA_objectVar_GPU : noise CHECK THIS image for template image, on GPU
+                        #    PixA_targetVar_GPU : variance image for science image, on GPU
+                        #    PixA_objectVar_GPU : variance image for template image, on GPU
                         #    PiXA_resampl_objectVar_GPU : warped template variance data on GPU
                         #    PixA_target_DMASK_GPU : detmask for science image, on GPU
                         #    PixA_object_DMASK_GPU : detmask for template image, on GPU
