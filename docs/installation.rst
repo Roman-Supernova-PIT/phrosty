@@ -154,23 +154,28 @@ The procedure above is mostly right.  However, we **strongly** recommend you put
   
 Then, assuming you're in the directory above your ``phrosty`` and ``photometry_test_data`` checkouts, and assuming you've made the other two necessary directories, you can run the container with::
 
-  podman-hpc run --gpu -it \
-    --mount type=bind,source=$PWD,target=/home \
-    --mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data \
-    --mount type=bind,source=$SCRATCH/phrosty_temp,target=/phrosty_temp \
-    --mount type=bind,source=$SCRATCH/phrosty_dia_out_dir,target=/dia_out_dir \
-    --mount type=bind,source=$SCRATCH/phrosty_lc_out_dir,target=/lc_out_dir \
-    --env PYTHONPATH=/roman_imsim \
-    --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
-    --env OPENBLAS_NUM_THREADS=1 \
-    --env MKL_NUM_THREADS=1 \
-    --env NUMEXPR_NUM_THREADS=1 \
-    --env OMP_NUM_THREADS=1 \
-    --env VECLIB_MAXIMUM_THREADS=1 \
-    --env TERM=xterm \
-    --annotation run.oci.keep_original_groups=1 \
-    registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev \
-    /bin/bash  
+podman-hpc run --gpu \
+  --mount type=bind,source=$PWD,target=/home \
+  --mount type=bind,source=$PSCRATCH,target=/scratch \
+  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/ou2024 \
+  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/ou2024_snana \
+  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/ou2024_snana_lc_dir \
+  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library,target=/ou2024_sims_sed_library \
+  --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
+  --env PYTHONPATH=/roman_imsim \
+  --env OPENBLAS_NUM_THREADS=1 \
+  --env MKL_NUM_THREADS=1 \
+  --env NUMEXPR_NUM_THREADS=1 \
+  --env OMP_NUM_THREADS=1 \
+  --env VECLIB_MAXIMUM_THREADS=1 \
+  --env TERM=xterm \
+  --env SNPIT_CONFIG=/home/phrosty/phrosty/tests/phrosty_test_config.yaml \
+  --annotation run.oci.keep_original_groups=1 \
+  -it \
+  registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev \
+  /bin/bash
+
+This is just the contents of ``phrosty/examples/perlmutter/interactive_podman.sh``, so you could also do ``sh phrosty/examples/perlmutter/interactive_podman.sh``.
 
 If you're inside the container, your prompt will be something like ``root@f24c2ad04d6d:/#`` (though with a different string of hexidecimal digits (hexits?)).  If you do ``ls -F /``, you will see the various specific directories you mounted, such as ``/dia_out_dir`` and ``/photometry_test_data``.
 
