@@ -60,48 +60,42 @@ def sky_subtract( img, temp_dir=None ):
     tmpdetmaskpath = temp_dir / f"{barf}_detmask.fits"
 
     origimg = img
-    try:
-        if isinstance( origimg, snappl.image.CompressedFITSImage ):
-            img = origimg.uncompressed_version( include=['data'] )
-        else:
-            # TODO, MAYBE MAKE THIS BETTER WHEN SNAPPL SUPPORTS MORE THINGS
-            # We need to exract just the image data (not the noise or flags)
-            # to send to image subtraction.
-            # Lauren, make an issue about this, mauybe also a snappl image
-            # that says that we need a way of making imgaes from other
-            # images including only data... compressedfitsimage supports
-            # that right now but not fitsimage).
-            # Can take out header arg when snappl issue #77 is resolved.
-            img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
-            img.data = origimg.data
-            img.save_data( which='data' )
+    if isinstance( origimg, snappl.image.CompressedFITSImage ):
+        img = origimg.uncompressed_version( include=['data'] )
+    else:
+        # TODO, MAYBE MAKE THIS BETTER WHEN SNAPPL SUPPORTS MORE THINGS
+        # We need to exract just the image data (not the noise or flags)
+        # to send to image subtraction.
+        # Lauren, make an issue about this, mauybe also a snappl image
+        # that says that we need a way of making imgaes from other
+        # images including only data... compressedfitsimage supports
+        # that right now but not fitsimage).
+        # Can take out header arg when snappl issue #77 is resolved.
+        img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
+        img.data = origimg.data
+        img.save_data( which='data' )
 
-        SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
-        radius_cut_detmask = Config.get().value( 'photometry.phrosty.sfft.radius_cut_detmask' )
-        ( _SKYDIP, _SKYPEAK, _PixA_skysub,
-          _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=img.path,
-                                                         FITS_skysub=tmpsubpath,
-                                                         FITS_detmask=tmpdetmaskpath,
-                                                         FITS_sky=None, FITS_skyrms=None,
-                                                         ESATUR_KEY='ESATUR',
-                                                         BACK_SIZE=64, BACK_FILTERSIZE=3,
-                                                         DETECT_THRESH=1.5, DETECT_MINAREA=5,
-                                                         DETECT_MAXAREA=0,
-                                                         RADIUS_CUT_DETMASK=radius_cut_detmask,
-                                                         VERBOSE_LEVEL=2, MDIR=None)
+    SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
+    radius_cut_detmask = Config.get().value( 'photometry.phrosty.sfft.radius_cut_detmask' )
+    ( _SKYDIP, _SKYPEAK, _PixA_skysub,
+      _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS(FITS_obj=img.path,
+                                                      FITS_skysub=tmpsubpath,
+                                                      FITS_detmask=tmpdetmaskpath,
+                                                      FITS_sky=None, FITS_skyrms=None,
+                                                      ESATUR_KEY='ESATUR',
+                                                      BACK_SIZE=64, BACK_FILTERSIZE=3,
+                                                      DETECT_THRESH=1.5, DETECT_MINAREA=5,
+                                                      DETECT_MAXAREA=0,
+                                                      RADIUS_CUT_DETMASK=radius_cut_detmask,
+                                                      VERBOSE_LEVEL=2, MDIR=None)
 
 
-        SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
+    SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
 
-        subim = snappl.image.FITSImage( path=tmpsubpath )
-        detmaskim = snappl.image.FITSImage( path=tmpdetmaskpath )
-        skyrms = np.median( PixA_skyrms )
-        return subim, detmaskim, skyrms
-
-    finally:
-        # Clean up the image temp file if necessary
-        if img.path != origimg.path:
-            img.path.unlink( missing_ok=True )
+    subim = snappl.image.FITSImage( path=tmpsubpath )
+    detmaskim = snappl.image.FITSImage( path=tmpdetmaskpath )
+    skyrms = np.median( PixA_skyrms )
+    return subim, detmaskim, skyrms
 
 
 def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data'):
