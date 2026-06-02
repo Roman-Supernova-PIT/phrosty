@@ -103,6 +103,7 @@ Running the SNPIT container (not on NERSC Perlmutter)
 -----------------------------------------------------
 
 To use phrosty inside the container, you will need to run it with ``docker`` or ``podman``, and bind-mount the directory where you've cloned phrosty.  Phrosty requires a handful of additional directories:
+
 * ``lc_out_dir`` : a place to write output lightcurves
 * ``dia_out_dir`` : a place to write output difference images
 * ``phrosty_temp`` : a place to write temp files; you want this on a fast filesystem
