@@ -143,16 +143,8 @@ If you get an error message, or don't see at least one NVIDIA GPU listed, then p
 
 On NERSC Perlmutter
 ^^^^^^^^^^^^^^^^^^^
-
-The procedure above is mostly right.  However, we **strongly** recommend you put your output directories on  on the Perlmutter scratch disk, at least for testing and development::
-
-  mkdir $SCRATCH/phrosty_lc_out_dir
-  mkdir $SCRATCH/phrosty_dia_out_dir
-  mkdir $SCRATCH/phrosty_temp
-
-(In fact, it's probably a good idea to put the other directories on ``$SCRATCH`` as well.)
   
-Then, assuming you're in the directory above your ``phrosty`` and ``photometry_test_data`` checkouts, and assuming you've made the other two necessary directories, you can run the container with::
+Assuming you're in the directory above your ``phrosty`` and ``photometry_test_data`` checkouts, you can run the container with::
 
 podman-hpc run --gpu \
   --mount type=bind,source=$PWD,target=/home \
@@ -177,7 +169,7 @@ podman-hpc run --gpu \
 
 This is just the contents of ``phrosty/examples/perlmutter/interactive_podman.sh``, so you could also do ``sh phrosty/examples/perlmutter/interactive_podman.sh``.
 
-If you're inside the container, your prompt will be something like ``root@f24c2ad04d6d:/#`` (though with a different string of hexidecimal digits (hexits?)).  If you do ``ls -F /``, you will see the various specific directories you mounted, such as ``/dia_out_dir`` and ``/photometry_test_data``.
+If you're inside the container, your prompt will be something like ``root@f24c2ad04d6d:/#`` (though with a different string of hexidecimal digits (hexits?)).  If you do ``ls -F /``, you will see the various specific directories that are mounted in the above command.
 
 Verify that you have access to GPUs by running::
 
