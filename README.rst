@@ -24,7 +24,7 @@ Prerequisites and Environment
 
 Although SFFT works in both CPU and GPU environments, currently some of the code in *phrosty* requires a CUDA-based GPU.  It requires a machine with an NVidia GPU that has at least 20MB (or more) of GPU RAM.  The Perlmutter GPU nodes at NERSC (with 40GB of GPU RAM) meet this requirement, but consumer graphics cards with only 12GB of RAM aren't sufficient.
 
-A number of standard python libraries are required, all of which may be installed from pip, including ``numpy``, ``scipy``, ``astropy``, ``scikit-image``, ``cupy-cuda12x``, ``pandas``, ``requests``, ``fitsio``, ``pyarrow``, ``fastparquet``, and (maybe?) ``nvmath-python[cu12]``.  If you are using OpenUniverse images, *phrosty* also requires ``galsim``, which may be installed from pip; and ``roman_imsim``, which may be git cloned from ``https://github.com/matroxel/roman_imsim.git``.
+A number of standard python libraries are required, all of which may be installed from pip, including ``numpy``, ``scipy``, ``astropy``, ``scikit-image``, ``cupy-cuda12x``, ``pandas``, ``requests``, ``fitsio``, ``pyarrow``, ``fastparquet``, and (maybe?) ``nvmath-python[cu12]``.  If you are using OpenUniverse images, *phrosty* also requires ``galsim``, which may be installed from pip; and ``roman_imsim``, which may be git cloned from ``https://github.com/matroxel/roman_imsim.git``. *However*, if you use the provided containerized environments, the prerequisite packages have been dealt with for you.
 
 *phrosty* should run in the `roman snpit environment <https://github.com/Roman-Supernova-PIT/environment>`_.  In particular, it should run in the docker image created from that environment. As of this writing, you can pull the latest version of the docker image from either of:
 
