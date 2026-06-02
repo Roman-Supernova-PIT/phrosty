@@ -6,6 +6,8 @@
 Installation
 ============
 
+.. contents::
+
 .. _system-requirements:
 
 System Requirements
