@@ -1,0 +1,1 @@
+Update command line calls so they are correct.
