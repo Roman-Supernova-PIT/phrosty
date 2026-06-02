@@ -1,7 +1,7 @@
 # ruff: noqa
 # Re-enable ruff when this file has been made to work again.
 
-raise RuntimeError( "This whole file is currently broken, it refers to deprecated functions.  Needs updating." )
+raise RuntimeError( "This whole file is currently broken, it refers to deprecated functions.  Needs updating. We are mostly keeping this visible as a reminder for how to animate things in Python." )
 
 """Saves a gif of the bright SN Ia with object ID 20202893. H158."""
 
