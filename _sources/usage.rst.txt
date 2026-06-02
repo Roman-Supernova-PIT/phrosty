@@ -6,9 +6,12 @@ Usage
 
 Phrosty may be run from the command line by running ``python phrosty/pipeline.py`` (assuming you are in the top level of a github checkout).  If you're in :ref:`the necessary environment to run phrosty<phrosty-installation-prerequisites>`, then try running::
 
+  cd /home/phrosty
+  pip install -e .
   python phrosty/pipeline.py -c phrosty/tests/phrosty_test_config.yaml --help
 
 phrosty's behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find two examples of these files in:
+
 * ``examples/perlmutter/phrosty_config.yaml``
 * ``phrosty/tests/phrosty_test_config.yaml``
   
@@ -47,7 +50,12 @@ This shows a NVIDIA A100 GPU with 40GB of memory.  A different system might show
 
 This system has a NVIDIA RTX 3080 Ti consumer graphics card.  Notice that it only has 12288MiB of memory; 12GB of memory is not enough to run the example.
 
-Inside the container, run::
+For Roman SNPIT development, if you need a more recent version of SFFT than what's in the docker container, inside the container, run::
+
+  cd /home/sfft
+  pip install -e .
+
+For everybody, inside the container, run::
 
   cd /home/phrosty
   pip install -e .
@@ -63,18 +71,20 @@ You should see all the options you can pass to phrosty.  There are a lot, becaus
 Try running::
 
   SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
-    --oc ou2024 \
-    --oid 20172782 \
-    -b Y106 \
-    --ic ou2024 \
-    -t phrosty/tests/20172782_instances_templates_1.csv \
-    -s phrosty/tests/20172782_instances_science_2.csv \
-    -p 3 -w 3 \
-    -v
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
 
 If all is well, after it's done running the output will end with something like::
 
-  [2025-08-13 17:35:24 - INFO] - Results saved to /lc_out_dir/data/20172782/20172782_Y106_all.csv
+  [2025-08-13 17:35:24 - INFO] - Results saved to /lc_out_dir/data/20172782/40753b1b-9248-4e58-a625-a9354dac18aa_Y106.pq
 
 On your host system (as well as inside the container), you should see new files in wherever you put ``lc_out_dir``, ``dia_out_dir``, and ``phrosty_temp``.  (Inside the container, these are at ``/lc_out_dir``, ``/dia_out_dir``, and ``/phrosty_temp``.)
 
@@ -84,9 +94,7 @@ On your host system (as well as inside the container), you should see new files 
 Running on Perlmutter
 ---------------------
 
-While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn't use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren't in the right unix groups.
-
-This example will *probably* not work on a login node.  It might.  However, there is only a single GPU on each login node, and because of how some very annoying python libraries are written (jax, I'm looking at you), often people have allocated a large fraction of the available GPU memory even if they don't really need it.  You will probably need to run on a compute node.  This is described below.
+While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn't use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren't in the right unix groups. This example will not work on a login node. 
 
 Setting up the environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,7 +104,7 @@ Get your environment set up as described under the :ref:`phrosty installation pr
 Pick a place to work
 ^^^^^^^^^^^^^^^^^^^^
 
-Work in one of two places.  You make yourself a subdirectory underneath ``/pscratch/sd/<u>/<username>``, where ``<username>`` is your NERSC username and `<u>` is the first letter of your username.  (You can get to this directory with ``cd $SCRATCH``; this is your top-level scratch directory, and NERSC sets the ``SCRATCH`` environment variable to point to it.)  Alternatively, you can create yourself a subdirectory somewhere underneath ``/global/cfs/cdirs/m4385/users``.  This is the shared SNPIT space on the NERSC community file system, so if you're going to work there, be aware that you're using up our shared file allocation.  At the moment, that's not a worry.
+Work in one of two places.  You make yourself a subdirectory underneath ``/pscratch/sd/<u>/<username>``, where ``<username>`` is your NERSC username and `<u>` is the first letter of your username.  (You can get to this directory with ``cd $SCRATCH``; this is your top-level scratch directory, and NERSC sets the ``SCRATCH`` environment variable to point to it.)  Alternatively, if you are on the SN PIT, you can create yourself a subdirectory somewhere underneath ``/global/cfs/cdirs/m4385/users``.  This is the shared SNPIT space on the NERSC community file system, so if you're going to work there, be aware that you're using up our shared file allocation.  At the moment, that's not a worry.
 
 I'm going to call the place you've picked to work your "parent" directory.
 
@@ -104,6 +112,8 @@ Get phrosty
 ^^^^^^^^^^^
 
 In your parent directory, :ref:`clone the phrosty repository<install-from-sources>`.  For this example, you do not need to install the photometry test data.
+
+If you are doing Roman SNPIT-related development and you need a more recent version of SFFT than what's in the docker container, :ref:`also clone the Roman SNPIT SFFT repository<install-from-sources>`.
 
 Locate existing directories
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -132,7 +142,7 @@ This directory will be mounted to ``/phrosty_temp`` inside the container.  (The 
 Secure lists of images for your supernova
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Pick a supernova to run on.  TODO: more information.
+Step one: Pick a supernova to run on. 
 
 For this example, we're going to run on the object with id 20172782.  In the ``examples/perlmutter`` directory under your ``phrosty`` checkout), you can find three ``.csv`` files that have information about the template and/or science images we're going to use:
 * ``20172782_instances_templates_1.csv`` — a single R-band template image
@@ -144,12 +154,14 @@ For this example, we're going to run on the object with id 20172782.  In the ``e
 
 For this example, you don't have to do anything, you will just use the files that are there.  However, if you are pushing this further, you will need to know how to find files, and how to construct your own ``.csv`` files.
 
-If you look at these ``.csv`` files, there are give pieces of information on each line:
+If you look at these ``.csv`` files, there are five pieces of information on each line::
 * The filename of the OpenUniverse image, relative to ``/ou2024/RomanTDS/images`` inside the container (see below).  On Perlmutter outside the container, these are relative to ``/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data/RomanTDS/images``.
-* The pointing of the image
-* The SCA on which the supernova is present for this pointing
-* The MJD of the pointing
-* The band (filter) of the exposure
+* The observation_id of the image (for OpenUniverse 2024, this corresponds to "pointing")
+* The SCA on which the supernova is present for this observation_id (1-18)
+* The MJD of the observation_id
+* The band (filter) of the exposure (R062, Z087, Y106, J129, H158, F184, or K213)
+
+These files must start with header ``path observation_id sca mjd band``. Columns are separated by spaces.
 
 .. _perlmutter-interactive:
 
@@ -164,46 +176,80 @@ First, get yourself a session on an interactive GPU node with::
 
 after a minute or so, that should log you into one of the nodes with a session that will last 4 hours.  (This is overkill; if you know it won't be that long, shorten the time after the ``-t`` flag.)  You can verify that you're on a compute node by running ``nvidia-smi``; you should see four different GPUs listed each with either 40MB or 80GB of memory, but no GPU processes running.
 
-cd into your "parent" directory (if you're not there already).
+`cd` into your "parent" directory (if you're not there already).
 
-Look at the file ``phrosty/examples/perlmutter/interactive_podman.sh``.  (There's no need to edit it; this is so you can see what's going on.  If you read all of the :ref:`installation instructions<phrosty-installation>`, you will recognize a lot of what's there.)  You'll see number of ``--mount`` parameters.  Each of these takes a directory on the host machine (the ``source``) and maps it to a directory inside the podman container (the ``target``); this is "bind mounting".  For example, you will see your phrosty checkout goes to ``/phrosty`` inside the container.  In addition, several environment variables are set, and an "annotation" that is needed for ``podman-hpc`` to be able to handle accessing directories that are group-readable, but not world-readable.
+If you are not a member of the Roman SN PIT (i.e., assuming you pulled your container from :ref:`docker.io<phrosty-installation-prerequisites>`), do::
 
-Now do::
+  podman-hpc run --gpu \
+    --mount type=bind,source=$PWD,target=/home \
+    --mount type=bind,source=$PSCRATCH,target=/scratch \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/ou2024 \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/ou2024_snana \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/ou2024_snana_lc_dir \
+    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library,target=/ou2024_sims_sed_library \
+    --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
+    --env PYTHONPATH=/roman_imsim \
+    --env OPENBLAS_NUM_THREADS=1 \
+    --env MKL_NUM_THREADS=1 \
+    --env NUMEXPR_NUM_THREADS=1 \
+    --env OMP_NUM_THREADS=1 \
+    --env VECLIB_MAXIMUM_THREADS=1 \
+    --env TERM=xterm \
+    --env SNPIT_CONFIG=/home/phrosty/phrosty/tests/phrosty_test_config.yaml \
+    --annotation run.oci.keep_original_groups=1 \
+    -it \
+    docker.io/rknop/roman-snpit-env:cuda-dev \
+    /bin/bash
 
-  bash phrosty/examples/perlmutter/interactive_podman.sh
+If you are in the Roman SN PIT (i.e., assuming you pulled your container from :ref:`registry.nersc.gov<phrosty-installation-prerequisites>`), instead do::
 
-This will create a container from the ``roman-snpit-env`` image, and put in a bash shell inside the container.  This will put you inside the container.  Your prompt will change to something like ``root@56356f1a4b9b:/usr/src#`` (where the hex barf will be different every time).  At any time, run ``ls -F /``; if you see directories ``phrosty``, ``phrosty_temp``, ``dia_out_dir``, and the others that were mounted by ``interactive_podman.sh``, then you know you're working inside the container, rather than on the host machine.  Verify that the GPUs are visible inside the container with ``nvidia-smi``.
+  WHICHROMANENV=cuda-dev bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh
+
+If this fails, check :role:`the snappl documentation<https://roman-supernova-pit.github.io/snappl/environment.html#databases-currently-supported>` for current launchers. 
+
+This will create a container image, and put in a bash shell inside the container.  This will put you inside the container.  Your prompt will change to something like ``root@56356f1a4b9b:/usr/src#`` (where the hex barf will be different every time).  At any time, run ``ls -F /``; if you see directories ``phrosty``, ``phrosty_temp``, ``dia_out_dir``, and the others that were mounted by ``interactive_podman.sh``, then you know you're working inside the container, rather than on the host machine.  Verify that the GPUs are visible inside the container with ``nvidia-smi``.
 
 Go to the ``/home`` directory, which is where your parent directory should be mounted::
 
   cd /home
 
+Next, if you are doing Roman SNPIT development, install SFFT::
+  
+  cd /home/sfft
+  pip install -e .
+
+For everyone, install phrosty::
+
+  cd /home/phrosty
+  pip install -e .
+
 The main Python executable for running the pipeline is ``phrosty/phrosty/pipeline.py``.  Run::
 
-  SNPIT_CONFIG=phrosty/examples/perlmutter/phrosty_config.yaml python phrosty/phrosty/pipeline.py --help
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py --help
 
 to see how it works, and to see what the various parameters you can specify are.  The output will be long, becasue everything that's in the config file is included as something you can override on the command line.  The arguments near the top are the ones you're more likely to want to think about.  You might want to pipe the output of this ``-help`` into ``less`` so you can see what's going on.
 
 Run this on your example lightcurve with::
 
-  python phrosty/phrosty/pipeline.py \
-    -c phrosty/examples/perlmutter/phrosty_config.yaml \
-    --oc ou2024 \
-    --oid 20172782 \
-    -b R062 \
-    --ic ou2024 \
-    -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv \
-    -s phrosty/examples/perlmutter/20172782_instances_science_2.csv \
-    -p 3 \
-    -w 3
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
 
 (If you run with ``.csv`` files that have larger number of images, you probably want to pass a larger number to `-p`; this is a number of parallel CPU processes that will run at once, and is limited by how many CPUs and how much memory you have available.  The code will only run one GPU process at once.  You can also try increasing `-w`, but this is more limited by filesystem performance than the number of CPUs and the amount of memory you have available.  We've set these both to 3 right now because there are only 3 files being processed (one template and two science images).  Empirically, on Perlmutter nodes, you can go up to something like `-p 15`; while there are (many) more CPUs than that, memory is the limiting factor.  Also, empirically, on Perlmutter, you can go up to something like `-w 5` before you reach the point of diminishing returns.  This is more variable, because whereas you have the node's CPUs to yourself, you're sharing the filesystem with the rest of the users of the system.)
 
 If all is well, you should see a final line that looks something like::
 
-  [2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.csv
+  [2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.pq
 
-Outside the container (i.e. on Perlmutter), you should be able to find the file ``data/20172782/20172782_R062_all.csv`` underneath the ``lc_out_dir`` subdirectory of your parent directory.  Congratulations, this has the lightcurve!  (TODO: document the columns of this ``.csv`` file, but you can approximately guess what they are based on the column headers.)
+Outside the container (i.e. on Perlmutter), you should be able to find the file ``data/20172782/20172782_R062_all.pq`` underneath the ``lc_out_dir`` subdirectory of your parent directory.  Congratulations, this has the lightcurve!
 
 You will also find new files in the ``dia_out_dir`` subdirectory, including several large ``.fits`` files.
 
@@ -211,33 +257,33 @@ You will also find new files in the ``dia_out_dir`` subdirectory, including seve
 Running with the NSight Profiler
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**WARNING**: this section has not been tested recently so may be out of date.  TODO: try this again and update the docs after so doing.
-
-When developing/debugging the pipeline, it's useful to run with a profiler, so you can see where the code is spending most of its time.  The huge ``roman-snpit-env:cuda-dev`` Docker image includes the NVIDIA NSight Systems profiler, and (at least as of this writing) the *phrosty* code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in :ref:`perlmutter-interactive` above, only replacing the final ``python`` command with::
+When developing/debugging the pipeline, it's useful to run with a profiler, so you can see where the code is spending most of its time.  The huge ``roman-snpit-env:cuda-dev`` Docker image includes the NVIDIA NSight Systems profiler, and the ``phrosty`` code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in :ref:`perlmutter-interactive` above, only replacing the final ``python`` command with::
 
   nsys profile \
     --trace-fork-before-exec=true \
     --python-backtrace=cuda \
     --python-sampling=true \
     --trace=cuda,nvtx,cublas,cusparse,cudnn,cudla,cusolver,opengl,openacc,openmp,osrt,mpi,nvvideo,vulkan,python-gil \
-    python phrosty/phrosty/pipeline.py \
-      -c phrosty/examples/perlmutter/phrosty_config.yaml \
-      --oc ou2024 \
-      --oid 20172782 \
-      -b R062 \
-      --ic ou2024 \
-      -t phrosty/examples/perlmutter/20172782_instances_templates_1.csv \
-      -s phrosty/examples/perlmutter/20172782_instances_science_2.csv \
-      -p 3 \
-      -w 3
+    -e SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml \
+    python phrosty/pipeline.py \
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
 
-*Ideally*, this would create a file ``report1.nsys-rep`` (or ``report2.nsys-rep``, or higher numbers based on what files are already in the directory), but something about that is broken; I'm not sure what.  If that file is created, be happy.  If not, should leave behind a file ``report<n>.qdstrm``.  You can couple that file to another system and manually convert it to a ``.nsys-rep`` file.  On a Linux system, if you've installed the ``nsight-compute`` and ``nsight-systems`` packages (see `Nvidia's Nsight Systems installation guide <https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)>`_), you can download the ``.qdstrm`` file to your system and run::
+*Ideally*, this would create a file ``report1.nsys-rep`` (or ``report2.nsys-rep``, or higher numbers based on what files are already in the directory), but something about that is broken; I'm not sure what.  If that file is created, be happy.  If not, it will say something like "Importer error status: Importation failed," and will leave behind a file ``report<n>.qdstrm``.  You can couple that file to another system and manually convert it to a ``.nsys-rep`` file.  On a Linux system, if you've installed the ``nsight-compute`` and ``nsight-systems`` packages (see `Nvidia's Nsight Systems installation guide <https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)>`_), you can download the ``.qdstrm`` file to your system and run::
 
   /opt/nvidia/nsight-systems/2025.3.2/host-linux-x64/QdstrmImporter -i <name>.qdstrm
 
 where ``<name>.qstrm`` is the file you downloaded.  (Note that the directory may have something other than ``2025.3.2`` in it, depending on what version you've installed.  For best comptibility with the version of Nsight in the current (as of this writing) snpit docker image, I recommend trying to install something close to ``nsight-compute-2025.3.0`` and  ``nsight-systems-2025.3.2``; exactly what is avialable seems to vary with time.)  This should produce a file ``<name>.nsys-rep``.
 
-Once you, somehow, have a ``<name>.nsys-rep`` file, copy it down to your local desktop if it's not there already, and run::
+Once you have a ``<name>.nsys-rep`` file, copy it down to your local desktop if it's not there already, and run::
 
   nsys-ui <name>.nsys-rep
 
@@ -261,7 +307,8 @@ At the top are the directives that control how the job is submitted.  Many of th
 
 You can probably leave the rest of the flags as is.  The ``--cpus-per-task`` and ``--gpus-per-task`` flags are set so that it will only ask for a quarter of a node.  (The queue manager is very particular about numbers passed to GPU nodes on the shared queue.  It needs you to ask for exactly 32 CPU cores for each GPU, and it needs you to ask for _exactly_ the right amount of memory.  The extra comment marks on the ``####SBATCH --mem`` line tell slurm to ignore it, as it seems to get the default right, and it's not worth fiddling with it to figure out what you should ask for.  A simple calculation would suggest that 64GB per GPU is what you should ask for, but when you do that, slurm thinks you're asking for 36 CPUs worth of memory, not 32 CPUs worth of memory.  The actual number is something like 56.12GB, but again, since the default seems to do the right thing, it's not worth fiddling with this.)
 
-If look look at the bottom of the script, you will see that the number of parallel worker jobs that phrosty uses is set to 9 (``-p 9`` as a flag to ``python phrosty/phrosty/pipeline.py``).  The total number of processes that the python program runs at once is this, plus the number of FITS writer threads (given by ``-w``), plus one for the master process that launches all of the others.   You will notice that this total is less than the 32 CPUs that we nominally have.  To be safe, assume that each of the ``-p`` processes will use ~6GB of memory.  By limiting ourselves to 9 processes, we should safely fit within the amount of CPU memory allocated to the job (allowing for some overhead for the driver process and the FITS writer processes).  (TODO: we really want to get this memory usage down.)   Based on performance, you might want to play with the number of FITS writing threads (the number after ``-w``); assume that each FITS writer process will use ~1GB of memory.  (TODO: investigate how much they really use.)
+If look look at the bottom of the script, you will see that the number of parallel worker jobs that phrosty uses is set to 9 (``-p 9`` as a flag to ``python phrosty/phrosty/pipeline.py``).  The total number of processes that the python program runs at once is this, plus the number of FITS writer threads (given by ``-w``), plus one for the master process that launches all of the others.   You will notice that this total is less than the 32 CPUs that we nominally have.  To be safe, assume that each of the ``-p`` processes will use ~6GB of memory.  By limiting ourselves to 9 processes, we should safely fit within the amount of CPU memory allocated to the job (allowing for some overhead for the driver process and the FITS writer processes). Based on performance, you might want to play with the number of FITS writing threads (the number after ``-w``); assume that each FITS writer process will use ~1GB of memory.  
+.. (TODO: investigate how much they really use; get memory usage down.)
 
 **Make sure expected directories exists**: If you look at the batch script, you'll see a number of ``--mount`` flags that bind-mount directories inside the container.  From the location where you submit your job, all of the ``source=`` part of those ``--mount`` directives must be available.  For the demo, you will need to create the following directories underneath where you plan to submit the script::
 
@@ -300,11 +347,14 @@ If you want to see the status of jobs that have completed, there are a few jobs 
 
 **Checking job results:** Look at your output file.  The last line should be something like::
 
-  [2025-02-10 15:43:32 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.csv
+  [2025-02-10 15:43:32 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/40753b1b-9248-4e58-a625-a9354dac18aa_R062.pq
 
 and, ideally, there should be no lines anywhere in the file with ``ERROR`` near the beginning of the log message.
 
-Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.csv`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
+Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.pq`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
+
+.. Running on SMCE
+.. ---------------
 
 Running on a HPC system that uses apptainer/singularity
 -------------------------------------------------------
@@ -374,10 +424,88 @@ Do::
 
 If you ran the ``apptainer pull`` command above in a different place from where you are now, replaced ``roman-snpit-env_cuda-dev.sif`` above with the full path to that ``.sif`` file.
 
-
-
 Phrosty Functionality
 =====================
 
-<<ALSO DOCUMENT FUNCTIONALITY &>>
+Command line arguments, explained
+---------------------------------
 
+Let's break down the command you were instructed to use earlier. Recall::
+
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
+
+Arg-by-arg...:
+
+* ``SNPIT_CONFIG`` points to your config file.
+* ``oid`` stands for "object ID". 
+* ``oc`` stands for "object collection". This is a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 images), ``manual_fits`` (your chosen input FITS image), or ``snpitdb`` (SN PIT only).
+* ``b`` stands for "band". This will be any one of: R062, Z087, Y106, J129, H158, F184, or K213.
+* ``r`` is the RA of your object.
+* ``d`` is the Dec of your object.
+* ``ic`` stands for "image collection". This is also a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 SN Ia catalog), ``manual`` (any object you want),  ``snpitdb`` (SN PIT only).
+* ``t`` is for "templates". This is your list of image templates.
+* ``s`` is for "science". This is a list of images that contain your SN (science object).
+* ``p`` is the number of computation processes. e.g., if you do ``-p 3``, you will have 3 parallel sky subtraction processes going on. This does not apply to the GPU-based portion of the code, which is serial.
+* ``w`` is the number of file writing processes. 
+* ``v`` toggles "verbose". 
+
+To briefly elaborate on the "image collection" and "object collection"--this can be confusing. The image collection describes the images, and the object collection describes the objects of interest in the images. For example, if you used ``ou2024`` for both ``ic`` and ``oc``, you would be doing analysis on an SN Ia in the OpenUniverse 2024 FITS images. However, if you set ``-ic ou2024`` and ``-oc manual``, that would enable you to run the pipeline on any object you wanted in the OpenUniverse2024 images as long as you specified its RA and Dec.  
+
+Reading the output file
+-----------------------
+
+The output files, which will be named like ``[observation_id]/[a bunch of random characters]_[band].pq``, are parquet files and can easily be read by doing::
+
+  from astropy.table import Table
+  lc = Table.read('40753b1b-9248-4e58-a625-a9354dac18aa_R062.pq', format='parquet')
+
+The column headers in the output ``pq`` files are:
+
+* ``mjd``
+* ``flux``
+* ``flux_err``
+* ``zpt``
+* ``NEA``
+* ``sky_rms``
+* ``observation_id``
+* ``sca``
+* ``pix_x``
+* ``pix_y``
+* ``science_name``
+* ``template_name``
+* ``science_id``
+* ``template_id``
+* ``template_observation_id``
+* ``template_sca``
+* ``aperture_sum``
+* ``mag``
+* ``mag_err``
+* ``success``
+
+.. Running on OpenUniverse data
+.. ----------------------------
+
+.. Running on arbitrary images
+.. ---------------------------
+
+.. Using ASDF
+.. ----------
+
+.. Using the A25 ePSFs
+.. -------------------
+
+.. SN PIT section
+.. ==============
+
+.. Using the database
+.. ------------------
