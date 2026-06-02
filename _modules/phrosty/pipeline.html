@@ -4,12 +4,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phrosty.pipeline &#8212; phrosty 0.1.dev1+gb5005dcca documentation</title>
+    <title>phrosty.pipeline &#8212; phrosty 0.1.dev1+g0a23b829f documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
-    <script src="../../_static/documentation_options.js?v=c96d6d37"></script>
+    <script src="../../_static/documentation_options.js?v=f9b17aa6"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -152,9 +152,10 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">temp_dir</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">image</span> <span class="o">=</span> <span class="n">image</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">band</span> <span class="o">!=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">band</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;Image </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> has a band </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">band</span><span class="si">}</span><span class="s2">, &quot;</span>
-                              <span class="sa">f</span><span class="s2">&quot;which is different from the pipeline band </span><span class="si">{</span><span class="n">pipeline</span><span class="o">.</span><span class="n">band</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">)</span>
+        <span class="c1"># import pdb; pdb.set_trace()</span>
+        <span class="c1"># if self.image.band != pipeline.band:</span>
+        <span class="c1">#     raise ValueError( f&quot;Image {self.image.path.name} has a band {self.image.band}, &quot;</span>
+        <span class="c1">#                       f&quot;which is different from the pipeline band {pipeline.band}&quot; )</span>
 
         <span class="c1"># Intermediate files</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_intermediate</span><span class="p">:</span>
@@ -210,7 +211,7 @@
 <span class="sd">            Output of phrosty.imagesubtraction.sky_subtract().</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">sky_subtract</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">image</span> <span class="p">)</span>
+            <span class="k">return</span> <span class="n">sky_subtract</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="n">temp_dir</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">temp_dir</span> <span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span> <span class="n">ex</span> <span class="p">)</span>
             <span class="k">raise</span></div>
@@ -228,7 +229,6 @@
 <span class="sd">            Output of self.run_sky_subtract(). See documentation</span>
 <span class="sd">            for phrosty.imagesubtraction.sky_subtract().</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
         <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;Saving sky_subtract info for path </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">skysub_img</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">detmask_img</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
@@ -418,7 +418,11 @@
             <span class="n">template_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_csv</span><span class="p">(</span> <span class="n">template_csv</span> <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">science_images</span> <span class="o">=</span> <span class="p">[</span> <span class="n">PipelineImage</span><span class="p">(</span> <span class="n">i</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">science_images</span> <span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span> <span class="o">=</span> <span class="p">[</span> <span class="n">PipelineImage</span><span class="p">(</span> <span class="n">i</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">template_images</span> <span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">template_images</span><span class="p">)</span> <span class="ow">is</span> <span class="p">(</span><span class="nb">list</span> <span class="ow">or</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span> <span class="o">=</span> <span class="p">[</span> <span class="n">PipelineImage</span><span class="p">(</span> <span class="n">i</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">template_images</span> <span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span> <span class="o">=</span> <span class="p">[</span><span class="n">PipelineImage</span><span class="p">(</span><span class="n">template_images</span><span class="p">,</span> <span class="bp">self</span><span class="p">)]</span>
 
         <span class="c1"># All of our failures.</span>
         <span class="c1"># LA NOTE: I want to add keys for when this fails in sky subtraction</span>
@@ -980,7 +984,6 @@
 <span class="sd">            Path to output csv file that contains a light curve.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">&quot;Making lightcurve.&quot;</span> <span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;provenance_id&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
             <span class="s1">&#39;diaobject_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
@@ -1259,8 +1262,8 @@
                         <span class="c1">#    PixA_resamp_object_GPU : warped template image data on GPU</span>
                         <span class="c1">#    PixA_Cresampl_object_GPU : cross-convolved template image on GPU</span>
                         <span class="c1">#    BlankMask_GPU : boolean array, True where PixA_resampl_object_GPU is 0.</span>
-                        <span class="c1">#    PixA_targetVar_GPU : noise CHECK THIS image for science image, on GPU</span>
-                        <span class="c1">#    PixA_objectVar_GPU : noise CHECK THIS image for template image, on GPU</span>
+                        <span class="c1">#    PixA_targetVar_GPU : variance image for science image, on GPU</span>
+                        <span class="c1">#    PixA_objectVar_GPU : variance image for template image, on GPU</span>
                         <span class="c1">#    PiXA_resampl_objectVar_GPU : warped template variance data on GPU</span>
                         <span class="c1">#    PixA_target_DMASK_GPU : detmask for science image, on GPU</span>
                         <span class="c1">#    PixA_object_DMASK_GPU : detmask for template image, on GPU</span>
