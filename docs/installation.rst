@@ -26,15 +26,15 @@ Currently, phrosty is designed inside a container built from the the `Roman Supe
 
 You can pull the necessary container image from one of the following two sources:
 
-* ``registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev``
+* ``registry.nersc.gov/m4385/roman-snpit-env:cuda-dev``
 * ``docker.io/rknop/roman-snpit-env:cuda-dev``
 
 The latter image location should work for everybody.  For members of the Roman SN PIT, the first image location should be more efficient when you're running on NERSC Perlmutter; see below.the image, 
 
 Because phrosty (and other libraries it depends on, such as snappl) is under heavy development, it's possible that the latest container will not work properly with phrosty at any given moment.
 
-On NERSC Perlmutter
-^^^^^^^^^^^^^^^^^^^
+Pulling the container image on NERSC Perlmutter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you're on NERSC Perlmutter, use ``podman-hpc`` in place of ``docker``.  Pull the image with::
 
@@ -58,29 +58,23 @@ In particular, notice that there is both a R/O "true" and R/O "false" version.  
 
 If you've pulled images before, and you're now working on a new login node, you will only see the ``R/O=true`` image.  That's the only image you really need, so in that case there's no need to pull the image again.  (You will only see the ``R/O=true`` image on compute nodes.)
 
-**If you have trouble with podman**: Podman is, as of this writing, still a beta feature on Nersc, and has some warts.  Refer to `NERSC's documentation on podman-hpc <https://docs.nersc.gov/development/containers/podman-hpc/overview/>`_.  In particular, if you want to clean the slate and start over, try running::
+**If you have trouble with podman**: Refer to `NERSC's documentation on podman-hpc <https://docs.nersc.gov/development/containers/podman-hpc/overview/>`_.  In particular, if you want to clean the slate and start over, try running::
 
   podman-hpc system reset
   
 to delete all of your podman images and contexts.  Then try pulling the image again.
 
-On other HPC Systems
-^^^^^^^^^^^^^^^^^^^^
+Pulling the container image on other HPC Systems
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If your HPC system doesn't support containers, then you're out of luck.  Most HPC systems support containers using ``apptainer`` (previously known as ``singularity``).  This system is not a drop-in replacment for docker, as the way you obtain images, and the semantics for running containers, are different.  (There are also differences in terms of how isolated the environment is; singularity is less of a "real" isolated container than docker, usually.)
 
 TODO : document use of singularity.
 
-
-Stable release
---------------
-
-phrosty is under heavy development and does not currently have stable releases.  Eventually it will be released on pypi either under the name ``phrosty`` or ``roman-snpit-phrosty`` (depending on what's available).
-
 .. _install-from-sources:
 
-From sources
-------------
+Installing from sources
+-----------------------
 
 Currently, the only way to install phrosty is to download it from the `github repo <https://github.com/Roman-Supernova-PIT/phrosty>`_.  Clone it with::
 
@@ -88,23 +82,28 @@ Currently, the only way to install phrosty is to download it from the `github re
 
 (you can also clone it via the ``git@`` code link if you know what you're doing.)
 
-Installing the photometry test data
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+For SNPIT development only: If you need a more recent version of SFFT than what's in the docker image, use the Roman SNPIT SFFT fork::
 
-If you want to :ref:`run tests<running-tests>`, and some of the examples, then you will also need to pull the photometry test data::
+    https://github.com/Roman-Supernova-PIT/sfft.git
+
+Make sure you check these out to the same parent folder. 
+
+Installing the photometry test data (optional)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you want to run tests, and some of the examples, then you will also need to pull the photometry test data::
 
   git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
 
 .. _running-snpit-container:
 
-Running the SNPIT container
----------------------------
+Running the SNPIT container (not on NERSC Perlmutter)
+-----------------------------------------------------
 
 To use phrosty inside the container, you will need to run it with ``docker`` or ``podman``, and bind-mount the directory where you've cloned phrosty.  Phrosty requires a handful of additional directories:
 * ``lc_out_dir`` : a place to write output lightcurves
 * ``dia_out_dir`` : a place to write output difference images
 * ``phrosty_temp`` : a place to write temp files; you want this on a fast filesystem
-* ``phrosty_intermediate`` : a place to write intermediate data products for diagnostic purposes; you want this on a fast filesystem
 
 You configure these directories with the phrosty config ``.yaml`` file.  For the config file we use for tests, inside the container these directories must show up at ``/lc_out_dir``, ``/dia_out_dir``, and ``/phrosty_temp``.  (The test environment unifies ``phrosty_intermediate`` and ``phrosty_temp``.)  You can make all of these diretories as subdirectories of your current directory::
 
@@ -118,21 +117,23 @@ Assuming you're currently in the directory which is the parent of your ``phrosty
 
   docker run --gpus=all -it \
     --mount type=bind,source=$PWD,target=/home \
+    --mount type=bind,source=$PSCRATCH,target=/scratch \
     --mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data \
     --mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp \
     --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
     --mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir \
-    --env PYTHONPATH=/roman_imsim \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
     --env OPENBLAS_NUM_THREADS=1 \
     --env MKL_NUM_THREADS=1 \
     --env NUMEXPR_NUM_THREADS=1 \
     --env OMP_NUM_THREADS=1 \
     --env VECLIB_MAXIMUM_THREADS=1 \
+    --env TERM=xterm \
+    --annotation run.oci.keep_original_groups=1 \
     rknop/roman-snpit-env:cuda-dev \
     /bin/bash
 
-(Substitute ``registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev`` for ``rknop/roman-snpit-env:cuda-dev`` if you pulled the docker image from there.)
+(Substitute ``registry.nersc.gov/m4385/roman-snpit-env:cuda-dev`` for ``rknop/roman-snpit-env:cuda-dev`` if you pulled the docker image from there.)
 
 If all is well, this will put you in a docker container.  You can tell you're in the container because your prompt will change to something like ``root@47394bd41fbe:/#`` (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you've got access to the GPUs by running, inside the container::
 
