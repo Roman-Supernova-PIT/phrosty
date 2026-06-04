@@ -1154,9 +1154,7 @@ class Pipeline:
                     if 'subtract' in steps:
                         # After this step is done, two more fields in sfftifier are set:
                         #    Solution_GPU  : --something--??
-                        #    PixA_DIFF_GPU : difference image ??
-                        # Get Lei to write docs on PureCupy_Customized_Packet.PCCP so
-                        #   we can figure out what these are
+                        #    PixA_DIFF_GPU : difference image
                         SNLogger.info( "...subtract" )
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
                             try:
