@@ -473,7 +473,6 @@ class Pipeline:
         hdr_sci.insert( 0, ('NAXIS', 2) )
         hdr_sci.insert( 'NAXIS', ('NAXIS1', sci_image.image.data.shape[1] ), after=True )
         hdr_sci.insert( 'NAXIS1', ('NAXIS2', sci_image.image.data.shape[0] ), after=True )
-        # data_sci = cp.array( np.ascontiguousarray(sci_image.image.data.T), dtype=cp.float64 )
         data_sci = cp.array( np.ascontiguousarray(sci_image.skysub_img.data.T), dtype=cp.float64 )
         noise_sci = cp.array( np.ascontiguousarray(sci_image.image.noise.T), dtype=cp.float64 )
         var_sci = noise_sci ** 2
@@ -482,7 +481,6 @@ class Pipeline:
         hdr_templ.insert( 0, ('NAXIS', 2) )
         hdr_templ.insert( 'NAXIS', ('NAXIS1', templ_image.image.data.shape[1] ), after=True )
         hdr_templ.insert( 'NAXIS1', ('NAXIS2', templ_image.image.data.shape[0] ), after=True )
-        # data_templ = cp.array( np.ascontiguousarray(templ_image.image.data.T), dtype=cp.float64 )
         data_templ = cp.array( np.ascontiguousarray(templ_image.skysub_img.data.T), dtype=cp.float64 )
         noise_templ = cp.array( np.ascontiguousarray(templ_image.image.noise.T), dtype=cp.float64 )
         var_templ = noise_templ ** 2
