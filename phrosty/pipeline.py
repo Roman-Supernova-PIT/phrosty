@@ -1175,12 +1175,8 @@ class Pipeline:
                         # After it's done, the following fields of sfftifier are set:
                         #   Solution : CPU copy of Solution_GPU
                         #   FKDECO_GPU : result of PureCupy_Decorrelation_Calculator.PCDC
-                        # Get Lei to write documentation on PureCupy_DeCorrelation_Calculator
-                        #   so we can figure out what this is, but I THINK it's a
-                        #   kernel that is used to convolve with things to "decorrelate".
-                        #   (From what?)
                         # In addition the two local varaibles diff_var and diff_var_path are set.
-                        #   diff_var : variance in difference image (I THINK), on GPU
+                        #   diff_var : variance in difference image, on GPU
                         #   diff_var_path : where we want to write diff_var in self.dia_out_dir
                         SNLogger.info( "...find_decorrelation" )
                         with nvtx.annotate( "find_decor", color=0xcc44ff ):
