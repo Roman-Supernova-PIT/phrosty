@@ -118,6 +118,10 @@ If you put them somewhere else, then make sure to modify the docker command belo
    
 Assuming you're currently in the directory which is the parent of your ``phrosty`` and ``photometry_test_data`` checkouts, you can run a docker container suitable for running tests by running the following::
 
+  export PODMANHPC_ADDITIONAL_STORES=/pscratch/sd/m/masao/roman_snpit/podman_images
+
+...and then::
+
   docker run --gpus=all -it \
     --mount type=bind,source=$PWD,target=/home \
     --mount type=bind,source=$PSCRATCH,target=/scratch \
@@ -133,10 +137,10 @@ Assuming you're currently in the directory which is the parent of your ``phrosty
     --env VECLIB_MAXIMUM_THREADS=1 \
     --env TERM=xterm \
     --annotation run.oci.keep_original_groups=1 \
-    rknop/roman-snpit-env:cuda-dev \
+    rknop/roman-snpit-env:cuda-dev-0.1.41 \
     /bin/bash
 
-(Substitute ``registry.nersc.gov/m4385/roman-snpit-env:cuda-dev`` for ``rknop/roman-snpit-env:cuda-dev`` if you pulled the docker image from there.)
+Substitute ``registry.nersc.gov/m4385/roman-snpit-env:cuda-dev-0.1.41`` for ``rknop/roman-snpit-env:cuda-dev-0.1.41`` if you pulled the docker image from there. Also, note that 0.1.41 will increment over time.
 
 If all is well, this will put you in a docker container.  You can tell you're in the container because your prompt will change to something like ``root@47394bd41fbe:/#`` (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you've got access to the GPUs by running, inside the container::
 
@@ -149,37 +153,7 @@ On NERSC Perlmutter
   
 **This section will work for SN PIT members.** 
 
-Assuming you're in the directory above your ``phrosty`` and ``photometry_test_data`` checkouts, you can run the container with::
-
-podman-hpc run --gpu \
-    --mount type=bind,source=$PWD,target=/home \
-    --mount type=bind,source=$HOME/secrets,target=/secrets \
-    --mount type=bind,source=$PSCRATCH/snpit_temp,target=/snpit_temp \
-    --mount type=bind,source=$PSCRATCH,target=/scratch \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/m4385/env,target=/snpit_env \
-    --mount type=bind,source=/pscratch/sd/m/masao/roman_snpit,target=/roman_snpit_masao_scratch \
-    --mount type=bind,source=/pscratch/sd/m/masao/roman_snpit/database_dirs,target=/data \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/ou2024 \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/ou2024_snana \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/ou2024_snana_lc_dir \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library,target=/ou2024_sims_sed_library \
-    --mount type=bind,source=/dvs_ro/cfs/cdirs/m4385/calib_data/A25ePSF,target=/a25epsf \
-    --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
-    --env PYTHONPATH=/roman_imsim \
-    --env OPENBLAS_NUM_THREADS=1 \
-    --env MKL_NUM_THREADS=1 \
-    --env NUMEXPR_NUM_THREADS=1 \
-    --env OMP_NUM_THREADS=1 \
-    --env VECLIB_MAXIMUM_THREADS=1 \
-    --env TERM=xterm \
-    --env SNPIT_DEFAULT_CONFIG=/snpit_env/configs/nov2025_container_config.yaml \
-    --env SNPIT_CONFIG=/snpit_env/configs/nov2025_container_config.yaml \
-    --annotation run.oci.keep_original_groups=1 \
-    -it \
-    registry.nersc.gov/m4385/roman-snpit-env:cuda-dev \
-    /bin/bash
-
-This is just the contents of ``phrosty/examples/perlmutter/interactive_podman.sh``, so you could also do ``bash phrosty/examples/perlmutter/interactive_podman.sh``. It's also the contents of ``/global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh``, so you could _also_ do ``bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh``.
+Assuming you're in the directory above your ``phrosty`` and ``photometry_test_data`` checkouts, you can run the container with ``bash phrosty/examples/perlmutter/interactive_podman.sh`` or ``bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh``. At this time, both of these files are the same, but you have the ability to modify the one in `examples/perlmutter` and not the one in `m4385/env`. 
 
 If you're inside the container, your prompt will be something like ``root@f24c2ad04d6d:/#`` (though with a different string of hexidecimal digits (hexits?)).  If you do ``ls -F /``, you will see the various specific directories that are mounted in the above command.
 

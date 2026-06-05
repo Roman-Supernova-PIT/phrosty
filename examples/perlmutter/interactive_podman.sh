@@ -23,5 +23,5 @@ podman-hpc run --gpu \
     --env SNPIT_CONFIG=/snpit_env/configs/nov2025_container_config.yaml \
     --annotation run.oci.keep_original_groups=1 \
     -it \
-    registry.nersc.gov/m4385/roman-snpit-env:cuda-dev \
+    registry.nersc.gov/m4385/roman-snpit-env:cuda-dev-0.1.41 \
     /bin/bash

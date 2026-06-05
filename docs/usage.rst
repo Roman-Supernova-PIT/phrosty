@@ -198,7 +198,7 @@ If you are not a member of the Roman SN PIT (i.e., assuming you pulled your cont
     --env SNPIT_CONFIG=/home/phrosty/phrosty/tests/phrosty_test_config.yaml \
     --annotation run.oci.keep_original_groups=1 \
     -it \
-    docker.io/rknop/roman-snpit-env:cuda-dev \
+    docker.io/rknop/roman-snpit-env:cuda-dev-0.1.41 \
     /bin/bash
 
 If you are in the Roman SN PIT (i.e., assuming you pulled your container from :ref:`registry.nersc.gov<phrosty-installation-prerequisites>`), instead do::

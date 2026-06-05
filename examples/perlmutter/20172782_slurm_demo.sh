@@ -18,6 +18,8 @@ echo
 podman-hpc images
 echo
 
+export PODMANHPC_ADDITIONAL_STORES=/pscratch/sd/m/masao/roman_snpit/podman_images
+
 podman-hpc run --gpu \
 --mount type=bind,source=$PWD,target=/home \
 --mount type=bind,source=$HOME/secrets,target=/secrets \
@@ -40,8 +42,7 @@ podman-hpc run --gpu \
 --env VECLIB_MAXIMUM_THREADS=1 \
 --env TERM=xterm \
 --env SNPIT_DEFAULT_CONFIG=/snpit_env/configs/nov2025_container_config.yaml \
---env SNPIT_CONFIG=/snpit_env/configs/nov2025_container_config.yaml \
 --annotation run.oci.keep_original_groups=1 \
 -it \
-registry.nersc.gov/m4385/roman-snpit-env:cuda-dev \
+registry.nersc.gov/m4385/roman-snpit-env:cuda-dev-0.1.41 \
 /bin/bash /home/phrosty/examples/perlmutter/20172782_slurm_demo_bashinstall.sh
