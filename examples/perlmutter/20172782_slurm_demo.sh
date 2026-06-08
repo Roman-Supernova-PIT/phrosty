@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task 32
 #SBATCH --mem 40G
 #SBATCH --gpus-per-task 1
-#SBATCH --qos debug # or shared, but debug goes faster. But is limited to 30 min. 
+#SBATCH --qos debug # or shared, but debug has a much shorter wait time. But total run time is limited to 30 min. 
 #SBATCH --time 00:30:00
 #SBATCH --job-name 20172782_slurm_demo
 #SBATCH --output 20172782_slurm_demo.out

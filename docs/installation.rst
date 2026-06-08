@@ -153,7 +153,9 @@ On NERSC Perlmutter
   
 **This section will work for SN PIT members.** 
 
-Assuming you're in the directory above your ``phrosty`` and ``photometry_test_data`` checkouts, you can run the container with ``bash phrosty/examples/perlmutter/interactive_podman.sh`` or ``bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh``. At this time, both of these files are the same, but you have the ability to modify the one in `examples/perlmutter` and not the one in `m4385/env`. 
+Assuming you're in the directory above your ``phrosty`` and ``photometry_test_data`` checkouts, you can run the container with ``bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh``. At this time, both of these files are the same, but you have the ability to modify the one in `examples/perlmutter` and not the one in `m4385/env`. 
+
+If you absolutely must make your own container for some reason, see `the interactive podman scripts in our environment directory <https://github.com/Roman-Supernova-PIT/environment/blob/main/interactive-podman-nov2025.sh>`_ for reference.
 
 If you're inside the container, your prompt will be something like ``root@f24c2ad04d6d:/#`` (though with a different string of hexidecimal digits (hexits?)).  If you do ``ls -F /``, you will see the various specific directories that are mounted in the above command.
 
