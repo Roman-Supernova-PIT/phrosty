@@ -1151,7 +1151,7 @@ class Pipeline:
 
                     if 'subtract' in steps:
                         # After this step is done, two more fields in sfftifier are set:
-                        #    Solution_GPU  : --something--??
+                        #    Solution_GPU  : Matching kernel parameterization (coefficients)
                         #    PixA_DIFF_GPU : difference image
                         SNLogger.info( "...subtract" )
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
