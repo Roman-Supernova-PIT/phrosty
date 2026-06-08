@@ -247,9 +247,9 @@ Run this on your example lightcurve with::
 
 If all is well, you should see a final line that looks something like::
 
-  [2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/20172782_R062_all.pq
+  [2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/07c9acbe-87c1-4b3b-a52e-1a1e8dfa968e_R062.pq
 
-Outside the container (i.e. on Perlmutter), you should be able to find the file ``data/20172782/20172782_R062_all.pq`` underneath the ``lc_out_dir`` subdirectory of your parent directory.  Congratulations, this has the lightcurve!
+Outside the container (i.e. on Perlmutter), you should be able to find the file, named ``data/20172782/07c9acbe-87c1-4b3b-a52e-1a1e8dfa968e_R062.pq`` underneath the ``lc_out_dir`` subdirectory of your parent directory.  Congratulations, this has the lightcurve!
 
 You will also find new files in the ``dia_out_dir`` subdirectory, including several large ``.fits`` files.
 
