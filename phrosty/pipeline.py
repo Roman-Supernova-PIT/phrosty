@@ -477,7 +477,6 @@ class Pipeline:
         hdr_sci.insert( 0, ('NAXIS', 2) )
         hdr_sci.insert( 'NAXIS', ('NAXIS1', sci_image.image.data.shape[1] ), after=True )
         hdr_sci.insert( 'NAXIS1', ('NAXIS2', sci_image.image.data.shape[0] ), after=True )
-        # data_sci = cp.array( np.ascontiguousarray(sci_image.image.data.T), dtype=cp.float64 )
         data_sci = cp.array( np.ascontiguousarray(sci_image.skysub_img.data.T), dtype=cp.float64 )
         noise_sci = cp.array( np.ascontiguousarray(sci_image.image.noise.T), dtype=cp.float64 )
         var_sci = noise_sci ** 2
@@ -486,7 +485,6 @@ class Pipeline:
         hdr_templ.insert( 0, ('NAXIS', 2) )
         hdr_templ.insert( 'NAXIS', ('NAXIS1', templ_image.image.data.shape[1] ), after=True )
         hdr_templ.insert( 'NAXIS1', ('NAXIS2', templ_image.image.data.shape[0] ), after=True )
-        # data_templ = cp.array( np.ascontiguousarray(templ_image.image.data.T), dtype=cp.float64 )
         data_templ = cp.array( np.ascontiguousarray(templ_image.skysub_img.data.T), dtype=cp.float64 )
         noise_templ = cp.array( np.ascontiguousarray(templ_image.image.noise.T), dtype=cp.float64 )
         var_templ = noise_templ ** 2
@@ -1156,10 +1154,8 @@ class Pipeline:
 
                     if 'subtract' in steps:
                         # After this step is done, two more fields in sfftifier are set:
-                        #    Solution_GPU  : --something--??
-                        #    PixA_DIFF_GPU : difference image ??
-                        # Get Lei to write docs on PureCupy_Customized_Packet.PCCP so
-                        #   we can figure out what these are
+                        #    Solution_GPU  : Matching kernel parameterization (coefficients)
+                        #    PixA_DIFF_GPU : difference image
                         SNLogger.info( "...subtract" )
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
                             try:
@@ -1180,12 +1176,8 @@ class Pipeline:
                         # After it's done, the following fields of sfftifier are set:
                         #   Solution : CPU copy of Solution_GPU
                         #   FKDECO_GPU : result of PureCupy_Decorrelation_Calculator.PCDC
-                        # Get Lei to write documentation on PureCupy_DeCorrelation_Calculator
-                        #   so we can figure out what this is, but I THINK it's a
-                        #   kernel that is used to convolve with things to "decorrelate".
-                        #   (From what?)
                         # In addition the two local varaibles diff_var and diff_var_path are set.
-                        #   diff_var : variance in difference image (I THINK), on GPU
+                        #   diff_var : variance in difference image, on GPU
                         #   diff_var_path : where we want to write diff_var in self.dia_out_dir
                         SNLogger.info( "...find_decorrelation" )
                         with nvtx.annotate( "find_decor", color=0xcc44ff ):
