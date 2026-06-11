@@ -5,12 +5,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Usage &#8212; phrosty 0.1.dev1+g0a23b829f documentation</title>
+    <title>Usage &#8212; phrosty 0.1.dev1+g16d2581e1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
-    <script src="_static/documentation_options.js?v=f9b17aa6"></script>
+    <script src="_static/documentation_options.js?v=8fbdd350"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -295,7 +295,7 @@
   --env SNPIT_CONFIG=/home/phrosty/phrosty/tests/phrosty_test_config.yaml \
   --annotation run.oci.keep_original_groups=1 \
   -it \
-  docker.io/rknop/roman-snpit-env:cuda-dev \
+  docker.io/rknop/roman-snpit-env:cuda-dev-0.1.41 \
   /bin/bash
 </pre></div>
 </div>
@@ -340,10 +340,10 @@
 </div>
 <p>(If you run with <code class="docutils literal notranslate"><span class="pre">.csv</span></code> files that have larger number of images, you probably want to pass a larger number to <code class="xref py py-obj docutils literal notranslate"><span class="pre">-p</span></code>; this is a number of parallel CPU processes that will run at once, and is limited by how many CPUs and how much memory you have available.  The code will only run one GPU process at once.  You can also try increasing <code class="xref py py-obj docutils literal notranslate"><span class="pre">-w</span></code>, but this is more limited by filesystem performance than the number of CPUs and the amount of memory you have available.  We’ve set these both to 3 right now because there are only 3 files being processed (one template and two science images).  Empirically, on Perlmutter nodes, you can go up to something like <code class="xref py py-obj docutils literal notranslate"><span class="pre">-p</span> <span class="pre">15</span></code>; while there are (many) more CPUs than that, memory is the limiting factor.  Also, empirically, on Perlmutter, you can go up to something like <code class="xref py py-obj docutils literal notranslate"><span class="pre">-w</span> <span class="pre">5</span></code> before you reach the point of diminishing returns.  This is more variable, because whereas you have the node’s CPUs to yourself, you’re sharing the filesystem with the rest of the users of the system.)</p>
 <p>If all is well, you should see a final line that looks something like:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">2025</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">07</span> <span class="mi">18</span><span class="p">:</span><span class="mi">30</span><span class="p">:</span><span class="mi">05</span> <span class="o">-</span> <span class="n">phrosty</span> <span class="o">-</span> <span class="n">INFO</span><span class="p">]</span> <span class="n">Results</span> <span class="n">saved</span> <span class="n">to</span> <span class="o">/</span><span class="n">lc_out_dir</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="mi">20172782</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_R062_all</span><span class="o">.</span><span class="n">pq</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">2025</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">07</span> <span class="mi">18</span><span class="p">:</span><span class="mi">30</span><span class="p">:</span><span class="mi">05</span> <span class="o">-</span> <span class="n">phrosty</span> <span class="o">-</span> <span class="n">INFO</span><span class="p">]</span> <span class="n">Results</span> <span class="n">saved</span> <span class="n">to</span> <span class="o">/</span><span class="n">lc_out_dir</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="mi">20172782</span><span class="o">/</span><span class="mi">07</span><span class="n">c9acbe</span><span class="o">-</span><span class="mi">87</span><span class="n">c1</span><span class="o">-</span><span class="mi">4</span><span class="n">b3b</span><span class="o">-</span><span class="n">a52e</span><span class="o">-</span><span class="mi">1</span><span class="n">a1e8dfa968e_R062</span><span class="o">.</span><span class="n">pq</span>
 </pre></div>
 </div>
-<p>Outside the container (i.e. on Perlmutter), you should be able to find the file <code class="docutils literal notranslate"><span class="pre">data/20172782/20172782_R062_all.pq</span></code> underneath the <code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code> subdirectory of your parent directory.  Congratulations, this has the lightcurve!</p>
+<p>Outside the container (i.e. on Perlmutter), you should be able to find the file, named <code class="docutils literal notranslate"><span class="pre">data/20172782/07c9acbe-87c1-4b3b-a52e-1a1e8dfa968e_R062.pq</span></code> underneath the <code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code> subdirectory of your parent directory.  Congratulations, this has the lightcurve!</p>
 <p>You will also find new files in the <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code> subdirectory, including several large <code class="docutils literal notranslate"><span class="pre">.fits</span></code> files.</p>
 </section>
 <section id="running-with-the-nsight-profiler">
