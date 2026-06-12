@@ -4,7 +4,7 @@ replaceable_preloads:
 system:
   paths:
     scratch_dir: /phrosty_temp
-    temp_dir: /phrosty_temp
+    temp_dir: /tmp
     dia_out_dir: /dia_out_dir/
     ltcv_dir: /lc_out_dir/
     snappl:
@@ -12,7 +12,7 @@ system:
 
 photometry:
   snappl:
-      temp_dir: /scratch
+      temp_dir: /tmp
 
   phrosty:
     image_type: ou2024fits
