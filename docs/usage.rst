@@ -353,8 +353,36 @@ and, ideally, there should be no lines anywhere in the file with ``ERROR`` near 
 
 Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.pq`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
 
-.. Running on SMCE
-.. ---------------
+Running on SMCE
+---------------
+If you are using this section, you are probably a member of the SN PIT. 
+
+General instructions for accessing SMCE can be found `in the wiki <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/NASA-SMDC-%28AWS%29>`_.
+
+Make sure you are in your home directory. You can just do `cd` and you'll be in `/home/[your username]`. Git clone phrosty if you haven't already::
+
+  git clone https://github.com/Roman-Supernova-PIT/phrosty.git
+
+Get yourself a GPU node. Do::
+
+  salloc -p gpu-int --time=01:00:00
+
+Then, go into the Singularity container::
+
+  singularity run --nv /data/snpit/roman-snpit-env-cuda-dev-0.1.36.sif /bin/bash
+
+Activate a virtual environment::
+
+  python -m venv new_venv &&
+  ls new_venv/bin/python &&
+  source new_venv/bin/activate
+
+...and pip install phrosty::
+
+  cd phrosty
+  pip install -e .
+
+This will take forever. Don't worry about it. 
 
 Running on a HPC system that uses apptainer/singularity
 -------------------------------------------------------
