@@ -3,10 +3,10 @@ replaceable_preloads:
 
 system:
   paths:
-    scratch_dir: /scratch/phrosty_temp
-    temp_dir: /scratch/phrosty_temp
-    dia_out_dir: /scratch/dia_out_dir/
-    ltcv_dir: /scratch/lc_out_dir/
+    scratch_dir: /phrosty_temp
+    temp_dir: /phrosty_temp
+    dia_out_dir: /dia_out_dir/
+    ltcv_dir: /lc_out_dir/
     snappl:
       A25ePSF_path: /a25epsf
 

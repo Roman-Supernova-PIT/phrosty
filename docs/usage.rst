@@ -382,7 +382,19 @@ Activate a virtual environment::
   cd phrosty
   pip install -e .
 
-This will take forever. Don't worry about it. 
+This will take forever. Don't worry about it. Then, run phrosty::
+
+    SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smce.yaml python phrosty/pipeline.py \
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
 
 Running on a HPC system that uses apptainer/singularity
 -------------------------------------------------------
