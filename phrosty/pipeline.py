@@ -103,6 +103,10 @@ class PipelineImage:
         self.psfobj = None
         self.psf_data = None
 
+        # In case we fail...
+        self.fail_info = f'{image.band} {image.observation_id} {image.sca}'
+        self.failure_location = None
+
     def run_sky_subtract( self, mp=True ):
         """Run sky subtraction using Source Extractor.
 
@@ -166,10 +170,10 @@ class PipelineImage:
             psftype = self.config.value( 'photometry.phrosty.psf.type' )
             psfparams = self.config.value( 'photometry.phrosty.psf.params' )
             self.psfobj = PSF.get_psf_object( psftype, x=x, y=y,
-                                              band=self.image.band,
-                                              observation_id=self.image.observation_id,
-                                              sca=self.image.sca,
-                                              **psfparams )
+                                            band=self.image.band,
+                                            observation_id=self.image.observation_id,
+                                            sca=self.image.sca,
+                                            **psfparams )
 
         stamp = self.psfobj.get_stamp( x, y )
         if self.keep_intermediate:
@@ -309,12 +313,16 @@ class Pipeline:
         if template_csv is not None:
             template_images = self._read_csv( template_csv )
 
-        self.science_images = [ PipelineImage( i, self ) for i in science_images ]
+
+        if type(science_images) is (list or tuple):
+            self.science_images = [ PipelineImage( i, self ) for i in science_images ]
+        else:
+            self.science_images = [ PipelineImage(science_images, self) ]
 
         if type(template_images) is (list or tuple):
             self.template_images = [ PipelineImage( i, self ) for i in template_images ]
         else:
-            self.template_images = [PipelineImage(template_images, self)]
+            self.template_images = [ PipelineImage(template_images, self) ]
 
         # All of our failures.
         # LA NOTE: I want to add keys for when this fails in sky subtraction
@@ -325,14 +333,15 @@ class Pipeline:
         # that it should fail, here...
         self.catchfailures = catchfailures
         if self.catchfailures:
-            self.failures = {'get_psf': [],
-                            'align_and_preconvolve': [],
-                            'find_decorrelation': [],
-                            'subtract': [],
-                            'variance': [],
-                            'apply_decorrelation': [],
-                            'make_lightcurve': [],
-                            'make_stamps': []}
+            self.failures = {'skysub': [],
+                             'get_psf': [],
+                             'align_and_preconvolve': [],
+                             'find_decorrelation': [],
+                             'subtract': [],
+                             'variance': [],
+                             'apply_decorrelation': [],
+                             'make_lightcurve': [],
+                             'make_stamps': []}
 
         self.ltcv_prov_tag = ltcv_prov_tag
         self.dbsave = dbsave
@@ -403,6 +412,10 @@ class Pipeline:
 
         def log_error( img, x ):
             SNLogger.error( f"Sky subtraction failure on {img.image.path}: {x}" )
+            if self.catchfailures:
+                self.failures['skysub'].append(f'{self.image.band} \
+                                                 {self.image.observation_id} \
+                                                 {self.image.sca}')
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
@@ -429,6 +442,7 @@ class Pipeline:
 
         def log_error( img, x ):
             SNLogger.error( f"get_psf failure on {img.image.path}: {x}" )
+            img.failure_location = 'get_psf'
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
@@ -439,6 +453,11 @@ class Pipeline:
                                       error_callback=partial(log_error, img) )
                 pool.close()
                 pool.join()
+
+                for img in all_imgs:
+                    if img.failure_location is not None:
+                        self.failures[img.failure_location].append(img.fail_info)
+
         else:
             for img in all_imgs:
                 try:
@@ -447,10 +466,7 @@ class Pipeline:
                     # OSError because if get_psf can't open a file, it does this
                     # (for example, if the file does not exist)
                     if self.catchfailures:
-                        self.failures['get_psf'].append(f"{img.image.band} \
-                                                        {img.image.observation_id} \
-                                                        {img.image.sca}"
-                                                    )
+                        self.failures['get_psf'].append(img.fail_info)
 
     def align_and_pre_convolve(self, templ_image, sci_image ):
         """Align and pre convolve a single template/science pair.
@@ -1047,8 +1063,6 @@ class Pipeline:
         if through_step is None:
             through_step = 'make_lightcurve'
 
-        i_failed = False # We haven't failed yet.
-
         steps = [ 'sky_subtract', 'get_psfs', 'align_and_preconvolve', 'subtract', 'find_decorrelation',
                   'apply_decorrelation', 'make_stamps', 'make_lightcurve' ]
         stepdex = steps.index( through_step )
@@ -1088,21 +1102,27 @@ class Pipeline:
                 # raise?
 
             # Do the hardcore processing
-
             for templ_image in self.template_images:
                 for sci_image in self.science_images:
                     SNLogger.info( f"Processing {sci_image.image.name} minus {templ_image.image.name}" )
                     sfftifier = None
-                    fail_info = {'science': f'{sci_image.image.band} \
-                                              {sci_image.image.observation_id} \
-                                              {sci_image.image.sca}',
-                                 'template': f'{templ_image.image.band} \
-                                               {templ_image.image.observation_id} \
-                                               {templ_image.image.sca}'
+                    i_failed_gpu = False # We haven't failed yet. 
+                    fail_info = {
+                                 'science': sci_image.fail_info,
+                                 'template': templ_image.fail_info
                                 }
-                    i_failed = False
 
-                    if 'align_and_preconvolve' in steps:
+                    continuation_conditions = [
+                                                sci_image.fail_info in self.failures['skysub'],
+                                                sci_image.fail_info in self.failures['get_psf'],
+                                                templ_image.fail_info in self.failures['skysub'],
+                                                templ_image.fail_info in self.failures['get_psf']
+                                              ]
+                    
+                    if any(continuation_conditions):
+                        i_failed_gpu = True
+
+                    if 'align_and_preconvolve' in steps and not i_failed_gpu:
                         # After this step, sfftifier will be a SpaceSFFT_CupyFlow
                         #  object with the following fields filled.  All cupy arrays
                         #  are float64 (even the DMASK!), and all of them are Transposed
@@ -1147,12 +1167,12 @@ class Pipeline:
                                                                 sfftifier.hdr_target, aligned_templ_path)
 
                             except Exception as e:
-                                i_failed = True
+                                i_failed_gpu = True
                                 SNLogger.debug(f'Failure in align_and_preconvolve! Reason: {e}')
                                 if self.catchfailures:
                                     self.failures['align_and_preconvolve'].append(fail_info)
 
-                    if 'subtract' in steps:
+                    if 'subtract' in steps and not i_failed_gpu:
                         # After this step is done, two more fields in sfftifier are set:
                         #    Solution_GPU  : Matching kernel parameterization (coefficients)
                         #    PixA_DIFF_GPU : difference image
@@ -1166,12 +1186,12 @@ class Pipeline:
                                 self.write_fits_file(cp.asnumpy(sfftifier.PixA_DIFF_GPU.T),
                                                                 sfftifier.hdr_target, undecorr_diff_path)
                             except Exception as e:
-                                i_failed = True
+                                i_failed_gpu = True
                                 SNLogger.debug(f'Failure in subtraction! Failure is: {e}')
                                 if self.catchfailures:
                                     self.failures['subtract'].append(fail_info)
 
-                    if 'find_decorrelation' in steps:
+                    if 'find_decorrelation' in steps and not i_failed_gpu:
                         # This step does ...
                         # After it's done, the following fields of sfftifier are set:
                         #   Solution : CPU copy of Solution_GPU
@@ -1184,7 +1204,7 @@ class Pipeline:
                             try:
                                 sfftifier.find_decorrelation()
                             except Exception as e:
-                                i_failed = True
+                                i_failed_gpu = True
                                 SNLogger.debug(f'Failure in find_decorrelation! Reason: {e}')
                                 if self.catchfailures:
                                     self.failures['find_decorrelation'].append(fail_info)
@@ -1199,12 +1219,12 @@ class Pipeline:
                                 self.write_fits_file(cp.asnumpy(diff_var).T, sfftifier.hdr_target, diff_var_path)
 
                             except Exception as e:
-                                i_failed = True
+                                i_failed_gpu = True
                                 SNLogger.debug(f'Failure in generate variance! Reason: {e}')
                                 if self.catchfailures:
                                     self.failures['variance'].append(fail_info)
 
-                    if 'apply_decorrelation' in steps and not i_failed:
+                    if 'apply_decorrelation' in steps and not i_failed_gpu:
                         try:
                             mess = f"{sci_image.image.name}-{templ_image.image.name}"
                             decorr_psf_path = self.dia_out_dir / f"decorr_psf_{mess}"
@@ -1233,12 +1253,12 @@ class Pipeline:
                             sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
 
                         except Exception as e:
-                            i_failed = True
+                            i_failed_gpu = True
                             SNLogger.debug( f"Failure in apply_decorrelation! Reason: {e}" )
                             if self.catchfailures:
                                 self.failures['apply_decorrelation'].append(fail_info)
 
-                    if self.keep_intermediate and not i_failed:
+                    if self.keep_intermediate and not i_failed_gpu:
                         # Each key is the file prefix addition.
                         # Each list has [descriptive filetype, image file name, data, header].
 
@@ -1318,7 +1338,7 @@ class Pipeline:
                 fits_writer_pool.join()
             SNLogger.info( "...FITS writer processes done." )
 
-        if 'make_stamps' in steps and not i_failed:
+        if 'make_stamps' in steps and not i_failed_gpu:
             SNLogger.info( "Starting to make stamps..." )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
 
@@ -1390,7 +1410,7 @@ class Pipeline:
             SNLogger.info( f"After make_stamps, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
 
         lightcurve_path = None
-        if 'make_lightcurve' in steps and not i_failed:
+        if 'make_lightcurve' in steps and not i_failed_gpu:
             with nvtx.annotate( "make_lightcurve", color=0xff8888 ):
                 lightcurve_path = self.make_lightcurve()
 
