@@ -307,7 +307,6 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
 #                                  flags=np.zeros(one_ou2024_template_image.image_shape),
 #                                  std_imagenames=True
 #                                 )
-# nan_image.band = 'horsey' # Fake band value so it can't find the PSF. 
 
 # nan_image._wcs = one_ou2024_template_image.get_wcs()
 # nan_image.noise = nan_image.data
