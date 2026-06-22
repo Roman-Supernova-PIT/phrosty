@@ -258,12 +258,12 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
     orig_psf = config.value( 'photometry.phrosty.psf.type' )
 
     test_image = FITSImageStdHeaders( full_filepath='/scratch/phrosty_temp/test_nan_img',
-                                     data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
-                                     flags=np.zeros(two_ou2024_science_images[0].image_shape),
-                                     std_imagenames=True
+                                      data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
+                                      flags=np.zeros(two_ou2024_science_images[0].image_shape),
+                                      std_imagenames=True
                                     )
     test_image.band = 'horsey' # Fake band value so it can't find the PSF. 
-    new_test_imgs = [test_image, two_ou2024_science_images[1]]
+    # new_test_imgs = [test_image, two_ou2024_science_images[1]]
 
     nprocss = [1]
     nwrites = [1]
@@ -275,6 +275,7 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
                 print('psftype', psftype)
                 config.set_value( 'photomery.phrosty.psf.type', psftype )
                 pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                                    # science_images=[test_image],
                                     science_images=[test_image, two_ou2024_science_images[1]],
                                     # science_images=[two_ou2024_science_images[1]],
                                     template_images=[one_ou2024_template_image],
