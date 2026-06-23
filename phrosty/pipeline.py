@@ -62,7 +62,6 @@ class PipelineImage:
             self.save_dir = self.temp_dir
 
         self.image = image
-        # import pdb; pdb.set_trace()
         # if self.image.band != pipeline.band:
         #     raise ValueError( f"Image {self.image.path.name} has a band {self.image.band}, "
         #                       f"which is different from the pipeline band {pipeline.band}" )
@@ -339,16 +338,15 @@ class Pipeline:
         # an image full of NaNs for some reason. It just reports 0 sources. I would expect
         # that it should fail, here...
         self.catchfailures = catchfailures
-        if self.catchfailures:
-            self.failures = {'skysub': [],
-                             'get_psf': [],
-                             'align_and_preconvolve': [],
-                             'find_decorrelation': [],
-                             'subtract': [],
-                             'variance': [],
-                             'apply_decorrelation': [],
-                             'make_lightcurve': [],
-                             'make_stamps': []}
+        self.failures = {'skysub': [],
+                            'get_psf': [],
+                            'align_and_preconvolve': [],
+                            'find_decorrelation': [],
+                            'subtract': [],
+                            'variance': [],
+                            'apply_decorrelation': [],
+                            'make_lightcurve': [],
+                            'make_stamps': []}
 
         self.ltcv_prov_tag = ltcv_prov_tag
         self.dbsave = dbsave
@@ -742,13 +740,19 @@ class Pipeline:
             Output from self.do_stamps().
 
         """
-        sci_image.zpt_stamp_path[ templ_image.image.name ] = paths[0]
-        sci_image.diff_stamp_path[ templ_image.image.name ] = paths[1]
-        sci_image.diff_var_stamp_path[ templ_image.image.name ] = paths[2]
 
-        # Lauren added these for debugging...
-        sci_image.aligned_templ_stamp_path[ templ_image.image.name ] = paths[3]
-        sci_image.diff_undecorr_stamp_path[ templ_image.image.name ] = paths[4]
+        try:
+            sci_image.zpt_stamp_path[ templ_image.image.name ] = paths[0]
+            sci_image.diff_stamp_path[ templ_image.image.name ] = paths[1]
+            sci_image.diff_var_stamp_path[ templ_image.image.name ] = paths[2]
+
+            # Lauren added these for debugging...
+            sci_image.aligned_templ_stamp_path[ templ_image.image.name ] = paths[3]
+            sci_image.diff_undecorr_stamp_path[ templ_image.image.name ] = paths[4]
+        
+        except Exception as ex:
+            SNLogger.exception( f"Exception in self.save_stamp_paths: {ex}" )
+            self.something_bad_has_happened = True
 
     def do_stamps( self, sci_image, templ_image ):
         """Make stamps from the zero point image, decorrelated
@@ -846,6 +850,7 @@ class Pipeline:
                                                     {sci_image.image.sca} - \
                                                     {templ_image.image.observation_id} \
                                                     {templ_image.image.sca}: {e} " )
+            raise
 
     def make_lightcurve( self ):
         """Collect all results from photometry in one dictionary.
@@ -1335,16 +1340,9 @@ class Pipeline:
                                                             {sci_image.image.sca} - \
                                                             {templ_image.image.observation_id} \
                                                             {templ_image.image.sca}: {x} " )
-                    if self.catchfailures and not i_failed_gpu:
-                        self.failures['make_stamps'].append({'science': f'{sci_image.image.band} \
-                                                                        {sci_image.image.observation_id} \
-                                                                        {sci_image.image.sca}',
-                                                            'template': f'{templ_image.image.band} \
-                                                                        {templ_image.image.observation_id} \
-                                                                        {templ_image.image.sca}'
-                                                            })
 
                 partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
+
                 # original sci path, savedir, savename
                 sci_orig_stamp_args = ( (si.image, self.dia_out_dir, f'stamp_{str(si.image.name)}', 'data')
                                          for si in self.science_images)
@@ -1358,28 +1356,39 @@ class Pipeline:
                                                         error_callback=log_stamp_err )
                         templ_stamp_pool.close()
                         templ_stamp_pool.join()
+                        
 
                     # Save stamps for original science images.
                     with Pool( self.nwrite ) as sci_orig_stamp_pool:
                         sci_orig_stamp_pool.starmap_async( partialstamp, sci_orig_stamp_args,
-                                                           error_callback=log_stamp_err )
+                                                            error_callback=log_stamp_err )
                         sci_orig_stamp_pool.close()
                         sci_orig_stamp_pool.join()
 
                     # Save stamps for decorrelated difference image, zero point image (decorrelated sky-subtracted
                     # science image), and variance image for decorrelated difference image
+
+                    self.something_bad_has_happened = False
                     with Pool( self.nwrite ) as sci_stamp_pool:
                         for sci_image in self.science_images:
                             for templ_image in self.template_images:
                                 pair = (sci_image, templ_image)
                                 stamperr_partial = partial(log_stamp_err, sci_image, templ_image)
+                                SNLogger.warning( "about to start apply_async" )
                                 sci_stamp_pool.apply_async( self.do_stamps, pair, {},
                                                             callback = partial(self.save_stamp_paths,
-                                                                               sci_image, templ_image),
-                                                                               error_callback=stamperr_partial )
+                                                                            sci_image, templ_image),
+                                                            error_callback=stamperr_partial )
+                        SNLogger.warning( "closing difference stamp pool" )
                         sci_stamp_pool.close()
+                        SNLogger.warning( "joining difference stamp pool" )
                         sci_stamp_pool.join()
+                        SNLogger.warning( "done with difference stamp pool" )
 
+                    if self.something_bad_has_happened:
+                        SNLogger.error( "Something failed trying to write stamps." )
+                        raise RuntimeError( "Something failed trying to write stamps." )
+                        
                 else:
                     # Make stamp of just the template image
                     for tsargs in templstamp_args:

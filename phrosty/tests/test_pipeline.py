@@ -241,7 +241,6 @@ def test_no_failures( config, object_for_tests, ou2024_image_collection,
 
             lctv = pip()
 
-            # First, check the images as-is. Make sure there are no failures.
             for key in pip.failures:
                 assert len(pip.failures[key]) == 0
 
@@ -250,8 +249,7 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
                                  one_ou2024_template_image, two_ou2024_science_images ):
     # This is more of a test of the failure-flagging feature than the PSF retrieval.
 
-    # possible_psfs = ['ou24PSF', 'ou24PSF_slow', 'A25ePSF', 'STPSF']
-    possible_psfs = ['ou24PSF']
+    possible_psfs = ['ou24PSF', 'ou24PSF_slow', 'A25ePSF', 'STPSF']
 
     # Save the original PSF value so we can mess with it and set it back later...
     config._static = False
@@ -263,10 +261,9 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
                                       std_imagenames=True
                                     )
     test_image.band = 'horsey' # Fake band value so it can't find the PSF. 
-    # new_test_imgs = [test_image, two_ou2024_science_images[1]]
 
-    nprocss = [1]
-    nwrites = [1]
+    nprocss = [1, 3]
+    nwrites = [1, 3]
     for i in nprocss:
         for j in nwrites:
             for psftype in possible_psfs:
