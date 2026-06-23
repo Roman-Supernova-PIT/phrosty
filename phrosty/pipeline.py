@@ -664,6 +664,14 @@ class Pipeline:
             # Add additional info to the results dictionary so it can be merged into a nice file later.
             SNLogger.debug( "...make_phot_info_dict getting zeropoint" )
             results_dict['zpt'] = sci_image.image.zeropoint
+            # Populate columns that stock phrosty declares but does not yet write
+            #   (NEA / sky_rms / pix_x / pix_y were left as NaN upstream).
+            results_dict['pix_x'] = float( pxcoords[0] )
+            results_dict['pix_y'] = float( pxcoords[1] )
+            results_dict['sky_rms'] = sci_image.skyrms
+            # Noise-equivalent area (px^2); scale-invariant so it's correct whether or
+            #   not the PSF stamp is normalized to unit sum.
+            results_dict['NEA'] = float( psf_img.data.sum()**2 / np.sum( psf_img.data**2 ) )
             results_dict['success'] = True
 
         except Exception as e:
