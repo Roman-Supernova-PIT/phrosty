@@ -690,10 +690,10 @@ class Pipeline:
         if not one_pair['success']:
             SNLogger.debug( "Failure in make_lightcurve!" )
             if self.catchfailures:
-                self.failures['make_lightcurve'].append({'science': f"{one_pair['band']} \
+                self.failures['make_lightcurve'].append({'science': f"{self.band} \
                                                                     {one_pair['observation_id']} \
                                                                     {one_pair['sca']}",
-                                                        'template': f"{one_pair['band']} \
+                                                        'template': f"{self.band} \
                                                                     {one_pair['template_observation_id']} \
                                                                     {one_pair['template_sca']}"
                                                         })
