@@ -365,7 +365,7 @@ Make sure you are in your home directory. You can just do `cd` and you'll be in 
 
 Get yourself a GPU node. Do::
 
-  salloc -p gpu-int --time=01:00:00
+  salloc -p gpu-int --time=02:00:00
 
 Then, go into the Singularity container::
 
