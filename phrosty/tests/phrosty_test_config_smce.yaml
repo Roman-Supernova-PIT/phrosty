@@ -11,12 +11,13 @@ system:
     segmaps: /data/segmaps
     images: /data/images
 
-  db:
-    url: https://romansnpit-rknop-dev.lbl.gov
-    username: dbuser
-    # LEAVE PASSWORD AS null.  Do NOT edit this field to put in a password!  Just use passwordfile
-    password: null
-    passwordfile: /secrets/roman_snpit_db_rknop_dev
+  # Shoving the database under the rug until later. I just want this running locally on SMDC. 
+  # db:
+  #   url: https://romansnpit-rknop-dev.lbl.gov
+  #   username: dbuser
+  #   # LEAVE PASSWORD AS null.  Do NOT edit this field to put in a password!  Just use passwordfile
+  #   password: null
+  #   passwordfile: /secrets/roman_snpit_db_rknop_dev
 
     temp_dir: /snpit_temp
 
