@@ -359,9 +359,20 @@ If you are using this section, you are probably a member of the SN PIT.
 
 General instructions for accessing SMCE can be found `in the wiki <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/NASA-SMDC-%28AWS%29>`_.
 
+First, follow the directions under `"Working with PIT Images" here <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/SMCE-Containers>`_.
+
 Make sure you are in your home directory. You can just do `cd` and you'll be in `/home/[your username]`. Git clone phrosty if you haven't already::
 
   git clone https://github.com/Roman-Supernova-PIT/phrosty.git
+
+Also, git clone the photometry test data::
+
+  git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
+
+ALSO, git clone the SN PIT environment repo::
+
+  git clone https://github.com/Roman-Supernova-PIT/environment.git
+  git checkout phrostydev
 
 Get yourself a GPU node. Do::
 
@@ -369,11 +380,11 @@ Get yourself a GPU node. Do::
 
 Then, go into the Singularity container::
 
-  singularity run --nv /data/snpit/roman-snpit-env-cuda-dev-0.1.36.sif /bin/bash
+  sh environment/smdc-phrostydev-apptainer.sh 
 
-Activate a virtual environment::
+Create and activate a virtual environment (skip the first two lines if you've already created the new venv. You only need to activate it.)::
 
-  python -m venv new_venv &&
+  python -m virtualenv new_venv &&
   ls new_venv/bin/python &&
   source new_venv/bin/activate
 
@@ -382,7 +393,11 @@ Activate a virtual environment::
   cd phrosty
   pip install -e .
 
-This will take forever. Don't worry about it. Then, run phrosty::
+This will take forever. Don't worry about it. 
+
+In the directory that contains your phrosty checkout, make a `secrets` directory. Make a blank file, give it a name. Then, in `phrosty_test_config_smce.yaml`, edit the `system.db.passwordfile` field to point to the file you just made. 
+
+Then, run phrosty::
 
     SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smce.yaml python phrosty/pipeline.py \
         --oid 20172782 \
