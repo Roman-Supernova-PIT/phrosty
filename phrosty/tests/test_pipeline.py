@@ -223,7 +223,7 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
 
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 def test_no_failures( config, object_for_tests, ou2024_image_collection,
-                      one_ou2024_template_image, two_ou2024_science_images):
+                      one_ou2024_template_image, two_ou2024_science_images ):
     
     # This test makes sure the pipeline does not flag any failures for images that are
     # supposed to work fine. 
@@ -272,11 +272,9 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
                 print('psftype', psftype)
                 config.set_value( 'photomery.phrosty.psf.type', psftype )
                 pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                                    # science_images=[test_image],
-                                    science_images=[test_image, two_ou2024_science_images[1]],
-                                    # science_images=[two_ou2024_science_images[1]],
-                                    template_images=[one_ou2024_template_image],
-                                    nprocs=i, nwrite=j, catchfailures=True )
+                                science_images=[test_image, two_ou2024_science_images[1]],
+                                template_images=[one_ou2024_template_image],
+                                nprocs=i, nwrite=j, catchfailures=True )
 
                 lctv = pip()
 
@@ -299,35 +297,70 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
     config.set_value( 'photomery.phrosty.psf.type', orig_psf )
     config._static = True
 
-# This stuff makes an image full of NaN:
-# nan_image = FITSImageStdHeaders( full_filepath='/scratch/phrosty_temp/test_nan_img',
-#                                  data=np.full(one_ou2024_template_image.image_shape, np.nan),
-#                                  flags=np.zeros(one_ou2024_template_image.image_shape),
-#                                  std_imagenames=True
-#                                 )
+@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
+def test_nan_handling( config, object_for_tests, ou2024_image_collection,
+                               one_ou2024_template_image, two_ou2024_science_images ):
 
-# nan_image._wcs = one_ou2024_template_image.get_wcs()
-# nan_image.noise = nan_image.data
-# nan_image.band = 'Y106'
-# nan_image.observation_id = -1  # Give it a fake observation_id on purpose
-# nan_image.sca = 1
-# nan_image.save( which='data', overwrite=True )
+    # Inputting an image full of NaN apparently does not cause the pipeline to fail at all.
+    # Fine, as long as the corresponding row in the parquet file is also full of NaNs. 
 
+    nprocss = [3]
+    nwrites = [3]
 
-    # finally:
-    #     for path in nanpaths:
-    #         path.unlink()
+    # Make an image full of NaN:
+    nan_image = FITSImageStdHeaders( full_filepath='/scratch/phrosty_temp/test_nan_img',
+                                     data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
+                                     flags=np.zeros(two_ou2024_science_images[0].image_shape),
+                                     std_imagenames=True
+                                   )
 
+    nan_image._wcs = two_ou2024_science_images[0].get_wcs()
+    nan_image.noise = nan_image.data
+    nan_image.band = 'Y106'
+    nan_image.observation_id = 35198 
+    nan_image.sca = 2
+    nan_image.mjd = two_ou2024_science_images[0].mjd
+    nan_image.save( which='data', overwrite=True )
 
+    for i in nprocss:
+        for j in nwrites:
 
-    # for i in nprocss:
-    #     for j in nwrites:
-    #         pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-    #                     science_images=new_test_imgs,
-    #                     template_images=[one_ou2024_template_image],
-    #                     nprocs=i, nwrite=j )
+            # The "science image is full of nans" case should fail because when
+            # it tries to do photometry on a stamp, it won't find a stamp at all.
+            pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                            science_images=[nan_image, two_ou2024_science_images[1]],
+                            template_images=[one_ou2024_template_image],
+                            nprocs=i, nwrite=j, catchfailures=True )
+            
 
-    #         for key in pip.failures:
-    #             print(key)
-    #             print(len(pip.failures[key]))
-    #             assert len(pip.failures[key]) == 0
+            ltcv = pip()
+
+            assert len(pip.failures['skysub']) == 0 
+            assert len(pip.failures['get_psf']) == 0
+            assert len(pip.failures['align_and_preconvolve']) == 0
+            assert len(pip.failures['find_decorrelation']) == 0
+            assert len(pip.failures['subtract']) == 0
+            assert len(pip.failures['variance']) == 0
+            assert len(pip.failures['apply_decorrelation']) == 0
+            assert len(pip.failures['make_lightcurve']) == 1
+            assert len(pip.failures['make_stamps']) == 0
+
+            lc_obj = Lightcurve( filepath=ltcv )
+            assert np.isnan(lc_obj.lightcurve['flux'][0].value)
+            assert not np.isnan(lc_obj.lightcurve['flux'][1].value)
+
+            # The "template image is full of nans" case does not currently fail
+            # because it does find a stamp for the corresponding difference image,
+            # which is full of 0. Curiously, the PSF fitting results in flux=0,
+            # but a nonzero (and positive!) flux error. This perplexes me, but
+            # rows full of flux=0 is a fine failure mode for now. 
+            pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                            science_images=two_ou2024_science_images[0],
+                            template_images=nan_image,
+                            nprocs=i, nwrite=j, catchfailures=True )
+            
+
+            ltcv = pip()
+            lc_obj = Lightcurve( filepath=ltcv )
+            
+            assert lc_obj.lightcurve['flux'][0].value == 0

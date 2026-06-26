@@ -105,6 +105,7 @@ class PipelineImage:
         # In case we fail...
         self.fail_info = f'{image.band} {image.observation_id} {image.sca}'
         self.failure_location = None
+        self.failure_pair = None
 
     def run_sky_subtract( self, mp=True ):
         """Run sky subtraction using Source Extractor.
@@ -319,13 +320,12 @@ class Pipeline:
         if template_csv is not None:
             template_images = self._read_csv( template_csv )
 
-
-        if type(science_images) is (list or tuple):
+        if isinstance(science_images, list) or isinstance(science_images, tuple):
             self.science_images = [ PipelineImage( i, self ) for i in science_images ]
         else:
             self.science_images = [ PipelineImage(science_images, self) ]
 
-        if type(template_images) is (list or tuple):
+        if isinstance(template_images, list) or isinstance(template_images, tuple):
             self.template_images = [ PipelineImage( i, self ) for i in template_images ]
         else:
             self.template_images = [ PipelineImage(template_images, self) ]
@@ -339,14 +339,14 @@ class Pipeline:
         # that it should fail, here...
         self.catchfailures = catchfailures
         self.failures = {'skysub': [],
-                            'get_psf': [],
-                            'align_and_preconvolve': [],
-                            'find_decorrelation': [],
-                            'subtract': [],
-                            'variance': [],
-                            'apply_decorrelation': [],
-                            'make_lightcurve': [],
-                            'make_stamps': []}
+                         'get_psf': [],
+                         'align_and_preconvolve': [],
+                         'find_decorrelation': [],
+                         'subtract': [],
+                         'variance': [],
+                         'apply_decorrelation': [],
+                         'make_lightcurve': [],
+                         'make_stamps': []}
 
         self.ltcv_prov_tag = ltcv_prov_tag
         self.dbsave = dbsave
@@ -698,6 +698,10 @@ class Pipeline:
             SNLogger.debug( f"...make_phot_info_dict failed for \
                              {sci_image.image.name} - {templ_image.image.name}. Reason: {e}" )
 
+            sci_image.failure_location = 'make_lightcurve'
+            sci_image.failure_pair = templ_image.fail_info
+            raise
+
         SNLogger.debug( "...make_phot_info_dict done." )
         return results_dict
 
@@ -925,9 +929,18 @@ class Pipeline:
                 pool.close()
                 pool.join()
                 SNLogger.debug('Make phot info dict pool closed and joined.')
+
+            for sci_image in self.science_images:
+                if sci_image.failure_location is not None:
+                    fail_info = { 
+                                    'science': sci_image.fail_info,
+                                    'template': sci_image.failure_pair
+                                }
+                    self.failures['make_lightcurve'].append(fail_info)
+
         else:
             for i, sci_image in enumerate( self.science_images ):
-                if sci_image.failure_location is not None:
+                if sci_image.failure_location is None:
                     SNLogger.debug( f"Doing science image {i} of {len(self.science_images)}" )
                     for templ_image in self.template_images:
                         self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
