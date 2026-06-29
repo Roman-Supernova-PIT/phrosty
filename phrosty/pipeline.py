@@ -331,12 +331,6 @@ class Pipeline:
             self.template_images = [ PipelineImage(template_images, self) ]
 
         # All of our failures.
-        # LA NOTE: I want to add keys for when this fails in sky subtraction
-        # as well. But that is slightly more involved because that happens in
-        # PipelineImage, not Pipeline. So, for now, anything that fails
-        # may have failed at earlier steps first. Also, source extractor doesn't fail on
-        # an image full of NaNs for some reason. It just reports 0 sources. I would expect
-        # that it should fail, here...
         self.catchfailures = catchfailures
         self.failures = {'skysub': [],
                          'get_psf': [],
@@ -345,7 +339,6 @@ class Pipeline:
                          'subtract': [],
                          'variance': [],
                          'apply_decorrelation': [],
-                         'make_lightcurve': [],
                          'make_stamps': []}
 
         self.ltcv_prov_tag = ltcv_prov_tag
@@ -669,15 +662,7 @@ class Pipeline:
             # The thing written to disk was actually variance, so fix that
             diff_img.noise = np.sqrt( diff_img.noise )
             psf_img.get_data( which='data', cache=True )
-        except Exception:
-            # TODO : change this to a more specific exception
-            SNLogger.warning( f"Post-processed image files for "
-                              f"{self.band}_{sci_image.image.observation_id}_{sci_image.image.sca}-"
-                              f"{self.band}_{templ_image.image.observation_id}_{templ_image.image.sca} "
-                              f"do not exist.  Skipping." )
-            # results_dict['ap_zpt'] = np.nan
 
-        try:
             SNLogger.debug( "...make_phot_info_dict getting psf" )
             coord = SkyCoord(ra=self.diaobj.ra * u.deg, dec=self.diaobj.dec * u.deg)
             pxcoords = skycoord_to_pixel( coord, diff_img.get_wcs().get_astropy_wcs() )
@@ -698,12 +683,11 @@ class Pipeline:
             SNLogger.debug( f"...make_phot_info_dict failed for \
                              {sci_image.image.name} - {templ_image.image.name}. Reason: {e}" )
 
-            sci_image.failure_location = 'make_lightcurve'
-            sci_image.failure_pair = templ_image.fail_info
-            raise
-
-        SNLogger.debug( "...make_phot_info_dict done." )
-        return results_dict
+        finally:
+            # Basically, make_lightcurve will never "fail". Instead, you will get a row of NaN
+            # with results_dict['success'] = False if something weird happened, here.
+            SNLogger.debug( "...make_phot_info_dict done." )
+            return results_dict
 
     def add_to_results_dict( self, one_pair ):
         """Record results from self.make_phot_info_dict() to the
@@ -726,7 +710,6 @@ class Pipeline:
             SNLogger.info( f"After adding to results dict for \
                             {one_pair['observation_id']} {one_pair['sca']}, memory usage = \
                             {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
-
 
     def save_stamp_paths( self, sci_image, templ_image, paths ):
         """Helper function for recording the stamp paths returned in
@@ -756,7 +739,9 @@ class Pipeline:
         
         except Exception as ex:
             SNLogger.exception( f"Exception in self.save_stamp_paths: {ex}" )
-            self.something_bad_has_happened = True
+            if sci_image.failure_location is None:
+                sci_image.failure_location = 'make_stamps'
+                sci_image.failure_pair = templ_image.image.name
 
     def do_stamps( self, sci_image, templ_image ):
         """Make stamps from the zero point image, decorrelated
@@ -917,26 +902,19 @@ class Pipeline:
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
+                
                 for sci_image in self.science_images:
                     for templ_image in self.template_images:
                         logerr_partial = partial(log_error, sci_image, templ_image)
                         pool.apply_async( self.make_phot_info_dict, (sci_image, templ_image), {},
-                                          self.add_to_results_dict,
-                                          error_callback=logerr_partial )
+                                            self.add_to_results_dict,
+                                            error_callback=logerr_partial )
                         SNLogger.debug( f"pool.apply async done for \
-                                          {sci_image.image.observation_id} \
-                                          {sci_image.image.sca}" )
+                                            {sci_image.image.observation_id} \
+                                            {sci_image.image.sca}" )
                 pool.close()
                 pool.join()
                 SNLogger.debug('Make phot info dict pool closed and joined.')
-
-            for sci_image in self.science_images:
-                if sci_image.failure_location is not None:
-                    fail_info = { 
-                                    'science': sci_image.fail_info,
-                                    'template': sci_image.failure_pair
-                                }
-                    self.failures['make_lightcurve'].append(fail_info)
 
         else:
             for i, sci_image in enumerate( self.science_images ):
@@ -1163,6 +1141,7 @@ class Pipeline:
                         SNLogger.info( "...align_and_preconvolve" )
                         with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
                             try:
+                                import pdb; pdb.set_trace()
                                 sfftifier = self.align_and_pre_convolve( templ_image=templ_image,
                                                                          sci_image=sci_image
                                                                        )
@@ -1381,27 +1360,18 @@ class Pipeline:
                     # Save stamps for decorrelated difference image, zero point image (decorrelated sky-subtracted
                     # science image), and variance image for decorrelated difference image
 
-                    self.something_bad_has_happened = False
                     with Pool( self.nwrite ) as sci_stamp_pool:
                         for sci_image in self.science_images:
                             for templ_image in self.template_images:
                                 pair = (sci_image, templ_image)
                                 stamperr_partial = partial(log_stamp_err, sci_image, templ_image)
-                                SNLogger.warning( "about to start apply_async" )
                                 sci_stamp_pool.apply_async( self.do_stamps, pair, {},
                                                             callback = partial(self.save_stamp_paths,
                                                                             sci_image, templ_image),
                                                             error_callback=stamperr_partial )
-                        SNLogger.warning( "closing difference stamp pool" )
                         sci_stamp_pool.close()
-                        SNLogger.warning( "joining difference stamp pool" )
                         sci_stamp_pool.join()
-                        SNLogger.warning( "done with difference stamp pool" )
 
-                    if self.something_bad_has_happened:
-                        SNLogger.error( "Something failed trying to write stamps." )
-                        raise RuntimeError( "Something failed trying to write stamps." )
-                        
                 else:
                     # Make stamp of just the template image
                     for tsargs in templstamp_args:
@@ -1429,7 +1399,6 @@ class Pipeline:
                                                                             'science': sci_image.fail_info,
                                                                             'template': templ_image.fail_info
                                                                             })
-
             SNLogger.info('...finished making stamps.')
 
         if self.mem_trace:
