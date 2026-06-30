@@ -1141,7 +1141,6 @@ class Pipeline:
                         SNLogger.info( "...align_and_preconvolve" )
                         with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
                             try:
-                                import pdb; pdb.set_trace()
                                 sfftifier = self.align_and_pre_convolve( templ_image=templ_image,
                                                                          sci_image=sci_image
                                                                        )
