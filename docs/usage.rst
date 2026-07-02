@@ -395,11 +395,11 @@ Create and activate a virtual environment (skip the first two lines if you've al
 
 This will take forever the first time. Don't worry about it. 
 
-In the directory that contains your phrosty checkout, make a `secrets` directory. Make a blank file, give it a name. Then, in `phrosty_test_config_smce.yaml`, edit the `system.db.passwordfile` field to point to the file you just made. 
+In the directory that contains your phrosty checkout, make a `secrets` directory. Make a blank file, give it a name. Then, in `phrosty_test_config_smdc.yaml`, edit the `system.db.passwordfile` field to point to the file you just made. 
 
 Then, run phrosty::
 
-    SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smce.yaml python phrosty/pipeline.py \
+    SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
         --oid 20172782 \
         -oc ou2024 \
         -b Y106 \
