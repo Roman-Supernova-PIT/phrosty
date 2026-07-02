@@ -1,7 +1,7 @@
 system:
   paths:
-    scratch_dir: /phrosty_temp
-    temp_dir: /tmp
+    scratch_dir: /scratch
+    temp_dir: /scratch
     dia_out_dir: /dia_out_dir/
     ltcv_dir: /lc_out_dir/
     snappl:
@@ -12,14 +12,12 @@ system:
     images: /data/images
 
   # Shoving the database under the rug until later. I just want this running locally on SMDC. 
-  # db:
-  #   url: https://romansnpit-rknop-dev.lbl.gov
-  #   username: dbuser
-  #   # LEAVE PASSWORD AS null.  Do NOT edit this field to put in a password!  Just use passwordfile
-  #   password: null
-  #   passwordfile: /secrets/roman_snpit_db_rknop_dev
-
-    temp_dir: /snpit_temp
+  db:
+    url: https://romansnpit-rknop-dev.lbl.gov
+    username: dbuser
+    # LEAVE PASSWORD AS null.  Do NOT edit this field to put in a password!  Just use passwordfile
+    password: null
+    passwordfile: phrosty/tests/testsecret
 
     snappl:
       A25ePSF_path: /a25epsf
@@ -34,7 +32,7 @@ system:
 
 photometry:
   snappl:
-      temp_dir: /tmp
+      temp_dir: /scratch
 
   phrosty:
     image_type: ou2024fits
@@ -48,5 +46,5 @@ photometry:
       radius_cut_detmask: 2
 
     psf:
-      type: A25ePSF
+      type: gaussian
       params: {}
