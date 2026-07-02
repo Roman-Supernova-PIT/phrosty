@@ -361,7 +361,7 @@ General instructions for accessing SMCE can be found `in the wiki <https://githu
 
 First, follow the directions under `"Working with PIT Images" here <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/SMCE-Containers>`_.
 
-Make sure you are in your home directory. You can just do `cd` and you'll be in `/home/[your username]`. Git clone phrosty if you haven't already::
+Make sure you are in your home directory. You can just do `cd` and you'll be in `/home/[your username]`. Make another directory inside the home directory. We will call it `snpit`, and the full path will be `/home/[your username]/snpit`. `cd` into your new directory. In this directory, git clone phrosty if you haven't already::
 
   git clone https://github.com/Roman-Supernova-PIT/phrosty.git
 
@@ -384,16 +384,16 @@ Then, go into the Singularity container::
 
 Create and activate a virtual environment (skip the first two lines if you've already created the new venv. You only need to activate it.)::
 
-  python -m virtualenv new_venv &&
-  ls new_venv/bin/python &&
-  source new_venv/bin/activate
+  python -m virtualenv phrostyvenv &&
+  ls phrostyvenv/bin/python &&
+  source phrostyvenv/bin/activate
 
 ...and pip install phrosty::
 
   cd phrosty
   pip install -e .
 
-This will take forever. Don't worry about it. 
+This will take forever the first time. Don't worry about it. 
 
 In the directory that contains your phrosty checkout, make a `secrets` directory. Make a blank file, give it a name. Then, in `phrosty_test_config_smce.yaml`, edit the `system.db.passwordfile` field to point to the file you just made. 
 
@@ -410,6 +410,12 @@ Then, run phrosty::
         -s phrosty/tests/20172782_instances_science_2.csv \
         -p 3 -w 3 \
         -v
+
+If you run into permissions issues with writing to `scratch`, `dia_out_dir`, or `lc_out_dir`, type `groups`. It will probably say `[your username] nogroup`. If this is the case, exit the container and do::
+
+  ssh localhost
+
+Then, type `groups`. You should see `[your username] spack cluster_users snpit`. If not, I can't help you. Now, you can go back into the container and try running phrosty again. 
 
 Running on a HPC system that uses apptainer/singularity
 -------------------------------------------------------
