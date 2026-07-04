@@ -1,0 +1,1 @@
+Fixed KeyError when recording make_lightcurve failures with catchfailures enabled.
