@@ -189,6 +189,24 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
         assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
 
+        # Regression test for #195 : NEA, sky_rms, pix_x, pix_y were declared
+        #   in the output schema but never assigned, so every lightcurve
+        #   carried NaN in all four columns.
+        assert np.isfinite( float(pair['NEA']) )
+        assert float(pair['NEA']) > 0.
+        assert np.isfinite( float(pair['sky_rms']) )
+        assert float(pair['sky_rms']) > 0.
+        # pix_x/pix_y are the SN position on the *detector* (per the schema
+        #   comments in make_lightcurve_dict): the object's sky coordinate
+        #   projected through the science image WCS, NOT the stamp-local
+        #   coordinates used for photometry (which would be ~(50, 50)).
+        expected_x, expected_y = img.get_wcs().world_to_pixel( object_for_tests.ra,
+                                                               object_for_tests.dec )
+        assert float(pair['pix_x']) == pytest.approx( float(expected_x), abs=0.01 )
+        assert float(pair['pix_y']) == pytest.approx( float(expected_y), abs=0.01 )
+        assert 0. <= float(pair['pix_x']) <= 4088.
+        assert 0. <= float(pair['pix_y']) <= 4088.
+
     # Tests aren't exactly reproducible from one run to the next,
     #   because some classes (including the galsim PSF that we use right
     #   now) have random numbers in them, and at the moment we aren't
