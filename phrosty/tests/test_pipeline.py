@@ -279,10 +279,6 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
 
                 lctv = pip()
 
-                for key in pip.failures:
-                    print(key)
-                    print(len(pip.failures[key]))
-
                 assert len(pip.failures['skysub']) == 0 
                 assert len(pip.failures['get_psf']) == 1
                 assert len(pip.failures['align_and_preconvolve']) == 0
@@ -308,8 +304,6 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
     nwrites = [1, 3]
 
     # Make an image full of NaN:
-    import pdb; pdb.set_trace()
-    nanpaths = [Path('test_nan_img.fits'), Path('test_nan_noise.fits')]
     nan_image = FITSImageStdHeaders( full_filepath='/scratch/phrosty_temp/test_nan',
                                      data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
                                      noise=np.full(two_ou2024_science_images[0].image_shape, np.nan),
@@ -329,43 +323,29 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
 
     for i in nprocss:
         for j in nwrites:
-            print('############################################################')
-            print('NEW LOOP')
-            print('############################################################')
-            print('nprocss', i)
-            print('nwrites', j)
-            # print("SCIENCE IMAGE IS NAN")
-            # # The "science image is full of nans" case should fail because when
-            # # it tries to do photometry on a stamp, it won't find a stamp at all.
-            # pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-            #                 science_images=[nan_image, two_ou2024_science_images[1]],
-            #                 template_images=[one_ou2024_template_image],
-            #                 nprocs=i, nwrite=j, catchfailures=True )
+            pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                            science_images=[nan_image, two_ou2024_science_images[1]],
+                            template_images=[one_ou2024_template_image],
+                            nprocs=i, nwrite=j, catchfailures=True )
             
 
-            # ltcv = pip()
+            ltcv = pip()
 
-            # lc_obj = Lightcurve( filepath=ltcv )
+            lc_obj = Lightcurve( filepath=ltcv )
 
-            # for key in pip.failures.keys():
-            #     print(key)
-            #     print(pip.failures[key])
+            assert len(pip.failures['skysub']) == 0 
+            assert len(pip.failures['get_psf']) == 0
+            assert len(pip.failures['align_and_preconvolve']) == 0
+            assert len(pip.failures['find_decorrelation']) == 0
+            assert len(pip.failures['subtract']) == 0
+            assert len(pip.failures['variance']) == 0
+            assert len(pip.failures['apply_decorrelation']) == 0
+            assert len(pip.failures['make_stamps']) == 0
 
-            # assert len(pip.failures['skysub']) == 0 
-            # assert len(pip.failures['get_psf']) == 0
-            # assert len(pip.failures['align_and_preconvolve']) == 0
-            # assert len(pip.failures['find_decorrelation']) == 0
-            # assert len(pip.failures['subtract']) == 0
-            # assert len(pip.failures['variance']) == 0
-            # assert len(pip.failures['apply_decorrelation']) == 0
-            # assert len(pip.failures['make_stamps']) == 0
+            assert len(lc_obj.lightcurve) == 2
 
-            # assert len(lc_obj.lightcurve) == 2
-
-            # assert np.isnan(lc_obj.lightcurve['flux'][0].value)
-            # assert not np.isnan(lc_obj.lightcurve['flux'][1].value)
-
-            print('TEMPLATE IMAGE IS NAN')
+            assert np.isnan(lc_obj.lightcurve['flux'][0].value)
+            assert not np.isnan(lc_obj.lightcurve['flux'][1].value)
 
             # LA: The "template image is full of nans" case does not currently result
             # in a row full of nan because it does find a stamp for the corresponding
@@ -380,8 +360,6 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
 
             ltcv = pip()
             lc_obj = Lightcurve( filepath=ltcv )
-
-            print(lc_obj.lightcurve)
 
             assert len(pip.failures['skysub']) == 0 
             assert len(pip.failures['get_psf']) == 0
