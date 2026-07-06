@@ -308,8 +308,9 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
     nwrites = [1, 3]
 
     # Make an image full of NaN:
+    import pdb; pdb.set_trace()
     nanpaths = [Path('test_nan_img.fits'), Path('test_nan_noise.fits')]
-    nan_image = FITSImageStdHeaders( full_filepath='/scratch/phrosty_temp/test_nan_image',
+    nan_image = FITSImageStdHeaders( full_filepath='/scratch/phrosty_temp/test_nan',
                                      data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
                                      noise=np.full(two_ou2024_science_images[0].image_shape, np.nan),
                                      flags=np.zeros(two_ou2024_science_images[0].image_shape),
@@ -322,9 +323,7 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
     nan_image.sca = 2
     nan_image.mjd = two_ou2024_science_images[0].mjd
     nan_image.save( 
-                    imagepath=nanpaths[0],
-                    noisepath=nanpaths[1],
-                    which=['data','noise'],
+                    which='all',
                     overwrite=True
                   )
 
