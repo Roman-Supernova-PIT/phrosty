@@ -4,7 +4,6 @@ import pathlib
 import pytest
 from matplotlib import pyplot
 from astropy.table import Table
-from pathlib import Path
 
 import astropy.units as u
 
@@ -14,7 +13,6 @@ from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 from snappl.lightcurve import Lightcurve
 from snappl.image import FITSImageStdHeaders
-import snappl.psf
 
 
 # TODO : separate tests for PipelineImage, for all the functions in#
@@ -225,11 +223,11 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 def test_no_failures( config, object_for_tests, ou2024_image_collection,
                       one_ou2024_template_image, two_ou2024_science_images ):
-    
+
     # This test makes sure the pipeline does not flag any failures for images that are
-    # supposed to work fine. 
-    # TODO: Expand beyond OU2024 images. 
-    
+    # supposed to work fine.
+    # TODO: Expand beyond OU2024 images.
+
     nprocss = [1, 3]
     nwrites = [1, 3]
 
@@ -240,13 +238,14 @@ def test_no_failures( config, object_for_tests, ou2024_image_collection,
                             template_images=one_ou2024_template_image,
                             nprocs=i, nwrite=j, catchfailures=True )
 
-            lctv = pip()
+            pip()
 
             for key in pip.failures:
                 assert len(pip.failures[key]) == 0
 
+
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
-def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collection, 
+def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collection,
                                  one_ou2024_template_image, two_ou2024_science_images ):
     # This is more of a test of the failure-flagging feature than the PSF retrieval.
 
@@ -261,7 +260,7 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
                                       flags=np.zeros(two_ou2024_science_images[0].image_shape),
                                       std_imagenames=True
                                     )
-    test_image.band = 'horsey' # Fake band value so it can't find the PSF. 
+    test_image.band = 'horsey' # Fake band value so it can't find the PSF.
 
     nprocss = [1, 3]
     nwrites = [1, 3]
@@ -277,9 +276,9 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
                                 template_images=[one_ou2024_template_image],
                                 nprocs=i, nwrite=j, catchfailures=True )
 
-                lctv = pip()
+                pip()
 
-                assert len(pip.failures['skysub']) == 0 
+                assert len(pip.failures['skysub']) == 0
                 assert len(pip.failures['get_psf']) == 1
                 assert len(pip.failures['align_and_preconvolve']) == 0
                 assert len(pip.failures['find_decorrelation']) == 0
@@ -293,12 +292,13 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
     config.set_value( 'photomery.phrosty.psf.type', orig_psf )
     config._static = True
 
+
 @pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 def test_nan_handling( config, object_for_tests, ou2024_image_collection,
                                one_ou2024_template_image, two_ou2024_science_images ):
 
     # Inputting an image full of NaN apparently does not cause the pipeline to fail at all.
-    # Fine, as long as the corresponding row in the parquet file is also full of NaNs. 
+    # Fine, as long as the corresponding row in the parquet file is also full of NaNs.
 
     nprocss = [1, 3]
     nwrites = [1, 3]
@@ -313,10 +313,10 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
 
     nan_image._wcs = two_ou2024_science_images[0].get_wcs()
     nan_image.band = 'Y106'
-    nan_image.observation_id = 35198 
+    nan_image.observation_id = 35198
     nan_image.sca = 2
     nan_image.mjd = two_ou2024_science_images[0].mjd
-    nan_image.save( 
+    nan_image.save(
                     which='all',
                     overwrite=True
                   )
@@ -327,13 +327,13 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
                             science_images=[nan_image, two_ou2024_science_images[1]],
                             template_images=[one_ou2024_template_image],
                             nprocs=i, nwrite=j, catchfailures=True )
-            
+
 
             ltcv = pip()
 
             lc_obj = Lightcurve( filepath=ltcv )
 
-            assert len(pip.failures['skysub']) == 0 
+            assert len(pip.failures['skysub']) == 0
             assert len(pip.failures['get_psf']) == 0
             assert len(pip.failures['align_and_preconvolve']) == 0
             assert len(pip.failures['find_decorrelation']) == 0
@@ -361,7 +361,7 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
             ltcv = pip()
             lc_obj = Lightcurve( filepath=ltcv )
 
-            assert len(pip.failures['skysub']) == 0 
+            assert len(pip.failures['skysub']) == 0
             assert len(pip.failures['get_psf']) == 0
             assert len(pip.failures['align_and_preconvolve']) == 0
             assert len(pip.failures['find_decorrelation']) == 0
@@ -371,5 +371,5 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
             assert len(pip.failures['make_stamps']) == 0
 
             assert len(lc_obj.lightcurve) == 1
-            
+
             assert lc_obj.lightcurve['flux'][0].value == 0

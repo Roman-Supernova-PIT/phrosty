@@ -164,7 +164,7 @@ class PipelineImage:
         #   the psf... and it's different for each type of
         #   PSF.  We need to fix that... somehow....
 
-        try: 
+        try:
             wcs = self.image.get_wcs()
             x, y = wcs.world_to_pixel( ra, dec )
 
@@ -736,7 +736,7 @@ class Pipeline:
             # Lauren added these for debugging...
             sci_image.aligned_templ_stamp_path[ templ_image.image.name ] = paths[3]
             sci_image.diff_undecorr_stamp_path[ templ_image.image.name ] = paths[4]
-        
+
         except Exception as ex:
             SNLogger.exception( f"Exception in self.save_stamp_paths: {ex}" )
             if sci_image.failure_location is None:
@@ -902,7 +902,7 @@ class Pipeline:
 
         if self.nprocs > 1:
             with Pool( self.nprocs ) as pool:
-                
+
                 for sci_image in self.science_images:
                     for templ_image in self.template_images:
                         logerr_partial = partial(log_error, sci_image, templ_image)
@@ -1090,7 +1090,7 @@ class Pipeline:
                 for sci_image in self.science_images:
                     SNLogger.info( f"Processing {sci_image.image.name} minus {templ_image.image.name}" )
                     sfftifier = None
-                    i_failed_gpu = False # We haven't failed yet. 
+                    i_failed_gpu = False # We haven't failed yet.
                     fail_info = {
                                  'science': sci_image.fail_info,
                                  'template': templ_image.fail_info
@@ -1347,7 +1347,7 @@ class Pipeline:
                                                         error_callback=log_stamp_err )
                         templ_stamp_pool.close()
                         templ_stamp_pool.join()
-                        
+
 
                     # Save stamps for original science images.
                     with Pool( self.nwrite ) as sci_orig_stamp_pool:
@@ -1376,14 +1376,14 @@ class Pipeline:
                     for tsargs in templstamp_args:
                         try:
                             partialstamp(*tsargs)
-                        except Exception as ex:
+                        except Exception:
                             self.failures['make_stamps'].append(tsargs[0].fail_info)
 
                     # Make stamp of just the science image
                     for sosargs in sci_orig_stamp_args:
                         try:
                             partialstamp(*sosargs)
-                        except Exception as ex:
+                        except Exception:
                             self.failures['make_stamps'].append(sosargs[0].fail_info)
 
                     for sci_image in self.science_images:
@@ -1392,7 +1392,7 @@ class Pipeline:
                                 try:
                                     stamp_paths = self.do_stamps( sci_image, templ_image)
                                     self.save_stamp_paths( sci_image, templ_image, stamp_paths )
-                                except Exception as ex:
+                                except Exception:
                                     if self.catchfailures:
                                         self.failures['make_stamps'].append({
                                                                             'science': sci_image.fail_info,
