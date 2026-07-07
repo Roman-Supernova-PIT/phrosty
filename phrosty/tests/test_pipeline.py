@@ -306,7 +306,7 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
     # Make an image full of NaN:
     scratchdir = pathlib.Path( config.value( 'system.paths.scratch_dir' ) )
     test_image_path = scratchdir / 'test_nan'
-    nan_image = FITSImageStdHeaders( full_filepath=nan_image,
+    nan_image = FITSImageStdHeaders( full_filepath=test_image_path,
                                      data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
                                      noise=np.full(two_ou2024_science_images[0].image_shape, np.nan),
                                      flags=np.zeros(two_ou2024_science_images[0].image_shape),
