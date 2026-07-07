@@ -253,7 +253,7 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
     config._static = False
     orig_psf = config.value( 'photometry.phrosty.psf.type' )
 
-    scratchdir = Path( config.value( 'system.paths.scratch_dir' ) )
+    scratchdir = pathlib.Path( config.value( 'system.paths.scratch_dir' ) )
     test_image_path = scratchdir / 'test_nan'
     test_image = FITSImageStdHeaders( full_filepath=test_image_path,
                                       data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
@@ -304,7 +304,9 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
     nwrites = [1, 3]
 
     # Make an image full of NaN:
-    nan_image = FITSImageStdHeaders( full_filepath='/scratch/phrosty_temp/test_nan',
+    scratchdir = pathlib.Path( config.value( 'system.paths.scratch_dir' ) )
+    test_image_path = scratchdir / 'test_nan'
+    nan_image = FITSImageStdHeaders( full_filepath=nan_image,
                                      data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
                                      noise=np.full(two_ou2024_science_images[0].image_shape, np.nan),
                                      flags=np.zeros(two_ou2024_science_images[0].image_shape),
