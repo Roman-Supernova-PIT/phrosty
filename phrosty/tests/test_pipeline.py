@@ -115,8 +115,6 @@ def test_pipeline_run_simple_gauss1( config ):
             # assert expected_flux == pytest.approx( row['flux'], abs=3. * row['flux_err'] )
             chisq += ( ( expected_flux.value - row['flux'].value ) / row['flux_err'] ) ** 2
 
-        # NOTE -- tests do not currently pass, we know things are broken.
-        #   Issue #...
         # These chisq values aren't really right, because we're assuming that all the
         #   points are independent, but they're not, because the ones at the same
         #   mjd share news, and all the news share the same set of refs.
@@ -255,7 +253,9 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
     config._static = False
     orig_psf = config.value( 'photometry.phrosty.psf.type' )
 
-    test_image = FITSImageStdHeaders( full_filepath='/scratch/phrosty_temp/test_nan_img',
+    scratchdir = Path( config.value( 'system.paths.scratch_dir' ) )
+    test_image_path = scratchdir / 'test_nan'
+    test_image = FITSImageStdHeaders( full_filepath=test_image_path,
                                       data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
                                       flags=np.zeros(two_ou2024_science_images[0].image_shape),
                                       std_imagenames=True

@@ -838,8 +838,8 @@ class Pipeline:
             SNLogger.error( f"do_stamps failure for {sci_image.image.observation_id} \
                                                     {sci_image.image.sca} - \
                                                     {templ_image.image.observation_id} \
-                                                    {templ_image.image.sca}: {e} " )
-            raise
+                                                    {templ_image.image.sca}" )
+            raise Exception(e)
 
     def make_lightcurve( self ):
         """Collect all results from photometry in one dictionary.
