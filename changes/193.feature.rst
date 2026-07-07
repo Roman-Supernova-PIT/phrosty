@@ -1,0 +1,1 @@
+Add documentation for running on SMDC. Currently runs with Gaussian PSF.

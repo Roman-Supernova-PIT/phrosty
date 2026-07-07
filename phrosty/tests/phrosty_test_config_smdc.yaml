@@ -1,0 +1,49 @@
+system:
+  paths:
+    scratch_dir: /scratch
+    temp_dir: /scratch
+    dia_out_dir: /dia_out_dir/
+    ltcv_dir: /lc_out_dir/
+    snappl:
+      A25ePSF_path: /a25epsf
+    spectra1d: /data/spectra1d
+    lightcurves: /data/lightcurves
+    segmaps: /data/segmaps
+    images: /data/images
+
+  db:
+    url: https://romansnpit-rknop-dev.lbl.gov
+    username: dbuser
+    # LEAVE PASSWORD AS null.  Do NOT edit this field to put in a password!  Just use passwordfile
+    password: null
+    passwordfile: phrosty/tests/testsecret
+
+    snappl:
+      A25ePSF_path: /a25epsf
+
+  ou24:
+    simdex_server: https://roman-desc-simdex.lbl.gov
+    tds_base: /home/photometry_test_data/ou2024
+    config_file: /home/environment/ou2024_tds.yaml
+    sn_truth_dir: /ou2024_snana
+    images: /home/photometry_test_data/ou2024/images/simple_model
+    sims_sed_library: /ou2024_sims_sed_library
+
+photometry:
+  snappl:
+      temp_dir: /scratch
+
+  phrosty:
+    image_type: ou2024fits
+    force_sky_subtract: false
+    keep_intermediate: true
+    remove_temp_dir: false
+    mem_trace: false
+    kerpolyorder: 2
+
+    sfft:
+      radius_cut_detmask: 2
+
+    psf:
+      type: gaussian
+      params: {}
