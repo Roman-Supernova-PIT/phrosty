@@ -382,18 +382,20 @@ Then, go into the Singularity container::
 
   sh environment/smdc-phrostydev-apptainer.sh 
 
-Create and activate a virtual environment (skip the first two lines if you've already created the new venv. You only need to activate it.)::
+Create a virtual environment (run only once)::
 
-  python -m virtualenv phrostyvenv &&
-  ls phrostyvenv/bin/python &&
-  source phrostyvenv/bin/activate
+  python -m virtualenv snpit_venv
+
+Activate your virtual environment::
+
+  source snpit_venv/bin/activate
 
 ...and pip install phrosty::
 
   cd phrosty
   pip install -e .
 
-This will take forever the first time. Don't worry about it. 
+This will take forever the first time because it's completely re-installing a Python environment based on the phrosty requirements. Don't worry about it. 
 
 In the directory that contains your phrosty checkout, make a `secrets` directory. Make a blank file, give it a name. Then, in `phrosty_test_config_smdc.yaml`, edit the `system.db.passwordfile` field to point to the file you just made. 
 
