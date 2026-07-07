@@ -353,8 +353,71 @@ and, ideally, there should be no lines anywhere in the file with ``ERROR`` near 
 
 Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.pq`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
 
-.. Running on SMCE
-.. ---------------
+Running on SMCE
+---------------
+If you are using this section, you are probably a member of the SN PIT. 
+
+General instructions for accessing SMCE can be found `in the wiki <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/NASA-SMDC-%28AWS%29>`_.
+
+First, follow the directions under `"Working with PIT Images" here <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/SMCE-Containers>`_.
+
+Make sure you are in your home directory. You can just do `cd` and you'll be in `/home/[your username]`. Make another directory inside the home directory. We will call it `snpit`, and the full path will be `/home/[your username]/snpit`. `cd` into your new directory. In this directory, git clone phrosty if you haven't already::
+
+  git clone https://github.com/Roman-Supernova-PIT/phrosty.git
+
+Also, git clone the photometry test data::
+
+  git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
+
+ALSO, git clone the SN PIT environment repo::
+
+  git clone https://github.com/Roman-Supernova-PIT/environment.git
+  git checkout phrostydev
+
+Get yourself a GPU node. Do::
+
+  salloc -p gpu-int --time=02:00:00
+
+Then, go into the Singularity container::
+
+  sh environment/smdc-phrostydev-apptainer.sh 
+
+Create a virtual environment (run only once)::
+
+  python -m virtualenv snpit_venv
+
+Activate your virtual environment::
+
+  source snpit_venv/bin/activate
+
+...and pip install phrosty::
+
+  cd phrosty
+  pip install -e .
+
+This will take forever the first time because it's completely re-installing a Python environment based on the phrosty requirements. Don't worry about it. 
+
+In the directory that contains your phrosty checkout, make a `secrets` directory. Make a blank file, give it a name. Then, in `phrosty_test_config_smdc.yaml`, edit the `system.db.passwordfile` field to point to the file you just made. 
+
+Then, run phrosty::
+
+    SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
+
+If you run into permissions issues with writing to `scratch`, `dia_out_dir`, or `lc_out_dir`, type `groups`. It will probably say `[your username] nogroup`. If this is the case, exit the container and do::
+
+  ssh localhost
+
+Then, type `groups`. You should see `[your username] spack cluster_users snpit`. If not, I can't help you. Now, you can go back into the container and try running phrosty again. 
 
 Running on a HPC system that uses apptainer/singularity
 -------------------------------------------------------
