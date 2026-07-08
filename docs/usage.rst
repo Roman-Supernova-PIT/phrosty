@@ -439,7 +439,7 @@ If you are in the Singularity container discussed above, `/home/rkessler/` maps 
 
 The SNe Ia in the sims are object IDs `11` and `21`. We are going to test on `11`. Do all of the things above, and from the `phrosty` directory, run the following::
 
-  SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smce.yaml python phrosty/pipeline.py \
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
         --oid 11 \
         -oc manual \
         -b Y106 \
