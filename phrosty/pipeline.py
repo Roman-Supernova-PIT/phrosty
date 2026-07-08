@@ -385,12 +385,15 @@ class Pipeline:
             for line in ifp:
                 path, observation_id, sca, _mjd, band = line.split()
                 if band == self.band:
-                    # This should yell at us if the observation_id
-                    # or sca doesn't match what is read from the path
-                    imlist.append( self.imgcol.get_image( path=path,
-                                                          observation_id=observation_id,
-                                                          sca=sca,
-                                                          band=band ) )
+                    try:
+                        # This should yell at us if the observation_id
+                        # or sca doesn't match what is read from the path
+                        imlist.append( self.imgcol.get_image( path=path,
+                                                              observation_id=observation_id,
+                                                              sca=sca,
+                                                              band=band ) )
+                    except:
+                        imlist.append( self.imgcol.get_image( path=path ))
         return imlist
 
 

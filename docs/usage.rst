@@ -442,7 +442,7 @@ The SNe Ia in the sims are object IDs `11` and `21`. We are going to test on `11
   SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
         --oid 11 \
         -oc manual \
-        -b Y106 \
+        -b J129 \
         -r 9.366435 \
         -d -43.958825 \
         -ic manual_rdm \
