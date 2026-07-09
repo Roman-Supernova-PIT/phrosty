@@ -62,6 +62,8 @@ def sky_subtract( img, temp_dir=None ):
     origimg = img
     if isinstance( origimg, snappl.image.CompressedFITSImage ):
         img = origimg.uncompressed_version( include=['data'] )
+    elif isinstance( origimg, snappl.image.RomanDatamodelImage ):
+        img = origimg.data
     else:
         # TODO, MAYBE MAKE THIS BETTER WHEN SNAPPL SUPPORTS MORE THINGS
         # We need to exract just the image data (not the noise or flags)
