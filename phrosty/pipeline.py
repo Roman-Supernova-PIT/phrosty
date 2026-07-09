@@ -108,7 +108,7 @@ class PipelineImage:
         self.failure_pair = None
 
     def run_sky_subtract( self, mp=True ):
-        """Run sky subtraction using Source Extractor.
+        """Run sky subtraction using photutils.
 
         Parameters
         ----------

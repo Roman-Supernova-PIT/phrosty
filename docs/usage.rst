@@ -378,6 +378,10 @@ Get yourself a GPU node. Do::
 
   salloc -p gpu-int --time=02:00:00
 
+Then, to avoid permissions issues, do::
+
+  ssh localhost
+
 Then, go into the Singularity container::
 
   sh environment/smdc-phrostydev-apptainer.sh 
@@ -447,6 +451,21 @@ The SNe Ia in the sims are object IDs `11` and `21`. We are going to test on `11
         -d -43.958825 \
         -ic manual_rdm \
         --base-path /rick/romanisim/ \
+        -t phrosty/tests/11_instances_templates_1.csv \
+        -s phrosty/tests/11_instances_science_2.csv \
+        -p 1 -w 1 \
+        -v
+
+On NERSC (NOTE: This is just for Lauren right now. They edited Rob's interactive podman to include a hook to `photometry_test_data`, and also put some Ricksims in that folder. They are trying to push it to github, but the large files are giving them issues. The interactive podman file is in `phrosty/phrosty/tests` right now.)::
+
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
+        --oid 11 \
+        -oc manual \
+        -b J129 \
+        -r 9.366435 \
+        -d -43.958825 \
+        -ic manual_rdm \
+        --base-path /photometry_test_data/ricksims/ \
         -t phrosty/tests/11_instances_templates_1.csv \
         -s phrosty/tests/11_instances_science_2.csv \
         -p 1 -w 1 \
