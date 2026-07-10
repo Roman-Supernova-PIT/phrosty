@@ -458,6 +458,10 @@ The SNe Ia in the sims are object IDs `11` and `21`. We are going to test on `11
 
 On NERSC (NOTE: This is just for Lauren right now. They edited Rob's interactive podman to include a hook to `photometry_test_data`, and also put some Ricksims in that folder. They are trying to push it to github, but the large files are giving them issues. The interactive podman file is in `phrosty/phrosty/tests` right now.)::
 
+  WHICHROMANENV=cuda-dev bash phrosty/phrosty/tests/interactive-podman-rknop-dev-mod.sh
+
+Do all the installation stuff, and run phrosty::
+
   SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
         --oid 11 \
         -oc manual \

@@ -138,102 +138,6 @@ def sky_subtract( img, temp_dir=None,
 
     return subim, detmaskim, rms
 
-
-# def sky_subtract( img, temp_dir=None ):
-#     """Subtracts background, found with Source Extractor.
-
-#     Parameters
-#     ----------
-#       img: snappl.image.Image
-#         Original image.
-
-#       temp_dir: Path, default None
-#         Already-existing directory where we can write a temporary file.
-#         Defaults to photometry.snappl.temp_dir from the config.
-
-#     Returns
-#     -------
-#       skysubim: snappl.image.FITSImage, detmask: snappl.image.FITSImage, skyrms: float
-
-#          skysubim is the sky-subtracted image.  Its location on disk
-#          will be underneath temp_dir. It's the caller's responsibility
-#          to clean this up.  The file will have been written, so you
-#          can pass skysubim.path to any thing that needs the path of a
-#          single-HDU FITS image.
-
-#          detmask is the detection mask.  Its location on disk will be
-#          underneath temp_dir.  It's the caller's responsibility to clean
-#          this up.  The file will have been written, so you can pass
-#          detmask.path to any thing that needs the path of a single-HDU
-#          FITS image.
-
-#          skyrms is the median of the skyrms image calculated by source-extractor
-
-#     """
-
-#     # SEx_SkySubtract.SSS requires FITS files to chew on.  At some point
-#     # we should refactor this so that we can pass data to it.  However,
-#     # for now, write a snappl.image.FITSImage so we have something
-#     # to give to it.
-
-#     temp_dir = pathlib.Path( temp_dir if temp_dir is not None else Config.get().value( 'photometry.snappl.temp_dir' ) )
-#     barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
-#     tmpfitspath = temp_dir / f"{barf}_fits_from_asdf.fits"
-#     tmpimpath = temp_dir / f"{barf}_sub.fits"
-#     tmpsubpath = temp_dir / f"{barf}_sub.fits"
-#     tmpdetmaskpath = temp_dir / f"{barf}_detmask.fits"
-
-#     origimg = img
-#     if isinstance( origimg, snappl.image.CompressedFITSImage ):
-#         img = origimg.uncompressed_version( include=['data'] )
-#     elif isinstance( origimg, snappl.image.RomanDatamodelImage ):
-#         # The next few lines that make the header are stolen from sidecar.
-#         hdr = origimg.get_wcs().get_astropy_wcs().to_header(relax=True)
-#         hdr.insert(0, ("NAXIS", 2))
-#         hdr.insert("NAXIS", ("NAXIS1", img.data.shape[1]), after=True)
-#         hdr.insert("NAXIS1", ("NAXIS2", img.data.shape[0]), after=True)
-#         img = snappl.image.FITSImage( 
-#                                       full_filepath=tmpfitspath,
-#                                       data=origimg.get_data(which='data')[0],
-#                                       header=hdr
-#                                     )
-#         img.save()
-#     else:
-#         # TODO, MAYBE MAKE THIS BETTER WHEN SNAPPL SUPPORTS MORE THINGS
-#         # We need to exract just the image data (not the noise or flags)
-#         # to send to image subtraction.
-#         # Lauren, make an issue about this, mauybe also a snappl image
-#         # that says that we need a way of making imgaes from other
-#         # images including only data... compressedfitsimage supports
-#         # that right now but not fitsimage).
-#         # Can take out header arg when snappl issue #77 is resolved.
-#         img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
-#         img.data = origimg.data
-#         img.save( which='data' )
-
-#     SNLogger.debug( "Calling SEx_SkySubtract.SSS..." )
-#     radius_cut_detmask = Config.get().value( 'photometry.phrosty.sfft.radius_cut_detmask' )
-#     import pdb; pdb.set_trace()
-#     ( _SKYDIP, _SKYPEAK, _PixA_skysub,
-#       _PixA_sky, PixA_skyrms ) = SEx_SkySubtract.SSS( FITS_obj=img.path,
-#                                                       FITS_skysub=tmpsubpath,
-#                                                       FITS_detmask=tmpdetmaskpath,
-#                                                       FITS_sky=None, FITS_skyrms=None,
-#                                                       ESATUR_KEY='ESATUR',
-#                                                       BACK_SIZE=64, BACK_FILTERSIZE=3,
-#                                                       DETECT_THRESH=1.5, DETECT_MINAREA=5,
-#                                                       DETECT_MAXAREA=0,
-#                                                       RADIUS_CUT_DETMASK=radius_cut_detmask,
-#                                                       VERBOSE_LEVEL=2, MDIR=None )
-
-
-#     SNLogger.debug( "...back from SEx_SkySubtract.SSS" )
-
-#     subim = snappl.image.FITSImage( path=tmpsubpath )
-#     detmaskim = snappl.image.FITSImage( path=tmpdetmaskpath )
-#     skyrms = np.median( PixA_skyrms )
-#     return subim, detmaskim, skyrms
-
 def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data'):
     """Make stamps.
 
@@ -283,21 +187,41 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data
     pxradec = np.array([[x, y]])
 
     # Give Stamp_Generator.SG a FITS image to chew on
+    barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
+    tmpfitspath = savedir / f"{barf}.fits"
     origimg = img
     try:
-        # if isinstance( origimg, snappl.image.CompressedFITSImage ):
-        #     img = origimg.uncompressed_version( include=[ext_type] )
-        # else:
-        barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
-        # NOTE : this next line will break if not using an image type that
-        #   can return a FITS header!  The real solution is to fix SFFT
-        #   so that it's not dependent on FITS images; just pass what's
-        #   needed to Stamp_Generator.SG instead of assuming it will read
-        #   all the right things out of the header.
-        # See issue 177: https://github.com/Roman-Supernova-PIT/phrosty/issues/177
-        img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
-        img.data = getattr(origimg, data_prop)
-        img.save_data( which='data' )
+        if isinstance( origimg, snappl.image.CompressedFITSImage ):
+            img = origimg.uncompressed_version( include=[data_prop] )
+        elif isinstance( origimg, snappl.image.RomanDatamodelImage ):
+            # The next few lines that make the header are stolen from sidecar.
+            hdr = origimg.get_wcs().get_astropy_wcs().to_header(relax=True)
+            hdr.insert(0, ("NAXIS", 2))
+            hdr.insert("NAXIS", ("NAXIS1", img.data.shape[1]), after=True)
+            hdr.insert("NAXIS1", ("NAXIS2", img.data.shape[0]), after=True)
+            img = snappl.image.FITSImage( 
+                                          full_filepath=tmpfitspath,
+                                          data=origimg.get_data(which='data')[0],
+                                          header=hdr
+                                        )
+            img.save()
+
+        else:
+          # NOTE : this next line will break if not using an image type that
+          #   can return a FITS header!  The real solution is to fix SFFT
+          #   so that it's not dependent on FITS images; just pass what's
+          #   needed to Stamp_Generator.SG instead of assuming it will read
+          #   all the right things out of the header.
+          # See issue 177: https://github.com/Roman-Supernova-PIT/phrosty/issues/177
+            img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
+       
+        if isinstance( origimg, snappl.image.RomanDatamodelImage ):
+            img.data = origimg.get_data(which='data')[0]
+            img.save_data( which='data', overwrite=True )
+        else:  
+            import pdb; pdb.set_trace()
+            img.data = getattr(origimg, data_prop)
+            img.save_data( which='data', overwrite=True )
 
         # TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()
         Stamp_Generator.SG(FITS_obj=img.path, COORD=pxradec, COORD_TYPE='IMAGE',

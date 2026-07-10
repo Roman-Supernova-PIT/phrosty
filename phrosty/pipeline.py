@@ -1232,9 +1232,15 @@ class Pipeline:
 
                                 with nvtx.annotate( "submit writefits", color=0xff8888 ):
                                     SNLogger.info( f"...writefits {savepath}" )
-                                    fits_writer_pool.apply_async( self.write_fits_file,
-                                                                ( cp.asnumpy( decorimg ).T, hdr, savepath ), {},
-                                                                error_callback=partial(log_fits_write_error, savepath) )
+                                    if self.nwrite > 1:
+                                        fits_writer_pool.apply_async( self.write_fits_file,
+                                                                    ( cp.asnumpy( decorimg ).T, hdr, savepath ), {},
+                                                                    error_callback=partial(log_fits_write_error, savepath) )
+                                    else:
+                                        try:
+                                            self.write_fits_file( cp.asnumpy(decorimg).T, hdr, savepath )
+                                        except:
+                                            partial( log_fits_write_error( savepath ) )
                             sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
                             sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
                             sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
@@ -1393,6 +1399,7 @@ class Pipeline:
                         for templ_image in self.template_images:
                             if templ_image.image.name in sci_image.decorr_diff_path.keys():
                                 try:
+                                    import pdb; pdb.set_trace()
                                     stamp_paths = self.do_stamps( sci_image, templ_image)
                                     self.save_stamp_paths( sci_image, templ_image, stamp_paths )
                                 except Exception:
