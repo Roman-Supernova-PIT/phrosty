@@ -25,7 +25,7 @@ import fitsio
 # Imports INTERNAL
 import phrosty
 from phrosty.imagesubtraction import sky_subtract, stampmaker
-from sfft.SpaceSFFTCupyFlow import SpaceSFFT_CupyFlow
+from sfft.SpaceSFFTFlow import SpaceSFFT_Flow
 from snappl.dbclient import SNPITDBClient
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
@@ -482,7 +482,7 @@ class Pipeline:
 
         Returns
         -------
-          sfftifier: SpaceSFFT_CupyFlow
+          sfftifier: SpaceSFFT_Flow
             Use this object for futher SFFT work.  Be sure to
             dereference it to free the prodigious amount of memory it
             allcoates.
@@ -512,24 +512,24 @@ class Pipeline:
         sci_detmask = cp.array( np.ascontiguousarray( sci_image.detmask_img.data.T ) )
         templ_detmask = cp.array( np.ascontiguousarray( templ_image.detmask_img.data.T ) )
 
-        sfftifier = SpaceSFFT_CupyFlow(
-                                        hdr_target=hdr_sci,
-                                        hdr_object=hdr_templ,
-                                        target_skyrms=sci_image.skyrms,
-                                        object_skyrms=templ_image.skyrms,
-                                        PixA_target_GPU=data_sci,
-                                        PixA_object_GPU=data_templ,
-                                        PixA_targetVar_GPU=var_sci,
-                                        PixA_objectVar_GPU=var_templ,
-                                        PixA_target_DMASK_GPU=sci_detmask,
-                                        PixA_object_DMASK_GPU=templ_detmask,
-                                        PSF_target_GPU=sci_psf,
-                                        PSF_object_GPU=templ_psf,
-                                        KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
-                                      )
+        sfftifier = SpaceSFFT_Flow(
+                                    hdr_target=hdr_sci,
+                                    hdr_object=hdr_templ,
+                                    target_skyrms=sci_image.skyrms,
+                                    object_skyrms=templ_image.skyrms,
+                                    PixA_target=data_sci,
+                                    PixA_object=data_templ,
+                                    PixA_targetVar=var_sci,
+                                    PixA_objectVar=var_templ,
+                                    PixA_target_DMASK=sci_detmask,
+                                    PixA_object_DMASK=templ_detmask,
+                                    PSF_target=sci_psf,
+                                    PSF_object=templ_psf,
+                                    KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
+                                   )
 
-        sfftifier.resampling_image_mask_psf()
-        sfftifier.cross_convolution()
+        sfftifier.resample_image_mask_psf()
+        sfftifier.cross_convolve()
 
         return sfftifier
 
@@ -1110,7 +1110,7 @@ class Pipeline:
                         i_failed_gpu = True
 
                     if 'align_and_preconvolve' in steps and not i_failed_gpu:
-                        # After this step, sfftifier will be a SpaceSFFT_CupyFlow
+                        # After this step, sfftifier will be a SpaceSFFT_Flow
                         #  object with the following fields filled.  All cupy arrays
                         #  are float64 (even the DMASK!), and all of them are Transposed
                         #  from what's stored in the PipelineImage object
@@ -1118,21 +1118,21 @@ class Pipeline:
                         #    hdr_object : FITS header of template image
                         #    target_skyrms : float, median of sky for science image
                         #    object_skyrms : float, median of sky for template image
-                        #    PixA_target_GPU  : science image data on GPU
-                        #    PixA_Ctarget_GPU : cross-convolved science image with template PSF on GPU
-                        #    PixA_object_GPU  : template image data on GPU
-                        #    PixA_resamp_object_GPU : warped template image data on GPU
-                        #    PixA_Cresampl_object_GPU : cross-convolved template image on GPU
+                        #    PixA_target  : science image data on GPU
+                        #    PixA_Ctarget : cross-convolved science image with template PSF on GPU
+                        #    PixA_object  : template image data on GPU
+                        #    PixA_resamp_object : warped template image data on GPU
+                        #    PixA_Cresampl_object : cross-convolved template image on GPU
                         #    BlankMask_GPU : boolean array, True where PixA_resampl_object_GPU is 0.
-                        #    PixA_targetVar_GPU : variance image for science image, on GPU
-                        #    PixA_objectVar_GPU : variance image for template image, on GPU
-                        #    PiXA_resampl_objectVar_GPU : warped template variance data on GPU
-                        #    PixA_target_DMASK_GPU : detmask for science image, on GPU
-                        #    PixA_object_DMASK_GPU : detmask for template image, on GPU
-                        #    PixA_resampl_object_DMASK_GPU : warped dmask for template image, on GPU
-                        #    PSF_target_GPU : PSF stamp for science image
-                        #    PSF_object_GPU : PSF stamp for template image
-                        #    PSF_resampl_object_GPU : PSF stamp for template image rotated & resampled, on GPU
+                        #    PixA_targetVar : variance image for science image, on GPU
+                        #    PixA_objectVar : variance image for template image, on GPU
+                        #    PiXA_resampl_objectVar : warped template variance data on GPU
+                        #    PixA_target_DMASK : detmask for science image, on GPU
+                        #    PixA_object_DMASK : detmask for template image, on GPU
+                        #    PixA_resampl_object_DMASK : warped dmask for template image, on GPU
+                        #    PSF_target : PSF stamp for science image
+                        #    PSF_object : PSF stamp for template image
+                        #    PSF_resampl_object : PSF stamp for template image rotated & resampled, on GPU
                         #    sci_is_target : True
                         #    GKerHW : 9 (int half-width of matching kernel, full width is 2*GKerHW+1)
                         #    KerPolyOrder : config value of photometry.phrosty.kerpolyorder
@@ -1150,7 +1150,7 @@ class Pipeline:
                                 mess = f"{sci_image.image.name}-{templ_image.image.name}"
                                 aligned_templ_path = self.dia_out_dir / f"aligned_{mess}"
                                 sci_image.aligned_templ_img_path[ templ_image.image.name ] = aligned_templ_path
-                                self.write_fits_file(cp.asnumpy(sfftifier.PixA_resamp_object_GPU.T),
+                                self.write_fits_file(cp.asnumpy(sfftifier.PixA_resamp_object.T),
                                                                 sfftifier.hdr_target, aligned_templ_path)
 
                             except Exception as e:
@@ -1166,11 +1166,11 @@ class Pipeline:
                         SNLogger.info( "...subtract" )
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
                             try:
-                                sfftifier.sfft_subtraction()
+                                sfftifier.sfft_subtract()
                                 mess = f"{sci_image.image.name}-{templ_image.image.name}"
                                 undecorr_diff_path = self.dia_out_dir / f"diff_{mess}"
                                 sci_image.diff_undecorr_img_path[ templ_image.image.name ] = undecorr_diff_path
-                                self.write_fits_file(cp.asnumpy(sfftifier.PixA_DIFF_GPU.T),
+                                self.write_fits_file(cp.asnumpy(sfftifier.PixA_DIFF.T),
                                                                 sfftifier.hdr_target, undecorr_diff_path)
                             except Exception as e:
                                 i_failed_gpu = True
@@ -1218,8 +1218,8 @@ class Pipeline:
                             decorr_zptimg_path = self.dia_out_dir / f"decorr_zptimg_{mess}"
                             decorr_diff_path = self.dia_out_dir / f"decorr_diff_{mess}"
 
-                            images =    [ sfftifier.PixA_DIFF_GPU,
-                                        sfftifier.PixA_Ctarget_GPU, sfftifier.PSF_Ctarget_GPU ]
+                            images =    [ sfftifier.PixA_DIFF,
+                                        sfftifier.PixA_Ctarget, sfftifier.PSF_Ctarget ]
                             savepaths = [ decorr_diff_path,
                                         decorr_zptimg_path,         decorr_psf_path ]
                             headers =   [ sfftifier.hdr_target,
@@ -1261,33 +1261,33 @@ class Pipeline:
 
                         write_filepaths = {'aligned': [['img',
                                                         f'{templ_image.image.name}_-_{sci_image.image.name}',
-                                                        cp.asnumpy(sfftifier.PixA_resamp_object_GPU.T),
+                                                        cp.asnumpy(sfftifier.PixA_resamp_object.T),
                                                         sfftifier.hdr_target],
                                                         ['var',
                                                          f'{templ_image.image.name}_-_{sci_image.image.name}',
-                                                         cp.asnumpy(sfftifier.PixA_resamp_objectVar_GPU.T),
+                                                         cp.asnumpy(sfftifier.PixA_resamp_objectVar.T),
                                                          sfftifier.hdr_target],
                                                        ['psf',
                                                         f'{templ_image.image.name}_-_{sci_image.image.name}',
-                                                        cp.asnumpy(sfftifier.PSF_target_GPU.T),
+                                                        cp.asnumpy(sfftifier.PSF_target.T),
                                                         sfftifier.hdr_target],
                                                        ['detmask',
                                                         f'{sci_image.image.name}_-_{templ_image.image.name}',
-                                                        cp.asnumpy(sfftifier.PixA_resamp_object_DMASK_GPU.T),
+                                                        cp.asnumpy(sfftifier.PixA_resamp_object_DMASK.T),
                                                         sfftifier.hdr_target]
                                                        ],
                                            'convolved': [['img',
                                                          f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                                         cp.asnumpy(sfftifier.PixA_Ctarget_GPU.T),
+                                                         cp.asnumpy(sfftifier.PixA_Ctarget.T),
                                                          sfftifier.hdr_target],
                                                          ['img',
                                                          f'{templ_image.image.name}_-_{sci_image.image.name}.fits',
-                                                         cp.asnumpy(sfftifier.PixA_Cresamp_object_GPU.T),
+                                                         cp.asnumpy(sfftifier.PixA_Cresamp_object.T),
                                                          sfftifier.hdr_target]
                                                         ],
                                            'diff':     [['img',
                                                         f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                                        cp.asnumpy(sfftifier.PixA_DIFF_GPU.T),
+                                                        cp.asnumpy(sfftifier.PixA_DIFF.T),
                                                         sfftifier.hdr_target]
                                                        ],
                                            'match_kernel': [['img',
@@ -1300,11 +1300,11 @@ class Pipeline:
                                         #               Don't worry about it.
                                            'decorr':   [['kernel_real',
                                                         f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                                        cp.asnumpy(sfftifier.FKDECO_GPU.T).real,
+                                                        cp.asnumpy(sfftifier.FKDECO.T).real,
                                                         sfftifier.hdr_target],
                                                         ['kernel_imag',
                                                         f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                                        cp.asnumpy(sfftifier.FKDECO_GPU.T).imag,
+                                                        cp.asnumpy(sfftifier.FKDECO.T).imag,
                                                         sfftifier.hdr_target],
                                                        ]
                                           }
@@ -1399,7 +1399,6 @@ class Pipeline:
                         for templ_image in self.template_images:
                             if templ_image.image.name in sci_image.decorr_diff_path.keys():
                                 try:
-                                    import pdb; pdb.set_trace()
                                     stamp_paths = self.do_stamps( sci_image, templ_image)
                                     self.save_stamp_paths( sci_image, templ_image, stamp_paths )
                                 except Exception:

@@ -106,7 +106,7 @@ def sky_subtract( img, temp_dir=None,
 
     # Based on the photutils.background documentation
     sigma_clip = SigmaClip(sigma=2.0, maxiters=10)
-    threshold = detect_threshold(sky_subtracted_data, nsigma=20.0, sigma_clip=sigma_clip)
+    threshold = detect_threshold(sky_subtracted_data, n_sigma=20.0, sigma_clip=sigma_clip)
 
     # Build a mask of pixels that are in the non-linear retime
     mask = np.abs(sky_subtracted_data) > nonlinear_threshold
@@ -114,7 +114,7 @@ def sky_subtract( img, temp_dir=None,
     mask_footprint = circular_footprint(radius=mask_radius)
     mask = convolve2d(mask, mask_footprint, fillvalue=0, mode="same")
 
-    segment_img = detect_sources(sky_subtracted_data, threshold, npixels=10, mask=mask)
+    segment_img = detect_sources(sky_subtracted_data, threshold, n_pixels=10, mask=mask)
     detection_footprint = circular_footprint(radius=10)
 
     # convert boolean into float 1, and 0 because data must be float (not bool or int).
@@ -214,14 +214,8 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data
           #   all the right things out of the header.
           # See issue 177: https://github.com/Roman-Supernova-PIT/phrosty/issues/177
             img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
-       
-        if isinstance( origimg, snappl.image.RomanDatamodelImage ):
-            img.data = origimg.get_data(which='data')[0]
-            img.save_data( which='data', overwrite=True )
-        else:  
-            import pdb; pdb.set_trace()
-            img.data = getattr(origimg, data_prop)
-            img.save_data( which='data', overwrite=True )
+            img.data = origimg.data
+            img.save( which='data' )
 
         # TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()
         Stamp_Generator.SG(FITS_obj=img.path, COORD=pxradec, COORD_TYPE='IMAGE',
