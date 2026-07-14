@@ -67,10 +67,10 @@ def sky_subtract( img, temp_dir=None,
     tmpimpath = temp_dir / f"{barf}_sub.fits"
     tmpsubpath = temp_dir / f"{barf}_sub.fits"
     tmpdetmaskpath = temp_dir / f"{barf}_detmask.fits"
-
     origimg = img
     if isinstance( origimg, snappl.image.CompressedFITSImage ):
         img = origimg.uncompressed_version( include=['data'] )
+        hdr = img.get_fits_header()
     elif isinstance( origimg, snappl.image.RomanDatamodelImage ):
         # The next few lines that make the header are stolen from sidecar.
         hdr = origimg.get_wcs().get_astropy_wcs().to_header(relax=True)
@@ -94,6 +94,7 @@ def sky_subtract( img, temp_dir=None,
         # Can take out header arg when snappl issue #77 is resolved.
         img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
         img.data = origimg.data
+        hdr = img.get_fits_header()
         img.save( which='data' )
 
     SNLogger.debug( "Beginning sky subtraction..." )
