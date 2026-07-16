@@ -491,23 +491,23 @@ class Pipeline:
         hdr_sci.insert( 0, ('NAXIS', 2) )
         hdr_sci.insert( 'NAXIS', ('NAXIS1', sci_image.image.data.shape[1] ), after=True )
         hdr_sci.insert( 'NAXIS1', ('NAXIS2', sci_image.image.data.shape[0] ), after=True )
-        data_sci = cp.array( np.ascontiguousarray(sci_image.skysub_img.data), dtype=cp.float64 )
-        noise_sci = cp.array( np.ascontiguousarray(sci_image.image.noise), dtype=cp.float64 )
+        data_sci = sci_image.skysub_img.data
+        noise_sci = sci_image.image.noise
         var_sci = noise_sci ** 2
 
         hdr_templ = templ_image.image.get_wcs().get_astropy_wcs().to_header( relax=True )
         hdr_templ.insert( 0, ('NAXIS', 2) )
         hdr_templ.insert( 'NAXIS', ('NAXIS1', templ_image.image.data.shape[1] ), after=True )
         hdr_templ.insert( 'NAXIS1', ('NAXIS2', templ_image.image.data.shape[0] ), after=True )
-        data_templ = cp.array( np.ascontiguousarray(templ_image.skysub_img.data), dtype=cp.float64 )
-        noise_templ = cp.array( np.ascontiguousarray(templ_image.image.noise.T), dtype=cp.float64 )
+        data_templ = templ_image.skysub_img.data
+        noise_templ = templ_image.image.noise
         var_templ = noise_templ ** 2
 
-        sci_psf = cp.ascontiguousarray( cp.array( sci_image.psf_data, dtype=cp.float64 ) )
-        templ_psf = cp.ascontiguousarray( cp.array( templ_image.psf_data, dtype=cp.float64 ) )
+        sci_psf = sci_image.psf_data
+        templ_psf = templ_image.psf_data
 
-        sci_detmask = cp.array( np.ascontiguousarray( sci_image.detmask_img.data ) )
-        templ_detmask = cp.array( np.ascontiguousarray( templ_image.detmask_img.data ) )
+        sci_detmask = sci_image.detmask_img.data
+        templ_detmask = templ_image.detmask_img.data
 
         sfftifier = SpaceSFFT_Flow(
                                         hdr_target=hdr_sci,
@@ -1107,37 +1107,7 @@ class Pipeline:
                         i_failed_gpu = True
 
                     if 'align_and_preconvolve' in steps and not i_failed_gpu:
-                        # After this step, sfftifier will be a SpaceSFFT_Flow
-                        #  object with the following fields filled.  All cupy arrays
-                        #  are float64 (even the DMASK!), and all of them are Transposed
-                        #  from what's stored in the PipelineImage object
-                        #    hdr_target : FITS header of science image
-                        #    hdr_object : FITS header of template image
-                        #    target_skyrms : float, median of sky for science image
-                        #    object_skyrms : float, median of sky for template image
-                        #    PixA_target  : science image data on GPU
-                        #    PixA_Ctarget : cross-convolved science image with template PSF on GPU
-                        #    PixA_object  : template image data on GPU
-                        #    PixA_resamp_object : warped template image data on GPU
-                        #    PixA_Cresampl_object : cross-convolved template image on GPU
-                        #    BlankMask : boolean array, True where PixA_resampl_object_GPU is 0.
-                        #    PixA_targetVar : variance image for science image, on GPU
-                        #    PixA_objectVar : variance image for template image, on GPU
-                        #    PiXA_resampl_objectVar : warped template variance data on GPU
-                        #    PixA_target_DMASK : detmask for science image, on GPU
-                        #    PixA_object_DMASK : detmask for template image, on GPU
-                        #    PixA_resampl_object_DMASK : warped dmask for template image, on GPU
-                        #    PSF_target : PSF stamp for science image
-                        #    PSF_object : PSF stamp for template image
-                        #    PSF_resampl_object : PSF stamp for template image rotated & resampled, on GPU
-                        #    sci_is_target : True
-                        #    GKerHW : 9 (int half-width of matching kernel, full width is 2*GKerHW+1)
-                        #    KerPolyOrder : config value of photometry.phrosty.kerpolyorder
-                        #    BGPolyOrder : 0
-                        #    ConstPhotRatio : True
-                        #    CUDA_DEVICE_4SUBTRACT : '0'
-                        #    GAIN : 1.0
-                        #    RANDOM_SEED : 10086
+                        # After this step, sfftifier will be a SpaceSFFT_Flow object.
                         SNLogger.info( "...align_and_preconvolve" )
                         with nvtx.annotate( "align_and_pre_convolve", color=0x8888ff ):
                             try:
@@ -1147,8 +1117,8 @@ class Pipeline:
                                 mess = f"{sci_image.image.name}-{templ_image.image.name}"
                                 aligned_templ_path = self.dia_out_dir / f"aligned_{mess}"
                                 sci_image.aligned_templ_img_path[ templ_image.image.name ] = aligned_templ_path
-                                self.write_fits_file(cp.asnumpy(sfftifier.PixA_resamp_object),
-                                                                sfftifier.hdr_target, aligned_templ_path)
+                                self.write_fits_file(sfftifier.op.asnumpy(sfftifier.PixA_resamp_object),
+                                                     sfftifier.hdr_target, aligned_templ_path)
 
                             except Exception as e:
                                 i_failed_gpu = True
@@ -1167,8 +1137,8 @@ class Pipeline:
                                 mess = f"{sci_image.image.name}-{templ_image.image.name}"
                                 undecorr_diff_path = self.dia_out_dir / f"diff_{mess}"
                                 sci_image.diff_undecorr_img_path[ templ_image.image.name ] = undecorr_diff_path
-                                self.write_fits_file(cp.asnumpy(sfftifier.PixA_DIFF),
-                                                                sfftifier.hdr_target, undecorr_diff_path)
+                                self.write_fits_file(sfftifier.op.asnumpy(sfftifier.PixA_DIFF),
+                                                     sfftifier.hdr_target, undecorr_diff_path)
                             except Exception as e:
                                 i_failed_gpu = True
                                 SNLogger.debug(f'Failure in subtraction! Failure is: {e}')
@@ -1200,7 +1170,8 @@ class Pipeline:
                                 mess = f"{sci_image.image.name}-{templ_image.image.name}"
                                 diff_var_path = self.dia_out_dir / f"diff_var_{mess}"
                                 sci_image.diff_var_path[ templ_image.image.name ] = diff_var_path
-                                self.write_fits_file(cp.asnumpy(diff_var), sfftifier.hdr_target, diff_var_path)
+                                self.write_fits_file(sfftifier.op.asnumpy(diff_var),
+                                                     sfftifier.hdr_target, diff_var_path)
 
                             except Exception as e:
                                 i_failed_gpu = True
@@ -1230,8 +1201,8 @@ class Pipeline:
                                 with nvtx.annotate( "submit writefits", color=0xff8888 ):
                                     SNLogger.info( f"...writefits {savepath}" )
                                     fits_writer_pool.apply_async( self.write_fits_file,
-                                                                ( cp.asnumpy( decorimg ), hdr, savepath ), {},
-                                                                error_callback=partial(log_fits_write_error, savepath) )
+                                                                ( sfftifier.op.asnumpy( decorimg ), hdr, savepath ), {},
+                                                                  error_callback=partial(log_fits_write_error, savepath) )
                             sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
                             sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
                             sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
@@ -1252,38 +1223,38 @@ class Pipeline:
 
                         write_filepaths = {'aligned': [['img',
                                                         f'{templ_image.image.name}_-_{sci_image.image.name}',
-                                                        cp.asnumpy(sfftifier.PixA_resamp_object),
+                                                        sfftifier.op.asnumpy(sfftifier.PixA_resamp_object),
                                                         sfftifier.hdr_target],
                                                         ['var',
                                                          f'{templ_image.image.name}_-_{sci_image.image.name}',
-                                                         cp.asnumpy(sfftifier.PixA_resamp_objectVar),
+                                                         sfftifier.op.asnumpy(sfftifier.PixA_resamp_objectVar),
                                                          sfftifier.hdr_target],
                                                        ['psf',
                                                         f'{templ_image.image.name}_-_{sci_image.image.name}',
-                                                        cp.asnumpy(sfftifier.PSF_target),
+                                                        sfftifier.op.asnumpy(sfftifier.PSF_target),
                                                         sfftifier.hdr_target],
                                                        ['detmask',
                                                         f'{sci_image.image.name}_-_{templ_image.image.name}',
-                                                        cp.asnumpy(sfftifier.PixA_resamp_object_DMASK),
+                                                        sfftifier.op.asnumpy(sfftifier.PixA_resamp_object_DMASK),
                                                         sfftifier.hdr_target]
                                                        ],
                                            'convolved': [['img',
                                                          f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                                         cp.asnumpy(sfftifier.PixA_Ctarget),
+                                                         sfftifier.op.asnumpy(sfftifier.PixA_Ctarget),
                                                          sfftifier.hdr_target],
                                                          ['img',
                                                          f'{templ_image.image.name}_-_{sci_image.image.name}.fits',
-                                                         cp.asnumpy(sfftifier.PixA_Cresamp_object),
+                                                         sfftifier.op.asnumpy(sfftifier.PixA_Cresamp_object),
                                                          sfftifier.hdr_target]
                                                         ],
                                            'diff':     [['img',
                                                         f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                                        cp.asnumpy(sfftifier.PixA_DIFF),
+                                                        sfftifier.op.asnumpy(sfftifier.PixA_DIFF),
                                                         sfftifier.hdr_target]
                                                        ],
                                            'match_kernel': [['img',
                                                              f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                                                cp.asnumpy(sfftifier.MATCH_KERNEL),
+                                                                sfftifier.op.asnumpy(sfftifier.MATCH_KERNEL),
                                                                 sfftifier.hdr_target]
                                                             ],
                                         # LNA 20260131: There are issues with saving complex arrays using fitsio.
@@ -1291,11 +1262,11 @@ class Pipeline:
                                         #               Don't worry about it.
                                            'decorr':   [['kernel_real',
                                                         f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                                        cp.asnumpy(sfftifier.FKDECO).real,
+                                                        sfftifier.op.asnumpy(sfftifier.FKDECO).real,
                                                         sfftifier.hdr_target],
                                                         ['kernel_imag',
                                                         f'{sci_image.image.name}_-_{templ_image.image.name}.fits',
-                                                        cp.asnumpy(sfftifier.FKDECO).imag,
+                                                        sfftifier.op.asnumpy(sfftifier.FKDECO).imag,
                                                         sfftifier.hdr_target],
                                                        ]
                                           }
