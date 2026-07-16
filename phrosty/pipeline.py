@@ -3,7 +3,6 @@ __all__ = [ 'PipelineImage', 'Pipeline' ]
 # Imports STANDARD
 import sys
 import argparse
-import cupy as cp
 from functools import partial
 import logging
 from multiprocessing import Pool
@@ -1202,7 +1201,8 @@ class Pipeline:
                                     SNLogger.info( f"...writefits {savepath}" )
                                     fits_writer_pool.apply_async( self.write_fits_file,
                                                                 ( sfftifier.op.asnumpy( decorimg ), hdr, savepath ), {},
-                                                                  error_callback=partial(log_fits_write_error, savepath) )
+                                                                  error_callback=partial(log_fits_write_error,
+                                                                                         savepath) )
                             sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
                             sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
                             sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
