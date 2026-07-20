@@ -1,0 +1,1 @@
+Update pipeline.py for compatibility with SFFT refactor in PR #44. Remove "_GPU" from attribute names and removes matrix transposes.
