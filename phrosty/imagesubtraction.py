@@ -10,6 +10,8 @@ from photutils.segmentation import detect_threshold, detect_sources
 from photutils.utils import circular_footprint
 import random
 from scipy.signal import convolve2d
+from scipy.interpolate import griddata
+from roman_datamodels import dqflags
 
 # IMPORTS SFFT:
 from sfft.utils.SExSkySubtract import SEx_SkySubtract
@@ -19,6 +21,55 @@ from sfft.utils.StampGenerator import Stamp_Generator
 from snappl.config import Config
 import snappl.image
 from snappl.logger import SNLogger
+
+def interpolate_over_bad_pixels(data, dataflags, fill_value=0):
+    """Interpolate over bad pixels in an image.
+
+    NOTE: This is stolen from sidecar, and is written by WMWV. Lauren modified it.
+    Parameters
+    ----------
+    data : ndarray
+        Input data array.
+    dataflags : ndarray
+        Input flags array.
+    bad_pixel_flags : int, optional
+        Bitwise combination of DQ flags used to identify bad pixels.
+    fill_value : float, optional
+        Value to use for filling bad pixels if interpolation is not possible. Default is 0.
+
+    Returns
+    -------
+    interpolated_data : ndarray
+        The input image data with bad pixels interpolated over.
+
+    bad_pixel_mask : ndarray
+        Boolean mask indicating the locations of bad pixels that were interpolated over.
+
+    Notes
+    -----
+    This function identifies bad pixels based on the provided `bad_pixel_flags`
+    and performs interpolation to fill in those pixels.
+    The interpolation method can be simple (e.g., nearest neighbor) or more sophisticated
+    (e.g., using neighboring pixel values), depending on the implementation.
+    """
+    # Create a mask of bad pixels based on the flags
+    bad_pixel_flags = 2 ** len(dqflags.pixel) - 1 - dqflags.pixel.WARM - dqflags.pixel.LOW_QE
+    # bad_mask = dataflags & bad_pixel_flags > 0
+    # bad_mask = dataflags
+    bad_mask = np.isnan(data)
+    good_pixels = ~np.isnan(data)
+
+    interpolated_data = data.copy()
+    interpolated_data[bad_mask] = np.nan  # Mark bad pixels as NaN for interpolation
+
+    # Example interpolation using nearest neighbor
+    x, y = np.indices(data.shape)
+    # good_pixels = ~bad_mask
+    interpolated_data[bad_mask] = griddata(
+        (x[good_pixels], y[good_pixels]), data[good_pixels], (x[bad_mask], y[bad_mask]), method="nearest"
+    )
+
+    return interpolated_data, bad_mask
 
 def sky_subtract( img, temp_dir=None,
                   nonlinear_threshold=1000,
@@ -60,7 +111,6 @@ def sky_subtract( img, temp_dir=None,
     # we should refactor this so that we can pass data to it.  However,
     # for now, write a snappl.image.FITSImage so we have something
     # to give to it.
-
     temp_dir = pathlib.Path( temp_dir if temp_dir is not None else Config.get().value( 'photometry.snappl.temp_dir' ) )
     barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
     tmpfitspath = temp_dir / f"{barf}_fits_from_asdf.fits"
@@ -97,12 +147,16 @@ def sky_subtract( img, temp_dir=None,
         hdr = img.get_fits_header()
         img.save( which='data' )
 
+    SNLogger.debug( "Interpolate over bad pixels...")
+    # NOTE: Make interp_mask do something at a later time.
+    interp_data, _ = interpolate_over_bad_pixels(img.data, origimg.flags)
+
     SNLogger.debug( "Beginning sky subtraction..." )
     radius_cut_detmask = Config.get().value( 'photometry.phrosty.sfft.radius_cut_detmask' )
 
-    bkg = Background2D(img.data, box_size=64)
+    bkg = Background2D(interp_data, box_size=64)
 
-    sky_subtracted_data = img.data - bkg.background
+    sky_subtracted_data = interp_data - bkg.background
     rms = bkg.background_rms_median
 
     # Based on the photutils.background documentation

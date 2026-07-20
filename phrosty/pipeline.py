@@ -23,7 +23,7 @@ import fitsio
 
 # Imports INTERNAL
 import phrosty
-from phrosty.imagesubtraction import sky_subtract, stampmaker
+from phrosty.imagesubtraction import interpolate_over_bad_pixels, sky_subtract, stampmaker
 from sfft.SpaceSFFTFlow import SpaceSFFT_Flow
 from snappl.dbclient import SNPITDBClient
 from snappl.diaobject import DiaObject
@@ -488,13 +488,12 @@ class Pipeline:
 
         """
 
-        # SFFT needs FITS headers with a WCS and with NAXIS[12]
         hdr_sci = sci_image.image.get_wcs().get_astropy_wcs().to_header( relax=True )
         hdr_sci.insert( 0, ('NAXIS', 2) )
         hdr_sci.insert( 'NAXIS', ('NAXIS1', sci_image.image.data.shape[1] ), after=True )
         hdr_sci.insert( 'NAXIS1', ('NAXIS2', sci_image.image.data.shape[0] ), after=True )
         data_sci = sci_image.skysub_img.data
-        noise_sci = sci_image.image.noise
+        noise_sci, _ = interpolate_over_bad_pixels(sci_image.image.noise, sci_image.image.flags)
         var_sci = noise_sci ** 2
 
         hdr_templ = templ_image.image.get_wcs().get_astropy_wcs().to_header( relax=True )
@@ -502,7 +501,7 @@ class Pipeline:
         hdr_templ.insert( 'NAXIS', ('NAXIS1', templ_image.image.data.shape[1] ), after=True )
         hdr_templ.insert( 'NAXIS1', ('NAXIS2', templ_image.image.data.shape[0] ), after=True )
         data_templ = templ_image.skysub_img.data
-        noise_templ = templ_image.image.noise
+        noise_templ, _ = interpolate_over_bad_pixels(templ_image.image.noise, templ_image.image.flags)
         var_templ = noise_templ ** 2
 
         sci_psf = sci_image.psf_data
@@ -562,7 +561,7 @@ class Pipeline:
             All values are floats.
 
         """
-
+        import pdb; pdb.set_trace()
         forcecoords = Table([[float(pxcoords[0])], [float(pxcoords[1])]], names=["x", "y"])
         init = img.ap_phot( forcecoords, ap_r=ap_r )
         init.rename_column( 'aperture_sum', 'flux_init' )
