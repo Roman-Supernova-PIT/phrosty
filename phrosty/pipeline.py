@@ -675,6 +675,20 @@ class Pipeline:
             # Add additional info to the results dictionary so it can be merged into a nice file later.
             SNLogger.debug( "...make_phot_info_dict getting zeropoint" )
             results_dict['zpt'] = sci_image.image.zeropoint
+            # Populate columns that stock phrosty declares but does not yet write
+            #   (NEA / sky_rms / pix_x / pix_y were left as NaN upstream).
+            # pix_x/pix_y are documented as the SN position on the *detector*
+            #   (4088^2 SCA), so project the sky coord through the original
+            #   science-image WCS -- NOT `pxcoords`, which is stamp-local (~50,50
+            #   on the 100x100 diff cutout) and is only valid for phot_at_coords.
+            det_x, det_y = sci_image.image.get_wcs().world_to_pixel( self.diaobj.ra,
+                                                                     self.diaobj.dec )
+            results_dict['pix_x'] = float( det_x )
+            results_dict['pix_y'] = float( det_y )
+            results_dict['sky_rms'] = sci_image.skyrms
+            # Noise-equivalent area (px^2); scale-invariant so it's correct whether or
+            #   not the PSF stamp is normalized to unit sum.
+            results_dict['NEA'] = float( psf_img.data.sum()**2 / np.sum( psf_img.data**2 ) )
             results_dict['success'] = True
 
         except Exception as e:
