@@ -54,17 +54,14 @@ def interpolate_over_bad_pixels(data, dataflags, fill_value=0):
     """
     # Create a mask of bad pixels based on the flags
     bad_pixel_flags = 2 ** len(dqflags.pixel) - 1 - dqflags.pixel.WARM - dqflags.pixel.LOW_QE
-    # bad_mask = dataflags & bad_pixel_flags > 0
-    # bad_mask = dataflags
-    bad_mask = np.isnan(data)
-    good_pixels = ~np.isnan(data)
+    bad_mask = np.isnan(data) | (dataflags & bad_pixel_flags > 0)
+    good_pixels = ~bad_mask
 
     interpolated_data = data.copy()
     interpolated_data[bad_mask] = np.nan  # Mark bad pixels as NaN for interpolation
 
     # Example interpolation using nearest neighbor
     x, y = np.indices(data.shape)
-    # good_pixels = ~bad_mask
     interpolated_data[bad_mask] = griddata(
         (x[good_pixels], y[good_pixels]), data[good_pixels], (x[bad_mask], y[bad_mask]), method="nearest"
     )

@@ -473,7 +473,7 @@ Do all the installation stuff, and run phrosty::
         -t phrosty/tests/11_instances_templates_1.csv \
         -s phrosty/tests/11_instances_science_2.csv \
         -p 1 -w 1 \
-        -v
+        -v 
 
 
 Running on a HPC system that uses apptainer/singularity

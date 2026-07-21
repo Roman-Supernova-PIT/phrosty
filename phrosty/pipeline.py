@@ -561,7 +561,6 @@ class Pipeline:
             All values are floats.
 
         """
-        import pdb; pdb.set_trace()
         forcecoords = Table([[float(pxcoords[0])], [float(pxcoords[1])]], names=["x", "y"])
         init = img.ap_phot( forcecoords, ap_r=ap_r )
         init.rename_column( 'aperture_sum', 'flux_init' )
