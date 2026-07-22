@@ -1,0 +1,1 @@
+phrosty can now ingest ASDF images. Images are still converted to FITS inside the pipeline. Source Extractor was removed as the sky-subtraction algorithm and was replaced with photutils. Some minor improvements based on other PRs were incorporated. 

@@ -1342,7 +1342,7 @@ class Pipeline:
                     for tsargs in templstamp_args:
                         try:
                             partialstamp(*tsargs)
-                        except Exception as {e}:
+                        except Exception as e:
                             SNLogger.warning( f"Stampifying the original template images failed because: {e}" )
                             self.failures['make_stamps'].append(tsargs[0].fail_info)
 
