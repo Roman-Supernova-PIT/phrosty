@@ -1,0 +1,3 @@
+path observation_id sca mjd band
+output_images_galid_force0/SNPIT_VISIT606650033_WFI01_F129_L2.asdf 606650033 1 60665.0033 J129
+output_images_galid_force0/SNPIT_VISIT606750033_WFI01_F129_L2.asdf 606750033 1 60675.0033 J129

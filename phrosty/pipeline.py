@@ -23,7 +23,7 @@ import fitsio
 
 # Imports INTERNAL
 import phrosty
-from phrosty.imagesubtraction import sky_subtract, stampmaker
+from phrosty.imagesubtraction import interpolate_over_bad_pixels, sky_subtract, stampmaker
 from sfft.SpaceSFFTFlow import SpaceSFFT_Flow
 from snappl.dbclient import SNPITDBClient
 from snappl.diaobject import DiaObject
@@ -67,7 +67,7 @@ class PipelineImage:
 
         # Intermediate files
         if self.keep_intermediate:
-            # Set to None. The path gets defined later on.
+            # The path gets defined later on.
             # They have to be defined here in __init__ so that they exist
             # and are accessible in later functions.
             self.skysub_img = {}
@@ -107,7 +107,7 @@ class PipelineImage:
         self.failure_pair = None
 
     def run_sky_subtract( self, mp=True ):
-        """Run sky subtraction using Source Extractor.
+        """Run sky subtraction using photutils.
 
         Parameters
         ----------
@@ -157,11 +157,6 @@ class PipelineImage:
             PSF stamp. If this function fails, None is returned.
 
         """
-
-        # TODO: right now snappl.psf.PSF.get_psf_object just
-        #   passes the keyword arguments on to whatever makes
-        #   the psf... and it's different for each type of
-        #   PSF.  We need to fix that... somehow....
 
         try:
             wcs = self.image.get_wcs()
@@ -384,12 +379,17 @@ class Pipeline:
             for line in ifp:
                 path, observation_id, sca, _mjd, band = line.split()
                 if band == self.band:
-                    # This should yell at us if the observation_id
-                    # or sca doesn't match what is read from the path
-                    imlist.append( self.imgcol.get_image( path=path,
-                                                          observation_id=observation_id,
-                                                          sca=sca,
-                                                          band=band ) )
+                    try:
+                        # This should yell at us if the observation_id
+                        # or sca doesn't match what is read from the path
+                        imlist.append( self.imgcol.get_image( path=path,
+                                                              observation_id=observation_id,
+                                                              sca=sca,
+                                                              band=band ) )
+                    except Exception as e:
+                        SNLogger.warning( f"Could not find the image using observation_id, sca, and/or band, \
+                                           so just using the path. Failure: {e}" )
+                        imlist.append( self.imgcol.get_image( path=path ))
         return imlist
 
 
@@ -485,13 +485,12 @@ class Pipeline:
 
         """
 
-        # SFFT needs FITS headers with a WCS and with NAXIS[12]
         hdr_sci = sci_image.image.get_wcs().get_astropy_wcs().to_header( relax=True )
         hdr_sci.insert( 0, ('NAXIS', 2) )
         hdr_sci.insert( 'NAXIS', ('NAXIS1', sci_image.image.data.shape[1] ), after=True )
         hdr_sci.insert( 'NAXIS1', ('NAXIS2', sci_image.image.data.shape[0] ), after=True )
         data_sci = sci_image.skysub_img.data
-        noise_sci = sci_image.image.noise
+        noise_sci, _ = interpolate_over_bad_pixels(sci_image.image.noise, sci_image.image.flags)
         var_sci = noise_sci ** 2
 
         hdr_templ = templ_image.image.get_wcs().get_astropy_wcs().to_header( relax=True )
@@ -499,7 +498,7 @@ class Pipeline:
         hdr_templ.insert( 'NAXIS', ('NAXIS1', templ_image.image.data.shape[1] ), after=True )
         hdr_templ.insert( 'NAXIS1', ('NAXIS2', templ_image.image.data.shape[0] ), after=True )
         data_templ = templ_image.skysub_img.data
-        noise_templ = templ_image.image.noise
+        noise_templ, _ = interpolate_over_bad_pixels(templ_image.image.noise, templ_image.image.flags)
         var_templ = noise_templ ** 2
 
         sci_psf = sci_image.psf_data
@@ -509,20 +508,20 @@ class Pipeline:
         templ_detmask = templ_image.detmask_img.data
 
         sfftifier = SpaceSFFT_Flow(
-                                        hdr_target=hdr_sci,
-                                        hdr_object=hdr_templ,
-                                        target_skyrms=sci_image.skyrms,
-                                        object_skyrms=templ_image.skyrms,
-                                        PixA_target=data_sci,
-                                        PixA_object=data_templ,
-                                        PixA_targetVar=var_sci,
-                                        PixA_objectVar=var_templ,
-                                        PixA_target_DMASK=sci_detmask,
-                                        PixA_object_DMASK=templ_detmask,
-                                        PSF_target=sci_psf,
-                                        PSF_object=templ_psf,
-                                        KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
-                                      )
+                                    hdr_target=hdr_sci,
+                                    hdr_object=hdr_templ,
+                                    target_skyrms=sci_image.skyrms,
+                                    object_skyrms=templ_image.skyrms,
+                                    PixA_target=data_sci,
+                                    PixA_object=data_templ,
+                                    PixA_targetVar=var_sci,
+                                    PixA_objectVar=var_templ,
+                                    PixA_target_DMASK=sci_detmask,
+                                    PixA_object_DMASK=templ_detmask,
+                                    PSF_target=sci_psf,
+                                    PSF_object=templ_psf,
+                                    KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
+                                  )
 
         sfftifier.resample_image_mask_psf()
         sfftifier.cross_convolve()
@@ -559,7 +558,6 @@ class Pipeline:
             All values are floats.
 
         """
-
         forcecoords = Table([[float(pxcoords[0])], [float(pxcoords[1])]], names=["x", "y"])
         init = img.ap_phot( forcecoords, ap_r=ap_r )
         init.rename_column( 'aperture_sum', 'flux_init' )
@@ -619,7 +617,6 @@ class Pipeline:
         """
 
         # Do photometry on stamp because it will read faster.
-        # (We hope.  But CFS latency will kill you at 1 byte.)
         SNLogger.debug( "...make_phot_info_dict reading stamp and psf" )
 
         # Required results keys
@@ -636,6 +633,11 @@ class Pipeline:
         # Required results keys
         results_dict['observation_id'] = str(sci_image.image.observation_id)
         results_dict['sca'] = sci_image.image.sca
+        results_dict['sky_rms'] = sci_image.skyrms
+        pix_x, pix_y = sci_image.image.get_wcs().world_to_pixel( self.diaobj.ra,
+                                                                 self.diaobj.dec )
+        results_dict['pix_x'] = pix_x
+        results_dict['pix_y'] = pix_y
 
         # phrosty results keys
         results_dict['science_name'] = sci_image.image.name
@@ -984,16 +986,12 @@ class Pipeline:
         savepath : str
             Savepath for FITS file.
         """
-        # try:
         if header is not None:
             hdr_dict = dict(header.items())
         else:
             hdr_dict = None
 
         fitsio.write( savepath, data, header=hdr_dict, clobber=True )
-        # except Exception as e:
-        #     SNLogger.exception( f"Exception writing FITS image {savepath}: {e}" )
-        #     raise
 
     def clear_contents( self, directory ):
         """Delete contents of a directory. Used to clear temporary
@@ -1089,7 +1087,7 @@ class Pipeline:
                 for sci_image in self.science_images:
                     SNLogger.info( f"Processing {sci_image.image.name} minus {templ_image.image.name}" )
                     sfftifier = None
-                    i_failed_gpu = False # We haven't failed yet.
+                    i_failed_gpu = False # We haven't failed yet. YET.
                     fail_info = {
                                  'science': sci_image.fail_info,
                                  'template': templ_image.fail_info
@@ -1126,9 +1124,6 @@ class Pipeline:
                                     self.failures['align_and_preconvolve'].append(fail_info)
 
                     if 'subtract' in steps and not i_failed_gpu:
-                        # After this step is done, two more fields in sfftifier are set:
-                        #    Solution  : Matching kernel parameterization (coefficients)
-                        #    PixA_DIFF : difference image
                         SNLogger.info( "...subtract" )
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
                             try:
@@ -1145,13 +1140,6 @@ class Pipeline:
                                     self.failures['subtract'].append(fail_info)
 
                     if 'find_decorrelation' in steps and not i_failed_gpu:
-                        # This step does ...
-                        # After it's done, the following fields of sfftifier are set:
-                        #   Solution : CPU copy of Solution
-                        #   FKDECO : result of PureCupy_Decorrelation_Calculator.PCDC
-                        # In addition the two local varaibles diff_var and diff_var_path are set.
-                        #   diff_var : variance in difference image, on GPU
-                        #   diff_var_path : where we want to write diff_var in self.dia_out_dir
                         SNLogger.info( "...find_decorrelation" )
                         with nvtx.annotate( "find_decor", color=0xcc44ff ):
                             try:
@@ -1199,10 +1187,18 @@ class Pipeline:
 
                                 with nvtx.annotate( "submit writefits", color=0xff8888 ):
                                     SNLogger.info( f"...writefits {savepath}" )
-                                    fits_writer_pool.apply_async( self.write_fits_file,
-                                                                ( sfftifier.op.asnumpy( decorimg ), hdr, savepath ), {},
-                                                                  error_callback=partial(log_fits_write_error,
+                                    if self.nwrite > 1:
+                                        fits_writer_pool.apply_async( self.write_fits_file,
+                                                                    ( sfftifier.op.asnumpy( decorimg ),
+                                                                      hdr, savepath ), {},
+                                                                      error_callback=partial(log_fits_write_error,
                                                                                          savepath) )
+                                    else:
+                                        try:
+                                            self.write_fits_file( sfftifier.op.asnumpy( decorimg ), hdr, savepath )
+                                        except Exception as e:
+                                            SNLogger.warning( f"FITS writing failure: {e}" )
+                                            partial( log_fits_write_error( savepath ) )
                             sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
                             sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
                             sci_image.decorr_diff_path[ templ_image.image.name ] = decorr_diff_path
@@ -1308,7 +1304,7 @@ class Pipeline:
                 # original sci path, savedir, savename
                 sci_orig_stamp_args = ( (si.image, self.dia_out_dir, f'stamp_{str(si.image.name)}', 'data')
                                          for si in self.science_images)
-                # template path, savedir, savename
+                # original template path, savedir, savename
                 templstamp_args = ( (ti.image, self.dia_out_dir, f'stamp_{str(ti.image.name)}', 'data')
                                     for ti in self.template_images )
                 if self.nwrite > 1:
@@ -1329,7 +1325,6 @@ class Pipeline:
 
                     # Save stamps for decorrelated difference image, zero point image (decorrelated sky-subtracted
                     # science image), and variance image for decorrelated difference image
-
                     with Pool( self.nwrite ) as sci_stamp_pool:
                         for sci_image in self.science_images:
                             for templ_image in self.template_images:
@@ -1337,24 +1332,26 @@ class Pipeline:
                                 stamperr_partial = partial(log_stamp_err, sci_image, templ_image)
                                 sci_stamp_pool.apply_async( self.do_stamps, pair, {},
                                                             callback = partial(self.save_stamp_paths,
-                                                                            sci_image, templ_image),
+                                                                               sci_image, templ_image),
                                                             error_callback=stamperr_partial )
                         sci_stamp_pool.close()
                         sci_stamp_pool.join()
 
                 else:
-                    # Make stamp of just the template image
+                    # Make and save stamp of just the template image
                     for tsargs in templstamp_args:
                         try:
                             partialstamp(*tsargs)
-                        except Exception:
+                        except Exception as e:
+                            SNLogger.warning( f"Stampifying the original template images failed because: {e}" )
                             self.failures['make_stamps'].append(tsargs[0].fail_info)
 
-                    # Make stamp of just the science image
+                    # Make and save stamp of just the science image
                     for sosargs in sci_orig_stamp_args:
                         try:
                             partialstamp(*sosargs)
-                        except Exception:
+                        except Exception as e:
+                            SNLogger.warning( f"Stampifying the original science images failed because: {e}" )
                             self.failures['make_stamps'].append(sosargs[0].fail_info)
 
                     for sci_image in self.science_images:
@@ -1363,8 +1360,9 @@ class Pipeline:
                                 try:
                                     stamp_paths = self.do_stamps( sci_image, templ_image)
                                     self.save_stamp_paths( sci_image, templ_image, stamp_paths )
-                                except Exception:
+                                except Exception as e:
                                     if self.catchfailures:
+                                        SNLogger.warning( f"Stampifying the post-SFFT images failed because: {e}" )
                                         self.failures['make_stamps'].append({
                                                                             'science': sci_image.fail_info,
                                                                             'template': templ_image.fail_info

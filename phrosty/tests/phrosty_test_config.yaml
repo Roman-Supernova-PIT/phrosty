@@ -26,5 +26,5 @@ photometry:
       radius_cut_detmask: 2
 
     psf:
-      type: A25ePSF
+      type: gaussian
       params: {}

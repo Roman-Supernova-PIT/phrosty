@@ -353,11 +353,11 @@ and, ideally, there should be no lines anywhere in the file with ``ERROR`` near 
 
 Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.pq`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
 
-Running on SMCE
+Running on SMDC
 ---------------
 If you are using this section, you are probably a member of the SN PIT. 
 
-General instructions for accessing SMCE can be found `in the wiki <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/NASA-SMDC-%28AWS%29>`_.
+General instructions for accessing SMDC can be found `in the wiki <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/NASA-SMDC-%28AWS%29>`_.
 
 First, follow the directions under `"Working with PIT Images" here <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/SMCE-Containers>`_.
 
@@ -377,6 +377,10 @@ ALSO, git clone the SN PIT environment repo::
 Get yourself a GPU node. Do::
 
   salloc -p gpu-int --time=02:00:00
+
+Then, to avoid permissions issues, do::
+
+  ssh localhost
 
 Then, go into the Singularity container::
 
@@ -418,6 +422,59 @@ If you run into permissions issues with writing to `scratch`, `dia_out_dir`, or 
   ssh localhost
 
 Then, type `groups`. You should see `[your username] spack cluster_users snpit`. If not, I can't help you. Now, you can go back into the container and try running phrosty again. 
+
+Using ASDF
+^^^^^^^^^^
+This section is currently for the SN PIT, and it is underneath "Running on SMDC" because the sims I am describing are located there.
+
+Right now, Rick's `romanisim` images are on SMDC at::
+  
+  /home/rkessler/romanisim/output_images_galid_force0
+  /home/rkessler/romanisim/output_images_galid_force1
+
+where `force0` indicates random magnitude light curves for two events far away from their hosts, and `force1` is the same light curves but near their host centers.
+
+Corresponding SNANA truth files are located at::
+
+  /home/rkessler/romanisim/snana_sim_galid_force0
+  /home/rkessler/romanisim/snana_sim_galid_force1
+
+If you are in the Singularity container discussed above, `/home/rkessler/` maps to `/rick`.
+
+The SNe Ia in the sims are object IDs `11` and `21`. We are going to test on `11`. Do all of the things above, and from the `phrosty` directory, run the following::
+
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
+        --oid 11 \
+        -oc manual \
+        -b J129 \
+        -r 9.366435 \
+        -d -43.958825 \
+        -ic manual_rdm \
+        --base-path /ricksims/ \
+        -t phrosty/tests/11_instances_templates_1.csv \
+        -s phrosty/tests/11_instances_science_2.csv \
+        -p 1 -w 1 \
+        -v
+
+On NERSC (NOTE: This is just for Lauren right now. They edited Rob's interactive podman to include a hook to `photometry_test_data`, and also put some Ricksims in that folder. They are trying to push it to github, but the large files are giving them issues. The interactive podman file is in `phrosty/phrosty/tests` right now.)::
+
+  WHICHROMANENV=cuda-dev bash phrosty/phrosty/tests/interactive-podman-rknop-dev-mod.sh
+
+Do all the installation stuff, and run phrosty::
+
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
+        --oid 11 \
+        -oc manual \
+        -b J129 \
+        -r 9.366435 \
+        -d -43.958825 \
+        -ic manual_rdm \
+        --base-path /photometry_test_data/ricksims/ \
+        -t phrosty/tests/11_instances_templates_1.csv \
+        -s phrosty/tests/11_instances_science_2.csv \
+        -p 1 -w 1 \
+        -v 
+
 
 Running on a HPC system that uses apptainer/singularity
 -------------------------------------------------------
@@ -560,9 +617,6 @@ The column headers in the output ``pq`` files are:
 
 .. Running on arbitrary images
 .. ---------------------------
-
-.. Using ASDF
-.. ----------
 
 .. Using the A25 ePSFs
 .. -------------------
