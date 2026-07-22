@@ -14,13 +14,13 @@ from scipy.interpolate import griddata
 from roman_datamodels import dqflags
 
 # IMPORTS SFFT:
-from sfft.utils.SExSkySubtract import SEx_SkySubtract
 from sfft.utils.StampGenerator import Stamp_Generator
 
 # IMPORTS internal
 from snappl.config import Config
 import snappl.image
 from snappl.logger import SNLogger
+
 
 def interpolate_over_bad_pixels(data, dataflags, fill_value=0):
     """Interpolate over bad pixels in an image.
@@ -67,6 +67,7 @@ def interpolate_over_bad_pixels(data, dataflags, fill_value=0):
     )
 
     return interpolated_data, bad_mask
+
 
 def sky_subtract( img, temp_dir=None,
                   nonlinear_threshold=1000,
@@ -124,7 +125,7 @@ def sky_subtract( img, temp_dir=None,
         hdr.insert(0, ("NAXIS", 2))
         hdr.insert("NAXIS", ("NAXIS1", img.data.shape[1]), after=True)
         hdr.insert("NAXIS1", ("NAXIS2", img.data.shape[0]), after=True)
-        img = snappl.image.FITSImage( 
+        img = snappl.image.FITSImage(
                                       full_filepath=tmpfitspath,
                                       data=origimg.get_data(which='data')[0],
                                       header=hdr
@@ -149,7 +150,9 @@ def sky_subtract( img, temp_dir=None,
     interp_data, _ = interpolate_over_bad_pixels(img.data, origimg.flags)
 
     SNLogger.debug( "Beginning sky subtraction..." )
-    radius_cut_detmask = Config.get().value( 'photometry.phrosty.sfft.radius_cut_detmask' )
+    # We should talk about where radius_cut_detmask should go now that I have gotten
+    # rid of Source Extractor.
+    # radius_cut_detmask = Config.get().value( 'photometry.phrosty.sfft.radius_cut_detmask' )
 
     bkg = Background2D(interp_data, box_size=64)
 
@@ -174,7 +177,7 @@ def sky_subtract( img, temp_dir=None,
 
     SNLogger.debug( "...back from sky subtraction." )
 
-    subim = snappl.image.FITSImage( 
+    subim = snappl.image.FITSImage(
                                     full_filepath=tmpsubpath,
                                     data=sky_subtracted_data,
                                     header=hdr
@@ -189,6 +192,7 @@ def sky_subtract( img, temp_dir=None,
     detmaskim.save()
 
     return subim, detmaskim, rms
+
 
 def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data'):
     """Make stamps.
@@ -251,7 +255,7 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data
             hdr.insert(0, ("NAXIS", 2))
             hdr.insert("NAXIS", ("NAXIS1", img.data.shape[1]), after=True)
             hdr.insert("NAXIS1", ("NAXIS2", img.data.shape[0]), after=True)
-            img = snappl.image.FITSImage( 
+            img = snappl.image.FITSImage(
                                           full_filepath=tmpfitspath,
                                           data=origimg.get_data(which='data')[0],
                                           header=hdr

@@ -386,7 +386,9 @@ class Pipeline:
                                                               observation_id=observation_id,
                                                               sca=sca,
                                                               band=band ) )
-                    except:
+                    except Exception as e:
+                        SNLogger.warning( f"Could not find the image using observation_id, sca, and/or band, \
+                                           so just using the path. Failure: {e}" )
                         imlist.append( self.imgcol.get_image( path=path ))
         return imlist
 
@@ -1187,13 +1189,15 @@ class Pipeline:
                                     SNLogger.info( f"...writefits {savepath}" )
                                     if self.nwrite > 1:
                                         fits_writer_pool.apply_async( self.write_fits_file,
-                                                                    ( sfftifier.op.asnumpy( decorimg ), hdr, savepath ), {},
+                                                                    ( sfftifier.op.asnumpy( decorimg ),
+                                                                      hdr, savepath ), {},
                                                                       error_callback=partial(log_fits_write_error,
                                                                                          savepath) )
                                     else:
                                         try:
                                             self.write_fits_file( sfftifier.op.asnumpy( decorimg ), hdr, savepath )
-                                        except:
+                                        except Exception as e:
+                                            SNLogger.warning( f"FITS writing failure: {e}" )
                                             partial( log_fits_write_error( savepath ) )
                             sci_image.decorr_psf_path[ templ_image.image.name ] = decorr_psf_path
                             sci_image.decorr_zptimg_path[ templ_image.image.name ] = decorr_zptimg_path
@@ -1328,7 +1332,7 @@ class Pipeline:
                                 stamperr_partial = partial(log_stamp_err, sci_image, templ_image)
                                 sci_stamp_pool.apply_async( self.do_stamps, pair, {},
                                                             callback = partial(self.save_stamp_paths,
-                                                                            sci_image, templ_image),
+                                                                               sci_image, templ_image),
                                                             error_callback=stamperr_partial )
                         sci_stamp_pool.close()
                         sci_stamp_pool.join()
@@ -1338,14 +1342,16 @@ class Pipeline:
                     for tsargs in templstamp_args:
                         try:
                             partialstamp(*tsargs)
-                        except Exception:
+                        except Exception as {e}:
+                            SNLogger.warning( f"Stampifying the original template images failed because: {e}" )
                             self.failures['make_stamps'].append(tsargs[0].fail_info)
 
                     # Make and save stamp of just the science image
                     for sosargs in sci_orig_stamp_args:
                         try:
                             partialstamp(*sosargs)
-                        except Exception:
+                        except Exception as e:
+                            SNLogger.warning( f"Stampifying the original science images failed because: {e}" )
                             self.failures['make_stamps'].append(sosargs[0].fail_info)
 
                     for sci_image in self.science_images:
@@ -1354,8 +1360,9 @@ class Pipeline:
                                 try:
                                     stamp_paths = self.do_stamps( sci_image, templ_image)
                                     self.save_stamp_paths( sci_image, templ_image, stamp_paths )
-                                except Exception:
+                                except Exception as e:
                                     if self.catchfailures:
+                                        SNLogger.warning( f"Stampifying the post-SFFT images failed because: {e}" )
                                         self.failures['make_stamps'].append({
                                                                             'science': sci_image.fail_info,
                                                                             'template': templ_image.fail_info
