@@ -74,7 +74,7 @@ def sky_subtract( img, temp_dir=None,
                   footprint_radius=10,
                   mask_radius=5,
                   **kwargs ):
-    """Subtracts background, found with Source Extractor.
+    """Subtracts background using photutils.
 
     Parameters
     ----------
