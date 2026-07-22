@@ -450,7 +450,7 @@ The SNe Ia in the sims are object IDs `11` and `21`. We are going to test on `11
         -r 9.366435 \
         -d -43.958825 \
         -ic manual_rdm \
-        --base-path /rick/romanisim/ \
+        --base-path /ricksims/ \
         -t phrosty/tests/11_instances_templates_1.csv \
         -s phrosty/tests/11_instances_science_2.csv \
         -p 1 -w 1 \

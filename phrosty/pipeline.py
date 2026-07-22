@@ -67,7 +67,7 @@ class PipelineImage:
 
         # Intermediate files
         if self.keep_intermediate:
-            # Set to None. The path gets defined later on.
+            # The path gets defined later on.
             # They have to be defined here in __init__ so that they exist
             # and are accessible in later functions.
             self.skysub_img = {}
@@ -157,11 +157,6 @@ class PipelineImage:
             PSF stamp. If this function fails, None is returned.
 
         """
-
-        # TODO: right now snappl.psf.PSF.get_psf_object just
-        #   passes the keyword arguments on to whatever makes
-        #   the psf... and it's different for each type of
-        #   PSF.  We need to fix that... somehow....
 
         try:
             wcs = self.image.get_wcs()
@@ -620,7 +615,6 @@ class Pipeline:
         """
 
         # Do photometry on stamp because it will read faster.
-        # (We hope.  But CFS latency will kill you at 1 byte.)
         SNLogger.debug( "...make_phot_info_dict reading stamp and psf" )
 
         # Required results keys
@@ -637,6 +631,11 @@ class Pipeline:
         # Required results keys
         results_dict['observation_id'] = str(sci_image.image.observation_id)
         results_dict['sca'] = sci_image.image.sca
+        results_dict['sky_rms'] = sci_image.skyrms
+        pix_x, pix_y = sci_image.image.get_wcs().world_to_pixel( self.diaobj.ra,
+                                                                 self.diaobj.dec )
+        results_dict['pix_x'] = pix_x
+        results_dict['pix_y'] = pix_y
 
         # phrosty results keys
         results_dict['science_name'] = sci_image.image.name
@@ -985,16 +984,12 @@ class Pipeline:
         savepath : str
             Savepath for FITS file.
         """
-        # try:
         if header is not None:
             hdr_dict = dict(header.items())
         else:
             hdr_dict = None
 
         fitsio.write( savepath, data, header=hdr_dict, clobber=True )
-        # except Exception as e:
-        #     SNLogger.exception( f"Exception writing FITS image {savepath}: {e}" )
-        #     raise
 
     def clear_contents( self, directory ):
         """Delete contents of a directory. Used to clear temporary
@@ -1090,7 +1085,7 @@ class Pipeline:
                 for sci_image in self.science_images:
                     SNLogger.info( f"Processing {sci_image.image.name} minus {templ_image.image.name}" )
                     sfftifier = None
-                    i_failed_gpu = False # We haven't failed yet.
+                    i_failed_gpu = False # We haven't failed yet. YET.
                     fail_info = {
                                  'science': sci_image.fail_info,
                                  'template': templ_image.fail_info
@@ -1127,9 +1122,6 @@ class Pipeline:
                                     self.failures['align_and_preconvolve'].append(fail_info)
 
                     if 'subtract' in steps and not i_failed_gpu:
-                        # After this step is done, two more fields in sfftifier are set:
-                        #    Solution  : Matching kernel parameterization (coefficients)
-                        #    PixA_DIFF : difference image
                         SNLogger.info( "...subtract" )
                         with nvtx.annotate( "subtraction", color=0x44ccff ):
                             try:
@@ -1146,13 +1138,6 @@ class Pipeline:
                                     self.failures['subtract'].append(fail_info)
 
                     if 'find_decorrelation' in steps and not i_failed_gpu:
-                        # This step does ...
-                        # After it's done, the following fields of sfftifier are set:
-                        #   Solution : CPU copy of Solution
-                        #   FKDECO : result of PureCupy_Decorrelation_Calculator.PCDC
-                        # In addition the two local varaibles diff_var and diff_var_path are set.
-                        #   diff_var : variance in difference image, on GPU
-                        #   diff_var_path : where we want to write diff_var in self.dia_out_dir
                         SNLogger.info( "...find_decorrelation" )
                         with nvtx.annotate( "find_decor", color=0xcc44ff ):
                             try:
@@ -1315,7 +1300,7 @@ class Pipeline:
                 # original sci path, savedir, savename
                 sci_orig_stamp_args = ( (si.image, self.dia_out_dir, f'stamp_{str(si.image.name)}', 'data')
                                          for si in self.science_images)
-                # template path, savedir, savename
+                # original template path, savedir, savename
                 templstamp_args = ( (ti.image, self.dia_out_dir, f'stamp_{str(ti.image.name)}', 'data')
                                     for ti in self.template_images )
                 if self.nwrite > 1:
@@ -1336,7 +1321,6 @@ class Pipeline:
 
                     # Save stamps for decorrelated difference image, zero point image (decorrelated sky-subtracted
                     # science image), and variance image for decorrelated difference image
-
                     with Pool( self.nwrite ) as sci_stamp_pool:
                         for sci_image in self.science_images:
                             for templ_image in self.template_images:
@@ -1350,14 +1334,14 @@ class Pipeline:
                         sci_stamp_pool.join()
 
                 else:
-                    # Make stamp of just the template image
+                    # Make and save stamp of just the template image
                     for tsargs in templstamp_args:
                         try:
                             partialstamp(*tsargs)
                         except Exception:
                             self.failures['make_stamps'].append(tsargs[0].fail_info)
 
-                    # Make stamp of just the science image
+                    # Make and save stamp of just the science image
                     for sosargs in sci_orig_stamp_args:
                         try:
                             partialstamp(*sosargs)
