@@ -22,7 +22,7 @@ import snappl.image
 from snappl.logger import SNLogger
 
 
-def interpolate_over_bad_pixels(data, dataflags, fill_value=0):
+def interpolate_over_bad_pixels(data, dataflags):
     """Interpolate over bad pixels in an image.
 
     NOTE: This is stolen from sidecar, and is written by WMWV. Lauren modified it.
@@ -34,8 +34,6 @@ def interpolate_over_bad_pixels(data, dataflags, fill_value=0):
         Input flags array.
     bad_pixel_flags : int, optional
         Bitwise combination of DQ flags used to identify bad pixels.
-    fill_value : float, optional
-        Value to use for filling bad pixels if interpolation is not possible. Default is 0.
 
     Returns
     -------
@@ -109,7 +107,7 @@ def sky_subtract( img, temp_dir=None,
     # we should refactor this so that we can pass data to it.  However,
     # for now, write a snappl.image.FITSImage so we have something
     # to give to it.
-    temp_dir = pathlib.Path( temp_dir if temp_dir is not None else Config.get().value( 'photometry.snappl.temp_dir' ) )
+    temp_dir = pathlib.Path( temp_dir if temp_dir is not None else Config.get().value( "photometry.snappl.temp_dir" ) )
     barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
     tmpfitspath = temp_dir / f"{barf}_fits_from_asdf.fits"
     tmpimpath = temp_dir / f"{barf}_sub.fits"
@@ -117,7 +115,7 @@ def sky_subtract( img, temp_dir=None,
     tmpdetmaskpath = temp_dir / f"{barf}_detmask.fits"
     origimg = img
     if isinstance( origimg, snappl.image.CompressedFITSImage ):
-        img = origimg.uncompressed_version( include=['data'] )
+        img = origimg.uncompressed_version( include=["data"] )
         hdr = img.get_fits_header()
     elif isinstance( origimg, snappl.image.RomanDatamodelImage ):
         # The next few lines that make the header are stolen from sidecar.
@@ -127,13 +125,13 @@ def sky_subtract( img, temp_dir=None,
         hdr.insert("NAXIS1", ("NAXIS2", img.data.shape[0]), after=True)
         img = snappl.image.FITSImage(
                                       full_filepath=tmpfitspath,
-                                      data=origimg.get_data(which='data')[0],
+                                      data=origimg.get_data(which="data")[0],
                                       header=hdr
                                     )
         img.save()
     else:
         # TODO, MAYBE MAKE THIS BETTER WHEN SNAPPL SUPPORTS MORE THINGS
-        # We need to exract just the image data (not the noise or flags)
+        # We need to extract just the image data (not the noise or flags)
         # to send to image subtraction.
         # Lauren, make an issue about this, mauybe also a snappl image
         # that says that we need a way of making imgaes from other
@@ -143,7 +141,7 @@ def sky_subtract( img, temp_dir=None,
         img = snappl.image.FITSImage( path=tmpimpath, header=fits.header.Header() )
         img.data = origimg.data
         hdr = img.get_fits_header()
-        img.save( which='data' )
+        img.save( which="data" )
 
     SNLogger.debug( "Interpolate over bad pixels...")
     # NOTE: Make interp_mask do something at a later time.
@@ -163,7 +161,7 @@ def sky_subtract( img, temp_dir=None,
     sigma_clip = SigmaClip(sigma=2.0, maxiters=10)
     threshold = detect_threshold(sky_subtracted_data, n_sigma=20.0, sigma_clip=sigma_clip)
 
-    # Build a mask of pixels that are in the non-linear retime
+    # Build a mask of pixels that are in the non-linear regime
     mask = np.abs(sky_subtracted_data) > nonlinear_threshold
     # Grow individual pixels by mask_radius
     mask_footprint = circular_footprint(radius=mask_radius)
@@ -194,7 +192,7 @@ def sky_subtract( img, temp_dir=None,
     return subim, detmaskim, rms
 
 
-def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data'):
+def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop="data"):
     """Make stamps.
 
     TODO : pass an array of ra and dec to make this more efficient;
@@ -232,7 +230,7 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data
 
     if savedir is None:
         cfg = Config.get()
-        savedir = pathlib.Path( cfg.value( 'photometry.phrosty.paths.dia_out_dir' ) ) / "stamps"
+        savedir = pathlib.Path( cfg.value( "photometry.phrosty.paths.dia_out_dir" ) ) / "stamps"
     else:
         savedir = pathlib.Path( savedir )
     savedir.mkdir( parents=True, exist_ok=True )
@@ -271,10 +269,10 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop='data
           # See issue 177: https://github.com/Roman-Supernova-PIT/phrosty/issues/177
             img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
             img.data = origimg.data
-            img.save( which='data' )
+            img.save( which="data" )
 
         # TODO : if Stamp_Generator.SG can take a Path in FITS_StpLst, remove the str()
-        Stamp_Generator.SG(FITS_obj=img.path, COORD=pxradec, COORD_TYPE='IMAGE',
+        Stamp_Generator.SG(FITS_obj=img.path, COORD=pxradec, COORD_TYPE="IMAGE",
                            STAMP_IMGSIZE=shape, FILL_VALUE=np.nan, FITS_StpLst=str(savepath))
 
         return savepath

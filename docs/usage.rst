@@ -378,7 +378,7 @@ Get yourself a GPU node. Do::
 
   salloc -p gpu-int --time=02:00:00
 
-Then, to avoid permissions issues, do::
+You will likely have different permissions on the login node compared to the GPU node. If you type `groups` on the login node, you'll see `[your username] spack cluster_users snpit`. If you type `groups` on the GPU node, you'll see `[your username] nogroup`. To circumvent these permissions issues, do::
 
   ssh localhost
 
@@ -416,12 +416,6 @@ Then, run phrosty::
         -s phrosty/tests/20172782_instances_science_2.csv \
         -p 3 -w 3 \
         -v
-
-If you run into permissions issues with writing to `scratch`, `dia_out_dir`, or `lc_out_dir`, type `groups`. It will probably say `[your username] nogroup`. If this is the case, exit the container and do::
-
-  ssh localhost
-
-Then, type `groups`. You should see `[your username] spack cluster_users snpit`. If not, I can't help you. Now, you can go back into the container and try running phrosty again. 
 
 Using ASDF
 ^^^^^^^^^^
