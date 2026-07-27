@@ -378,7 +378,7 @@ Get yourself a GPU node. Do::
 
   salloc -p gpu-int --time=02:00:00
 
-You will likely have different permissions on the login node compared to the GPU node. If you type `groups` on the login node, you'll see `[your username] spack cluster_users snpit`. If you type `groups` on the GPU node, you'll see `[your username] nogroup`. To circumvent these permissions issues, do::
+Sometimes your correct set of groups won't be correctly populated on a compute node due to a race condition between populating the container and correctly configuring the active directory lookup. You will see a message about this when you get your node that says that the groups weren't loaded properly. Also, if you type `groups` on the login node, you'll see `[your username] spack cluster_users snpit`. If you type `groups` on the GPU node, you'll see `[your username] nogroup`. You will also hit a permissions issue running `phrosty` when it tries to write files outside your home directory. To start a new terminal that will have the groups loaded correctly, do::
 
   ssh localhost
 
