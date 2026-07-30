@@ -1,0 +1,1 @@
+NEA, sky_rms, pix_x, and pix_y output columns are now populated (previously always NaN).
