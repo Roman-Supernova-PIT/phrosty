@@ -1477,7 +1477,7 @@ def main():
                          help="Toggle memory tracing with tracemalloc.")
     parser.add_argument( '--backend', type=str, default='cupy',
                          help="Choose numpy or cupy backend. Options are: \
-                               numpy, np, cupy, or cp".)
+                               numpy, np, cupy, or cp.")
     parser.add_argument( '--catchfailures', action='store_true',
                          help="Toggle failure collection. If true, pipeline does not \
                                cancel if one image fails. If false, pipeline crashes if \
