@@ -220,7 +220,7 @@ class Pipeline:
                   nwrite=5,
                   verbose=False,
                   memtrace=False,
-                  backend='cupy'
+                  backend='cupy',
                   catchfailures=False ):
 
         """Create the a pipeline object.
