@@ -3,9 +3,9 @@ replaceable_preloads:
 
 system:
   paths:
-    scratch_dir: /scratch/phrosty_temp
-    temp_dir: /scratch/phrosty_temp
-    dia_out_dir: /scratch/phrosty_dia_out
+    scratch_dir: /scratch
+    temp_dir: /scratch
+    dia_out_dir: /data/snpit/phrosty_dia_out
     ltcv_dir: /data/snpit/phrosty_lc_out
 
   db:

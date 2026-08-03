@@ -572,6 +572,8 @@ Arg-by-arg...:
 * ``p`` is the number of computation processes. e.g., if you do ``-p 3``, you will have 3 parallel sky subtraction processes going on. This does not apply to the GPU-based portion of the code, which is serial.
 * ``w`` is the number of file writing processes. 
 * ``v`` toggles "verbose". 
+* ``memtrace`` toggles memory tracing with ``tracemalloc``. Only works for CPU parts. 
+* ``backend`` changes if you run SFFT with a cupy (GPU) or numpy (CPU) backend. Acceptable arguments are ``cupy``, ``cp``, ``numpy``, and ``np``. Default is `cupy`.
 
 To briefly elaborate on the "image collection" and "object collection"--this can be confusing. The image collection describes the images, and the object collection describes the objects of interest in the images. For example, if you used ``ou2024`` for both ``ic`` and ``oc``, you would be doing analysis on an SN Ia in the OpenUniverse 2024 FITS images. However, if you set ``-ic ou2024`` and ``-oc manual``, that would enable you to run the pipeline on any object you wanted in the OpenUniverse2024 images as long as you specified its RA and Dec.  
 

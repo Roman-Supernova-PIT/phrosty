@@ -528,7 +528,7 @@ class Pipeline:
                                     PSF_target=sci_psf,
                                     PSF_object=templ_psf,
                                     KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder'),
-                                    backend=self.backend
+                                    BACKEND_4SUBTRACT=self.backend
                                   )
 
         sfftifier.resample_image_mask_psf()
