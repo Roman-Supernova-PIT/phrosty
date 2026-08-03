@@ -1475,7 +1475,7 @@ def main():
                          help="Toggle saving to the database." )
     parser.add_argument( '--memtrace', action='store_true',
                          help="Toggle memory tracing with tracemalloc.")
-    parser.add_argument( '--backend', type=str, default='cupy'
+    parser.add_argument( '--backend', type=str, default='cupy',
                          help="Choose numpy or cupy backend. Options are: \
                                numpy, np, cupy, or cp".)
     parser.add_argument( '--catchfailures', action='store_true',
