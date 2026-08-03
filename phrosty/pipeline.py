@@ -220,6 +220,7 @@ class Pipeline:
                   nwrite=5,
                   verbose=False,
                   memtrace=False,
+                  backend='cupy'
                   catchfailures=False ):
 
         """Create the a pipeline object.
@@ -281,6 +282,10 @@ class Pipeline:
 
            memtrace: bool, default False
              Toggle memory tracing.
+
+           backend: str, default cupy
+             Backend for SFFT subtraction (numpy or cupy). 
+             Acceptable inputs are: "numpy", "np", "cupy", or "cp".
 
            catchfailures: bool, default False
              Toggle collection of information for images that fail. If true, pipeline
@@ -344,6 +349,8 @@ class Pipeline:
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         self.remove_temp_dir = self.config.value( 'photometry.phrosty.remove_temp_dir' )
         self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
+
+        self.backend = backend
 
         # Debug LNA 20251202
         # self.resid_img = None
@@ -520,7 +527,8 @@ class Pipeline:
                                     PixA_object_DMASK=templ_detmask,
                                     PSF_target=sci_psf,
                                     PSF_object=templ_psf,
-                                    KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
+                                    KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder'),
+                                    backend=self.backend
                                   )
 
         sfftifier.resample_image_mask_psf()
@@ -1467,6 +1475,9 @@ def main():
                          help="Toggle saving to the database." )
     parser.add_argument( '--memtrace', action='store_true',
                          help="Toggle memory tracing with tracemalloc.")
+    parser.add_argument( '--backend', type=str, default='cupy'
+                         help="Choose numpy or cupy backend. Options are: \
+                               numpy, np, cupy, or cp".)
     parser.add_argument( '--catchfailures', action='store_true',
                          help="Toggle failure collection. If true, pipeline does not \
                                cancel if one image fails. If false, pipeline crashes if \
@@ -1610,6 +1621,7 @@ def main():
                          nwrite=args.nwrite,
                          verbose=args.verbose,
                          memtrace=args.memtrace,
+                         backend=args.backend,
                          catchfailures=args.catchfailures )
 
     pipeline( args.through_step )
