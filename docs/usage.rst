@@ -361,7 +361,7 @@ General instructions for accessing SMDC can be found `in the wiki <https://githu
 
 First, follow the directions under `"Working with PIT Images" here <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/SMCE-Containers>`_.
 
-Make sure you are in your home directory. You can just do `cd` and you'll be in `/home/[your username]`. Make another directory inside the home directory. We will call it `snpit`, and the full path will be `/home/[your username]/snpit`. `cd` into your new directory. In this directory, git clone phrosty if you haven't already::
+Make sure you are in your home directory. You can just do ``cd`` and you'll be in ``/home/[your username]``. Make another directory inside the home directory. We will call it ``snpit``, and the full path will be ``/home/[your username]/snpit``. ``cd`` into your new directory. In this directory, git clone phrosty if you haven't already::
 
   git clone https://github.com/Roman-Supernova-PIT/phrosty.git
 
@@ -401,7 +401,7 @@ Activate your virtual environment::
 
 This will take forever the first time because it's completely re-installing a Python environment based on the phrosty requirements. Don't worry about it. 
 
-In the directory that contains your phrosty checkout, make a `secrets` directory. Make a blank file, give it a name. Then, in `phrosty_test_config_smdc.yaml`, edit the `system.db.passwordfile` field to point to the file you just made. 
+In the directory that contains your phrosty checkout, make a ``secrets`` directory. Make a blank file, give it a name. Then, in ``phrosty_test_config_smdc.yaml``, edit the ``system.db.passwordfile`` field to point to the file you just made. 
 
 Then, run phrosty::
 
@@ -421,21 +421,21 @@ Using ASDF
 ^^^^^^^^^^
 This section is currently for the SN PIT, and it is underneath "Running on SMDC" because the sims I am describing are located there.
 
-Right now, Rick's `romanisim` images are on SMDC at::
+Right now, Rick's ``romanisim`` images are on SMDC at::
   
   /home/rkessler/romanisim/output_images_galid_force0
   /home/rkessler/romanisim/output_images_galid_force1
 
-where `force0` indicates random magnitude light curves for two events far away from their hosts, and `force1` is the same light curves but near their host centers.
+where ``force0`` indicates random magnitude light curves for two events far away from their hosts, and ``force1`` is the same light curves but near their host centers.
 
 Corresponding SNANA truth files are located at::
 
   /home/rkessler/romanisim/snana_sim_galid_force0
   /home/rkessler/romanisim/snana_sim_galid_force1
 
-If you are in the Singularity container discussed above, `/home/rkessler/` maps to `/rick`.
+If you are in the Singularity container discussed above, ``/home/rkessler/`` maps to ``/rick``, and ``/mnt/roman-science-east-2/snpit/snana+romanisim+romancal/`` maps to ``/ricksims``.
 
-The SNe Ia in the sims are object IDs `11` and `21`. We are going to test on `11`. Do all of the things above, and from the `phrosty` directory, run the following::
+The SNe Ia in the sims are object IDs ``11`` and ``21``. We are going to test on ``11``. Do all of the things above, and from the ``phrosty`` directory, run the following::
 
   SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
         --oid 11 \
@@ -448,6 +448,22 @@ The SNe Ia in the sims are object IDs `11` and `21`. We are going to test on `11
         -t phrosty/tests/11_instances_templates_1.csv \
         -s phrosty/tests/11_instances_science_2.csv \
         -p 1 -w 1 \
+        -v
+
+Outside the Singularity container (i.e., in a venv) and with the numpy backend::
+
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
+        --oid 11 \
+        -oc manual \
+        -b J129 \
+        -r 9.366435 \
+        -d -43.958825 \
+        -ic manual_rdm \
+        --base-path /mnt/roman-science-east-2/snpit/snana+romanisim+romancal/ \
+        -t phrosty/tests/11_instances_templates_1.csv \
+        -s phrosty/tests/11_instances_science_2.csv \
+        -p 1 -w 1 \
+        --backend numpy \
         -v
 
 On NERSC (NOTE: This is just for Lauren right now. They edited Rob's interactive podman to include a hook to `photometry_test_data`, and also put some Ricksims in that folder. They are trying to push it to github, but the large files are giving them issues. The interactive podman file is in `phrosty/phrosty/tests` right now.)::
