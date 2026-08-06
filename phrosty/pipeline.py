@@ -348,7 +348,7 @@ class Pipeline:
 
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         self.remove_temp_dir = self.config.value( 'photometry.phrosty.remove_temp_dir' )
-        self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
+        self.mem_trace = memtrace
 
         self.backend = backend
 
@@ -686,16 +686,16 @@ class Pipeline:
             SNLogger.debug( "...make_phot_info_dict getting zeropoint" )
             results_dict['zpt'] = sci_image.image.zeropoint
             results_dict['success'] = True
+            SNLogger.debug( "...make_phot_info_dict done." )
+
+            return results_dict
 
         except Exception as e:
             # results_dict['ap_zpt'] = np.nan
             SNLogger.debug( f"...make_phot_info_dict failed for \
                              {sci_image.image.name} - {templ_image.image.name}. Reason: {e}" )
-
-        finally:
             # Basically, make_lightcurve will never "fail". Instead, you will get a row of NaN
             # with results_dict['success'] = False if something weird happened, here.
-            SNLogger.debug( "...make_phot_info_dict done." )
             return results_dict
 
     def add_to_results_dict( self, one_pair ):
@@ -1473,7 +1473,7 @@ def main():
                          help="Stop after this step; one of (see above)" )
     parser.add_argument( '--dbsave', action='store_true',
                          help="Toggle saving to the database." )
-    parser.add_argument( '--memtrace', action='store_true',
+    parser.add_argument( '--memtrace', action='store_true', default=False,
                          help="Toggle memory tracing with tracemalloc.")
     parser.add_argument( '--backend', type=str, default='cupy',
                          help="Choose numpy or cupy backend. Options are: \
