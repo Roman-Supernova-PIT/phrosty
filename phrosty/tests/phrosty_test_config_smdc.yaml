@@ -16,7 +16,6 @@ photometry:
     force_sky_subtract: false
     keep_intermediate: true
     remove_temp_dir: false
-    mem_trace: false
     kerpolyorder: 2
 
     sfft:
