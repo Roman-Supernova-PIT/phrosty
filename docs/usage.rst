@@ -4,16 +4,24 @@ Usage
 
 .. contents::
 
-Phrosty may be run from the command line by running ``python phrosty/pipeline.py`` (assuming you are in the top level of a github checkout).  If you're in :ref:`the necessary environment to run phrosty<phrosty-installation-prerequisites>`, then try running::
+``phrosty`` may be run from the command line by running ``python phrosty/pipeline.py`` (assuming you are in the top level of a github checkout).  If you're in :ref:`the necessary environment to run phrosty<phrosty-installation>`, then try running::
 
   cd /home/phrosty
   pip install -e .
   python phrosty/pipeline.py -c phrosty/tests/phrosty_test_config.yaml --help
 
-phrosty's behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find two examples of these files in:
+``phrosty``'s behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find three examples of these files in:
 
 * ``examples/perlmutter/phrosty_config.yaml``
 * ``phrosty/tests/phrosty_test_config.yaml``
+* ``phrosty/tests/phrosty_test_config_smce.yaml``
+
+``phrosty`` also requires csv files so it knows what images to run, as well as some additional information about each image. It needs one for science images and one for template images. There are examples in:
+
+* ``phrosty/tests/20172782_instances_science_2.csv``
+* ``phrosty/tests/20172782_instances_templates_1.csv``
+* ``phrosty/tests/11_instances_science_2.csv``
+* ``phrosty/tests/11_instances_templates_1.csv``
   
 .. _example-usage:
 
@@ -29,7 +37,7 @@ Manually running a test lightcurve
 
 In this example, you will use data packaged with the photometry test archive to build a two-point lightcurve.
 
-First, make sure your system meets the :ref:`system-requirements` and that you've downloaded the roman-snpit docker image as described in the :ref:`phrosty installation preqreuisties<phrosty-installation-prerequisites>`.
+First, make sure your system meets the :ref:`system-requirements` and that you've followed the relevant instructions in the :ref:`phrosty installation preqreuisties<phrosty-installation>`.
 
 Next, make sure you've pulled down the ``phrosty`` archive as described in :ref:`installing phrosty from sources<install-from-sources>`.  Make sure also to install the photomery test data, as described there.
 
@@ -353,13 +361,8 @@ and, ideally, there should be no lines anywhere in the file with ``ERROR`` near 
 
 Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.pq`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
 
-Running on SMDC
----------------
-If you are using this section, you are probably a member of the SN PIT. 
-
-General instructions for accessing SMDC can be found `in the wiki <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/NASA-SMDC-%28AWS%29>`_.
-
-First, follow the directions under `"Working with PIT Images" here <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/SMCE-Containers>`_.
+Prerequisite setup for SMDC
+---------------------------
 
 Make sure you are in your home directory. You can just do ``cd`` and you'll be in ``/home/[your username]``. Make another directory inside the home directory. We will call it ``snpit``, and the full path will be ``/home/[your username]/snpit``. ``cd`` into your new directory. In this directory, git clone phrosty if you haven't already::
 
@@ -374,13 +377,9 @@ ALSO, git clone the SN PIT environment repo::
   git clone https://github.com/Roman-Supernova-PIT/environment.git
   git checkout phrostydev
 
-Get yourself a GPU node. Do::
 
-  salloc -p gpu-int --time=02:00:00
-
-Sometimes your correct set of groups won't be correctly populated on a compute node due to a race condition between populating the container and correctly configuring the active directory lookup. You will see a message about this when you get your node that says that the groups weren't loaded properly. Also, if you type `groups` on the login node, you'll see `[your username] spack cluster_users snpit`. If you type `groups` on the GPU node, you'll see `[your username] nogroup`. You will also hit a permissions issue running `phrosty` when it tries to write files outside your home directory. To start a new terminal that will have the groups loaded correctly, do::
-
-  ssh localhost
+...inside a Singularity container:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Then, go into the Singularity container::
 
@@ -450,7 +449,7 @@ The SNe Ia in the sims are object IDs ``11`` and ``21``. We are going to test on
         -p 1 -w 1 \
         -v
 
-Outside the Singularity container (i.e., in a venv) and with the numpy backend::
+Outside the Singularity container (i.e., in a venv, and with the numpy backend and memory tracing for the sake of providing an example)::
 
   SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
         --oid 11 \
@@ -464,6 +463,7 @@ Outside the Singularity container (i.e., in a venv) and with the numpy backend::
         -s phrosty/tests/11_instances_science_2.csv \
         -p 1 -w 1 \
         --backend numpy \
+        --memtrace \
         -v
 
 On NERSC (NOTE: This is just for Lauren right now. They edited Rob's interactive podman to include a hook to `photometry_test_data`, and also put some Ricksims in that folder. They are trying to push it to github, but the large files are giving them issues. The interactive podman file is in `phrosty/phrosty/tests` right now.)::
