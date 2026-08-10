@@ -60,11 +60,7 @@ You configure these directories with the phrosty config ``.yaml`` file.  For the
 
 If you put them somewhere else, then make sure to modify the docker command below appropriately.
 
-Assuming you're currently in the directory which is the parent of your ``phrosty`` and ``photometry_test_data`` checkouts, you can run a docker container suitable for running tests by running the following::
-
-  export PODMANHPC_ADDITIONAL_STORES=/pscratch/sd/m/masao/roman_snpit/podman_images
-
-...and then::
+Assuming you're currently in the directory which is the parent of your ``phrosty`` and ``photometry_test_data`` checkouts:
 
   docker run --gpus=all -it \
     --mount type=bind,source=$PWD,target=/home \
@@ -84,7 +80,7 @@ Assuming you're currently in the directory which is the parent of your ``phrosty
     rknop/roman-snpit-env:cuda-dev-0.1.41 \
     /bin/bash
 
-Note that 0.1.41 will increment over time.
+**You may need to modify these paths.** Note that 0.1.41 will increment over time.
 
 If all is well, this will put you in a docker container.  You can tell you're in the container because your prompt will change to something like ``root@47394bd41fbe:/#`` (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you've got access to the GPUs by running, inside the container::
 
@@ -187,11 +183,17 @@ Verify that you have access to GPUs by running::
 Installing from sources
 -----------------------
 
-Currently, the only way to install phrosty is to download it from the `github repo <https://github.com/Roman-Supernova-PIT/phrosty>`_.  Clone it with::
+You will need the SNPIT's photometry package ``snappl``, as well as our version of SFFT, in order to run ``phrosty``. The latest stable versions are on ``pip``:
+
+  pip install roman-snpit-snappl sfft-romansnpit
+
+Currently, the only way to install ``phrosty`` is to download it from the `github repo <https://github.com/Roman-Supernova-PIT/phrosty>`_.  Clone it with::
 
     git clone https://github.com/Roman-Supernova-PIT/phrosty.git
 
 (you can also clone it via the ``git@`` code link if you know what you're doing.)
+
+Then, ``cd`` to the ``phrosty`` folder and ``pip install .``. Or ``pip install -e .`` if you expect to do development.
 
 For SNPIT development only: If you need a more recent version of SFFT than what's in the docker image, use the Roman SNPIT SFFT fork::
 
