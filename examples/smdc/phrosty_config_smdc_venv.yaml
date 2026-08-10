@@ -1,0 +1,26 @@
+replaceable_preloads:
+  - /data/snpit/environment/smdc_interactive_config.yaml
+
+system:
+  paths:
+    scratch_dir: /mnt/roman-science-internal/snpit/phrosty_scratch
+    temp_dir: /mnt/roman-science-internal/snpit/phrosty_scratch
+    dia_out_dir: /mnt/roman-science-internal/snpit/phrosty_dia_out
+    ltcv_dir: /mnt/roman-science-internal/snpit/phrosty_lc_out
+
+  db:
+    passwordfile: phrosty/tests/testsecret
+
+photometry:
+  phrosty:
+    force_sky_subtract: false
+    keep_intermediate: true
+    remove_temp_dir: false
+    kerpolyorder: 2
+
+    sfft:
+      radius_cut_detmask: 2
+
+    psf:
+      type: gaussian
+      params: {'sigmax': 0.43, 'sigmay': 0.43}
