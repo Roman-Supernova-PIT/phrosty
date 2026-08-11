@@ -569,8 +569,8 @@ class Pipeline:
         forcecoords = Table([[float(pxcoords[0])], [float(pxcoords[1])]], names=["x", "y"])
         init = img.ap_phot( forcecoords, ap_r=ap_r )
         init.rename_column( 'aperture_sum', 'flux_init' )
-        init.rename_column( 'xcenter', 'xcentroid' )
-        init.rename_column( 'ycenter', 'ycentroid' )
+        init.rename_column( 'xcenter', 'x_init' )
+        init.rename_column( 'ycenter', 'y_init' )
         final = img.psf_phot( init_params=init,
                               psf=psf,
                               forced_phot=True
