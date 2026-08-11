@@ -1,20 +1,20 @@
-replaceable_preloads:
-  - /data/snpit/environment/smdc_interactive_config.yaml
+preloads:
+  - ${SNPIT_DEFAULT_CONFIG}
 
 system:
   paths:
-    scratch_dir: /mnt/roman-science-internal/snpit/phrosty_scratch
-    temp_dir: /mnt/roman-science-internal/snpit/phrosty_scratch
-    dia_out_dir: /mnt/roman-science-internal/snpit/phrosty_dia_out
-    ltcv_dir: /mnt/roman-science-internal/snpit/phrosty_lc_out
+    scratch_dir: /mnt/roman-science-internal/snpit/users/${LOGNAME}/phrosty_scratch
+    temp_dir: /mnt/roman-science-internal/snpit/${LOGNAME}/phrosty_scratch
+    dia_out_dir: /mnt/roman-science-internal/snpit/${LOGNAME}/phrosty_dia_out
+    ltcv_dir: /mnt/roman-science-internal/snpit/${LOGNAME}/phrosty_lc_out
 
   db:
-    passwordfile: phrosty/tests/testsecret
+    passwordfile: ${HOME}/secrets/roman_snpit_db_ricksim_smdc
 
 photometry:
   phrosty:
     force_sky_subtract: false
-    keep_intermediate: true
+    keep_intermediate: false
     remove_temp_dir: false
     kerpolyorder: 2
 
