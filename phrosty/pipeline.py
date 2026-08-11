@@ -684,7 +684,7 @@ class Pipeline:
             results_dict.update( self.phot_at_coords( diff_img, psf, pxcoords=pxcoords, ap_r=ap_r) )
             # Add additional info to the results dictionary so it can be merged into a nice file later.
             SNLogger.debug( "...make_phot_info_dict getting zeropoint" )
-            results_dict['zpt'] = sci_image.image.zeropoint
+            results_dict['zpt'] = sci_image.image.get_zeropoint(pix_x, pix_y)
             results_dict['success'] = True
             SNLogger.debug( "...make_phot_info_dict done." )
 
