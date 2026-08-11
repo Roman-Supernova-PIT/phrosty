@@ -1,14 +1,11 @@
-replaceable_preloads:
-  - /data/snpit/env/environment_checkout_for_native/smdc_interactive_config.yaml 
+preloads:
+  - ${SNPIT_DEFAULT_CONFIG}
 
 system:
   paths:
     scratch_dir: ${system.paths.temp_dir}/phrosty_temp
     dia_out_dir: ${system.paths.dev_storage}/phrosty_dia_out
     ltcv_dir: ${system.paths.dev_storage}/phrosty_lc_out
-
-  db:
-    passwordfile: /home/secrets/roman_snpit_db_rknop_dev
 
 photometry:
   phrosty:
