@@ -284,7 +284,7 @@ class Pipeline:
              Toggle memory tracing.
 
            backend: str, default cupy
-             Backend for SFFT subtraction (numpy or cupy). 
+             Backend for SFFT subtraction (numpy or cupy).
              Acceptable inputs are: "numpy", "np", "cupy", or "cp".
 
            catchfailures: bool, default False
