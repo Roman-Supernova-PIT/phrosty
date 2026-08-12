@@ -684,7 +684,6 @@ class Pipeline:
                                     data=psf_img.data )
 
             SNLogger.debug( "...make_phot_info_dict doing photometry" )
-            import pdb; pdb.set_trace()
             results_dict.update( self.phot_at_coords( diff_img, psf, pxcoords=pxcoords, ap_r=ap_r) )
             # Add additional info to the results dictionary so it can be merged into a nice file later.
             SNLogger.debug( "...make_phot_info_dict getting zeropoint" )
