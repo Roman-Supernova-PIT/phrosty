@@ -53,7 +53,6 @@ def config():
         cfg._static = False
         # Edit the config.
         cfg.set_value( 'photometry.snappl.temp_dir', str(temp_dir) )
-        cfg.set_value( 'system.paths.scratch_dir', str(temp_dir) )
         cfg.set_value( 'system.paths.temp_dir', str(temp_dir) )
         cfg.set_value( 'system.paths.dia_out_dir', str(dia_out_dir) )
         cfg.set_value( 'system.paths.ltcv_dir', str(ltcv_dir) )

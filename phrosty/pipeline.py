@@ -56,7 +56,7 @@ class PipelineImage:
         self.temp_dir = pipeline.temp_dir
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         if self.keep_intermediate:
-            self.save_dir = pathlib.Path( self.config.value( 'system.paths.scratch_dir' ) )
+            self.save_dir = pathlib.Path( self.config.value( 'system.paths.intermediate_dir' ) )
         elif not self.keep_intermediate:
             self.save_dir = self.temp_dir
 
@@ -303,11 +303,14 @@ class Pipeline:
         self.oid = oid
 
         self.dia_out_dir = pathlib.Path( self.config.value( 'system.paths.dia_out_dir' ) )
-        self.scratch_dir = pathlib.Path( self.config.value( 'system.paths.scratch_dir' ) )
+        self.dia_out_dir.mkdir( exist_ok=True, parents=True )
+        self.intermediate_dir = pathlib.Path( self.config.value( 'system.paths.intermediate_dir' ) )
+        self.intermediate_dir.mkdir( exist_ok=True, parents=True )
         self.temp_dir_parent = pathlib.Path( self.config.value( 'system.paths.temp_dir' ) )
         self.temp_dir = self.temp_dir_parent / str(uuid.uuid1())
-        self.temp_dir.mkdir()
+        self.temp_dir.mkdir( exist_ok=True, parents=True )
         self.ltcv_dir = pathlib.Path( self.config.value( 'system.paths.ltcv_dir' ) )
+        self.ltcv_dir.mkdir( exist_ok=True, parents=True )
 
         if ( science_images is None) == ( science_csv is None ):
             raise ValueError( "Pass exactly one of science_images or science_csv" )
@@ -681,6 +684,7 @@ class Pipeline:
                                     data=psf_img.data )
 
             SNLogger.debug( "...make_phot_info_dict doing photometry" )
+            import pdb; pdb.set_trace()
             results_dict.update( self.phot_at_coords( diff_img, psf, pxcoords=pxcoords, ap_r=ap_r) )
             # Add additional info to the results dictionary so it can be merged into a nice file later.
             SNLogger.debug( "...make_phot_info_dict getting zeropoint" )
@@ -1277,7 +1281,7 @@ class Pipeline:
                         # Write the intermediate files
                         for key in write_filepaths.keys():
                             for (imgtype, name, data, header) in write_filepaths[key]:
-                                savepath = self.scratch_dir / f'{key}_{imgtype}_{name}'
+                                savepath = self.intermediate_dir / f'{key}_{imgtype}_{name}'
                                 self.write_fits_file( data, header, savepath=savepath )
 
                     SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
