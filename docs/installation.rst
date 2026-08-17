@@ -40,13 +40,13 @@ Do::
 I have a 40 GB-memory NVIDIA GPU
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you have access to an NVIDIA GPU with 40 GB memory, you will need to install::
-  
-  pip install cupy-cuda12x
-  
-We also have a docker container with all the prerequisites set up for you. Pull the image by doing::
+We have a docker container with all the prerequisites set up for you. Pull the image by doing::
   
   docker pull docker.io/rknop/roman-snpit-env:cuda-dev
+
+**Note that if you choose to run natively, i.e. without the Docker container, you will need to install ``cupy``**::
+
+  pip install cupy-cuda12x
 
 To use phrosty inside the container, you will need to run it with ``docker`` or ``podman``, and bind-mount the directory where you've cloned phrosty.  Phrosty requires a handful of additional directories:
 
@@ -129,6 +129,10 @@ I want my own development virtual environment that I can change
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 **UPDATE THIS WHEN environment/#23 PR IS MERGED.**
+
+You need to install ``cupy``. Do::
+
+  pip install cupy-cuda12x
 
 .. _phrosty-nersc-perlmutter:
 
