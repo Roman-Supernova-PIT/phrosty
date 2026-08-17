@@ -40,7 +40,11 @@ Do::
 I have a 40 GB-memory NVIDIA GPU
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you have access to an NVIDIA GPU with 40 GB memory, we have a docker container with all the prerequisites set up for you. Pull the image by doing::
+If you have access to an NVIDIA GPU with 40 GB memory, you will need to install::
+  
+  pip install cupy-cuda12x
+  
+We also have a docker container with all the prerequisites set up for you. Pull the image by doing::
   
   docker pull docker.io/rknop/roman-snpit-env:cuda-dev
 
@@ -111,14 +115,15 @@ Sometimes your correct set of groups won't be correctly populated on a compute n
 
   ssh localhost
 
+I want to use the Singularity/Apptainer container
+"""""""""""""""""""""""""""""""""""""""""""""""""
+PENDING: This will link to snappl documentation when snappl PR #214 is merged. 
+
+
 I want to use the shared virtual environment
 """"""""""""""""""""""""""""""""""""""""""""
 
-Activate the environment::
-
-  source /data/snpit/snpit-photometry/bin/activate
-
-If you use ``phrosty_test_config_smdc.yaml``, all outputs will be in ``/mnt/roman-science-internal/snpit/phrosty_*``. 
+PENDING: This will link to snappl documentation also.
 
 I want my own development virtual environment that I can change
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
