@@ -214,7 +214,6 @@ class Pipeline:
                   template_csv=None,
                   oid=None,
                   ltcv_prov_tag=None,
-                  dbsave=False,
                   dbclient=None,
                   nprocs=1,
                   nwrite=5,
@@ -264,11 +263,8 @@ class Pipeline:
            ltcv_prov_tag: str
              Provenance tag for light curve. Required to use SN PIT database.
 
-           dbsave: bool
-             Are we saving to the database?
-             Default False.
-
-           dbclient: snappl.dbclient.SNPITDBClient
+           dbclient: snappl.dbclient.SNPITDBClient, default None
+             Client for saving to the SN PIT database.
 
            nprocs: int, default 1
              Number of cpus for the CPU multiprocessing segments of the pipeline.
@@ -344,7 +340,6 @@ class Pipeline:
                          'make_stamps': []}
 
         self.ltcv_prov_tag = ltcv_prov_tag
-        self.dbsave = dbsave
         self.dbclient = dbclient
         self.nprocs = nprocs
         self.nwrite = nwrite
@@ -935,7 +930,7 @@ class Pipeline:
                     for templ_image in self.template_images:
                         self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
 
-        if self.dbsave:
+        if self.dbclient is not None:
             SNLogger.debug('About to get image provenance.')
             imgprov = Provenance.get_by_id( self.science_images[0].image.provenance_id, dbclient=self.dbclient )
             SNLogger.debug('About to get object provenance.')
@@ -964,7 +959,7 @@ class Pipeline:
         else:
             lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata)
 
-        if self.dbsave:
+        if self.dbclient is not None:
             SNLogger.debug( "Saving results to database..." )
             ltcvprov.save_to_db( tag=self.ltcv_prov_tag )
             lc_obj.write()
@@ -1564,7 +1559,11 @@ def main():
         SNLogger.error( 'Must provide --image-provenance-tag if --image-collection is snpitdb.' )
         raise ValueError( f'args.image_provenance_tag is {args.image_provenance_tag}.' )
 
-    dbclient = SNPITDBClient()
+    if args.dbsave:
+        dbclient = SNPITDBClient()
+    else:
+        dbclient = None
+
     # Get the DiaObject, update the RA and Dec
     if args.diaobject_id is None:
         diaobjs = DiaObject.find_objects( collection=args.object_collection,
@@ -1618,7 +1617,6 @@ def main():
                          template_csv=args.template_images,
                          oid=args.oid,
                          ltcv_prov_tag=args.ltcv_provenance_tag,
-                         dbsave=args.dbsave,
                          dbclient=dbclient,
                          nprocs=args.nprocs,
                          nwrite=args.nwrite,
