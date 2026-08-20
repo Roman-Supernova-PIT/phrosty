@@ -34,6 +34,7 @@ from snappl.provenance import Provenance
 from snappl.psf import PSF
 from snappl.config import Config
 from snappl.logger import SNLogger
+# from snappl.utils import asUUID
 
 
 class PipelineImage:
@@ -392,10 +393,21 @@ class Pipeline:
                     try:
                         # This should yell at us if the observation_id
                         # or sca doesn't match what is read from the path
+
+                        # Below: future code from Rob for not needing paths
+                        # when we use the database
+                        # imageid = None
+                        # actual_path = None
+                        # try:
+                        #     imageid = asUUID( path )
+                        # except <whatever the right exception is>:
+                        #     actual_path = path
                         imlist.append( self.imgcol.get_image( path=path,
                                                               observation_id=observation_id,
                                                               sca=sca,
-                                                              band=band ) )
+                                                              band=band
+                                                              # image_id = imageid
+                                                               ) )
                     except Exception as e:
                         SNLogger.warning( f"Could not find the image using observation_id, sca, and/or band, \
                                            so just using the path. Failure: {e}" )
