@@ -214,6 +214,7 @@ class Pipeline:
                   template_csv=None,
                   oid=None,
                   ltcv_prov_tag=None,
+                  dbsave=False,
                   dbclient=None,
                   nprocs=1,
                   nwrite=5,
@@ -262,6 +263,9 @@ class Pipeline:
 
            ltcv_prov_tag: str
              Provenance tag for light curve. Required to use SN PIT database.
+            
+           dbsave: bool, default False
+             Are we saving to the database?
 
            dbclient: snappl.dbclient.SNPITDBClient, default None
              Client for saving to the SN PIT database.
@@ -340,6 +344,7 @@ class Pipeline:
                          'make_stamps': []}
 
         self.ltcv_prov_tag = ltcv_prov_tag
+        self.dbsave = dbsave
         self.dbclient = dbclient
         self.nprocs = nprocs
         self.nwrite = nwrite
@@ -567,8 +572,8 @@ class Pipeline:
         forcecoords = Table([[float(pxcoords[0])], [float(pxcoords[1])]], names=["x", "y"])
         init = img.ap_phot( forcecoords, ap_r=ap_r )
         init.rename_column( 'aperture_sum', 'flux_init' )
-        init.rename_column( 'xcenter', 'x_init' )
-        init.rename_column( 'ycenter', 'y_init' )
+        init.rename_column( 'x_center', 'x_init' )
+        init.rename_column( 'y_center', 'y_init' )
         final = img.psf_phot( init_params=init,
                               psf=psf,
                               forced_phot=True
@@ -930,7 +935,7 @@ class Pipeline:
                     for templ_image in self.template_images:
                         self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
 
-        if self.dbclient is not None:
+        if self.dbsave:
             SNLogger.debug('About to get image provenance.')
             imgprov = Provenance.get_by_id( self.science_images[0].image.provenance_id, dbclient=self.dbclient )
             SNLogger.debug('About to get object provenance.')
@@ -957,9 +962,9 @@ class Pipeline:
             lc_obj.provenance_object = ltcvprov
 
         else:
-            lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata)
+            lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata, no_base_path=True)
 
-        if self.dbclient is not None:
+        if self.dbsave:
             SNLogger.debug( "Saving results to database..." )
             ltcvprov.save_to_db( tag=self.ltcv_prov_tag )
             lc_obj.write()
@@ -1617,6 +1622,7 @@ def main():
                          template_csv=args.template_images,
                          oid=args.oid,
                          ltcv_prov_tag=args.ltcv_provenance_tag,
+                         dbsave=args.dbsave,
                          dbclient=dbclient,
                          nprocs=args.nprocs,
                          nwrite=args.nwrite,
