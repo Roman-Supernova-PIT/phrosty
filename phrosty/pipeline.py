@@ -263,7 +263,7 @@ class Pipeline:
 
            ltcv_prov_tag: str
              Provenance tag for light curve. Required to use SN PIT database.
-            
+
            dbsave: bool, default False
              Are we saving to the database?
 
