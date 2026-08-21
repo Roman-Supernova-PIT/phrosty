@@ -59,7 +59,6 @@ Set the following environment variables::
 You can also make `CRDS_PATH` exist in `$WORK`. 
 
 You should be good to go now. 
-  
 
 .. _phrosty-general-docker:
 

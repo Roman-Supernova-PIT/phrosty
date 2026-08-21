@@ -4,17 +4,15 @@ Usage
 
 .. contents::
 
-``phrosty`` may be run from the command line by running ``python phrosty/pipeline.py`` (assuming you are in the top level of a github checkout).  If you're in :ref:`the necessary environment to run phrosty<phrosty-installation>`, then try running::
+``phrosty`` may be run from the command line by running ``python phrosty/pipeline.py`` (assuming you are in the top level of a github checkout).  If you're in :ref:`the necessary environment to run phrosty<phrosty-installation>`, then, from the top-level checkout folder for ``phrosty``, try running::
 
-  cd /home/phrosty
-  pip install -e .
   python phrosty/pipeline.py -c phrosty/tests/phrosty_test_config.yaml --help
 
 ``phrosty``'s behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find three examples of these files in:
 
-* ``examples/perlmutter/phrosty_config.yaml``
-* ``phrosty/tests/phrosty_test_config.yaml``
-* ``phrosty/tests/phrosty_test_config_smce.yaml``
+* ``examples/perlmutter/phrosty_config_nersc.yaml``
+* ``examples/smdc/phrosty_config_smdc.yaml``
+* ``examples/local/phrosty_config_local.yaml``
 
 ``phrosty`` also requires csv files so it knows what images to run, as well as some additional information about each image. It needs one for science images and one for template images. There are examples in:
 
@@ -23,25 +21,95 @@ Usage
 * ``phrosty/tests/11_instances_science_2.csv``
 * ``phrosty/tests/11_instances_templates_1.csv``
   
-.. _example-usage:
 
-Example Usage
-=============
+Running locally
+===============
 
-In addition to the examples below, see :ref:`running-tests`.
+Running on SMDC
+===============
 
-.. _manual-test-lightcurve:
+From the top-level checkout folder of ``phrosty``, run::
 
-Manually running a test lightcurve
-----------------------------------
+    SNPIT_CONFIG=examples/smdc/phrosty_config_smdc.yaml python phrosty/pipeline.py \
+        --oid 20172782 \
+        -oc ou2024 \
+        -b Y106 \
+        -r 7.551093401915147 \
+        -d -44.80718106491529 \
+        -ic ou2024 \
+        -t phrosty/tests/20172782_instances_templates_1.csv \
+        -s phrosty/tests/20172782_instances_science_2.csv \
+        -p 3 -w 3 \
+        -v
 
-In this example, you will use data packaged with the photometry test archive to build a two-point lightcurve.
+Using ASDF
+^^^^^^^^^^
+This section is currently for the SN PIT, and it is underneath "Running on SMDC" because the sims I am describing are located there.
 
-First, make sure your system meets the :ref:`system-requirements` and that you've followed the relevant instructions in the :ref:`phrosty installation preqreuisties<phrosty-installation>`.
+Right now, Rick's ``romanisim`` images are on SMDC at::
+  
+  /home/rkessler/romanisim/output_images_galid_force0
+  /home/rkessler/romanisim/output_images_galid_force1
 
-Next, make sure you've pulled down the ``phrosty`` archive as described in :ref:`installing phrosty from sources<install-from-sources>`.  Make sure also to install the photomery test data, as described there.
+where ``force0`` indicates random magnitude light curves for two events far away from their hosts, and ``force1`` is the same light curves but near their host centers.
 
-Finally, follow the instructions under :ref:`running-snpit-container`.
+Corresponding SNANA truth files are located at::
+
+  /home/rkessler/romanisim/snana_sim_galid_force0
+  /home/rkessler/romanisim/snana_sim_galid_force1
+
+If you are in the Singularity container discussed in `the snappl documentation about running on SMDC <https://roman-supernova-pit.github.io/snappl/environment.html#running-on-smdc>`_, ``/mnt/roman-science-east-2/snpit/snana+romanisim+romancal/`` maps to ``/ricksims``.
+
+The SNe Ia in the sims are object IDs ``11`` and ``21``. We are going to test on ``11``. Do all of the things above, and from the ``phrosty`` directory, run the following::
+
+  SNPIT_CONFIG=examples/smdc/phrosty_config_smdc.yaml python phrosty/pipeline.py \
+        --oid 11 \
+        -oc manual \
+        -b J129 \
+        -r 9.366435 \
+        -d -43.958825 \
+        -ic manual_rdm \
+        --base-path /ricksims/ \
+        -t phrosty/tests/11_instances_templates_1.csv \
+        -s phrosty/tests/11_instances_science_2.csv \
+        -p 1 -w 1 \
+        -v
+
+Outside the Singularity container (i.e., in a venv, and with the numpy backend and memory tracing for the sake of providing an example)::
+
+  SNPIT_CONFIG=examples/smdc/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
+        --oid 11 \
+        -oc manual \
+        -b J129 \
+        -r 9.366435 \
+        -d -43.958825 \
+        -ic manual_rdm \
+        --base-path /mnt/roman-science-east-2/snpit/snana+romanisim+romancal/ \
+        -t phrosty/tests/11_instances_templates_1.csv \
+        -s phrosty/tests/11_instances_science_2.csv \
+        -p 1 -w 1 \
+        --backend numpy \
+        --memtrace \
+        -v
+
+.. _perlmutter-example:
+
+Running on Perlmutter
+---------------------
+
+While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn't use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren't in the right unix groups. This example will not work on a login node. 
+
+Pick a place to work
+^^^^^^^^^^^^^^^^^^^^
+
+Work in one of two places.  You make yourself a subdirectory underneath ``/pscratch/sd/<u>/<username>``, where ``<username>`` is your NERSC username and `<u>` is the first letter of your username.  (You can get to this directory with ``cd $SCRATCH``; this is your top-level scratch directory, and NERSC sets the ``SCRATCH`` environment variable to point to it.)  Alternatively, if you are on the SN PIT, you can create yourself a subdirectory somewhere underneath ``/global/cfs/cdirs/m4385/users``.  This is the shared SNPIT space on the NERSC community file system, so if you're going to work there, be aware that you're using up our shared file allocation.  At the moment, that's not a worry.
+
+I'm going to call the place you've picked to work your "parent" directory.
+
+Setting up the environment
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Get your environment set up as described under the :ref:`phrosty installation prerequisites<phrosty-nersc-perlmutter>`.
 
 If all has gone well, you are now sitting inside a container that's ready to run phrosty.  Verify that you're in the container with ``ls -F /``.  Make sure that you see ``dia_out_dir/``, ``lc_out_dir/``, ``photometry_test_data/``, and ``phrosty_temp/`` in the list of directories.  Next, run ``nvidia-smi``, and make sure it shows you a GPU with 40MB.  Part of that output will look something like this::
 
@@ -57,64 +125,6 @@ This shows a NVIDIA A100 GPU with 40GB of memory.  A different system might show
   |  0%   60C    P8             35W /  350W |     774MiB /  12288MiB |      1%      Default |
 
 This system has a NVIDIA RTX 3080 Ti consumer graphics card.  Notice that it only has 12288MiB of memory; 12GB of memory is not enough to run the example.
-
-For Roman SNPIT development, if you need a more recent version of SFFT than what's in the docker container, inside the container, run::
-
-  cd /home/sfft
-  pip install -e .
-
-For everybody, inside the container, run::
-
-  cd /home/phrosty
-  pip install -e .
-
-That will install the checked out version of phrosty in your currently running environment.  Note that if you exit the container and run a new container, you will have to ``pip install -e`` phrosty again, as the changes you make to a container only persist as long as that same container is still running.
-
-Next, try running::
-
-  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py --help | less
-
-You should see all the options you can pass to phrosty.  There are a lot, because there are (verbose) options for everything that's in the config file.  The options you need to think about most are at the top.  Press ``q`` to get out of ``less``.
-
-Try running::
-
-  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
-        --oid 20172782 \
-        -oc ou2024 \
-        -b Y106 \
-        -r 7.551093401915147 \
-        -d -44.80718106491529 \
-        -ic ou2024 \
-        -t phrosty/tests/20172782_instances_templates_1.csv \
-        -s phrosty/tests/20172782_instances_science_2.csv \
-        -p 3 -w 3 \
-        -v
-
-If all is well, after it's done running the output will end with something like::
-
-  [2025-08-13 17:35:24 - INFO] - Results saved to /lc_out_dir/data/20172782/40753b1b-9248-4e58-a625-a9354dac18aa_Y106.pq
-
-On your host system (as well as inside the container), you should see new files in wherever you put ``lc_out_dir``, ``dia_out_dir``, and ``phrosty_temp``.  (Inside the container, these are at ``/lc_out_dir``, ``/dia_out_dir``, and ``/phrosty_temp``.)
-
-
-.. _perlmutter-example:
-
-Running on Perlmutter
----------------------
-
-While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn't use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren't in the right unix groups. This example will not work on a login node. 
-
-Setting up the environment
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Get your environment set up as described under the :ref:`phrosty installation prerequisites<phrosty-installation-prerequisites>`.
-
-Pick a place to work
-^^^^^^^^^^^^^^^^^^^^
-
-Work in one of two places.  You make yourself a subdirectory underneath ``/pscratch/sd/<u>/<username>``, where ``<username>`` is your NERSC username and `<u>` is the first letter of your username.  (You can get to this directory with ``cd $SCRATCH``; this is your top-level scratch directory, and NERSC sets the ``SCRATCH`` environment variable to point to it.)  Alternatively, if you are on the SN PIT, you can create yourself a subdirectory somewhere underneath ``/global/cfs/cdirs/m4385/users``.  This is the shared SNPIT space on the NERSC community file system, so if you're going to work there, be aware that you're using up our shared file allocation.  At the moment, that's not a worry.
-
-I'm going to call the place you've picked to work your "parent" directory.
 
 Get phrosty
 ^^^^^^^^^^^
@@ -132,20 +142,6 @@ phrosty currently reads data from the OpenUniverse sims.  On NERSC, you can find
 * ``/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE`` (``/ou2024_snana``)
 * ``/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal`` (``/ou2024_snana_lc_dir``)
 * ``/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library`` (``/ou2024_sims_sed_library``)
-
-Create needed directories
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-You need to make the following directories.  (They don't have to have exactly these names.  However, for purposes of the example, create these directories with these names as subdirectories under your parent directory.)
-
-* ``dia_out_dir``
-* ``lc_out_dir``
-
-In addition, create a directory ``phrosty_temp`` somewhere underneath ``$SCRATCH``, e.g.::
-
-  mkdir $SCRATCH/phrosty_temp
-
-This directory will be mounted to ``/phrosty_temp`` inside the container.  (The further examples below will assume that this is where you made it.)
 
 Secure lists of images for your supernova
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -221,25 +217,15 @@ Go to the ``/home`` directory, which is where your parent directory should be mo
 
   cd /home
 
-Next, if you are doing Roman SNPIT development, install SFFT::
-  
-  cd /home/sfft
-  pip install -e .
-
-For everyone, install phrosty::
-
-  cd /home/phrosty
-  pip install -e .
-
 The main Python executable for running the pipeline is ``phrosty/phrosty/pipeline.py``.  Run::
 
-  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py --help
+  SNPIT_CONFIG=examples/perlmutter/phrosty_config_nersc.yaml python phrosty/pipeline.py --help
 
 to see how it works, and to see what the various parameters you can specify are.  The output will be long, becasue everything that's in the config file is included as something you can override on the command line.  The arguments near the top are the ones you're more likely to want to think about.  You might want to pipe the output of this ``-help`` into ``less`` so you can see what's going on.
 
 Run this on your example lightcurve with::
 
-  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
+  SNPIT_CONFIG=examples/perlmutter/phrosty_config_nersc.yaml python phrosty/pipeline.py \
         --oid 20172782 \
         -oc ou2024 \
         -b Y106 \
@@ -261,6 +247,24 @@ Outside the container (i.e. on Perlmutter), you should be able to find the file,
 
 You will also find new files in the ``dia_out_dir`` subdirectory, including several large ``.fits`` files.
 
+On NERSC (NOTE: This is just for Lauren right now. They edited Rob's interactive podman to include a hook to `photometry_test_data`, and also put some Ricksims in that folder. They are trying to push it to github, but the large files are giving them issues. The interactive podman file is in `phrosty/phrosty/tests` right now.)::
+
+  WHICHROMANENV=cuda-dev bash phrosty/phrosty/tests/interactive-podman-rknop-dev-mod.sh
+
+Do all the installation stuff, and run phrosty::
+
+  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
+        --oid 11 \
+        -oc manual \
+        -b J129 \
+        -r 9.366435 \
+        -d -43.958825 \
+        -ic manual_rdm \
+        --base-path /photometry_test_data/ricksims/ \
+        -t phrosty/tests/11_instances_templates_1.csv \
+        -s phrosty/tests/11_instances_science_2.csv \
+        -p 1 -w 1 \
+        -v 
 
 Running with the NSight Profiler
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -296,7 +300,6 @@ Once you have a ``<name>.nsys-rep`` file, copy it down to your local desktop if 
   nsys-ui <name>.nsys-rep
 
 to look at the profile.
-
 
 .. _perlmutter-running-slurm:
 
@@ -360,130 +363,6 @@ If you want to see the status of jobs that have completed, there are a few jobs 
 and, ideally, there should be no lines anywhere in the file with ``ERROR`` near the beginning of the log message.
 
 Note that ``/lc_out_dir/...`` is the absolute path _inside_ the container; it maps to ``lc_out_dir/...`` underneath your working directory where you ran ``sbatch``.  You will find the lightcurve in that ``.pq`` file.  There will also be a number of files written to the ``dia_out_dir`` directory.
-
-Prerequisite setup for SMDC
----------------------------
-
-Make sure you are in your home directory. You can just do ``cd`` and you'll be in ``/home/[your username]``. Make another directory inside the home directory. We will call it ``snpit``, and the full path will be ``/home/[your username]/snpit``. ``cd`` into your new directory. In this directory, git clone phrosty if you haven't already::
-
-  git clone https://github.com/Roman-Supernova-PIT/phrosty.git
-
-Also, git clone the photometry test data::
-
-  git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
-
-ALSO, git clone the SN PIT environment repo::
-
-  git clone https://github.com/Roman-Supernova-PIT/environment.git
-  git checkout phrostydev
-
-
-...inside a Singularity container:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Then, go into the Singularity container::
-
-  sh environment/smdc-phrostydev-apptainer.sh 
-
-Create a virtual environment (run only once)::
-
-  python -m virtualenv snpit_venv
-
-Activate your virtual environment::
-
-  source snpit_venv/bin/activate
-
-...and pip install phrosty::
-
-  cd phrosty
-  pip install -e .
-
-This will take forever the first time because it's completely re-installing a Python environment based on the phrosty requirements. Don't worry about it. 
-
-In the directory that contains your phrosty checkout, make a ``secrets`` directory. Make a blank file, give it a name. Then, in ``phrosty_test_config_smdc.yaml``, edit the ``system.db.passwordfile`` field to point to the file you just made. 
-
-Then, run phrosty::
-
-    SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
-        --oid 20172782 \
-        -oc ou2024 \
-        -b Y106 \
-        -r 7.551093401915147 \
-        -d -44.80718106491529 \
-        -ic ou2024 \
-        -t phrosty/tests/20172782_instances_templates_1.csv \
-        -s phrosty/tests/20172782_instances_science_2.csv \
-        -p 3 -w 3 \
-        -v
-
-Using ASDF
-^^^^^^^^^^
-This section is currently for the SN PIT, and it is underneath "Running on SMDC" because the sims I am describing are located there.
-
-Right now, Rick's ``romanisim`` images are on SMDC at::
-  
-  /home/rkessler/romanisim/output_images_galid_force0
-  /home/rkessler/romanisim/output_images_galid_force1
-
-where ``force0`` indicates random magnitude light curves for two events far away from their hosts, and ``force1`` is the same light curves but near their host centers.
-
-Corresponding SNANA truth files are located at::
-
-  /home/rkessler/romanisim/snana_sim_galid_force0
-  /home/rkessler/romanisim/snana_sim_galid_force1
-
-If you are in the Singularity container discussed above, ``/home/rkessler/`` maps to ``/rick``, and ``/mnt/roman-science-east-2/snpit/snana+romanisim+romancal/`` maps to ``/ricksims``.
-
-The SNe Ia in the sims are object IDs ``11`` and ``21``. We are going to test on ``11``. Do all of the things above, and from the ``phrosty`` directory, run the following::
-
-  SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
-        --oid 11 \
-        -oc manual \
-        -b J129 \
-        -r 9.366435 \
-        -d -43.958825 \
-        -ic manual_rdm \
-        --base-path /ricksims/ \
-        -t phrosty/tests/11_instances_templates_1.csv \
-        -s phrosty/tests/11_instances_science_2.csv \
-        -p 1 -w 1 \
-        -v
-
-Outside the Singularity container (i.e., in a venv, and with the numpy backend and memory tracing for the sake of providing an example)::
-
-  SNPIT_CONFIG=phrosty/tests/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
-        --oid 11 \
-        -oc manual \
-        -b J129 \
-        -r 9.366435 \
-        -d -43.958825 \
-        -ic manual_rdm \
-        --base-path /mnt/roman-science-east-2/snpit/snana+romanisim+romancal/ \
-        -t phrosty/tests/11_instances_templates_1.csv \
-        -s phrosty/tests/11_instances_science_2.csv \
-        -p 1 -w 1 \
-        --backend numpy \
-        --memtrace \
-        -v
-
-On NERSC (NOTE: This is just for Lauren right now. They edited Rob's interactive podman to include a hook to `photometry_test_data`, and also put some Ricksims in that folder. They are trying to push it to github, but the large files are giving them issues. The interactive podman file is in `phrosty/phrosty/tests` right now.)::
-
-  WHICHROMANENV=cuda-dev bash phrosty/phrosty/tests/interactive-podman-rknop-dev-mod.sh
-
-Do all the installation stuff, and run phrosty::
-
-  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
-        --oid 11 \
-        -oc manual \
-        -b J129 \
-        -r 9.366435 \
-        -d -43.958825 \
-        -ic manual_rdm \
-        --base-path /photometry_test_data/ricksims/ \
-        -t phrosty/tests/11_instances_templates_1.csv \
-        -s phrosty/tests/11_instances_science_2.csv \
-        -p 1 -w 1 \
-        -v 
 
 
 Running on a HPC system that uses apptainer/singularity
