@@ -15,52 +15,80 @@ System Requirements
 
 ``phrosty`` can run using either a ``cupy`` (CUDA 12.4, requires an NVIDIA GPU) or ``numpy`` backend (CPU). Empirically, you will need at least 36 GB GPU memory or 56 GB CPU memory to run these backends, respectively. 
 
-To properly set up ``phrosty``, you need to follow **one** of the sections in `Environment set-up<phrosty-environment-setup>`, followed by `Install from sources<install-from-sources>`.
-
-.. _phrosty-environment-setup:
-
-Environment set-up
-------------------
-
-There have been a number of ways to run ``phrosty`` as the package has evolved. Here is my best attempt at preserving all of what is still relevant. If you aren't on the SNPIT, then you probably want "`I do not have a 40 GB-memory NVIDIA GPU<phrosty-local>`". If you are on the SNPIT, then you know which section you need.
+To properly set up ``phrosty``, you need to follow **one** of the sections here, followed by `Install from sources<install-from-sources>`.
 
 .. _phrosty-local:
+
+Running locally
+---------------
+
+.. _phrosty-local-cpu:
 
 I do not have 40 GB-memory NVIDIA GPU
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You are most people. 
+You are most people. First, make a new environment of whatever type you prefer. Conda is fine, docker is fine, whatever you want. Activate this environment. 
 
-Do::
+Now, choose a working directory. We will call this `$WORK`. In `$WORK`::
 
-  pip install r
+  pip install roman-snpit-snappl sfft-romansnpit crds
+  git clone https://github.com/Roman-Supernova-PIT/phrosty.git
+  cd phrosty
+  pip install .
+
+NOTE: Eventually, `phrosty` will be on pip. As of writing this, it is not. 
+
+In `$WORK`, make several folders:
+
+# ``$WORK/temp_dir``: This is where temporary files will be written.
+# ``$WORK/dia_out_dir``: Output image files are written here.
+# ``$WORK/ltcv_dir``: Output lightcurves are written here.
+# ``$WORK/intermediate_dir``: Intermediate files are written here.
+
+Then, assuming you are stil in `$WORK`,
+
+  cp phrosty/examples/phrosty_config_local.yaml .
+
+This copies a config file from the `phrosty/examples` directory to `$WORK`. Edit this file so that the empty fields under `system.paths` contain the absolute paths to the folders you just made.
+
+Set the following environment variables::
+
+  export CRDS_SERVER_URL=https://roman-crds.stsci.edu
+  export CRDS_PATH=${HOME}/crds_cache
+
+You can also make `CRDS_PATH` exist in `$WORK`. 
+
+You should be good to go now. 
+  
 
 .. _phrosty-general-docker:
 
 I have a 40 GB-memory NVIDIA GPU
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We have a docker container with all the prerequisites set up for you. Pull the image by doing::
+There are two options here. 
+
+The first option is you can follow the instructions in `I do not have a 40 GB-memory NVIDIA GPU<phrosty-local-cpu>`, but add the following step::
+  
+  pip install cupy-cuda12x
+  
+The second option is using our docker container with all the prerequisites set up for you. Pull the image by doing::
   
   docker pull docker.io/rknop/roman-snpit-env:cuda-dev
-
-**Note that if you choose to run natively, i.e. without the Docker container, you will need to install ``cupy``**::
-
-  pip install cupy-cuda12x
 
 To use phrosty inside the container, you will need to run it with ``docker`` or ``podman``, and bind-mount the directory where you've cloned phrosty.  Phrosty requires a handful of additional directories:
 
 * ``lc_out_dir`` : a place to write output lightcurves
 * ``dia_out_dir`` : a place to write output difference images
 * ``phrosty_temp`` : a place to write temporary files; you want this on a fast filesystem
-* ``scratch`` : another place to write temporary files. Yes, we need to consolidate these, but it is a low-priority task at this time.
+* ``intermediate_dir`` : a place to write intermediate data products from SFFT
 
 You configure these directories with the phrosty config ``.yaml`` file.  For the config file we use for tests, inside the container these directories must show up at ``/lc_out_dir``, ``/dia_out_dir``, ``/phrosty_temp``, and ``/scratch``. You can make all of these diretories as subdirectories of your current directory::
 
   mkdir lc_out_dir
   mkdir dia_out_dir
   mkdir phrosty_temp
-  mkdir scratch
+  mkdir intermediate_dir
 
 If you put them somewhere else, then make sure to modify the docker command below appropriately.
 
@@ -115,24 +143,7 @@ Sometimes your correct set of groups won't be correctly populated on a compute n
 
   ssh localhost
 
-I want to use the Singularity/Apptainer container
-"""""""""""""""""""""""""""""""""""""""""""""""""
-PENDING: This will link to snappl documentation when snappl PR #214 is merged. 
-
-
-I want to use the shared virtual environment
-""""""""""""""""""""""""""""""""""""""""""""
-
-PENDING: This will link to snappl documentation also.
-
-I want my own development virtual environment that I can change
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-**UPDATE THIS WHEN environment/#23 PR IS MERGED.**
-
-You need to install ``cupy``. Do::
-
-  pip install cupy-cuda12x
+Then, follow the instructions in `the snappl documentation about running on SMDC <https://roman-supernova-pit.github.io/snappl/environment.html#running-on-smdc>`_.
 
 .. _phrosty-nersc-perlmutter:
 
@@ -219,10 +230,3 @@ If you want to run tests, and some of the examples, then you will also need to p
 
 .. _Github repo: https://github.com/Roman-Supernova-PIT/phrosty
 .. _tarball: https://github.com/Roman-Supernova-PIT/phrosty/tarball/master
-
-.. Pulling the container image on other HPC Systems
-.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. If your HPC system doesn't support containers, then you're out of luck.  Most HPC systems support containers using ``apptainer`` (previously known as ``singularity``).  This system is not a drop-in replacment for docker, as the way you obtain images, and the semantics for running containers, are different.  (There are also differences in terms of how isolated the environment is; singularity is less of a "real" isolated container than docker, usually.)
-
-.. TODO : document use of singularity.

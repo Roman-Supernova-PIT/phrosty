@@ -7,8 +7,10 @@ system:
     ltcv_dir: # Place where output lightcurves are written
     intermediate_dir: # Place where intermediate image files are written
 
-  # Only worry about sysatem.ou24 if using OpenUniverse2024 sims.
+  # Only worry about system.ou24 if using OpenUniverse2024 sims.
   # Otherwise, this can be deleted or commented out.
+  # Note that examples provided in the documentation may use these sims,
+  # which will be the case if arg `-oc` is set to `ou2024`.
   ou24:
     simdex_server: https://roman-desc-simdex.lbl.gov
     # tds_base: Base path where your OpenUniverse
