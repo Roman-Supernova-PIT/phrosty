@@ -20,13 +20,24 @@ Usage
 * ``phrosty/tests/20172782_instances_templates_1.csv``
 * ``phrosty/tests/11_instances_science_2.csv``
 * ``phrosty/tests/11_instances_templates_1.csv``
-  
+
+**NOTE: These examples use the ``photometry_test_data`` repo. If you haven't git cloned that, you'll want to do so `by following these instructions<photometry-test-data>`.**
 
 Running locally
 ===============
 
 Running on SMDC
 ===============
+
+**Make sure you are on a compute node. If you run on a login node, you crash it for everyone.**
+
+If you want a GPU node, do::
+
+  salloc -p gpu-int --time=04:00:00
+
+If you want to run on a CPU node, do::
+
+  salloc -p mem-lg --time=04:00:00
 
 From the top-level checkout folder of ``phrosty``, run::
 
@@ -40,7 +51,9 @@ From the top-level checkout folder of ``phrosty``, run::
         -t phrosty/tests/20172782_instances_templates_1.csv \
         -s phrosty/tests/20172782_instances_science_2.csv \
         -p 3 -w 3 \
-        -v
+        -v \
+        --backend numpy # Delete this line if you are on a GPU node.
+
 
 Using ASDF
 ^^^^^^^^^^

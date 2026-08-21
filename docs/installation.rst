@@ -108,10 +108,10 @@ Assuming you're currently in the directory which is the parent of your ``phrosty
     --env VECLIB_MAXIMUM_THREADS=1 \
     --env TERM=xterm \
     --annotation run.oci.keep_original_groups=1 \
-    rknop/roman-snpit-env:cuda-dev-0.1.41 \
+    rknop/roman-snpit-env:cuda-dev \
     /bin/bash
 
-**You may need to modify these paths.** Note that 0.1.41 will increment over time.
+**You may need to modify these paths.
 
 If all is well, this will put you in a docker container.  You can tell you're in the container because your prompt will change to something like ``root@47394bd41fbe:/#`` (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you've got access to the GPUs by running, inside the container::
 
@@ -197,33 +197,12 @@ Verify that you have access to GPUs by running::
 
   nvidia-smi
 
-.. _install-from-sources:
+.. _photometry-test-data:
 
-Installing from sources
------------------------
+Installing the photometry test data (recommended but optional)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You will need the SNPIT's photometry package ``snappl``, as well as our version of SFFT, in order to run ``phrosty``. The latest stable versions are on ``pip``:
-
-  pip install roman-snpit-snappl sfft-romansnpit
-
-Currently, the only way to install ``phrosty`` is to download it from the `github repo <https://github.com/Roman-Supernova-PIT/phrosty>`_.  Clone it with::
-
-    git clone https://github.com/Roman-Supernova-PIT/phrosty.git
-
-(you can also clone it via the ``git@`` code link if you know what you're doing.)
-
-Then, ``cd`` to the ``phrosty`` folder and ``pip install .``. Or ``pip install -e .`` if you expect to do development.
-
-For SNPIT development only: If you need a more recent version of SFFT than what's in the docker image, use the Roman SNPIT SFFT fork::
-
-    https://github.com/Roman-Supernova-PIT/sfft.git
-
-Make sure you check these out to the same parent folder. 
-
-Installing the photometry test data (optional)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If you want to run tests, and some of the examples, then you will also need to pull the photometry test data::
+If you want to run tests, and some of the examples, then you will also need to pull the photometry test data into `$WORK`::
 
   git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
 
