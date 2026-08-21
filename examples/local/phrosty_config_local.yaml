@@ -1,0 +1,31 @@
+# NOTE: You will need to update this with local paths for yourself.
+
+system:
+  paths:
+    temp_dir: # Place where temporary files are written
+    dia_out_dir: # Place where output image files are written
+    ltcv_dir: # Place where output lightcurves are written
+    intermediate_dir: # Place where intermediate image files are written
+
+  # Only worry about sysatem.ou24 if using OpenUniverse2024 sims.
+  # Otherwise, this can be deleted or commented out.
+  ou24:
+    simdex_server: https://roman-desc-simdex.lbl.gov
+    # tds_base: Base path where your OpenUniverse
+    # config_file: Path to OpenUniverse config file
+    # images: Path to the OU2024 images. This folder is probably inside the tds_base path.
+
+
+photometry:
+  phrosty:
+    keep_intermediate: true
+    remove_temp_dir: false
+    mem_trace: false
+    kerpolyorder: 2
+
+    sfft:
+      radius_cut_detmask: 2
+
+    psf:
+      type: gaussian
+      params: {'sigmax': 0.43, 'sigmay': 0.43}
