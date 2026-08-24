@@ -60,6 +60,10 @@ You can make `CRDS_PATH` exist in `$WORK` instead if you want.
 
 You should be good to go now. 
 
+Optionally, if you would like to run tests::
+
+  pip install tox devpi_process pytest-doctestplus
+
 .. _phrosty-general-docker:
 
 I have a 40 GB-memory NVIDIA GPU
