@@ -1,0 +1,11 @@
+This update includes:
+- Update the SMDC test config file so it is compatible with the containerless venv.
+- Add config file in examples/smdc for running on SMDC, which is compatible with using either a native environment or the Singularity container.
+- Add command line arg to choose numpy or cupy backend, update documentation accordingly.
+- Thorough gutting of previous documentation that no longer reflects current status.
+- memtrace was duplicated as a config parameter and command line argument. Removed the config parameter in favor of the command line argument.
+- Remove need for system.paths.scratch_dir because it is redundant with system.paths.temp_dir
+- Add need for system.paths.intermediate_dir
+- Removed cupy-cuda12x as a required dependency and updated the installation docs to reflect this.
+- self.dbclient is None if dbsave = False. Now, phrosty no longer needs a secrets file if the database client is not involved.
+- AstropyDeprecationWarning fixes
