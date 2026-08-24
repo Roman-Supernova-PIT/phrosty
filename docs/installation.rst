@@ -13,7 +13,7 @@ Installation
 System Requirements
 -------------------
 
-``phrosty`` can run using either a ``cupy`` (CUDA 12.4, requires an NVIDIA GPU) or ``numpy`` backend (CPU). Empirically, you will need at least 36 GB GPU memory or 56 GB CPU memory to run these backends, respectively, for a standard 4088 x 4088 px *Roman* image. 
+``phrosty`` can run using either a ``cupy`` (CUDA 12.4, requires an NVIDIA GPU) or ``numpy`` backend (CPU). Empirically, you will need at least 36 GB GPU memory or 56 GB CPU memory to run these backends, respectively, for a standard 4088 x 4088 px *Roman* image.
 
 To properly set up ``phrosty``, you need to follow **one** of the sections here, followed by `Install from sources<install-from-sources>`.
 
@@ -22,88 +22,126 @@ To properly set up ``phrosty``, you need to follow **one** of the sections here,
 Running locally
 ---------------
 
+.. _phrosty-local-common-setup:
+
+Setting up directories and getting the code
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You will want to make yourself and environment to work in, such as a conda environment or python venv, as you will need to pip install some packages.  Alternatively, you can work in a docker container.
+
+If you're using conda or a venv
+"""""""""""""""""""""""""""""""
+
+Go into your environment and install the ``snappl`` and ``sfft`` packages that phrosty needs:
+
+.. _code-block: console
+  pip install roman-snpit-snappl sfft-romansnpit crds
+
+
+If you're using a docker container
+""""""""""""""""""""""""""""""""""
+
+Depending on whether you're going to run the CPU or GPU version of phrosty (read below) you will want to pull one of two docker images:
+
+  * ``docker pull docker.io/rknop/roman-snpit-env:cpu-dev``
+  * ``docker pull docker.io/rknop/roman-snpit-env:cuda-dev``
+
+Make directories
+""""""""""""""""
+
+Pick a directory to work in; we shall call that ``$RUNDIR``; make sure that's your current directory.
+
+You will need some directories for phrosty to work in:
+
+ * ``mkdir -p packages`` : you will do all git cloning in this subdirectory
+ * ``mkdir -p temp_dir``: This is where temporary files will be written.
+ * ``mkdir -p dev_storage``: A general directory for storing files that you might want to keep around a while
+ * ``mkdir -p dev_storage/dia_out_dir``: Output image files are written here.
+ * ``mkdir -p dev_storage/ltcv_dir``: Output lightcurves are written here.
+ * ``mkdir -p dev_storage/intermediate_dir``: Intermediate files are written here.
+
+Check out the phrosty archive.  (Eventually, ``phrosty`` will be on pip. As of writing this, it is not.)  If you're going to run tests, also check out the photometry test data archive::
+
+.. _code-block: console
+
+  cd packages
+  git clone https://github.com/Roman-Supernova-PIT/phrosty.git
+  git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
+  cd ..
+
+(TODO: figure out if there's a ``git-lfs`` thing people have to do.)
+
+You will need a standard default config file, which is referenced by the phrosty config files used in the examples below.  Assuming you are still in ``$RUNDIR``, run:
+
+.. _code_block: console
+
+  curl -L https://raw.githubusercontent.com/Roman-Supernova-PIT/environment/refs/heads/u/rknop/nodb_configs/local_nodb.yaml -O
+  curl -L https://raw.githubusercontent.com/Roman-Supernova-PIT/environment/refs/heads/u/rknop/nodb_configs/container_nodb.yaml -O
+
+This will copy down a standard Roman SNPIT/snappl config file, which you use when you don't want to connect to any database.
+
+
 .. _phrosty-local-cpu:
 
-I do not have 40 GB-memory NVIDIA GPU
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+If you are going to run in your virtual/conda environment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You are most people. First, make a new environment of whatever type you prefer. Conda is fine, docker is fine, whatever you want. Activate this environment. 
+First, make sure you are in ``$RUNDIR``, and run:
 
-Now, choose a working directory. We will call this `$RUNDIR`. In `$RUNDIR`::
+.. _code-block: console
 
-  pip install roman-snpit-snappl sfft-romansnpit crds
-  git clone https://github.com/Roman-Supernova-PIT/phrosty.git
-  cd phrosty
+  cd packages/phrosty
   pip install .
 
-NOTE: Eventually, `phrosty` will be on pip. As of writing this, it is not. 
+(Note: if you're developing phrosty, you might want that last line to be ``pip install -e .``.  If you want to run the phrosty tests, do ``pip install -e .[test]``.)
 
-In `$RUNDIR`, make several folders:
+NOTE: Eventually, ``phrosty`` will be on pip. As of writing this, it is not.  When that happens, you can replace the last three lines with just ``pip install roman-snpit-phrosty``.
 
-# ``$RUNDIR/temp_dir``: This is where temporary files will be written.
-# ``$RUNDIR/dia_out_dir``: Output image files are written here.
-# ``$RUNDIR/ltcv_dir``: Output lightcurves are written here.
-# ``$RUNDIR/intermediate_dir``: Intermediate files are written here.
+You need to set two environment variables to tell phrosty where to find the config files:
 
-Then, assuming you are stil in `$RUNDIR`,
+.. _code_block: console
 
-  cp phrosty/examples/phrosty_config_local.yaml .
+   export SNPIT_DEFAULT_CONFIG=${PWD}/local_nodb.yaml
+   export SNPIT_CONFIG=${PWD}/phrosty/phrosty_default_config.yaml
 
-This copies a config file from the `phrosty/examples` directory to `$RUNDIR`. Edit this file so that the empty fields under `system.paths` contain the absolute paths to the folders you just made.
+Finally, also set the following environment variables:
 
-Set the following environment variables::
+.. _code_block: console
 
   export CRDS_SERVER_URL=https://roman-crds.stsci.edu
   export CRDS_PATH=${HOME}/crds_cache
 
-You can make `CRDS_PATH` exist in `$RUNDIR` instead if you want.
+You can make ``CRDS_PATH`` exist in ``$RUNDIR`` instead if you want.
 
-You should be good to go now. 
+You should be good to go now.
 
-Optionally, if you would like to run tests::
+If you have a 40GB NVIDIA GPU
+"""""""""""""""""""""""""""""
 
-  pip install tox devpi_process pytest-doctestplus
+(...and if you want to use it rather than running on the cpu...)
 
-.. _phrosty-general-docker:
+You will also need to install ``cupy``.  This can be challenging, and there may be issues of getting versions of ``cupy`` that are consistent with the nvidia drivers and cuda version installed on your system.  You can try:
 
-I have a 40 GB-memory NVIDIA GPU
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. _code-block: console
 
-There are two options here. 
-
-The first option is you can follow the instructions in `I do not have a 40 GB-memory NVIDIA GPU<phrosty-local-cpu>`, but add the following step::
-  
   pip install cupy-cuda12x
-  
-The second option is using our docker container with all the prerequisites set up for you. Pull the image by doing::
-  
-  docker pull docker.io/rknop/roman-snpit-env:cuda-dev
 
-To use phrosty inside the container, you will need to run it with ``docker`` or ``podman``, and bind-mount the directory where you've cloned phrosty.  Phrosty requires a handful of additional directories:
+but you may find that you need a different cuda version.
 
-* ``lc_out_dir`` : a place to write output lightcurves
-* ``dia_out_dir`` : a place to write output difference images
-* ``phrosty_temp`` : a place to write temporary files; you want this on a fast filesystem
-* ``intermediate_dir`` : a place to write intermediate data products from SFFT
 
-You configure these directories with the phrosty config ``.yaml`` file.  For the config file we use for tests, inside the container these directories must show up at ``/lc_out_dir``, ``/dia_out_dir``, ``/phrosty_temp``, and ``/scratch``. You can make all of these diretories as subdirectories of your current directory::
+If you are going to run in a docker container
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-  mkdir lc_out_dir
-  mkdir dia_out_dir
-  mkdir phrosty_temp
-  mkdir intermediate_dir
+You go into the container by running:
 
-If you put them somewhere else, then make sure to modify the docker command below appropriately.
+.. _code-block: console
 
-Assuming you're currently in the directory which is the parent of your ``phrosty`` and ``photometry_test_data`` checkouts:
-
-  docker run --gpus=all -it \
+  docker run -it \
     --mount type=bind,source=$PWD,target=/home \
-    --mount type=bind,source=$PSCRATCH,target=/scratch \
-    --mount type=bind,source=$PWD/photometry_test_data,target=/photometry_test_data \
-    --mount type=bind,source=$PWD/phrosty_temp,target=/phrosty_temp \
-    --mount type=bind,source=$PWD/dia_out_dir,target=/dia_out_dir \
-    --mount type=bind,source=$PWD/lc_out_dir,target=/lc_out_dir \
+    --mount type=bind,source=$PWD/packages,target=/packages \
+    --mount type=bind,source=$PWD/temp_dir,target=/temp_dir \
+    --mount type=bind,source=$PWD/dev_storage,target=/dev_storage \
+    --mount type=bind,source=$PWD/packages/photometry_test_data,target=/photometry_test_data \
     --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
     --env OPENBLAS_NUM_THREADS=1 \
     --env MKL_NUM_THREADS=1 \
@@ -111,28 +149,51 @@ Assuming you're currently in the directory which is the parent of your ``phrosty
     --env OMP_NUM_THREADS=1 \
     --env VECLIB_MAXIMUM_THREADS=1 \
     --env TERM=xterm \
+    --env CRDS_SERVER_URL=https://roman-crds.stsci.edu \
+    --env CRDS_PATH=/home/crds_cache \
+    --env SNPIT_DEFAULT_CONFIG=/home/container_nodb.yaml \
+    --env SNPIT_CONFIG=/packages/phrosty/phrosty_default_config.yaml \
     --annotation run.oci.keep_original_groups=1 \
-    rknop/roman-snpit-env:cuda-dev \
+    rknop/roman-snpit-env:cpu-dev \
     /bin/bash
 
-**You may need to modify these paths.**
+If all is well, this will put you in a docker container.  You can tell you're in the container because your prompt will change to something like ``root@47394bd41fbe:/#`` (where the string of hexidecimal numbers will be different every time you start a container).  Your ``$RUNDIR`` is mounted at ``/home`` inside the container.
 
-If all is well, this will put you in a docker container.  You can tell you're in the container because your prompt will change to something like ``root@47394bd41fbe:/#`` (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you've got access to the GPUs by running, inside the container::
+Next, you will want to get phrosty installed inside your environment.  (You will need to do this every time you restart the container.)
 
-  nvidia-smi
+.. _code-block: console
 
-If you get an error message, or don't see at least one NVIDIA GPU listed, then you will need to :ref:`run on CPU<phrosty-local-cpu>`.
+  cd /packages/phrosty
+  pip install .
+  cd /home
+
+If you are developing phrosty, you might want to do ``pip install -e .``, and if you think you might want to run the tests, you might want to do ``pip install -e .[test]``.
+
+At this point, you should be good to go.
+
+When you're done with your container, you can just ``exit`` to get out of it.  You may also want to do ``docker ps`` followed by ``docker rm <container-id>`` to clean up cruft left behind on your system.  (You can find ``<container-id>`` by looking at the output of ``docker ps``.)
+
+
+If you have a 40GB Nvidia GPU and want to use it
+"""""""""""""""""""""""""""""""""""""""""""""""""
+
+Add ``--gpus=all`` between ``docker run`` and ``-it``.  Also, replace ``rknop/roman-snpit-env:cpu-dev`` with ``rknop-snpit-env:cuda-dev``.  This can be fraught; the versions of the nvidia drivers you have on your system have to be compatible with what's inside the container.  Once you're inside the container, verify that you can see your GPU with:
+
+.. _code-block: console
+
+   nvidia-smi
+
 
 .. _phrosty-smdc:
 
 Installing on SMDC
 ^^^^^^^^^^^^^^^^^^
 
-**This section will work for SN PIT members.** 
+**This section will work for SN PIT members.**
 
 General instructions for accessing SMDC can be found `in the wiki <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/NASA-SMDC-%28AWS%29>`_.
 
-There is some information at `"Working with PIT Images" here <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/SMCE-Containers>`_, which is largely applicable if you want to use the Singularity containers.
+There is some information at `"Working with PIT Images" here <https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/SMCE-Containers>`_, which is largely applicable if you want to use the Singularity containers; however, if all you want to do is go into a standard SNPIT container, the instructions linked below have everything you need.
 
 First, ``salloc`` a node. If you want a GPU node, do::
 
@@ -142,7 +203,7 @@ If you want to run on a CPU node, do::
 
   salloc -p mem-lg --time=04:00:00
 
-Sometimes your correct set of groups won't be correctly populated on a compute node due to a race condition between populating the container and correctly configuring the active directory lookup. You will see a message about this when you get your node that says that the groups weren't loaded properly. Also, if you type `groups` on the login node, you'll see `[your username] spack cluster_users snpit`. If you type `groups` on the GPU node, you'll see `[your username] nogroup`. You will also hit a permissions issue running `phrosty` when it tries to write files outside your home directory. To start a new terminal that will have the groups loaded correctly, do::
+Sometimes your correct set of groups won't be correctly populated on a compute node due to a race condition between populating the container and correctly configuring the active directory lookup. You will see a message about this when you get your node that says that the groups weren't loaded properly. Also, if you type ``groups`` on the login node, you'll see ``[your username] spack cluster_users snpit``. If you type ``groups`` on the GPU node, you'll see ``[your username] nogroup``. You will also hit a permissions issue running ``phrosty`` when it tries to write files outside your home directory. (In particular, you need to be in the ``snpit`` group.)  To start a new terminal that will have the groups loaded correctly, do::
 
   ssh localhost
 
@@ -153,7 +214,9 @@ Then, follow the instructions in `the snappl documentation about running on SMDC
 Installing on NERSC Perlmutter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**This section will work for SN PIT members, and maybe anyone else with access to NERSC Perlmutter, which ostensibly could be you.** 
+**TODO: point to the snappl documentation for running on NERSC.**
+
+**This section will work for SN PIT members, and maybe anyone else with access to NERSC Perlmutter, which ostensibly could be you.**
 
 If you are on NERSC Perlmutter, you have access to NVIDIA GPUs with 40 GB GPU memory. Run ``module list``.  Make sure that ``cudatoolkit/12.4`` shows up in your list of modules.  If not, you may need to adjust the modules you have loaded.
 
@@ -168,7 +231,7 @@ If you're on NERSC Perlmutter, use ``podman-hpc`` in place of ``docker``.  Pull 
   podman-hpc pull registry.nersc.gov/m4385/rknop/roman-snpit-env:cuda-dev
 
 **Note:** do *not* run ``podman-hpc image pull ...``.  That will superficially seem to work, but will skip a step that gets run when you just do ``podman-hpc pull ...``.
-  
+
 If you get a permission error trying to do this, try::
 
   podman-hpc login registry.nersc.gov
@@ -176,7 +239,7 @@ If you get a permission error trying to do this, try::
 Give it your usual NERSC username and password (without any OTP).  Once that's done, try the ``podman-hpc pull`` command again.  If you don't seem to have access to the registry, then you can just pull ``docker.io/rknop/roman-snpit-env:cuda-dev`` instead.
 
 After you've pulled, run ``podman-hpc images``.  You should see output something like::
-  
+
   REPOSITORY                                          TAG                 IMAGE ID      CREATED         SIZE        R/O
   registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47ffc5b  25 minutes ago  8.6 GB      false
   registry.nersc.gov/m4385/rknop/roman-snpit-env      cuda-dev            6b39a47ffc5b  25 minutes ago  8.6 GB      true
@@ -188,10 +251,10 @@ If you've pulled images before, and you're now working on a new login node, you 
 **If you have trouble with podman**: Refer to `NERSC's documentation on podman-hpc <https://docs.nersc.gov/development/containers/podman-hpc/overview/>`_.  In particular, if you want to clean the slate and start over, try running::
 
   podman-hpc system reset
-  
+
 to delete all of your podman images and contexts.  Then try pulling the image again.
 
-Assuming you're in the directory above your ``phrosty`` and ``photometry_test_data`` checkouts, you can run the container with ``bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh``. At this time, both of these files are the same, but you have the ability to modify the one in `examples/perlmutter` and not the one in `m4385/env`. 
+Assuming you're in the directory above your ``phrosty`` and ``photometry_test_data`` checkouts, you can run the container with ``bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh``. At this time, both of these files are the same, but you have the ability to modify the one in ``examples/perlmutter`` and not the one in ``m4385/env``.
 
 If you absolutely must make your own container for some reason, see `the interactive podman scripts in our environment directory <https://github.com/Roman-Supernova-PIT/environment/blob/main/interactive-podman-nov2025.sh>`_ for reference.
 
@@ -206,7 +269,7 @@ Verify that you have access to GPUs by running::
 Installing the photometry test data (recommended but optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you want to run tests, and some of the examples, then you will also need to pull the photometry test data into `$RUNDIR`::
+If you want to run tests, and some of the examples, then you will also need to pull the photometry test data into ``$RUNDIR``::
 
   git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
 

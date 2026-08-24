@@ -6,6 +6,11 @@ preloads:
 system:
   paths:
     phrosty:
+      # The default locations for phrosty outputs are underneath the
+      # standard "dev storage" directory.  If you want them to go
+      # somewhere else, edit these paths to point to those locations
+      # (making sure to keep track if you are working inside a container
+      # or not).
       dia_out_dir: ${system.paths.dev_storage}/dia_out_dir
       ltcv_dir: ${system.paths.dev_storage}/ltcv_dir
       intermediate_dir: ${system.paths.dev_storage}/intermediate_dir

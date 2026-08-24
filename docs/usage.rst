@@ -4,22 +4,28 @@ Usage
 
 .. contents::
 
-``phrosty`` may be run from the command line by running ``python phrosty/pipeline.py`` (assuming you are in the top level of a github checkout).  If you're in :ref:`the necessary environment to run phrosty<phrosty-installation>`, then, from the top-level checkout folder for ``phrosty``, try running::
+You need to get everything installed as described in :ref:`phrosty-installation`.  Make sure that you are in ``$RUNDIR`` (which is described in the installation instructions).
 
-  python phrosty/pipeline.py -c phrosty/tests/phrosty_test_config.yaml --help
+Once you're in the environment (whether it's a virtual environment or a container), ``phrosty`` may be run from the command line by running ``python packages/phrosty/phrosty/pipeline.py``.  For, example, try running:
 
-``phrosty``'s behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find three examples of these files in:
+.. _code-block: console
 
-* ``examples/perlmutter/phrosty_config_nersc.yaml``
-* ``examples/smdc/phrosty_config_smdc.yaml``
-* ``examples/local/phrosty_config_local.yaml``
+  python packages/phrosty/phrosty/pipeline.py --help
+
+ ``phrosty``'s behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  When you installed your environment, you pointed to a default config.  If you want to use a config file other than the default, you can either specify it with the ``-c`` argument, or just by setting the ``SNPIT_CONFIG`` environment variable.
+
+You can find three examples of these files in (**TODO: evaluate which of these still survive; they may get replaced by the default, e.g. the local one definitely should**; maybe all will!):
+
+* ``packages/phrosty/examples/perlmutter/phrosty_config_nersc.yaml``
+* ``packages/phrosty/examples/smdc/phrosty_config_smdc.yaml``
+* ``packages/phrosty/examples/local/phrosty_config_local.yaml``
 
 ``phrosty`` also requires csv files so it knows what images to run, as well as some additional information about each image. It needs one for science images and one for template images. There are examples in:
 
-* ``phrosty/tests/20172782_instances_science_2.csv``
-* ``phrosty/tests/20172782_instances_templates_1.csv``
-* ``phrosty/tests/11_instances_science_2.csv``
-* ``phrosty/tests/11_instances_templates_1.csv``
+* ``packages/phrosty/phrosty/tests/20172782_instances_science_2.csv``
+* ``packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv``
+* ``packages/phrosty/phrosty/tests/11_instances_science_2.csv``
+* ``packages/phrosty/phrosty/tests/11_instances_templates_1.csv``
 
 **NOTE: These examples use the ``photometry_test_data`` repo. If you haven't git cloned that, you'll want to do so `by following these instructions<photometry-test-data>`.**
 
@@ -28,7 +34,7 @@ Running locally
 
 If you are :ref:`in the correct environment<phrosty-local>` and have checked out the :ref:`photometry_test_data<photometry-test-data>` repo, from the top-level folder of your ``phrosty`` checkout, do::
 
-  SNPIT_CONFIG=../phrosty_config_local.yaml python phrosty/pipeline.py \
+  python packages/phrosty/phrosty/pipeline.py \
   --oid 20172782 \
   -oc ou2024 \
   -b Y106 \
@@ -39,8 +45,7 @@ If you are :ref:`in the correct environment<phrosty-local>` and have checked out
   -s phrosty/tests/20172782_instances_science_2.csv \
   -p 1 -w 1 \
   -v \
-  --backend numpy \
-  --base-path ../photometry_test_data/ou2024/images/simple_model
+  --backend numpy
 
 If you are using a GPU, delete the line with `--backend numpy \`. If you're using a Mac, you always need this line because CUDA is not supported on Macs.
 
@@ -78,7 +83,7 @@ Using ASDF
 This section is currently for the SN PIT, and it is underneath "Running on SMDC" because the sims I am describing are located there.
 
 Right now, Rick's ``romanisim`` images are on SMDC at::
-  
+
   /home/rkessler/romanisim/output_images_galid_force0
   /home/rkessler/romanisim/output_images_galid_force1
 
@@ -128,7 +133,7 @@ Outside the Singularity container (i.e., in a venv, and with the numpy backend a
 Running on Perlmutter
 ---------------------
 
-While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn't use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren't in the right unix groups. This example will not work on a login node. 
+While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn't use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren't in the right unix groups. This example will not work on a login node.
 
 Pick a place to work
 ^^^^^^^^^^^^^^^^^^^^
@@ -177,7 +182,7 @@ phrosty currently reads data from the OpenUniverse sims.  On NERSC, you can find
 Secure lists of images for your supernova
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Step one: Pick a supernova to run on. 
+Step one: Pick a supernova to run on.
 
 For this example, we're going to run on the object with id 20172782.  In the ``examples/perlmutter`` directory under your ``phrosty`` checkout), you can find three ``.csv`` files that have information about the template and/or science images we're going to use:
 * ``20172782_instances_templates_1.csv`` — a single R-band template image
@@ -240,7 +245,7 @@ If you are in the Roman SN PIT (i.e., assuming you pulled your container from :r
 
   WHICHROMANENV=cuda-dev bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh
 
-If this fails, check :role:`the snappl documentation<https://roman-supernova-pit.github.io/snappl/environment.html#databases-currently-supported>` for current launchers. 
+If this fails, check :role:`the snappl documentation<https://roman-supernova-pit.github.io/snappl/environment.html#databases-currently-supported>` for current launchers.
 
 This will create a container image, and put in a bash shell inside the container.  This will put you inside the container.  Your prompt will change to something like ``root@56356f1a4b9b:/usr/src#`` (where the hex barf will be different every time).  At any time, run ``ls -F /``; if you see directories ``phrosty``, ``phrosty_temp``, ``dia_out_dir``, and the others that were mounted by ``interactive_podman.sh``, then you know you're working inside the container, rather than on the host machine.  Verify that the GPUs are visible inside the container with ``nvidia-smi``.
 
@@ -295,7 +300,7 @@ Do all the installation stuff, and run phrosty::
         -t phrosty/tests/11_instances_templates_1.csv \
         -s phrosty/tests/11_instances_science_2.csv \
         -p 1 -w 1 \
-        -v 
+        -v
 
 Running with the NSight Profiler
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -349,7 +354,7 @@ At the top are the directives that control how the job is submitted.  Many of th
 
 You can probably leave the rest of the flags as is.  The ``--cpus-per-task`` and ``--gpus-per-task`` flags are set so that it will only ask for a quarter of a node.  (The queue manager is very particular about numbers passed to GPU nodes on the shared queue.  It needs you to ask for exactly 32 CPU cores for each GPU, and it needs you to ask for _exactly_ the right amount of memory.  The extra comment marks on the ``####SBATCH --mem`` line tell slurm to ignore it, as it seems to get the default right, and it's not worth fiddling with it to figure out what you should ask for.  A simple calculation would suggest that 64GB per GPU is what you should ask for, but when you do that, slurm thinks you're asking for 36 CPUs worth of memory, not 32 CPUs worth of memory.  The actual number is something like 56.12GB, but again, since the default seems to do the right thing, it's not worth fiddling with this.)
 
-If look look at the bottom of the script, you will see that the number of parallel worker jobs that phrosty uses is set to 9 (``-p 9`` as a flag to ``python phrosty/phrosty/pipeline.py``).  The total number of processes that the python program runs at once is this, plus the number of FITS writer threads (given by ``-w``), plus one for the master process that launches all of the others.   You will notice that this total is less than the 32 CPUs that we nominally have.  To be safe, assume that each of the ``-p`` processes will use ~6GB of memory.  By limiting ourselves to 9 processes, we should safely fit within the amount of CPU memory allocated to the job (allowing for some overhead for the driver process and the FITS writer processes). Based on performance, you might want to play with the number of FITS writing threads (the number after ``-w``); assume that each FITS writer process will use ~1GB of memory.  
+If look look at the bottom of the script, you will see that the number of parallel worker jobs that phrosty uses is set to 9 (``-p 9`` as a flag to ``python phrosty/phrosty/pipeline.py``).  The total number of processes that the python program runs at once is this, plus the number of FITS writer threads (given by ``-w``), plus one for the master process that launches all of the others.   You will notice that this total is less than the 32 CPUs that we nominally have.  To be safe, assume that each of the ``-p`` processes will use ~6GB of memory.  By limiting ourselves to 9 processes, we should safely fit within the amount of CPU memory allocated to the job (allowing for some overhead for the driver process and the FITS writer processes). Based on performance, you might want to play with the number of FITS writing threads (the number after ``-w``); assume that each FITS writer process will use ~1GB of memory.
 .. (TODO: investigate how much they really use; get memory usage down.)
 
 **Make sure expected directories exists**: If you look at the batch script, you'll see a number of ``--mount`` flags that bind-mount directories inside the container.  From the location where you submit your job, all of the ``source=`` part of those ``--mount`` directives must be available.  For the demo, you will need to create the following directories underneath where you plan to submit the script::
@@ -487,7 +492,7 @@ Let's break down the command you were instructed to use earlier. Recall::
 Arg-by-arg...:
 
 * ``SNPIT_CONFIG`` points to your config file.
-* ``oid`` stands for "object ID". 
+* ``oid`` stands for "object ID".
 * ``oc`` stands for "object collection". This is a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 images), ``manual_fits`` (your chosen input FITS image), or ``snpitdb`` (SN PIT only).
 * ``b`` stands for "band". This will be any one of: R062, Z087, Y106, J129, H158, F184, or K213.
 * ``r`` is the RA of your object.
@@ -496,12 +501,12 @@ Arg-by-arg...:
 * ``t`` is for "templates". This is your list of image templates.
 * ``s`` is for "science". This is a list of images that contain your SN (science object).
 * ``p`` is the number of computation processes. e.g., if you do ``-p 3``, you will have 3 parallel sky subtraction processes going on. This does not apply to the GPU-based portion of the code, which is serial.
-* ``w`` is the number of file writing processes. 
-* ``v`` toggles "verbose". 
-* ``memtrace`` toggles memory tracing with ``tracemalloc``. Only works for CPU parts. 
+* ``w`` is the number of file writing processes.
+* ``v`` toggles "verbose".
+* ``memtrace`` toggles memory tracing with ``tracemalloc``. Only works for CPU parts.
 * ``backend`` changes if you run SFFT with a cupy (GPU) or numpy (CPU) backend. Acceptable arguments are ``cupy``, ``cp``, ``numpy``, and ``np``. Default is `cupy`.
 
-To briefly elaborate on the "image collection" and "object collection"--this can be confusing. The image collection describes the images, and the object collection describes the objects of interest in the images. For example, if you used ``ou2024`` for both ``ic`` and ``oc``, you would be doing analysis on an SN Ia in the OpenUniverse 2024 FITS images. However, if you set ``-ic ou2024`` and ``-oc manual``, that would enable you to run the pipeline on any object you wanted in the OpenUniverse2024 images as long as you specified its RA and Dec.  
+To briefly elaborate on the "image collection" and "object collection"--this can be confusing. The image collection describes the images, and the object collection describes the objects of interest in the images. For example, if you used ``ou2024`` for both ``ic`` and ``oc``, you would be doing analysis on an SN Ia in the OpenUniverse 2024 FITS images. However, if you set ``-ic ou2024`` and ``-oc manual``, that would enable you to run the pipeline on any object you wanted in the OpenUniverse2024 images as long as you specified its RA and Dec.
 
 Reading the output file
 -----------------------
