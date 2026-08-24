@@ -33,37 +33,37 @@ def test_sky_subtract( dia_out_dir ):
             f.unlink( missing_ok=True )
 
 
-def _check_resampled_image( templ, resamp ):
-    with fits.open( templ ) as t, fits.open( resamp ) as r:
-        # Do some quick checks to see that values aren't absurd.
-        # Visually picked a spot on the image that has a cute
-        # little galaxy in it.  (It should make you feel very small
-        # to realize that an astronomer at z=0.4 just called the Milky
-        # Way a cute little galaxy.)
-        tx = [ 3370, 3370, 3404, 3404 ]
-        ty = [  396,  422,  396,  422 ]
-        twcs = WCS( t[0].header )
-        sc = twcs.pixel_to_world( tx, ty )
-        rwcs = WCS( r[0].header )
-        rx, ry = rwcs.world_to_pixel( sc )
+# def _check_resampled_image( templ, resamp ):
+#     with fits.open( templ ) as t, fits.open( resamp ) as r:
+#         # Do some quick checks to see that values aren't absurd.
+#         # Visually picked a spot on the image that has a cute
+#         # little galaxy in it.  (It should make you feel very small
+#         # to realize that an astronomer at z=0.4 just called the Milky
+#         # Way a cute little galaxy.)
+#         tx = [ 3370, 3370, 3404, 3404 ]
+#         ty = [  396,  422,  396,  422 ]
+#         twcs = WCS( t[0].header )
+#         sc = twcs.pixel_to_world( tx, ty )
+#         rwcs = WCS( r[0].header )
+#         rx, ry = rwcs.world_to_pixel( sc )
 
-        # They're not perfectly aligned rectangles, so try to chop out
-        #   something that's close
-        rx.sort()
-        ry.sort()
-        rxmin = int( ( rx[0] + rx[1] ) / 2. )
-        rxmax = rxmin + tx[2] - tx[0]
-        rymin = int( ( ry[0] + ry[1] ) / 2. )
-        rymax = rymin + ty[1] - ty[0]
+#         # They're not perfectly aligned rectangles, so try to chop out
+#         #   something that's close
+#         rx.sort()
+#         ry.sort()
+#         rxmin = int( ( rx[0] + rx[1] ) / 2. )
+#         rxmax = rxmin + tx[2] - tx[0]
+#         rymin = int( ( ry[0] + ry[1] ) / 2. )
+#         rymax = rymin + ty[1] - ty[0]
 
-        tdata = t[0].data[ ty[0]:ty[1] , tx[0]:tx[2] ]
-        rdata = r[0].data[ rymin:rymax , rxmin:rxmax ]
-        assert tdata.shape == rdata.shape
+#         tdata = t[0].data[ ty[0]:ty[1] , tx[0]:tx[2] ]
+#         rdata = r[0].data[ rymin:rymax , rxmin:rxmax ]
+#         assert tdata.shape == rdata.shape
 
-        assert np.median( tdata ) == pytest.approx( np.median( rdata ), rel=0.01 )
-        assert np.sum( tdata ) == pytest.approx( np.sum( rdata ), rel=0.01 )
-        # The standard deviation goes down quite a bit... correlated pixel errors from the warping doing that.
-        assert tdata.std() == pytest.approx( rdata.std(), rel=0.5 )
+#         assert np.median( tdata ) == pytest.approx( np.median( rdata ), rel=0.01 )
+#         assert np.sum( tdata ) == pytest.approx( np.sum( rdata ), rel=0.01 )
+#         # The standard deviation goes down quite a bit... correlated pixel errors from the warping doing that.
+#         assert tdata.std() == pytest.approx( rdata.std(), rel=0.5 )
 
 
 def test_stampmaker( object_for_tests, one_science_image, dia_out_dir ):

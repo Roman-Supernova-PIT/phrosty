@@ -1,22 +1,23 @@
-replaceable_preloads:
-  - /snpit_env/configs/nov2025_container_config.yaml
-
 system:
   paths:
-    scratch_dir: /scratch/phrosty_temp
-    temp_dir: /scratch/phrosty_temp
-    dia_out_dir: /scratch/dia_out_dir/
-    ltcv_dir: /scratch/lc_out_dir/
-    snappl:
-      A25ePSF_path: /a25epsf
+    temp_dir: phrosty/tests/test_output/temp
+    dia_out_dir: phrosty/tests/test_output/dia_out_dir
+    ltcv_dir: phrosty/tests/test_output/lc_out_dir
+    intermediate_dir: phrosty/tests/test_output/intermediate_dir
+
+  # Only worry about system.ou24 if using OpenUniverse2024 sims.
+  # Otherwise, this can be deleted or commented out.
+  # Note that examples provided in the documentation may use these sims,
+  # which will be the case if arg `-oc` is set to `ou2024`.
+  ou24:
+    simdex_server: https://roman-desc-simdex.lbl.gov
+    # tds_base: Base path where your OpenUniverse
+    # config_file: Path to OpenUniverse config file
+    # images: Path to the OU2024 images. This folder is probably inside the tds_base path.
+
 
 photometry:
-  snappl:
-      temp_dir: /scratch
-
   phrosty:
-    image_type: ou2024fits
-    force_sky_subtract: false
     keep_intermediate: true
     remove_temp_dir: false
     mem_trace: false
@@ -27,4 +28,4 @@ photometry:
 
     psf:
       type: gaussian
-      params: {}
+      params: {'sigmax': 0.43, 'sigmay': 0.43}

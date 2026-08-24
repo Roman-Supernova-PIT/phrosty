@@ -10,7 +10,6 @@ from snappl.image import CompressedFITSImage, FITSImageStdHeaders
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 
-
 _direc = pathlib.Path( __file__ ).parent.resolve()
 
 
@@ -28,11 +27,11 @@ def config():
 
     # Directories we'll use for test outputs
     temp_dir = _direc / 'test_output/temp'
-    scratch_dir = temp_dir
     dia_out_dir = _direc / 'test_output/dia_out_dir'
     ltcv_dir = _direc / 'test_output/lc_out_dir'
+    intermediate_dir = _direc / 'test_output/intermediate_dir'
     # Make sure they exist
-    for path in [ temp_dir, scratch_dir, dia_out_dir, ltcv_dir ]:
+    for path in [ temp_dir, dia_out_dir, ltcv_dir, intermediate_dir ]:
         path.mkdir( exist_ok=True, parents=True )
 
     try:
@@ -56,6 +55,7 @@ def config():
         cfg.set_value( 'system.paths.temp_dir', str(temp_dir) )
         cfg.set_value( 'system.paths.dia_out_dir', str(dia_out_dir) )
         cfg.set_value( 'system.paths.ltcv_dir', str(ltcv_dir) )
+        cfg.set_value( 'system.paths.intermediate_dir', str(intermediate_dir) )
         # Reset the config to static
         cfg._static = True
 
@@ -77,9 +77,9 @@ def config():
                     f.unlink( missing_ok=True )
 
         nukedir( temp_dir )
-        nukedir( scratch_dir )
         nukedir( dia_out_dir )
         nukedir( ltcv_dir )
+        nukedir( intermediate_dir )
 
 
 @pytest.fixture( scope='session' )
@@ -141,7 +141,7 @@ def ou2024_image_collection():
 @pytest.fixture
 def one_science_image( scope="session" ):
     try:
-        img = CompressedFITSImage( path=('/photometry_test_data/ou2024/images/simple_model/'
+        img = CompressedFITSImage( path=('../photometry_test_data/ou2024/images/simple_model/'
                                      'Y106/35198/Roman_TDS_simple_model_Y106_35198_2.fits.gz'),
                                    imagehdu=1,
                                    observation_id='35198',
@@ -154,7 +154,7 @@ def one_science_image( scope="session" ):
 @pytest.fixture
 def one_template_image( scope="session" ):
     try:
-        img = CompressedFITSImage( path=('/photometry_test_data/ou2024/images/simple_model/'
+        img = CompressedFITSImage( path=('../photometry_test_data/ou2024/images/simple_model/'
                                      'Y106/5934/Roman_TDS_simple_model_Y106_5934_3.fits.gz' ),
                                    imhdu=1,
                                    observation_id='5934',

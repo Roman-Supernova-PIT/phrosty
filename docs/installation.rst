@@ -13,7 +13,7 @@ Installation
 System Requirements
 -------------------
 
-``phrosty`` can run using either a ``cupy`` (CUDA 12.4, requires an NVIDIA GPU) or ``numpy`` backend (CPU). Empirically, you will need at least 36 GB GPU memory or 56 GB CPU memory to run these backends, respectively. 
+``phrosty`` can run using either a ``cupy`` (CUDA 12.4, requires an NVIDIA GPU) or ``numpy`` backend (CPU). Empirically, you will need at least 36 GB GPU memory or 56 GB CPU memory to run these backends, respectively, for a standard 4088 x 4088 px *Roman* image. 
 
 To properly set up ``phrosty``, you need to follow **one** of the sections here, followed by `Install from sources<install-from-sources>`.
 
@@ -29,7 +29,7 @@ I do not have 40 GB-memory NVIDIA GPU
 
 You are most people. First, make a new environment of whatever type you prefer. Conda is fine, docker is fine, whatever you want. Activate this environment. 
 
-Now, choose a working directory. We will call this `$WORK`. In `$WORK`::
+Now, choose a working directory. We will call this `$RUNDIR`. In `$RUNDIR`::
 
   pip install roman-snpit-snappl sfft-romansnpit crds
   git clone https://github.com/Roman-Supernova-PIT/phrosty.git
@@ -38,25 +38,25 @@ Now, choose a working directory. We will call this `$WORK`. In `$WORK`::
 
 NOTE: Eventually, `phrosty` will be on pip. As of writing this, it is not. 
 
-In `$WORK`, make several folders:
+In `$RUNDIR`, make several folders:
 
-# ``$WORK/temp_dir``: This is where temporary files will be written.
-# ``$WORK/dia_out_dir``: Output image files are written here.
-# ``$WORK/ltcv_dir``: Output lightcurves are written here.
-# ``$WORK/intermediate_dir``: Intermediate files are written here.
+# ``$RUNDIR/temp_dir``: This is where temporary files will be written.
+# ``$RUNDIR/dia_out_dir``: Output image files are written here.
+# ``$RUNDIR/ltcv_dir``: Output lightcurves are written here.
+# ``$RUNDIR/intermediate_dir``: Intermediate files are written here.
 
-Then, assuming you are stil in `$WORK`,
+Then, assuming you are stil in `$RUNDIR`,
 
   cp phrosty/examples/phrosty_config_local.yaml .
 
-This copies a config file from the `phrosty/examples` directory to `$WORK`. Edit this file so that the empty fields under `system.paths` contain the absolute paths to the folders you just made.
+This copies a config file from the `phrosty/examples` directory to `$RUNDIR`. Edit this file so that the empty fields under `system.paths` contain the absolute paths to the folders you just made.
 
 Set the following environment variables::
 
   export CRDS_SERVER_URL=https://roman-crds.stsci.edu
   export CRDS_PATH=${HOME}/crds_cache
 
-You can make `CRDS_PATH` exist in `$WORK` instead if you want.
+You can make `CRDS_PATH` exist in `$RUNDIR` instead if you want.
 
 You should be good to go now. 
 
@@ -206,7 +206,7 @@ Verify that you have access to GPUs by running::
 Installing the photometry test data (recommended but optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you want to run tests, and some of the examples, then you will also need to pull the photometry test data into `$WORK`::
+If you want to run tests, and some of the examples, then you will also need to pull the photometry test data into `$RUNDIR`::
 
   git clone https://github.com/Roman-Supernova-PIT/photometry_test_data.git
 
