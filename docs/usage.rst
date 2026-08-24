@@ -26,6 +26,24 @@ Usage
 Running locally
 ===============
 
+If you are :ref:`in the correct environment<phrosty-local>` and have checked out the :ref:`photometry_test_data<photometry-test-data>` repo, from the top-level folder of your ``phrosty`` checkout, do::
+
+  SNPIT_CONFIG=../phrosty_config_local.yaml python phrosty/pipeline.py \
+  --oid 20172782 \
+  -oc ou2024 \
+  -b Y106 \
+  -r 7.551093401915147 \
+  -d -44.80718106491529 \
+  -ic ou2024 \
+  -t phrosty/tests/20172782_instances_templates_1.csv \
+  -s phrosty/tests/20172782_instances_science_2.csv \
+  -p 1 -w 1 \
+  -v \
+  --backend numpy \
+  --base-path ../photometry_test_data/ou2024/images/simple_model
+
+If you are using a GPU, delete the line with `--backend numpy \`. If you're using a Mac, you always need this line because CUDA is not supported on Macs.
+
 Running on SMDC
 ===============
 
@@ -195,7 +213,7 @@ after a minute or so, that should log you into one of the nodes with a session t
 
 `cd` into your "parent" directory (if you're not there already).
 
-If you are not a member of the Roman SN PIT (i.e., assuming you pulled your container from :ref:`docker.io<phrosty-installation-prerequisites>`), do::
+If you are not a member of the Roman SN PIT (i.e., assuming you pulled your container from :ref:`docker.io<phrosty-nersc-perlmutter>`), do::
 
   podman-hpc run --gpu \
     --mount type=bind,source=$PWD,target=/home \
@@ -218,7 +236,7 @@ If you are not a member of the Roman SN PIT (i.e., assuming you pulled your cont
     docker.io/rknop/roman-snpit-env:cuda-dev-0.1.41 \
     /bin/bash
 
-If you are in the Roman SN PIT (i.e., assuming you pulled your container from :ref:`registry.nersc.gov<phrosty-installation-prerequisites>`), instead do::
+If you are in the Roman SN PIT (i.e., assuming you pulled your container from :ref:`registry.nersc.gov<phrosty-nersc-perlmutter>`), instead do::
 
   WHICHROMANENV=cuda-dev bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh
 

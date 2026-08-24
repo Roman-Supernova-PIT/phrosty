@@ -56,7 +56,7 @@ Set the following environment variables::
   export CRDS_SERVER_URL=https://roman-crds.stsci.edu
   export CRDS_PATH=${HOME}/crds_cache
 
-You can also make `CRDS_PATH` exist in `$WORK`. 
+You can make `CRDS_PATH` exist in `$WORK` instead if you want.
 
 You should be good to go now. 
 
@@ -111,13 +111,13 @@ Assuming you're currently in the directory which is the parent of your ``phrosty
     rknop/roman-snpit-env:cuda-dev \
     /bin/bash
 
-**You may need to modify these paths.
+**You may need to modify these paths.**
 
 If all is well, this will put you in a docker container.  You can tell you're in the container because your prompt will change to something like ``root@47394bd41fbe:/#`` (where the string of hexidecimal numbers will be different every time you start a container).  Verify that you've got access to the GPUs by running, inside the container::
 
   nvidia-smi
 
-If you get an error message, or don't see at least one NVIDIA GPU listed, then this will not work.
+If you get an error message, or don't see at least one NVIDIA GPU listed, then you will need to :ref:`run on CPU<phrosty-local-cpu>`.
 
 .. _phrosty-smdc:
 
