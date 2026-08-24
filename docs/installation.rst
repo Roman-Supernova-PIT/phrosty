@@ -75,8 +75,8 @@ You will need a standard default config file, which is referenced by the phrosty
 
 .. _code_block: console
 
-  curl -L https://raw.githubusercontent.com/Roman-Supernova-PIT/environment/refs/heads/u/rknop/nodb_configs/local_nodb.yaml -O
-  curl -L https://raw.githubusercontent.com/Roman-Supernova-PIT/environment/refs/heads/u/rknop/nodb_configs/container_nodb.yaml -O
+  curl -L https://raw.githubusercontent.com/Roman-Supernova-PIT/environment/refs/heads/main/local_nodb.yaml -O
+  curl -L https://raw.githubusercontent.com/Roman-Supernova-PIT/environment/refs/heads/main/container_nodb.yaml -O
 
 This will copy down a standard Roman SNPIT/snappl config file, which you use when you don't want to connect to any database.
 
