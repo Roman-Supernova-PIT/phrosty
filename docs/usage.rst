@@ -34,7 +34,7 @@ You can find three examples of these files in (**TODO: evaluate which of these s
 Running locally
 ===============
 
-If you are :ref:`in the correct environment<phrosty-local>` and have checked out the :ref:`photometry_test_data<photometry-test-data>` repo, from the top-level folder of your ``phrosty`` checkout, do::
+If you are :ref:`in the correct environment<phrosty-local>` and have checked out the :ref:`photometry_test_data<photometry-test-data>` repo, from ``$RUNDIR``, do::
 
   python packages/phrosty/phrosty/pipeline.py \
   --oid 20172782 \
@@ -64,7 +64,7 @@ If you want to run on a CPU node, do::
 
   salloc -p mem-lg --time=04:00:00
 
-From the top-level checkout folder of ``phrosty``, run::
+From the ``$RUNDIR``, run::
 
     SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
         --oid 20172782 \
