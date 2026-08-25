@@ -484,7 +484,7 @@ Arg-by-arg...:
 
 * ``SNPIT_CONFIG`` points to your config file.
 * ``oid`` stands for "object ID".
-* ``oc`` stands for "object collection". This is a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 images), ``manual_fits`` (your chosen input FITS image), or ``snpitdb`` (SN PIT only).
+* ``oc`` stands for "object collection". This is a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 images), ``manual_fits`` (your chosen input FITS image), ``manual_rdm`` (your chosen input ASDF image), or ``snpitdb`` (SN PIT only).
 * ``b`` stands for "band". This will be any one of: R062, Z087, Y106, J129, H158, F184, or K213.
 * ``r`` is the RA of your object.
 * ``d`` is the Dec of your object.
