@@ -120,13 +120,13 @@ If you have a 40GB NVIDIA GPU
 
 (...and if you want to use it rather than running on the cpu...)
 
-You will also need to install ``cupy``.  This can be challenging, and there may be issues of getting versions of ``cupy`` that are consistent with the nvidia drivers and cuda version installed on your system.  You can try:
+You will also need to install ``cupy``.  This can be challenging, and there may be issues of getting versions of ``cupy`` that are consistent with the NVIDIA drivers and CUDA version installed on your system.  You can try:
 
 .. _code-block: console
 
   pip install cupy-cuda12x
 
-but you may find that you need a different cuda version.
+but you may find that you need a different CUDA version. For more help with matching your CUDA version to your ``cupy`` version, see `the cupy documentation<https://docs.cupy.dev/en/stable/install.html>`_.`
 
 
 If you are going to run in a docker container
@@ -174,10 +174,10 @@ At this point, you should be good to go.
 When you're done with your container, you can just ``exit`` to get out of it.  You may also want to do ``docker ps`` followed by ``docker rm <container-id>`` to clean up cruft left behind on your system.  (You can find ``<container-id>`` by looking at the output of ``docker ps``.)
 
 
-If you have a 40GB Nvidia GPU and want to use it
+If you have a 40GB NVIDIA GPU and want to use it
 """""""""""""""""""""""""""""""""""""""""""""""""
 
-Add ``--gpus=all`` between ``docker run`` and ``-it``.  Also, replace ``rknop/roman-snpit-env:cpu-dev`` with ``rknop-snpit-env:cuda-dev``.  This can be fraught; the versions of the nvidia drivers you have on your system have to be compatible with what's inside the container.  Once you're inside the container, verify that you can see your GPU with:
+Add ``--gpus=all`` between ``docker run`` and ``-it``.  Also, replace ``rknop/roman-snpit-env:cpu-dev`` with ``rknop-snpit-env:cuda-dev``.  This can be fraught; the versions of the NVIDIA drivers you have on your system have to be compatible with what's inside the container.  Once you're inside the container, verify that you can see your GPU with:
 
 .. _code-block: console
 
@@ -220,7 +220,7 @@ Installing on NERSC Perlmutter
 
 If you are on NERSC Perlmutter, you have access to NVIDIA GPUs with 40 GB GPU memory. Run ``module list``.  Make sure that ``cudatoolkit/12.4`` shows up in your list of modules.  If not, you may need to adjust the modules you have loaded.
 
-(Ideally, because phrosty runs inside a container, the specific version of CUDA on the host system wouldn't matter.  However, containers can be touchy about hooking up GPUs inside containers.  If you're having trouble seeing the GPU inside the container, check for mismatches between the versions of cuda inside and outside of the container.)
+(Ideally, because phrosty runs inside a container, the specific version of CUDA on the host system wouldn't matter.  However, containers can be touchy about hooking up GPUs inside containers.  If you're having trouble seeing the GPU inside the container, check for mismatches between the versions of CUDA inside and outside of the container.)
 
 Currently, phrosty is designed inside a container built from the the `Roman Supernova PIT environment <https://github.com/Roman-Supernova-PIT/environment>`_.
 
