@@ -64,26 +64,6 @@ If you want to run on a CPU node, do::
 
   salloc -p mem-lg --time=04:00:00
 
-From the ``$RUNDIR``, run::
-
-    SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
-        --oid 20172782 \
-        -oc ou2024 \
-        -b Y106 \
-        -r 7.551093401915147 \
-        -d -44.80718106491529 \
-        -ic ou2024 \
-        -t packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv \
-        -s packages/phrosty/phrosty/tests/20172782_instances_science_2.csv \
-        -p 3 -w 3 \
-        -v \
-        --backend numpy # Delete this line if you are on a GPU node.
-
-
-Using ASDF
-^^^^^^^^^^
-This section is currently for the SN PIT, and it is underneath "Running on SMDC" because the sims I am describing are located there.
-
 Right now, Rick's ``romanisim`` images are on SMDC at::
 
   /home/rkessler/romanisim/output_images_galid_force0
@@ -96,24 +76,12 @@ Corresponding SNANA truth files are located at::
   /home/rkessler/romanisim/snana_sim_galid_force0
   /home/rkessler/romanisim/snana_sim_galid_force1
 
-If you are in the Singularity container discussed in `the snappl documentation about running on SMDC <https://roman-supernova-pit.github.io/snappl/environment.html#running-on-smdc>`_, ``/mnt/roman-science-east-2/snpit/snana+romanisim+romancal/`` maps to ``/ricksims``.
+The SNe Ia in the sims are object IDs ``11`` and ``21``. We are going to test on ``11``. 
 
-The SNe Ia in the sims are object IDs ``11`` and ``21``. We are going to test on ``11``. Do all of the things above, and from the ``phrosty`` directory, run the following::
+Using a native venv
+^^^^^^^^^^^^^^^^^^^
 
-  SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
-        --oid 11 \
-        -oc manual \
-        -b J129 \
-        -r 9.366435 \
-        -d -43.958825 \
-        -ic manual_rdm \
-        --base-path /ricksims/ \
-        -t phrosty/tests/11_instances_templates_1.csv \
-        -s phrosty/tests/11_instances_science_2.csv \
-        -p 1 -w 1 \
-        -v
-
-Outside the Singularity container (i.e., in a venv, and with the numpy backend and memory tracing for the sake of providing an example)::
+Make sure you are in `the correct environment<phrosty-smdc>`. From the ``$RUNDIR``, run::
 
   SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
         --oid 11 \
@@ -126,8 +94,29 @@ Outside the Singularity container (i.e., in a venv, and with the numpy backend a
         -t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \
         -s packages/phrosty/phrosty/tests/11_instances_science_2.csv \
         -p 1 -w 1 \
-        --backend numpy \
-        --memtrace \
+        --backend numpy \ # Delete if on a GPU node
+        --memtrace \ # Can delete if memory tracing is not needed
+        -v
+
+Using the Apptainer/Singularity container
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you are in the Singularity container discussed in `the snappl documentation about running on SMDC <https://roman-supernova-pit.github.io/snappl/environment.html#running-on-smdc>`_, ``/mnt/roman-science-east-2/snpit/snana+romanisim+romancal/`` maps to ``/ricksims``.
+
+Do all of the things in the above link, and from ``$RUNDIR``, run the following::
+
+  SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
+        --oid 11 \
+        -oc manual \
+        -b J129 \
+        -r 9.366435 \
+        -d -43.958825 \
+        -ic manual_rdm \
+        --base-path /ricksims/ \
+        -t phrosty/tests/11_instances_templates_1.csv \
+        -s phrosty/tests/11_instances_science_2.csv \
+        -p 1 -w 1 \
+        --backend numpy \ # Delete if on a GPU node
         -v
 
 .. _perlmutter-example:
