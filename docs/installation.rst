@@ -32,7 +32,7 @@ You will want to make yourself and environment to work in, such as a conda envir
 If you're using conda or a venv
 """""""""""""""""""""""""""""""
 
-Go into your environment and install the ``snappl`` and ``sfft`` packages that phrosty needs:
+Go into your environment and install the ``snappl`` and ``sfft`` packages that ``phrosty`` needs:
 
 .. _code-block: console
   pip install roman-snpit-snappl sfft-romansnpit crds
@@ -41,7 +41,7 @@ Go into your environment and install the ``snappl`` and ``sfft`` packages that p
 If you're using a docker container
 """"""""""""""""""""""""""""""""""
 
-Depending on whether you're going to run the CPU or GPU version of phrosty (read below) you will want to pull one of two docker images:
+Depending on whether you're going to run the CPU or GPU version of ``phrosty`` (read below) you will want to pull one of two docker images:
 
   * ``docker pull docker.io/rknop/roman-snpit-env:cpu-dev``
   * ``docker pull docker.io/rknop/roman-snpit-env:cuda-dev``
@@ -60,7 +60,7 @@ You will need some directories for phrosty to work in:
  * ``mkdir -p dev_storage/ltcv_dir``: Output lightcurves are written here.
  * ``mkdir -p dev_storage/intermediate_dir``: Intermediate files are written here.
 
-Check out the phrosty archive.  (Eventually, ``phrosty`` will be on pip. As of writing this, it is not.)  If you're going to run tests, also check out the photometry test data archive::
+Check out the ``phrosty`` archive.  (Eventually, ``phrosty`` will be on pip. As of writing this, it is not.)  If you're going to run tests, also check out the photometry test data archive::
 
 .. _code-block: console
 
@@ -71,7 +71,7 @@ Check out the phrosty archive.  (Eventually, ``phrosty`` will be on pip. As of w
 
 (TODO: figure out if there's a ``git-lfs`` thing people have to do.)
 
-You will need a standard default config file, which is referenced by the phrosty config files used in the examples below.  Assuming you are still in ``$RUNDIR``, run:
+You will need a standard default config file, which is referenced by the ``phrosty`` config files used in the examples below.  Assuming you are still in ``$RUNDIR``, run:
 
 .. _code_block: console
 
@@ -93,11 +93,11 @@ First, make sure you are in ``$RUNDIR``, and run:
   cd packages/phrosty
   pip install .
 
-(Note: if you're developing phrosty, you might want that last line to be ``pip install -e .``.  If you want to run the phrosty tests, do ``pip install -e .[test]``.)
+(Note: if you're developing ``phrosty``, you might want that last line to be ``pip install -e .``.  If you want to run the ``phrosty`` tests, do ``pip install -e .[test]``.)
 
 NOTE: Eventually, ``phrosty`` will be on pip. As of writing this, it is not.  When that happens, you can replace the last three lines with just ``pip install roman-snpit-phrosty``.
 
-You need to set two environment variables to tell phrosty where to find the config files:
+You need to set two environment variables to tell ``phrosty`` where to find the config files:
 
 .. _code_block: console
 
@@ -159,7 +159,7 @@ You go into the container by running:
 
 If all is well, this will put you in a docker container.  You can tell you're in the container because your prompt will change to something like ``root@47394bd41fbe:/#`` (where the string of hexidecimal numbers will be different every time you start a container).  Your ``$RUNDIR`` is mounted at ``/home`` inside the container.
 
-Next, you will want to get phrosty installed inside your environment.  (You will need to do this every time you restart the container.)
+Next, you will want to get ``phrosty`` installed inside your environment.  (You will need to do this every time you restart the container.)
 
 .. _code-block: console
 
@@ -167,7 +167,7 @@ Next, you will want to get phrosty installed inside your environment.  (You will
   pip install .
   cd /home
 
-If you are developing phrosty, you might want to do ``pip install -e .``, and if you think you might want to run the tests, you might want to do ``pip install -e .[test]``.
+If you are developing ``phrosty``, you might want to do ``pip install -e .``, and if you think you might want to run the tests, you might want to do ``pip install -e .[test]``.
 
 At this point, you should be good to go.
 
@@ -214,17 +214,13 @@ Then, follow the instructions in `the snappl documentation about running on SMDC
 Installing on NERSC Perlmutter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**TODO: point to the snappl documentation for running on NERSC.**
-
 **This section will work for SN PIT members, and maybe anyone else with access to NERSC Perlmutter, which ostensibly could be you.**
+
+First, follow the instructions in `the snappl docs<https://roman-supernova-pit.github.io/snappl/environment.html#running-on-nersc>`_. If you aren't in the SN PIT, skip the stuff about a password and "secrets" folder to use the database.
 
 If you are on NERSC Perlmutter, you have access to NVIDIA GPUs with 40 GB GPU memory. Run ``module list``.  Make sure that ``cudatoolkit/12.4`` shows up in your list of modules.  If not, you may need to adjust the modules you have loaded.
 
-(Ideally, because phrosty runs inside a container, the specific version of CUDA on the host system wouldn't matter.  However, containers can be touchy about hooking up GPUs inside containers.  If you're having trouble seeing the GPU inside the container, check for mismatches between the versions of CUDA inside and outside of the container.)
-
-Currently, phrosty is designed inside a container built from the the `Roman Supernova PIT environment <https://github.com/Roman-Supernova-PIT/environment>`_.
-
-Because phrosty (and other libraries it depends on, such as snappl) is under heavy development, it's possible that the latest container will not work properly with phrosty at any given moment.
+(Ideally, because ``phrosty`` runs inside a container, the specific version of CUDA on the host system wouldn't matter.  However, containers can be touchy about hooking up GPUs inside containers.  If you're having trouble seeing the GPU inside the container, check for mismatches between the versions of CUDA inside and outside of the container.)
 
 If you're on NERSC Perlmutter, use ``podman-hpc`` in place of ``docker``.  Pull the image with::
 
