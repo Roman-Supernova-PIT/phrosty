@@ -173,7 +173,6 @@ At this point, you should be good to go.
 
 When you're done with your container, you can just ``exit`` to get out of it.  You may also want to do ``docker ps`` followed by ``docker rm <container-id>`` to clean up cruft left behind on your system.  (You can find ``<container-id>`` by looking at the output of ``docker ps``.)
 
-
 If you have a 40GB NVIDIA GPU and want to use it
 """""""""""""""""""""""""""""""""""""""""""""""""
 

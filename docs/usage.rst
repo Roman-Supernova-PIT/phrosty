@@ -132,10 +132,10 @@ Outside the Singularity container (i.e., in a venv, and with the numpy backend a
 
 .. _perlmutter-example:
 
-Running on Perlmutter
+Running on NERSC
 ---------------------
 
-While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn't use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren't in the right unix groups. This example will not work on a login node.
+While the previous example should have worked on NERSC/Perlmutter, this is a somewhat more realistic example.  It doesn't use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren't in the right unix groups. This example will not work on a login node.
 
 Pick a place to work
 ^^^^^^^^^^^^^^^^^^^^
@@ -245,7 +245,7 @@ If you are not a member of the Roman SN PIT (i.e., assuming you pulled your cont
 
 If you are in the Roman SN PIT (i.e., assuming you pulled your container from :ref:`registry.nersc.gov<phrosty-nersc-perlmutter>`), instead do::
 
-  WHICHROMANENV=cuda-dev bash /global/cfs/cdirs/m4385/env/interactive-podman-nov2025.sh
+  WHICHROMANENV=cuda-dev bash /global/cfs/cdirs/m4385/env/interactive-podman-rknop-dev.sh
 
 If this fails, check :role:`the snappl documentation<https://roman-supernova-pit.github.io/snappl/environment.html#databases-currently-supported>` for current launchers.
 
@@ -257,21 +257,21 @@ Go to the ``/home`` directory, which is where your parent directory should be mo
 
 The main Python executable for running the pipeline is ``phrosty/phrosty/pipeline.py``.  Run::
 
-  SNPIT_CONFIG=examples/perlmutter/phrosty_config_nersc.yaml python phrosty/pipeline.py --help
+  SNPIT_CONFIG=packages/phrosty/examples/perlmutter/phrosty_config_nersc.yaml python packages/phrosty/phrosty/pipeline.py --help
 
 to see how it works, and to see what the various parameters you can specify are.  The output will be long, becasue everything that's in the config file is included as something you can override on the command line.  The arguments near the top are the ones you're more likely to want to think about.  You might want to pipe the output of this ``-help`` into ``less`` so you can see what's going on.
 
 Run this on your example lightcurve with::
 
-  SNPIT_CONFIG=examples/perlmutter/phrosty_config_nersc.yaml python phrosty/pipeline.py \
+  SNPIT_CONFIG=/home/packages/phrosty/examples/perlmutter/phrosty_config_nersc.yaml python /home/packages/phrosty/phrosty/pipeline.py \
         --oid 20172782 \
         -oc ou2024 \
         -b Y106 \
         -r 7.551093401915147 \
         -d -44.80718106491529 \
         -ic ou2024 \
-        -t phrosty/tests/20172782_instances_templates_1.csv \
-        -s phrosty/tests/20172782_instances_science_2.csv \
+        -t /home/packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv \
+        -s /home/packages/phrosty/phrosty/tests/20172782_instances_science_2.csv \
         -p 3 -w 3 \
         -v
 
