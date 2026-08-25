@@ -466,38 +466,57 @@ Phrosty Functionality
 Command line arguments, explained
 ---------------------------------
 
-Let's break down the command you were instructed to use earlier. Recall::
+Let's break down a command you were instructed to use earlier. Recall::
 
-  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
-        --oid 20172782 \
-        -oc ou2024 \
-        -b Y106 \
-        -r 7.551093401915147 \
-        -d -44.80718106491529 \
-        -ic ou2024 \
-        -t phrosty/tests/20172782_instances_templates_1.csv \
-        -s phrosty/tests/20172782_instances_science_2.csv \
-        -p 3 -w 3 \
+  SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
+        --oid 11 \
+        -oc manual \
+        -b J129 \
+        -r 9.366435 \
+        -d -43.958825 \
+        -ic manual_rdm \
+        --base-path /mnt/roman-science-east-2/snpit/snana+romanisim+romancal/ \
+        -t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \
+        -s packages/phrosty/phrosty/tests/11_instances_science_2.csv \
+        -p 1 -w 1 \
+        --backend numpy \ # Delete if on a GPU node
+        --memtrace \ # Can delete if memory tracing is not needed
         -v
 
 Arg-by-arg...:
 
 * ``SNPIT_CONFIG`` points to your config file.
-* ``oid`` stands for "object ID".
-* ``oc`` stands for "object collection". This is a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 images), ``manual_fits`` (your chosen input FITS image), ``manual_rdm`` (your chosen input ASDF image), or ``snpitdb`` (SN PIT only).
-* ``b`` stands for "band". This will be any one of: R062, Z087, Y106, J129, H158, F184, or K213.
-* ``r`` is the RA of your object.
-* ``d`` is the Dec of your object.
-* ``ic`` stands for "image collection". This is also a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 SN Ia catalog), ``manual`` (any object you want),  ``snpitdb`` (SN PIT only).
-* ``t`` is for "templates". This is your list of image templates.
-* ``s`` is for "science". This is a list of images that contain your SN (science object).
-* ``p`` is the number of computation processes. e.g., if you do ``-p 3``, you will have 3 parallel sky subtraction processes going on. This does not apply to the GPU-based portion of the code, which is serial.
-* ``w`` is the number of file writing processes.
-* ``v`` toggles "verbose".
-* ``memtrace`` toggles memory tracing with ``tracemalloc``. Only works for CPU parts.
-* ``backend`` changes if you run SFFT with a cupy (GPU) or numpy (CPU) backend. Acceptable arguments are ``cupy``, ``cp``, ``numpy``, and ``np``. Default is `cupy`.
+* ``--oid`` stands for "object ID".
+* ``-oc`` stands for "object collection". This is also a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 SN Ia catalog), ``manual`` (any object you want),  ``snpitdb`` (SN PIT only).
+* ``-b`` stands for "band". This will be any one of: R062, Z087, Y106, J129, H158, F184, or K213.
+* ``-r`` is the RA of your object.
+* ``-d`` is the Dec of your object.
+* ``-ic`` stands for "image collection". This is a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 images), ``manual_fits`` (your chosen input FITS image), ``manual_rdm`` (your chosen input ASDF image), or ``snpitdb`` (SN PIT only).
+* ``--base-path`` is the top-level folder where your images are located. This must be provided if you are using ``-ic manual`` (which, if you're not in the SN PIT, you probably are).
+* ``-t`` is for "templates". This is your list of image templates. You can have multiple templates listed for multiple rounds of single-epoch subtractions.
+* ``-s`` is for "science". This is a list of images that contain your SN (science object).
+* ``-p`` is the number of computation processes. e.g., if you do ``-p 3``, you will have 3 parallel sky subtraction processes going on. This does not apply to the GPU-based portion of the code, which is serial.
+* ``-w`` is the number of file writing processes.
+* ``--backend`` changes if you run SFFT with a cupy (GPU) or numpy (CPU) backend. Acceptable arguments are ``cupy``, ``cp``, ``numpy``, and ``np``. Default is ``cupy``.
+* ``--memtrace`` toggles memory tracing with ``tracemalloc``. Only works for CPU parts.
+* ``-v`` toggles "verbose".
 
 To briefly elaborate on the "image collection" and "object collection"--this can be confusing. The image collection describes the images, and the object collection describes the objects of interest in the images. For example, if you used ``ou2024`` for both ``ic`` and ``oc``, you would be doing analysis on an SN Ia in the OpenUniverse 2024 FITS images. However, if you set ``-ic ou2024`` and ``-oc manual``, that would enable you to run the pipeline on any object you wanted in the OpenUniverse2024 images as long as you specified its RA and Dec.
+
+Input lists for science and template images
+-------------------------------------------
+
+This applies to the command line args ``-t`` and ``-s``. If you look in ``phrosty/phrosty/tests/11_instances_science_2.csv``, you will find a table with columns ``path observation_id sca mjd band`` where the delimiter is a space (it is the same for the corresponding template image list csv). The input lists of files must have this format.
+
+Note that the "path" column contains relative paths. If you are using ``-ic manual``, the paths in this column are relative to ``--base-path``. If the paths are wrong, ``phrosty`` won't work at all.
+
+It is less critical that ``observation_id``, ``sca``, ``mjd``, and ``band`` are correct *unless* you are retrieving a variable PSF of some kind. ``phrosty`` will still run if these are wrong, but your results will likely be bad.
+
+* If the PSF is position-dependent, then ``sca`` matters.
+* If the PSF is filter/color-dependent, then ``band`` matters.
+* If the PSF is time-dependent (which doesn't exist right now, and we can only hope never happens), then in this hypothetical painful future, ``observation_id`` and ``mjd`` will matter. For now, if you mess these up, plotting light curves and bookkeeping will be painful.
+
+And yes, for now, you need to generate your own input files. Sorry.
 
 Reading the output file
 -----------------------
