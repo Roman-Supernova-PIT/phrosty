@@ -35,8 +35,8 @@ If you're using conda or a venv
 Go into your environment and install the ``snappl`` and ``sfft`` packages that ``phrosty`` needs:
 
 .. _code-block: console
-  pip install roman-snpit-snappl sfft-romansnpit crds
 
+  pip install roman-snpit-snappl sfft-romansnpit crds
 
 If you're using a docker container
 """"""""""""""""""""""""""""""""""
@@ -60,7 +60,7 @@ You will need some directories for phrosty to work in:
  * ``mkdir -p dev_storage/ltcv_dir``: Output lightcurves are written here.
  * ``mkdir -p dev_storage/intermediate_dir``: Intermediate files are written here.
 
-Check out the ``phrosty`` archive.  (Eventually, ``phrosty`` will be on pip. As of writing this, it is not.)  If you're going to run tests, also check out the photometry test data archive::
+In ``$RUNDIR/packages``, check out the ``phrosty`` archive.  (Eventually, ``phrosty`` will be on pip. As of writing this, it is not.)  If you're going to run tests and/or the examples in :ref:`usage`, also check out the ``photometry_test_data`` archive::
 
 .. _code-block: console
 
@@ -83,8 +83,8 @@ This will copy down a standard Roman SNPIT/snappl config file, which you use whe
 
 .. _phrosty-local-cpu:
 
-If you are going to run in your virtual/conda environment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+If you are going to run in a virtual/conda environment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 First, make sure you are in ``$RUNDIR``, and run:
 
@@ -102,7 +102,7 @@ You need to set two environment variables to tell ``phrosty`` where to find the 
 .. _code_block: console
 
    export SNPIT_DEFAULT_CONFIG=${PWD}/local_nodb.yaml
-   export SNPIT_CONFIG=${PWD}/phrosty/phrosty_default_config.yaml
+   export SNPIT_CONFIG=${PWD}/packages/phrosty/phrosty_config_default.yaml
 
 Finally, also set the following environment variables:
 

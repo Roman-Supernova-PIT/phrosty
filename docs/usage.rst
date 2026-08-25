@@ -1,3 +1,5 @@
+.. _usage:
+
 *****
 Usage
 *****
@@ -41,8 +43,8 @@ If you are :ref:`in the correct environment<phrosty-local>` and have checked out
   -r 7.551093401915147 \
   -d -44.80718106491529 \
   -ic ou2024 \
-  -t phrosty/tests/20172782_instances_templates_1.csv \
-  -s phrosty/tests/20172782_instances_science_2.csv \
+  -t packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv \
+  -s packages/phrosty/phrosty/tests/20172782_instances_science_2.csv \
   -p 1 -w 1 \
   -v \
   --backend numpy
