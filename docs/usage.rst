@@ -66,15 +66,15 @@ If you want to run on a CPU node, do::
 
 From the top-level checkout folder of ``phrosty``, run::
 
-    SNPIT_CONFIG=examples/smdc/phrosty_config_smdc.yaml python phrosty/pipeline.py \
+    SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
         --oid 20172782 \
         -oc ou2024 \
         -b Y106 \
         -r 7.551093401915147 \
         -d -44.80718106491529 \
         -ic ou2024 \
-        -t phrosty/tests/20172782_instances_templates_1.csv \
-        -s phrosty/tests/20172782_instances_science_2.csv \
+        -t packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv \
+        -s packages/phrosty/phrosty/tests/20172782_instances_science_2.csv \
         -p 3 -w 3 \
         -v \
         --backend numpy # Delete this line if you are on a GPU node.
@@ -100,7 +100,7 @@ If you are in the Singularity container discussed in `the snappl documentation a
 
 The SNe Ia in the sims are object IDs ``11`` and ``21``. We are going to test on ``11``. Do all of the things above, and from the ``phrosty`` directory, run the following::
 
-  SNPIT_CONFIG=examples/smdc/phrosty_config_smdc.yaml python phrosty/pipeline.py \
+  SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
         --oid 11 \
         -oc manual \
         -b J129 \
@@ -115,7 +115,7 @@ The SNe Ia in the sims are object IDs ``11`` and ``21``. We are going to test on
 
 Outside the Singularity container (i.e., in a venv, and with the numpy backend and memory tracing for the sake of providing an example)::
 
-  SNPIT_CONFIG=examples/smdc/phrosty_test_config_smdc.yaml python phrosty/pipeline.py \
+  SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
         --oid 11 \
         -oc manual \
         -b J129 \
@@ -123,8 +123,8 @@ Outside the Singularity container (i.e., in a venv, and with the numpy backend a
         -d -43.958825 \
         -ic manual_rdm \
         --base-path /mnt/roman-science-east-2/snpit/snana+romanisim+romancal/ \
-        -t phrosty/tests/11_instances_templates_1.csv \
-        -s phrosty/tests/11_instances_science_2.csv \
+        -t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \
+        -s packages/phrosty/phrosty/tests/11_instances_science_2.csv \
         -p 1 -w 1 \
         --backend numpy \
         --memtrace \
@@ -285,24 +285,24 @@ Outside the container (i.e. on Perlmutter), you should be able to find the file,
 
 You will also find new files in the ``dia_out_dir`` subdirectory, including several large ``.fits`` files.
 
-On NERSC (NOTE: This is just for Lauren right now. They edited Rob's interactive podman to include a hook to `photometry_test_data`, and also put some Ricksims in that folder. They are trying to push it to github, but the large files are giving them issues. The interactive podman file is in `phrosty/phrosty/tests` right now.)::
+.. On NERSC (NOTE: This is just for Lauren right now. They edited Rob's interactive podman to include a hook to `photometry_test_data`, and also put some Ricksims in that folder. They are trying to push it to github, but the large files are giving them issues. The interactive podman file is in `phrosty/phrosty/tests` right now.)::
 
-  WHICHROMANENV=cuda-dev bash phrosty/phrosty/tests/interactive-podman-rknop-dev-mod.sh
+..   WHICHROMANENV=cuda-dev bash phrosty/phrosty/tests/interactive-podman-rknop-dev-mod.sh
 
-Do all the installation stuff, and run phrosty::
+.. Do all the installation stuff, and run phrosty::
 
-  SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
-        --oid 11 \
-        -oc manual \
-        -b J129 \
-        -r 9.366435 \
-        -d -43.958825 \
-        -ic manual_rdm \
-        --base-path /photometry_test_data/ricksims/ \
-        -t phrosty/tests/11_instances_templates_1.csv \
-        -s phrosty/tests/11_instances_science_2.csv \
-        -p 1 -w 1 \
-        -v
+..   SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml python phrosty/pipeline.py \
+..         --oid 11 \
+..         -oc manual \
+..         -b J129 \
+..         -r 9.366435 \
+..         -d -43.958825 \
+..         -ic manual_rdm \
+..         --base-path /photometry_test_data/ricksims/ \
+..         -t phrosty/tests/11_instances_templates_1.csv \
+..         -s phrosty/tests/11_instances_science_2.csv \
+..         -p 1 -w 1 \
+..         -v
 
 Running with the NSight Profiler
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -361,9 +361,9 @@ If look look at the bottom of the script, you will see that the number of parall
 
 **Make sure expected directories exists**: If you look at the batch script, you'll see a number of ``--mount`` flags that bind-mount directories inside the container.  From the location where you submit your job, all of the ``source=`` part of those ``--mount`` directives must be available.  For the demo, you will need to create the following directories underneath where you plan to submit the script::
 
-  mkdir lc_out_dir
-  mkdir dia_out_dir
-  mkdir $SCRATCH/phrosty_temp
+  mkdir -p lc_out_dir
+  mkdir -p dia_out_dir
+  mkdir -p $SCRATCH/phrosty_temp
 
 **Submitting your job**: Once you've are satisfied with your job script, submit it with::
 
@@ -423,10 +423,10 @@ That will take a long time.  When it's done, there should be a file::
 
 Pick a directory to work in; I will henceforth call this your "parent" directory.  Make some necessary directories here::
 
-  mkdir phrosty_temp
-  mkdir dia_out_dir
-  mkdir lc_out_dir
-  mkdir ou2024_images
+  mkdir -p phrosty_temp
+  mkdir -p dia_out_dir
+  mkdir -p lc_out_dir
+  mkdir -p ou2024_images
 
 Copy the data
 ^^^^^^^^^^^^^

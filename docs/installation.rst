@@ -13,7 +13,7 @@ Installation
 System Requirements
 -------------------
 
-``phrosty`` can run using either a ``cupy`` (CUDA 12.4, requires an NVIDIA GPU) or ``numpy`` backend (CPU). Empirically, you will need at least 36 GB GPU memory or 56 GB CPU memory to run these backends, respectively, for a standard 4088 x 4088 px *Roman* image.
+``phrosty`` can run using either a ``cupy`` (CUDA 12.4, requires an NVIDIA GPU) or ``numpy`` backend (CPU). Empirically, you will need at least 30 GB GPU memory or 56 GB CPU memory to run these backends, respectively, for a standard 4088 x 4088 px *Roman* image.
 
 To properly set up ``phrosty``, you need to follow **one** of the sections here, followed by `Install from sources<install-from-sources>`.
 
