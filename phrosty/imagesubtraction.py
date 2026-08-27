@@ -142,7 +142,7 @@ def sky_subtract( img, temp_dir=None,
         img.data = origimg.data
         hdr = img.get_fits_header()
         img.save( which="data" )
-    import pdb; pdb.set_trace()
+
     SNLogger.debug( "Interpolate over bad pixels...")
     # NOTE: Make interp_mask do something at a later time.
     interp_data, _ = interpolate_over_bad_pixels(img.data, origimg.flags)
