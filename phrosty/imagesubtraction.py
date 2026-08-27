@@ -164,7 +164,8 @@ def sky_subtract( img, temp_dir=None,
                             )
 
     subim.save( overwrite=True )
-
+    SNLogger.debug( "...back from sky subtraction." )
+    SNLogger.debug( "Beginning source detection..." )
     # Based on the photutils.background documentation
     sigma_clip = SigmaClip(sigma=2.0, maxiters=10)
     threshold = detect_threshold(sky_subtracted_data, n_sigma=20.0, sigma_clip=sigma_clip)
@@ -176,26 +177,24 @@ def sky_subtract( img, temp_dir=None,
     mask = convolve2d(mask, mask_footprint, fillvalue=0, mode="same")
 
     segment_img = detect_sources(sky_subtracted_data, threshold, n_pixels=10, mask=mask)
-
     if segment_img is not None:
         detection_footprint = circular_footprint(radius=10)
 
         # convert boolean into float 1, and 0 because data must be float (not bool or int).
         detmask_data = np.asarray(segment_img.make_source_mask(footprint=detection_footprint), dtype="float")
 
-        SNLogger.debug( "...back from sky subtraction." )
-
-        detmaskim = snappl.image.FITSImage(
-                                            full_filepath=tmpdetmaskpath,
-                                            data=detmask_data,
-                                            header=hdr
-                                        )
-        detmaskim.save( overwrite=True )
-
-        return subim, np.zeros(np.shape(subim)), rms
-
     elif segment_img is None:
-        return subim, None, rms
+        detmask_data = np.zeros(np.shape(subim.data))
+
+    detmaskim = snappl.image.FITSImage(
+                                        full_filepath=tmpdetmaskpath,
+                                        data=detmask_data,
+                                        header=hdr
+                                       )
+    detmaskim.save( overwrite=True )
+
+    SNLogger.debug( "...back from source detection." )
+    return subim, detmaskim, rms
 
 def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop="data"):
     """Make stamps.
