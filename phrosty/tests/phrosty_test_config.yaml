@@ -1,3 +1,6 @@
+replaceable_preloads:
+  - ${SNPIT_DEFAULT_CONFIG}
+
 system:
   paths:
     temp_dir: phrosty/tests/test_output/temp
