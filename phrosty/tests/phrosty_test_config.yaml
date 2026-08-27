@@ -1,9 +1,10 @@
 system:
   paths:
     temp_dir: phrosty/tests/test_output/temp
-    dia_out_dir: phrosty/tests/test_output/dia_out_dir
-    ltcv_dir: phrosty/tests/test_output/lc_out_dir
-    intermediate_dir: phrosty/tests/test_output/intermediate_dir
+    phrosty:
+      dia_out_dir: phrosty/tests/test_output/dia_out_dir
+      ltcv_dir: phrosty/tests/test_output/lc_out_dir
+      intermediate_dir: phrosty/tests/test_output/intermediate_dir
 
   # Only worry about system.ou24 if using OpenUniverse2024 sims.
   # Otherwise, this can be deleted or commented out.

@@ -549,6 +549,13 @@ The column headers in the output ``pq`` files are:
 * ``mag_err``
 * ``success``
 
+A note on running tests
+=======================
+
+In all environment set-ups, tests should be run from ``$RUNDIR/packages/phrosty``, with the following command::
+
+  pytest -vs phrosty/tests
+
 .. Running on OpenUniverse data
 .. ----------------------------
 

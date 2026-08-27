@@ -142,7 +142,7 @@ def sky_subtract( img, temp_dir=None,
         img.data = origimg.data
         hdr = img.get_fits_header()
         img.save( which="data" )
-
+    import pdb; pdb.set_trace()
     SNLogger.debug( "Interpolate over bad pixels...")
     # NOTE: Make interp_mask do something at a later time.
     interp_data, _ = interpolate_over_bad_pixels(img.data, origimg.flags)
@@ -163,7 +163,7 @@ def sky_subtract( img, temp_dir=None,
                                 header=hdr
                             )
 
-    subim.save()
+    subim.save( overwrite=True )
 
     # Based on the photutils.background documentation
     sigma_clip = SigmaClip(sigma=2.0, maxiters=10)
@@ -190,9 +190,9 @@ def sky_subtract( img, temp_dir=None,
                                             data=detmask_data,
                                             header=hdr
                                         )
-        detmaskim.save()
+        detmaskim.save( overwrite=True )
 
-        return subim, detmaskim, rms
+        return subim, np.zeros(np.shape(subim)), rms
 
     elif segment_img is None:
         return subim, None, rms
@@ -272,7 +272,7 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop="data
           #   needed to Stamp_Generator.SG instead of assuming it will read
           #   all the right things out of the header.
           # See issue 177: https://github.com/Roman-Supernova-PIT/phrosty/issues/177
-            img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
+            img = snappl.image.FITSImage( full_filepath=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
             img.data = origimg.data
             img.save( which="data" )
 

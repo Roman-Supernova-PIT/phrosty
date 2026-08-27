@@ -506,7 +506,6 @@ class Pipeline:
             allcoates.
 
         """
-
         hdr_sci = sci_image.image.get_wcs().get_astropy_wcs().to_header( relax=True )
         hdr_sci.insert( 0, ('NAXIS', 2) )
         hdr_sci.insert( 'NAXIS', ('NAXIS1', sci_image.image.data.shape[1] ), after=True )

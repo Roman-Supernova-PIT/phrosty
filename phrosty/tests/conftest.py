@@ -141,7 +141,7 @@ def ou2024_image_collection():
 @pytest.fixture
 def one_science_image( scope="session" ):
     try:
-        img = CompressedFITSImage( path=('../photometry_test_data/ou2024/images/simple_model/'
+        img = CompressedFITSImage( full_filepath=('../photometry_test_data/ou2024/images/simple_model/'
                                      'Y106/35198/Roman_TDS_simple_model_Y106_35198_2.fits.gz'),
                                    imagehdu=1,
                                    observation_id='35198',
@@ -154,7 +154,7 @@ def one_science_image( scope="session" ):
 @pytest.fixture
 def one_template_image( scope="session" ):
     try:
-        img = CompressedFITSImage( path=('../photometry_test_data/ou2024/images/simple_model/'
+        img = CompressedFITSImage( full_filepath=('../photometry_test_data/ou2024/images/simple_model/'
                                      'Y106/5934/Roman_TDS_simple_model_Y106_5934_3.fits.gz' ),
                                    imhdu=1,
                                    observation_id='5934',
@@ -183,7 +183,7 @@ def nan_image():
 
     # NOTE: path='/dev/null' because at this time, snappl requires a path to instantiate
     # a FITSImage object.
-    nan_img = FITSImageStdHeaders( path='/dev/null',
+    nan_img = FITSImageStdHeaders( full_filepath='/dev/null',
                                    data=nan_arr
                                  )
     nan_img.band = 'Y106'
