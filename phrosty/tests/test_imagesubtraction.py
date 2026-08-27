@@ -15,13 +15,22 @@ def test_sky_subtract( dia_out_dir ):
     in_path = dia_out_dir / "random.fits"
     skysub_path = dia_out_dir / "skysub.fits"
     detmask_path = dia_out_dir / "detmask.fits"
+    flags_path = dia_out_dir / "flags.fits"
 
     try:
         rng = random.default_rng( 42 )
         imdata = rng.normal( 100., 10., ( 512, 512 ) )
+        
+        flagdata = np.zeros( (512, 512) ).astype(int)
+        flagdata[:3] = 0
+        np.random.shuffle(flagdata)
+
         hdr = fits.header.Header()
         fits.writeto( in_path, imdata, header=hdr )
-        img = CompressedFITSImage( path=in_path )
+        fits.writeto( flags_path, flagdata, header=hdr )
+
+        img = CompressedFITSImage( full_filepath=in_path,
+                                   flagspath=flags_path)
 
         subim, _detmask, skymedrms = phrosty.imagesubtraction.sky_subtract( img, temp_dir=dia_out_dir )
         assert skymedrms == pytest.approx( 10., abs=0.2 )
@@ -29,7 +38,7 @@ def test_sky_subtract( dia_out_dir ):
         assert subim.data.std() == pytest.approx( 10., rel=0.05 )
 
     finally:
-        for f in ( in_path, skysub_path, detmask_path ):
+        for f in ( in_path, skysub_path, detmask_path, flags_path ):
             f.unlink( missing_ok=True )
 
 
