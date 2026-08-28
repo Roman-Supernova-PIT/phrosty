@@ -26,16 +26,16 @@ def test_pipeline_run_simple_gauss1( config ):
                                              base_path='../photometry_test_data/simple_gaussian_test/sig2.0' )
 
     # Use for longer test with full "lightcurve" and two templates:
-    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
-    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
+    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
+    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in range( 60010, 60065, 5 ) ]
 
     # Use for shorter test with only two "observations":
     # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
     # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60030, 60035 ] ]
 
     # Shortest test with only one template and one science:
-    tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
-    sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60035 ] ]
+    # tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000 ] ]
+    # sciim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60035 ] ]
 
     # We have to muck about with the config, because the default config loaded for tests is
     #   set up for ou2024.  We're going to do naughty things we're not supposed to do,
@@ -74,7 +74,7 @@ def test_pipeline_run_simple_gauss1( config ):
         measapdflux = []
         apresid = []
         plotzpt = 31.4
-        lc_obj = Lightcurve( filepath=ltcv )
+        lc_obj = Lightcurve( filepath=ltcv, no_base_path=True )
         for row in lc_obj.lightcurve:
             mjd = row['mjd']
             # We know what the fluxes are supposed to be; see
