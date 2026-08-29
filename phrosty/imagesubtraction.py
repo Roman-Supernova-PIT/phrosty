@@ -157,6 +157,15 @@ def sky_subtract( img, temp_dir=None,
     sky_subtracted_data = interp_data - bkg.background
     rms = bkg.background_rms_median
 
+    subim = snappl.image.FITSImage(
+                                full_filepath=tmpsubpath,
+                                data=sky_subtracted_data,
+                                header=hdr
+                            )
+
+    subim.save( overwrite=True )
+    SNLogger.debug( "...back from sky subtraction." )
+    SNLogger.debug( "Beginning source detection..." )
     # Based on the photutils.background documentation
     sigma_clip = SigmaClip(sigma=2.0, maxiters=10)
     threshold = detect_threshold(sky_subtracted_data, n_sigma=20.0, sigma_clip=sigma_clip)
@@ -168,29 +177,24 @@ def sky_subtract( img, temp_dir=None,
     mask = convolve2d(mask, mask_footprint, fillvalue=0, mode="same")
 
     segment_img = detect_sources(sky_subtracted_data, threshold, n_pixels=10, mask=mask)
-    detection_footprint = circular_footprint(radius=10)
+    if segment_img is not None:
+        detection_footprint = circular_footprint(radius=10)
 
-    # convert boolean into float 1, and 0 because data must be float (not bool or int).
-    detmask_data = np.asarray(segment_img.make_source_mask(footprint=detection_footprint), dtype="float")
+        # convert boolean into float 1, and 0 because data must be float (not bool or int).
+        detmask_data = np.asarray(segment_img.make_source_mask(footprint=detection_footprint), dtype="float")
 
-    SNLogger.debug( "...back from sky subtraction." )
-
-    subim = snappl.image.FITSImage(
-                                    full_filepath=tmpsubpath,
-                                    data=sky_subtracted_data,
-                                    header=hdr
-                                  )
-    subim.save()
+    elif segment_img is None:
+        detmask_data = np.zeros(np.shape(subim.data))
 
     detmaskim = snappl.image.FITSImage(
                                         full_filepath=tmpdetmaskpath,
                                         data=detmask_data,
                                         header=hdr
-                                      )
-    detmaskim.save()
+                                       )
+    detmaskim.save( overwrite=True )
 
+    SNLogger.debug( "...back from source detection." )
     return subim, detmaskim, rms
-
 
 def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop="data"):
     """Make stamps.
@@ -267,7 +271,7 @@ def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop="data
           #   needed to Stamp_Generator.SG instead of assuming it will read
           #   all the right things out of the header.
           # See issue 177: https://github.com/Roman-Supernova-PIT/phrosty/issues/177
-            img = snappl.image.FITSImage( path=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
+            img = snappl.image.FITSImage( full_filepath=savedir / f"{barf}.fits", header=origimg.get_fits_header() )
             img.data = origimg.data
             img.save( which="data" )
 

@@ -34,6 +34,7 @@ from snappl.provenance import Provenance
 from snappl.psf import PSF
 from snappl.config import Config
 from snappl.logger import SNLogger
+# from snappl.utils import asUUID
 
 
 class PipelineImage:
@@ -56,7 +57,7 @@ class PipelineImage:
         self.temp_dir = pipeline.temp_dir
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         if self.keep_intermediate:
-            self.save_dir = pathlib.Path( self.config.value( 'system.paths.scratch_dir' ) )
+            self.save_dir = pathlib.Path( self.config.value( 'system.paths.phrosty.intermediate_dir' ) )
         elif not self.keep_intermediate:
             self.save_dir = self.temp_dir
 
@@ -220,6 +221,7 @@ class Pipeline:
                   nwrite=5,
                   verbose=False,
                   memtrace=False,
+                  backend='cupy',
                   catchfailures=False ):
 
         """Create the a pipeline object.
@@ -263,11 +265,11 @@ class Pipeline:
            ltcv_prov_tag: str
              Provenance tag for light curve. Required to use SN PIT database.
 
-           dbsave: bool
+           dbsave: bool, default False
              Are we saving to the database?
-             Default False.
 
-           dbclient: snappl.dbclient.SNPITDBClient
+           dbclient: snappl.dbclient.SNPITDBClient, default None
+             Client for saving to the SN PIT database.
 
            nprocs: int, default 1
              Number of cpus for the CPU multiprocessing segments of the pipeline.
@@ -281,6 +283,10 @@ class Pipeline:
 
            memtrace: bool, default False
              Toggle memory tracing.
+
+           backend: str, default cupy
+             Backend for SFFT subtraction (numpy or cupy).
+             Acceptable inputs are: "numpy", "np", "cupy", or "cp".
 
            catchfailures: bool, default False
              Toggle collection of information for images that fail. If true, pipeline
@@ -297,12 +303,15 @@ class Pipeline:
         self.band = band
         self.oid = oid
 
-        self.dia_out_dir = pathlib.Path( self.config.value( 'system.paths.dia_out_dir' ) )
-        self.scratch_dir = pathlib.Path( self.config.value( 'system.paths.scratch_dir' ) )
+        self.dia_out_dir = pathlib.Path( self.config.value( 'system.paths.phrosty.dia_out_dir' ) )
+        self.dia_out_dir.mkdir( exist_ok=True, parents=True )
+        self.intermediate_dir = pathlib.Path( self.config.value( 'system.paths.phrosty.intermediate_dir' ) )
+        self.intermediate_dir.mkdir( exist_ok=True, parents=True )
         self.temp_dir_parent = pathlib.Path( self.config.value( 'system.paths.temp_dir' ) )
         self.temp_dir = self.temp_dir_parent / str(uuid.uuid1())
-        self.temp_dir.mkdir()
-        self.ltcv_dir = pathlib.Path( self.config.value( 'system.paths.ltcv_dir' ) )
+        self.temp_dir.mkdir( exist_ok=True, parents=True )
+        self.ltcv_dir = pathlib.Path( self.config.value( 'system.paths.phrosty.ltcv_dir' ) )
+        self.ltcv_dir.mkdir( exist_ok=True, parents=True )
 
         if ( science_images is None) == ( science_csv is None ):
             raise ValueError( "Pass exactly one of science_images or science_csv" )
@@ -343,7 +352,9 @@ class Pipeline:
 
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         self.remove_temp_dir = self.config.value( 'photometry.phrosty.remove_temp_dir' )
-        self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
+        self.mem_trace = memtrace
+
+        self.backend = backend
 
         # Debug LNA 20251202
         # self.resid_img = None
@@ -382,10 +393,21 @@ class Pipeline:
                     try:
                         # This should yell at us if the observation_id
                         # or sca doesn't match what is read from the path
+
+                        # Below: future code from Rob for not needing paths
+                        # when we use the database
+                        # imageid = None
+                        # actual_path = None
+                        # try:
+                        #     imageid = asUUID( path )
+                        # except <whatever the right exception is>:
+                        #     actual_path = path
                         imlist.append( self.imgcol.get_image( path=path,
                                                               observation_id=observation_id,
                                                               sca=sca,
-                                                              band=band ) )
+                                                              band=band
+                                                              # image_id = imageid
+                                                               ) )
                     except Exception as e:
                         SNLogger.warning( f"Could not find the image using observation_id, sca, and/or band, \
                                            so just using the path. Failure: {e}" )
@@ -484,7 +506,6 @@ class Pipeline:
             allcoates.
 
         """
-
         hdr_sci = sci_image.image.get_wcs().get_astropy_wcs().to_header( relax=True )
         hdr_sci.insert( 0, ('NAXIS', 2) )
         hdr_sci.insert( 'NAXIS', ('NAXIS1', sci_image.image.data.shape[1] ), after=True )
@@ -520,7 +541,8 @@ class Pipeline:
                                     PixA_object_DMASK=templ_detmask,
                                     PSF_target=sci_psf,
                                     PSF_object=templ_psf,
-                                    KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder')
+                                    KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder'),
+                                    BACKEND_4SUBTRACT=self.backend
                                   )
 
         sfftifier.resample_image_mask_psf()
@@ -561,8 +583,8 @@ class Pipeline:
         forcecoords = Table([[float(pxcoords[0])], [float(pxcoords[1])]], names=["x", "y"])
         init = img.ap_phot( forcecoords, ap_r=ap_r )
         init.rename_column( 'aperture_sum', 'flux_init' )
-        init.rename_column( 'xcenter', 'xcentroid' )
-        init.rename_column( 'ycenter', 'ycentroid' )
+        init.rename_column( 'x_center', 'x_init' )
+        init.rename_column( 'y_center', 'y_init' )
         final = img.psf_phot( init_params=init,
                               psf=psf,
                               forced_phot=True
@@ -676,18 +698,18 @@ class Pipeline:
             results_dict.update( self.phot_at_coords( diff_img, psf, pxcoords=pxcoords, ap_r=ap_r) )
             # Add additional info to the results dictionary so it can be merged into a nice file later.
             SNLogger.debug( "...make_phot_info_dict getting zeropoint" )
-            results_dict['zpt'] = sci_image.image.zeropoint
+            results_dict['zpt'] = sci_image.image.get_zeropoint(pix_x, pix_y)
             results_dict['success'] = True
+            SNLogger.debug( "...make_phot_info_dict done." )
+
+            return results_dict
 
         except Exception as e:
             # results_dict['ap_zpt'] = np.nan
             SNLogger.debug( f"...make_phot_info_dict failed for \
                              {sci_image.image.name} - {templ_image.image.name}. Reason: {e}" )
-
-        finally:
             # Basically, make_lightcurve will never "fail". Instead, you will get a row of NaN
             # with results_dict['success'] = False if something weird happened, here.
-            SNLogger.debug( "...make_phot_info_dict done." )
             return results_dict
 
     def add_to_results_dict( self, one_pair ):
@@ -951,7 +973,7 @@ class Pipeline:
             lc_obj.provenance_object = ltcvprov
 
         else:
-            lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata)
+            lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata, no_base_path=True)
 
         if self.dbsave:
             SNLogger.debug( "Saving results to database..." )
@@ -1269,7 +1291,7 @@ class Pipeline:
                         # Write the intermediate files
                         for key in write_filepaths.keys():
                             for (imgtype, name, data, header) in write_filepaths[key]:
-                                savepath = self.scratch_dir / f'{key}_{imgtype}_{name}'
+                                savepath = self.intermediate_dir / f'{key}_{imgtype}_{name}'
                                 self.write_fits_file( data, header, savepath=savepath )
 
                     SNLogger.info( f"DONE processing {sci_image.image.name} minus {templ_image.image.name}" )
@@ -1465,8 +1487,11 @@ def main():
                          help="Stop after this step; one of (see above)" )
     parser.add_argument( '--dbsave', action='store_true',
                          help="Toggle saving to the database." )
-    parser.add_argument( '--memtrace', action='store_true',
+    parser.add_argument( '--memtrace', action='store_true', default=False,
                          help="Toggle memory tracing with tracemalloc.")
+    parser.add_argument( '--backend', type=str, default='cupy',
+                         help="Choose numpy or cupy backend. Options are: \
+                               numpy, np, cupy, or cp.")
     parser.add_argument( '--catchfailures', action='store_true',
                          help="Toggle failure collection. If true, pipeline does not \
                                cancel if one image fails. If false, pipeline crashes if \
@@ -1550,7 +1575,11 @@ def main():
         SNLogger.error( 'Must provide --image-provenance-tag if --image-collection is snpitdb.' )
         raise ValueError( f'args.image_provenance_tag is {args.image_provenance_tag}.' )
 
-    dbclient = SNPITDBClient()
+    if args.dbsave:
+        dbclient = SNPITDBClient()
+    else:
+        dbclient = None
+
     # Get the DiaObject, update the RA and Dec
     if args.diaobject_id is None:
         diaobjs = DiaObject.find_objects( collection=args.object_collection,
@@ -1610,6 +1639,7 @@ def main():
                          nwrite=args.nwrite,
                          verbose=args.verbose,
                          memtrace=args.memtrace,
+                         backend=args.backend,
                          catchfailures=args.catchfailures )
 
     pipeline( args.through_step )

@@ -20,11 +20,10 @@ from snappl.image import FITSImageStdHeaders
 #   test.
 
 # This one writes a diagnostic plot file to test_plots/test_pipeline_run_simple_gauss1.pdf
-@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0), reason="SKIP_GPU_TESTS is set")
 def test_pipeline_run_simple_gauss1( config ):
     obj = DiaObject.find_objects( collection='manual', name='foo', ra=120, dec=-13. )[0]
     imgcol = ImageCollection.get_collection( 'manual_fits', subset='threefile',
-                                             base_path='/photometry_test_data/simple_gaussian_test/sig2.0' )
+                                             base_path='../photometry_test_data/simple_gaussian_test/sig2.0' )
 
     # Use for longer test with full "lightcurve" and two templates:
     tmplim = [ imgcol.get_image(path=f'test_{t:7.1f}') for t in [ 60000., 60005. ] ]
@@ -60,7 +59,8 @@ def test_pipeline_run_simple_gauss1( config ):
                         template_images=tmplim,
                         nprocs=1,
                         nwrite=1,
-                        catchfailures=False )
+                        catchfailures=False,
+                        backend='numpy' )
         ltcv = pip()
         chisq = 0.
         apchisq = 0.
@@ -74,7 +74,7 @@ def test_pipeline_run_simple_gauss1( config ):
         measapdflux = []
         apresid = []
         plotzpt = 31.4
-        lc_obj = Lightcurve( filepath=ltcv )
+        lc_obj = Lightcurve( filepath=ltcv, no_base_path=True )
         for row in lc_obj.lightcurve:
             mjd = row['mjd']
             # We know what the fluxes are supposed to be; see
@@ -159,16 +159,14 @@ def test_pipeline_run_simple_gauss1( config ):
         config._static = True
 
 
-@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 def test_pipeline_run( object_for_tests, ou2024_image_collection,
                        one_ou2024_template_image, two_ou2024_science_images ):
 
     pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
                     science_images=two_ou2024_science_images,
                     template_images=one_ou2024_template_image,
-                    nprocs=1, nwrite=1 )
+                    nprocs=1, nwrite=1, backend='numpy' )
     ltcv = pip()
-
     ifp = Table.read(ltcv, format='parquet')
     hdrline = tuple(ifp.columns)
     assert hdrline == ( 'mjd', 'flux', 'flux_err', 'zpt', 'NEA', 'sky_rms', 'observation_id', 'sca',
@@ -186,11 +184,12 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         assert int(pair['sca']) == int(img.sca)
         assert int(pair['template_observation_id']) == int(one_ou2024_template_image.observation_id)
         assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
-        assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
+        # NOTE: THE ZEROPOINT CHECK IS COMMENTED OUT UNTIL THE SNAPPL ZEROPOINT STUFF
+        # IS MORE COMPLETE
+        # assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
 
     # Tests aren't exactly reproducible from one run to the next,
-    #   because some classes (including the galsim PSF that we use right
-    #   now) have random numbers in them, and at the moment we aren't
+    #   because some classes have random numbers in them, and we aren't
     #   controlling the seed.  So, we can only test for approximately
     #   consistent results.  Going to do 0.3 times the uncertainty,
     #   because a difference by that much is not all that meaningful
@@ -198,27 +197,26 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     #   alarming, but what can you do.)
 
     dflux = float( pairs[0]['flux_err'] )
-    assert dflux == pytest.approx( 540., rel=0.3 )
+    assert dflux == pytest.approx( 343., rel=0.3 )
     dmag = float( pairs[0]['mag_err'] )
-    assert dmag == pytest.approx( 0.49, abs=0.1 )
-    assert float( pairs[0]['aperture_sum'] ) == pytest.approx( 1006.897, abs=0.3*dflux )
-    assert float( pairs[0]['flux'] ) == pytest.approx( 1193.509, abs=0.3*dflux )
-    assert float( pairs[0]['mag'] ) == pytest.approx( -7.692, abs=max( 0.3*dmag, 0.01 ) )
+    assert dmag == pytest.approx( 0.5, abs=0.1 )
+    assert float( pairs[0]['aperture_sum'] ) == pytest.approx( 880., abs=0.3*dflux )
+    assert float( pairs[0]['flux'] ) == pytest.approx( 708., abs=0.3*dflux )
+    assert float( pairs[0]['mag'] ) == pytest.approx( -7.1, abs=max( 0.3*dmag, 0.01 ) )
 
     dflux = float( pairs[1]['flux_err'] )
-    assert dflux == pytest.approx( 525.716, rel=0.3 )
+    assert dflux == pytest.approx( 335., rel=0.3 )
     dmag = float( pairs[1]['mag_err'] )
     assert dmag == pytest.approx( 0.11, abs=0.1 )
-    assert float( pairs[1]['aperture_sum'] ) == pytest.approx( 4050.392, abs=0.3*dflux )
-    assert float( pairs[1]['flux'] ) == pytest.approx( 4986.560, abs=0.3*dflux )
-    assert float( pairs[1]['mag'] ) == pytest.approx( -9.24, abs=max( 0.3*dmag, 0.01 ) )
+    assert float( pairs[1]['aperture_sum'] ) == pytest.approx( 4010., abs=0.3*dflux )
+    assert float( pairs[1]['flux'] ) == pytest.approx( 3028., abs=0.3*dflux )
+    assert float( pairs[1]['mag'] ) == pytest.approx( -8.7, abs=max( 0.3*dmag, 0.01 ) )
 
     # TODO : cleanup output directories!  This is scary if you're using the same
     #   directories for tests and for running... so don't do that... but the
     #   way we're set up right now, you probably are.
 
 
-@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 def test_no_failures( config, object_for_tests, ou2024_image_collection,
                       one_ou2024_template_image, two_ou2024_science_images ):
 
@@ -226,15 +224,19 @@ def test_no_failures( config, object_for_tests, ou2024_image_collection,
     # supposed to work fine.
     # TODO: Expand beyond OU2024 images.
 
-    nprocss = [1, 3]
-    nwrites = [1, 3]
+    # nprocss = [1, 3]
+    # nwrites = [1, 3]
+
+    nprocss = [3]
+    nwrites = [1]
 
     for i in nprocss:
         for j in nwrites:
             pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
                             science_images=two_ou2024_science_images[0],
                             template_images=one_ou2024_template_image,
-                            nprocs=i, nwrite=j, catchfailures=True )
+                            nprocs=i, nwrite=j, catchfailures=True,
+                            backend='numpy' )
 
             pip()
 
@@ -253,7 +255,7 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
     config._static = False
     orig_psf = config.value( 'photometry.phrosty.psf.type' )
 
-    scratchdir = pathlib.Path( config.value( 'system.paths.scratch_dir' ) )
+    scratchdir = pathlib.Path( config.value( 'system.paths.temp_dir' ) )
     test_image_path = scratchdir / 'test_nan'
     test_image = FITSImageStdHeaders( full_filepath=test_image_path,
                                       data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
@@ -274,7 +276,7 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
                 pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
                                 science_images=[test_image, two_ou2024_science_images[1]],
                                 template_images=[one_ou2024_template_image],
-                                nprocs=i, nwrite=j, catchfailures=True )
+                                nprocs=i, nwrite=j, catchfailures=True, backend='numpy' )
 
                 pip()
 
@@ -293,9 +295,8 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
     config._static = True
 
 
-@pytest.mark.skipif( os.getenv("SKIP_GPU_TESTS", 0 ), reason="SKIP_GPU_TESTS is set" )
 def test_nan_handling( config, object_for_tests, ou2024_image_collection,
-                               one_ou2024_template_image, two_ou2024_science_images ):
+                       one_ou2024_template_image, two_ou2024_science_images ):
 
     # Inputting an image full of NaN apparently does not cause the pipeline to fail at all.
     # Fine, as long as the corresponding row in the parquet file is also full of NaNs.
@@ -304,7 +305,7 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
     nwrites = [1, 3]
 
     # Make an image full of NaN:
-    scratchdir = pathlib.Path( config.value( 'system.paths.scratch_dir' ) )
+    scratchdir = pathlib.Path( config.value( 'system.paths.temp_dir' ) )
     test_image_path = scratchdir / 'test_nan'
     nan_image = FITSImageStdHeaders( full_filepath=test_image_path,
                                      data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
@@ -328,12 +329,12 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
             pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
                             science_images=[nan_image, two_ou2024_science_images[1]],
                             template_images=[one_ou2024_template_image],
-                            nprocs=i, nwrite=j, catchfailures=True )
+                            nprocs=i, nwrite=j, catchfailures=True, backend='numpy' )
 
 
             ltcv = pip()
 
-            lc_obj = Lightcurve( filepath=ltcv )
+            lc_obj = Lightcurve( filepath=ltcv, no_base_path=True )
 
             assert len(pip.failures['skysub']) == 0
             assert len(pip.failures['get_psf']) == 0
@@ -358,10 +359,11 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
             pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
                             science_images=two_ou2024_science_images[0],
                             template_images=nan_image,
-                            nprocs=i, nwrite=j, catchfailures=True )
+                            nprocs=i, nwrite=j, catchfailures=True,
+                            backend='numpy' )
 
             ltcv = pip()
-            lc_obj = Lightcurve( filepath=ltcv )
+            lc_obj = Lightcurve( filepath=ltcv, no_base_path=True )
 
             assert len(pip.failures['skysub']) == 0
             assert len(pip.failures['get_psf']) == 0

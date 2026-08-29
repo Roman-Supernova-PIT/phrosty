@@ -1,0 +1,25 @@
+preloads:
+  - /snpit_env/configs/rknop_dev_container_config.yaml
+
+system:
+  paths:
+    phrosty:
+      dia_out_dir: /scratch/dia_out_dir/
+      ltcv_dir: /scratch/lc_out_dir/
+      intermediate_dir: /scratch/intermediate_dir/
+    snappl:
+      A25ePSF_path: /a25epsf
+
+photometry:
+  phrosty:
+    keep_intermediate: true
+    remove_temp_dir: false
+    mem_trace: false
+    kerpolyorder: 2
+
+    sfft:
+      radius_cut_detmask: 2
+
+    psf:
+      type: gaussian
+      params: {'sigmax': 0.43, 'sigmay': 0.43}

@@ -1,0 +1,30 @@
+# NOTE: You will need to update this with local paths for yourself.
+
+preloads:
+  - ${SNPIT_DEFAULT_CONFIG}
+
+system:
+  paths:
+    phrosty:
+      # The default locations for phrosty outputs are underneath the
+      # standard "dev storage" directory.  If you want them to go
+      # somewhere else, edit these paths to point to those locations
+      # (making sure to keep track if you are working inside a container
+      # or not).
+      dia_out_dir: ${system.paths.dev_storage}/dia_out_dir
+      ltcv_dir: ${system.paths.dev_storage}/ltcv_dir
+      intermediate_dir: ${system.paths.dev_storage}/intermediate_dir
+
+photometry:
+  phrosty:
+    keep_intermediate: true
+    remove_temp_dir: false
+    mem_trace: false
+    kerpolyorder: 2
+
+    sfft:
+      radius_cut_detmask: 2
+
+    psf:
+      type: gaussian
+      params: {'sigmax': 0.43, 'sigmay': 0.43}

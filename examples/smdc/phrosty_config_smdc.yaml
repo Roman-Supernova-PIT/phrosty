@@ -1,0 +1,24 @@
+preloads:
+  - ${SNPIT_DEFAULT_CONFIG}
+
+system:
+  paths:
+    dia_out_dir: ${system.paths.dev_storage}/phrosty_dia_out
+    intermediate_dir: ${system.paths.dev_storage}/phrosty_intermediate
+    # NOTE: Need to think about db vs. non-db writing of LC files. This writes to 
+    # not-db. 
+    ltcv_dir: ${system.paths.dev_storage}/phrosty_lc_out
+
+photometry:
+  phrosty:
+    force_sky_subtract: false
+    keep_intermediate: false
+    remove_temp_dir: false
+    kerpolyorder: 2
+
+    sfft:
+      radius_cut_detmask: 2
+
+    psf:
+      type: gaussian
+      params: {'sigmax': 0.43, 'sigmay': 0.43}
