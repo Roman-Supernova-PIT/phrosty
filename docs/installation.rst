@@ -80,6 +80,17 @@ You will need a standard default config file, which is referenced by the ``phros
 
 This will copy down a standard Roman SNPIT/snappl config file, which you use when you don't want to connect to any database.
 
+Then, set an environment variable that points to the standard default config file of your choice:
+
+.. _code_block: console
+
+  export SNPIT_DEFAULT_CONFIG=/path/to/local_nodb.yaml
+
+or:
+
+.. _code_block: console
+
+  export SNPIT_DEFAULT_CONFIG=/path/to/container_nodb.yaml
 
 .. _phrosty-local-cpu:
 

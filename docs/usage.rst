@@ -34,7 +34,9 @@ You can find three examples of these files in (**TODO: evaluate which of these s
 Running locally
 ===============
 
-If you are :ref:`in the correct environment<phrosty-local>` and have checked out the :ref:`photometry_test_data<photometry-test-data>` repo, from ``$RUNDIR``, do::
+If you are :ref:`in the correct environment<phrosty-local>` and have checked out the :ref:`photometry_test_data<photometry-test-data>` repo, from ``$RUNDIR``, do:
+
+.. _code_block: console
 
   python packages/phrosty/phrosty/pipeline.py \
   --oid 20172782 \
@@ -81,7 +83,9 @@ The SNe Ia in the sims are object IDs ``11`` and ``21``. We are going to test on
 Using a native venv
 ^^^^^^^^^^^^^^^^^^^
 
-Make sure you are in `the correct environment<phrosty-smdc>`. From the ``$RUNDIR``, run::
+Make sure you are in `the correct environment<phrosty-smdc>`. From the ``$RUNDIR``, run:
+
+.. _code_block: console
 
   SNPIT_CONFIG=packages/phrosty/phrosty_config_default.yaml python packages/phrosty/phrosty/pipeline.py \
   --oid 11 \
@@ -105,21 +109,25 @@ Using the Apptainer/Singularity container
 
 If you are in the Singularity container discussed in `the snappl documentation about running on SMDC <https://roman-supernova-pit.github.io/snappl/environment.html#running-on-smdc>`_, ``/mnt/roman-science-east-2/snpit/snana+romanisim+romancal/`` maps to ``/ricksims``.
 
-Do all of the things in the above link, and from ``$RUNDIR``, run the following::
+Do all of the things in the above link, and from ``$RUNDIR``, run the following:
 
-  SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
-        --oid 11 \
-        -oc manual \
-        -b J129 \
-        -r 9.366435 \
-        -d -43.958825 \
-        -ic manual_rdm \
-        --base-path /ricksims/ \
-        -t phrosty/tests/11_instances_templates_1.csv \
-        -s phrosty/tests/11_instances_science_2.csv \
-        -p 1 -w 1 \
-        --backend numpy \ # Delete if on a GPU node
-        -v
+.. _code_block: console
+
+  SNPIT_CONFIG=packages/phrosty/phrosty_config_default.yaml python packages/phrosty/phrosty/pipeline.py \
+  --oid 11 \
+  -oc manual \
+  -b J129 \
+  -r 9.366435 \
+  -d -43.958825 \
+  -ic manual_rdm \
+  --base-path /ricksims/ \
+  -t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \
+  -s packages/phrosty/phrosty/tests/11_instances_science_2.csv \
+  -p 1 -w 1 \
+  --backend numpy \
+  -v
+
+Delete ``--backend numpy \`` if you are on a GPU node.
 
 .. _perlmutter-example:
 
@@ -211,7 +219,9 @@ after a minute or so, that should log you into one of the nodes with a session t
 
 `cd` into your "parent" directory (if you're not there already).
 
-If you are not a member of the Roman SN PIT (i.e., assuming you pulled your container from :ref:`docker.io<phrosty-nersc-perlmutter>`), do::
+If you are not a member of the Roman SN PIT (i.e., assuming you pulled your container from :ref:`docker.io<phrosty-nersc-perlmutter>`), do:
+
+.. _code_block: console
 
   podman-hpc run --gpu \
     --mount type=bind,source=$PWD,target=/home \
@@ -234,7 +244,9 @@ If you are not a member of the Roman SN PIT (i.e., assuming you pulled your cont
     docker.io/rknop/roman-snpit-env:cuda-dev-0.1.41 \
     /bin/bash
 
-If you are in the Roman SN PIT (i.e., assuming you pulled your container from :ref:`registry.nersc.gov<phrosty-nersc-perlmutter>`), instead do::
+If you are in the Roman SN PIT (i.e., assuming you pulled your container from :ref:`registry.nersc.gov<phrosty-nersc-perlmutter>`), instead do:
+
+.. _code_block: console
 
   WHICHROMANENV=cuda-dev bash /global/cfs/cdirs/m4385/env/interactive-podman-rknop-dev.sh
 
@@ -242,17 +254,23 @@ If this fails, check :role:`the snappl documentation<https://roman-supernova-pit
 
 This will create a container image, and put in a bash shell inside the container.  This will put you inside the container.  Your prompt will change to something like ``root@56356f1a4b9b:/usr/src#`` (where the hex barf will be different every time).  At any time, run ``ls -F /``; if you see directories ``phrosty``, ``phrosty_temp``, ``dia_out_dir``, and the others that were mounted by ``interactive_podman.sh``, then you know you're working inside the container, rather than on the host machine.  Verify that the GPUs are visible inside the container with ``nvidia-smi``.
 
-Go to the ``/home`` directory, which is where your parent directory should be mounted::
+Go to the ``/home`` directory, which is where your parent directory should be mounted:
+
+.. _code_block: console
 
   cd /home
 
-The main Python executable for running the pipeline is ``phrosty/phrosty/pipeline.py``.  Run::
+The main Python executable for running the pipeline is ``phrosty/phrosty/pipeline.py``.  Run:
+
+.. _code_block: console
 
   SNPIT_CONFIG=packages/phrosty/examples/perlmutter/phrosty_config_nersc.yaml python packages/phrosty/phrosty/pipeline.py --help
 
 to see how it works, and to see what the various parameters you can specify are.  The output will be long, becasue everything that's in the config file is included as something you can override on the command line.  The arguments near the top are the ones you're more likely to want to think about.  You might want to pipe the output of this ``-help`` into ``less`` so you can see what's going on.
 
-Run this on your example lightcurve with::
+Run this on your example lightcurve with:
+
+.. _code_block: console
 
   SNPIT_CONFIG=/home/packages/phrosty/examples/perlmutter/phrosty_config_nersc.yaml python /home/packages/phrosty/phrosty/pipeline.py \
         --oid 20172782 \
@@ -268,7 +286,9 @@ Run this on your example lightcurve with::
 
 (If you run with ``.csv`` files that have larger number of images, you probably want to pass a larger number to `-p`; this is a number of parallel CPU processes that will run at once, and is limited by how many CPUs and how much memory you have available.  The code will only run one GPU process at once.  You can also try increasing `-w`, but this is more limited by filesystem performance than the number of CPUs and the amount of memory you have available.  We've set these both to 3 right now because there are only 3 files being processed (one template and two science images).  Empirically, on Perlmutter nodes, you can go up to something like `-p 15`; while there are (many) more CPUs than that, memory is the limiting factor.  Also, empirically, on Perlmutter, you can go up to something like `-w 5` before you reach the point of diminishing returns.  This is more variable, because whereas you have the node's CPUs to yourself, you're sharing the filesystem with the rest of the users of the system.)
 
-If all is well, you should see a final line that looks something like::
+If all is well, you should see a final line that looks something like:
+
+.. _code_block: console
 
   [2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/07c9acbe-87c1-4b3b-a52e-1a1e8dfa968e_R062.pq
 
@@ -298,7 +318,9 @@ You will also find new files in the ``dia_out_dir`` subdirectory, including seve
 Running with the NSight Profiler
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-When developing/debugging the pipeline, it's useful to run with a profiler, so you can see where the code is spending most of its time.  The huge ``roman-snpit-env:cuda-dev`` Docker image includes the NVIDIA NSight Systems profiler, and the ``phrosty`` code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in :ref:`perlmutter-interactive` above, only replacing the final ``python`` command with::
+When developing/debugging the pipeline, it's useful to run with a profiler, so you can see where the code is spending most of its time.  The huge ``roman-snpit-env:cuda-dev`` Docker image includes the NVIDIA NSight Systems profiler, and the ``phrosty`` code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in :ref:`perlmutter-interactive` above, only replacing the final ``python`` command with:
+
+.. _code_block: console
 
   nsys profile \
     --trace-fork-before-exec=true \

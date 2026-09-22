@@ -1,12 +1,9 @@
-# NOTE: You will need to update this with local paths for yourself.
-
-# If you don't have an SNPIT_DEFAULT_CONFIG, delete this section.
 preloads:
   - ${SNPIT_DEFAULT_CONFIG}
 
 system:
   paths:
-  # temp_dir: If you don't have an SNPIT_DEFAULT_CONFIG, you need to add this.
+  # temp_dir: If you don't use SNPIT_DEFAULT_CONFIG, you need to add this.
     phrosty:
       # The default locations for phrosty outputs are underneath the
       # standard "dev storage" directory.  If you want them to go
