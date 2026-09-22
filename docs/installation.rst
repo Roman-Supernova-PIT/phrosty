@@ -215,7 +215,13 @@ Installing on NERSC Perlmutter
 
 **This section will work for SN PIT members, and maybe anyone else with access to NERSC Perlmutter, which ostensibly could be you.**
 
-First, follow the instructions in `the snappl docs<https://roman-supernova-pit.github.io/snappl/environment.html#running-on-nersc>`_. If you aren't in the SN PIT, skip the stuff about a password and "secrets" folder to use the database.
+If you are in the SN PIT, follow the instructions in `the snappl docs<https://roman-supernova-pit.github.io/snappl/environment.html#running-on-nersc>`_. As of writing this, these docs describe submitting a job via ``sbatch`` and not interactive jobs; I recommend you try out ``phrosty`` interactively first. Instead of submitting a job with ``sbatch``, just use the appropriate launcher script::
+  
+  bash /global/cfs/cdirs/m4385/env/<launcher>
+
+Now you are in an environment that can run ``phrosty``.
+
+If you aren't in the SN PIT, the rest of this may still be useful.
 
 If you are on NERSC Perlmutter, you have access to NVIDIA GPUs with 40 GB GPU memory. Run ``module list``.  Make sure that ``cudatoolkit/12.4`` shows up in your list of modules.  If not, you may need to adjust the modules you have loaded.
 

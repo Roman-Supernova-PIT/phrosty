@@ -196,6 +196,7 @@ def sky_subtract( img, temp_dir=None,
     SNLogger.debug( "...back from source detection." )
     return subim, detmaskim, rms
 
+
 def stampmaker(ra, dec, shape, img, savedir=None, savename=None, data_prop="data"):
     """Make stamps.
 

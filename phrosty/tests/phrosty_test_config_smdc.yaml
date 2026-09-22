@@ -1,5 +1,5 @@
 replaceable_preloads:
-  - /data/snpit/environment/smdc_interactive_config.yaml
+  - /data/snpit/env/config/smdc_nodb_native.yaml
 
 system:
   paths:
