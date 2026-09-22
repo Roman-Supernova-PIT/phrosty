@@ -5,7 +5,7 @@ This update includes:
 - Thorough gutting of previous documentation that no longer reflects current status.
 - memtrace was duplicated as a config parameter and command line argument. Removed the config parameter in favor of the command line argument.
 - Remove need for system.paths.scratch_dir because it is redundant with system.paths.temp_dir
-- Add need for system.paths.intermediate_dir
+- Add need for system.paths.phrosty.intermediate_dir
 - Removed cupy-cuda12x as a required dependency and updated the installation docs to reflect this.
 - self.dbclient is None if dbsave = False. Now, phrosty no longer needs a secrets file if the database client is not involved.
 - AstropyDeprecationWarning fixes
