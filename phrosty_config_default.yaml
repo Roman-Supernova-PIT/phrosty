@@ -1,5 +1,6 @@
 # NOTE: You will need to update this with local paths for yourself.
 
+# If you don't have an SNPIT_DEFAULT_CONFIG, delete this section.
 preloads:
   - ${SNPIT_DEFAULT_CONFIG}
 
