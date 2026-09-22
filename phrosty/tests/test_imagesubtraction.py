@@ -5,7 +5,6 @@ import numpy as np
 import numpy.random as random
 
 from astropy.io import fits
-from astropy.wcs import WCS
 
 from snappl.image import CompressedFITSImage
 import phrosty.imagesubtraction
@@ -20,10 +19,10 @@ def test_sky_subtract( dia_out_dir ):
     try:
         rng = random.default_rng( 42 )
         imdata = rng.normal( 100., 10., ( 512, 512 ) )
-        
-        flagdata = np.zeros( (512, 512) ).astype(int)
+
+        flagdata = np.zeros( (512, 512), dtype=np.uint32 )
         flagdata[:3] = 0
-        np.random.shuffle(flagdata)
+        np.random.Generator.shuffle(flagdata)
 
         hdr = fits.header.Header()
         fits.writeto( in_path, imdata, header=hdr )
