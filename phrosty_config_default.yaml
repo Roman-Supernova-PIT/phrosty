@@ -5,6 +5,7 @@ preloads:
 
 system:
   paths:
+  # temp_dir: If you don't have an SNPIT_DEFAULT_CONFIG, you need to add this.
     phrosty:
       # The default locations for phrosty outputs are underneath the
       # standard "dev storage" directory.  If you want them to go
