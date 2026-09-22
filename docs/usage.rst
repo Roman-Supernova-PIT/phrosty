@@ -83,20 +83,22 @@ Using a native venv
 
 Make sure you are in `the correct environment<phrosty-smdc>`. From the ``$RUNDIR``, run::
 
-  SNPIT_CONFIG=packages/phrosty/examples/smdc/phrosty_config_smdc.yaml python packages/phrosty/phrosty/pipeline.py \
-        --oid 11 \
-        -oc manual \
-        -b J129 \
-        -r 9.366435 \
-        -d -43.958825 \
-        -ic manual_rdm \
-        --base-path /mnt/roman-science-east-2/snpit/snana+romanisim+romancal/ \
-        -t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \
-        -s packages/phrosty/phrosty/tests/11_instances_science_2.csv \
-        -p 1 -w 1 \
-        --backend numpy \ # Delete if on a GPU node
-        --memtrace \ # Can delete if memory tracing is not needed
-        -v
+  SNPIT_CONFIG=packages/phrosty/phrosty_config_default.yaml python packages/phrosty/phrosty/pipeline.py \
+  --oid 11 \
+  -oc manual \
+  -b J129 \
+  -r 9.366435 \
+  -d -43.958825 \
+  -ic manual_rdm \
+  --base-path /mnt/roman-science-east-2/snpit/snana+romanisim+romancal/ \
+  -t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \
+  -s packages/phrosty/phrosty/tests/11_instances_science_2.csv \
+  -p 1 -w 1 \
+  --backend numpy \
+  --memtrace \
+  -v
+
+Remember to delete ``--backend numpy \`` if you are on a GPU node. If you don't need to trace the CPU memory, you can also delete ``--memtrace \``.
 
 Using the Apptainer/Singularity container
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
