@@ -224,11 +224,8 @@ def test_no_failures( config, object_for_tests, ou2024_image_collection,
     # supposed to work fine.
     # TODO: Expand beyond OU2024 images.
 
-    # nprocss = [1, 3]
-    # nwrites = [1, 3]
-
-    nprocss = [3]
-    nwrites = [1]
+    nprocss = [1, 3]
+    nwrites = [1, 3]
 
     for i in nprocss:
         for j in nwrites:

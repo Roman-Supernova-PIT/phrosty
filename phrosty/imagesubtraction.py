@@ -187,10 +187,10 @@ def sky_subtract( img, temp_dir=None,
         detmask_data = np.zeros(np.shape(subim.data))
 
     detmaskim = snappl.image.FITSImage(
-                                        full_filepath=tmpdetmaskpath,
-                                        data=detmask_data,
-                                        header=hdr
-                                       )
+                                       full_filepath=tmpdetmaskpath,
+                                       data=detmask_data,
+                                       header=hdr
+                                      )
     detmaskim.save( overwrite=True )
 
     SNLogger.debug( "...back from source detection." )

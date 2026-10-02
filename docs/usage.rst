@@ -51,7 +51,7 @@ If you are :ref:`in the correct environment<phrosty-local>` and have checked out
   -v \
   --backend numpy
 
-If you are using a GPU, delete the line with `--backend numpy \`. If you're using a Mac, you always need this line because CUDA is not supported on Macs.
+If you are using a GPU, omit the line with `--backend numpy \`. If you're using a Mac, you always need this line because CUDA is not supported on Macs.
 
 Running on SMDC
 ===============
@@ -102,7 +102,7 @@ Make sure you are in `the correct environment<phrosty-smdc>`. From the ``$RUNDIR
   --memtrace \
   -v
 
-Remember to delete ``--backend numpy \`` if you are on a GPU node. If you don't need to trace the CPU memory, you can also delete ``--memtrace \``.
+Remember to omit ``--backend numpy \`` if you are on a GPU node. If you don't need to trace the CPU memory, you can also omit ``--memtrace \``.
 
 Using the Apptainer/Singularity container
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -127,7 +127,7 @@ Do all of the things in the above link, and from ``$RUNDIR``, run the following:
   --backend numpy \
   -v
 
-Delete ``--backend numpy \`` if you are on a GPU node.
+Omit ``--backend numpy \`` if you are on a GPU node.
 
 .. _perlmutter-example:
 
@@ -503,8 +503,8 @@ Let's break down a command you were instructed to use earlier. Recall::
         -t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \
         -s packages/phrosty/phrosty/tests/11_instances_science_2.csv \
         -p 1 -w 1 \
-        --backend numpy \ # Delete if on a GPU node
-        --memtrace \ # Can delete if memory tracing is not needed
+        --backend numpy \ # Omit if on a GPU node
+        --memtrace \ # Can omit if memory tracing is not needed
         -v
 
 Arg-by-arg...:
