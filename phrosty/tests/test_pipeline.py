@@ -185,7 +185,9 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         assert int(pair['template_observation_id']) == int(one_ou2024_template_image.observation_id)
         assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
         # NOTE: THE ZEROPOINT CHECK IS COMMENTED OUT UNTIL THE SNAPPL ZEROPOINT STUFF
-        # IS MORE COMPLETE
+        # IS MORE COMPLETE. We can't really check zeropoint at this time because it
+        # doesn't make sense to check it if we aren't sure how we are handling
+        # zeropoints yet.
         # assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
 
     # Tests aren't exactly reproducible from one run to the next,
