@@ -17,7 +17,6 @@ classifiers = [
   "Programming Language :: Python"
 ]
 dependencies = [
-  "cupy-cuda12x",
   "matplotlib",
   "nvtx",
   "roman-snpit-snappl>=0.28.0,<1.0.0",
