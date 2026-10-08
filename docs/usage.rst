@@ -10,11 +10,11 @@ You need to get everything installed as described in :ref:`phrosty-installation`
 
 Once you're in the environment (whether it's a virtual environment or a container), ``phrosty`` may be run from the command line by running ``python packages/phrosty/phrosty/pipeline.py``.  For, example, try running:
 
-.. _code-block: console
+.. code-block:: console
 
   python packages/phrosty/phrosty/pipeline.py --help
 
- ``phrosty``'s behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  When you installed your environment, you pointed to a default config.  If you want to use a config file other than the default, you can either specify it with the ``-c`` argument, or just by setting the ``SNPIT_CONFIG`` environment variable.
+``phrosty``'s behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  When you installed your environment, you pointed to a default config.  If you want to use a config file other than the default, you can either specify it with the ``-c`` argument, or just by setting the ``SNPIT_CONFIG`` environment variable.
 
 You can find three examples of these files in (**TODO: evaluate which of these still survive; they may get replaced by the default, e.g. the local one definitely should**; maybe all will!):
 
@@ -36,7 +36,7 @@ Running locally
 
 If you are :ref:`in the correct environment<phrosty-local>` and have checked out the :ref:`photometry_test_data<photometry-test-data>` repo, from ``$RUNDIR``, do:
 
-.. _code_block: console
+.. code-block:: console
 
   python packages/phrosty/phrosty/pipeline.py \
   --oid 20172782 \
@@ -66,14 +66,14 @@ If you want to run on a CPU node, do::
 
   salloc -p mem-lg --time=04:00:00
 
-Right now, Rick's ``romanisim`` images are on SMDC at::
+Right now, Rick's ``romanisim`` images are on SMDC at:
 
   /home/rkessler/romanisim/output_images_galid_force0
   /home/rkessler/romanisim/output_images_galid_force1
 
 where ``force0`` indicates random magnitude light curves for two events far away from their hosts, and ``force1`` is the same light curves but near their host centers.
 
-Corresponding SNANA truth files are located at::
+Corresponding SNANA truth files are located at:
 
   /home/rkessler/romanisim/snana_sim_galid_force0
   /home/rkessler/romanisim/snana_sim_galid_force1
@@ -85,7 +85,7 @@ Using a native venv
 
 Make sure you are in `the correct environment<phrosty-smdc>`. From the ``$RUNDIR``, run:
 
-.. _code_block: console
+.. code-block:: console
 
   SNPIT_CONFIG=packages/phrosty/phrosty_config_default.yaml python packages/phrosty/phrosty/pipeline.py \
   --oid 11 \
@@ -111,7 +111,7 @@ If you are in the Singularity container discussed in `the snappl documentation a
 
 Do all of the things in the above link, and from ``$RUNDIR``, run the following:
 
-.. _code_block: console
+.. code-block:: console
 
   SNPIT_CONFIG=packages/phrosty/phrosty_config_default.yaml python packages/phrosty/phrosty/pipeline.py \
   --oid 11 \
@@ -148,14 +148,14 @@ Setting up the environment
 
 Get your environment set up as described under the :ref:`phrosty installation prerequisites<phrosty-nersc-perlmutter>`.
 
-If all has gone well, you are now sitting inside a container that's ready to run phrosty.  Verify that you're in the container with ``ls -F /``.  Make sure that you see ``dia_out_dir/``, ``lc_out_dir/``, ``photometry_test_data/``, and ``phrosty_temp/`` in the list of directories.  Next, run ``nvidia-smi``, and make sure it shows you a GPU with 40MB.  Part of that output will look something like this::
+If all has gone well, you are now sitting inside a container that's ready to run phrosty.  Verify that you're in the container with ``ls -F /``.  Make sure that you see ``dia_out_dir/``, ``lc_out_dir/``, ``photometry_test_data/``, and ``phrosty_temp/`` in the list of directories.  Next, run ``nvidia-smi``, and make sure it shows you a GPU with 40MB.  Part of that output will look something like this:
 
   \|=========================================+========================+======================|
   |   0  NVIDIA A100-SXM4-40GB          Off |   00000000:03:00.0 Off |                    0 |
   | N/A   30C    P0             52W /  400W |       1MiB /  40960MiB |      0%      Default |
   |                                         |                        |             Disabled |
 
-This shows a NVIDIA A100 GPU with 40GB of memory.  A different system might show::
+This shows a NVIDIA A100 GPU with 40GB of memory.  A different system might show:
 
   \|=========================================+========================+======================|
   |   0  NVIDIA GeForce RTX 3080 Ti     Off |   00000000:09:00.0  On |                  N/A |
@@ -211,7 +211,7 @@ Running interactively
 
 The easiest way to just run something is to do it on an interactive node on Perlmutter.  (See :ref:`below<perlmutter-running-slurm>` for running it with slurm.)
 
-First, get yourself a session on an interactive GPU node with::
+First, get yourself a session on an interactive GPU node with:
 
   salloc -t 04:00:00 -A m4385 --constraint=gpu -q interactive
 
@@ -221,7 +221,7 @@ after a minute or so, that should log you into one of the nodes with a session t
 
 If you are not a member of the Roman SN PIT (i.e., assuming you pulled your container from :ref:`docker.io<phrosty-nersc-perlmutter>`), do:
 
-.. _code_block: console
+.. code-block:: console
 
   podman-hpc run --gpu \
     --mount type=bind,source=$PWD,target=/home \
@@ -246,7 +246,7 @@ If you are not a member of the Roman SN PIT (i.e., assuming you pulled your cont
 
 If you are in the Roman SN PIT (i.e., assuming you pulled your container from :ref:`registry.nersc.gov<phrosty-nersc-perlmutter>`), instead do:
 
-.. _code_block: console
+.. code-block:: console
 
   WHICHROMANENV=cuda-dev bash /global/cfs/cdirs/m4385/env/interactive-podman-rknop-dev.sh
 
@@ -256,13 +256,13 @@ This will create a container image, and put in a bash shell inside the container
 
 Go to the ``/home`` directory, which is where your parent directory should be mounted:
 
-.. _code_block: console
+.. code-block:: console
 
   cd /home
 
 The main Python executable for running the pipeline is ``phrosty/phrosty/pipeline.py``.  Run:
 
-.. _code_block: console
+.. code-block:: console
 
   SNPIT_CONFIG=packages/phrosty/examples/perlmutter/phrosty_config_nersc.yaml python packages/phrosty/phrosty/pipeline.py --help
 
@@ -270,7 +270,7 @@ to see how it works, and to see what the various parameters you can specify are.
 
 Run this on your example lightcurve with:
 
-.. _code_block: console
+.. code-block:: console
 
   SNPIT_CONFIG=/home/packages/phrosty/examples/perlmutter/phrosty_config_nersc.yaml python /home/packages/phrosty/phrosty/pipeline.py \
         --oid 20172782 \
@@ -288,7 +288,7 @@ Run this on your example lightcurve with:
 
 If all is well, you should see a final line that looks something like:
 
-.. _code_block: console
+.. code-block:: console
 
   [2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/07c9acbe-87c1-4b3b-a52e-1a1e8dfa968e_R062.pq
 
@@ -320,7 +320,7 @@ Running with the NSight Profiler
 
 When developing/debugging the pipeline, it's useful to run with a GPU-aware profiler, so you can see where the code is spending most of its time.  The huge ``roman-snpit-env:cuda-dev`` Docker image includes the NVIDIA NSight Systems profiler, and the ``phrosty`` code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in :ref:`perlmutter-interactive` above, only replacing the final ``python`` command with:
 
-.. _code_block: console
+.. code-block:: console
 
   nsys profile \
     --trace-fork-before-exec=true \

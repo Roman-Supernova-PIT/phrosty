@@ -191,7 +191,7 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
         # assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
 
     # Tests aren't exactly reproducible from one run to the next,
-    #   because some classes have random numbers in them, and we aren't
+    #   because the OU24 classes have random numbers in them, and we aren't
     #   controlling the seed.  So, we can only test for approximately
     #   consistent results.  Going to do 0.3 times the uncertainty,
     #   because a difference by that much is not all that meaningful
