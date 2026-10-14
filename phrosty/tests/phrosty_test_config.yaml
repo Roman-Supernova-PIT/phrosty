@@ -3,11 +3,8 @@ replaceable_preloads:
 
 system:
   paths:
+    dev_storage: phrosty/tests/test_output
     temp_dir: phrosty/tests/test_output/temp
-    phrosty:
-      dia_out_dir: phrosty/tests/test_output/dia_out_dir
-      ltcv_dir: phrosty/tests/test_output/lc_out_dir
-      intermediate_dir: phrosty/tests/test_output/intermediate_dir
 
   ou24:
     simdex_server: https://roman-desc-simdex.lbl.gov

@@ -57,7 +57,7 @@ class PipelineImage:
         self.temp_dir = pipeline.temp_dir
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         if self.keep_intermediate:
-            self.save_dir = pathlib.Path( self.config.value( 'system.paths.phrosty.intermediate_dir' ) )
+            self.save_dir = pipeline.intermediate_dir
         elif not self.keep_intermediate:
             self.save_dir = self.temp_dir
 
@@ -303,14 +303,14 @@ class Pipeline:
         self.band = band
         self.oid = oid
 
-        self.dia_out_dir = pathlib.Path( self.config.value( 'system.paths.phrosty.dia_out_dir' ) )
+        self.dia_out_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / 'phrosty' / 'dia_out_dir'
         self.dia_out_dir.mkdir( exist_ok=True, parents=True )
-        self.intermediate_dir = pathlib.Path( self.config.value( 'system.paths.phrosty.intermediate_dir' ) )
+        self.intermediate_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / 'phrosty' / 'intermediate'
         self.intermediate_dir.mkdir( exist_ok=True, parents=True )
         self.temp_dir_parent = pathlib.Path( self.config.value( 'system.paths.temp_dir' ) )
         self.temp_dir = self.temp_dir_parent / str(uuid.uuid1())
         self.temp_dir.mkdir( exist_ok=True, parents=True )
-        self.ltcv_dir = pathlib.Path( self.config.value( 'system.paths.phrosty.ltcv_dir' ) )
+        self.ltcv_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / 'phrosty' / 'ltcv_dir'
         self.ltcv_dir.mkdir( exist_ok=True, parents=True )
 
         if ( science_images is None) == ( science_csv is None ):
@@ -1577,10 +1577,7 @@ def main():
         SNLogger.error( 'Must provide --image-provenance-tag if --image-collection is snpitdb.' )
         raise ValueError( f'args.image_provenance_tag is {args.image_provenance_tag}.' )
 
-    if args.dbsave:
-        dbclient = SNPITDBClient()
-    else:
-        dbclient = None
+    dbclient = SNPITDBClient() if args.dbsave else None
 
     # Get the DiaObject, update the RA and Dec
     if args.diaobject_id is None:

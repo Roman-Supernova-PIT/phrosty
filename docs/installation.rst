@@ -32,7 +32,7 @@ You will want to make yourself and environment to work in, such as a conda envir
 If you're using conda or a venv
 """""""""""""""""""""""""""""""
 
-Go into your environment and install the ``snappl`` and ``sfft`` packages that ``phrosty`` needs:
+Go into your environment and install the ``snappl``, ``sfft``, and ``crds`` packages that ``phrosty`` needs:
 
 .. code-block:: console
 
@@ -60,7 +60,9 @@ You will need some directories for phrosty to work in:
  * ``mkdir -p dev_storage/ltcv_dir``: Output lightcurves are written here.
  * ``mkdir -p dev_storage/intermediate_dir``: Intermediate files are written here.
 
-In ``$RUNDIR/packages``, check out the ``phrosty`` archive.  (Eventually, ``phrosty`` will be on Pypi. As of writing this, it is not.)  If you're going to run tests and/or the examples in :ref:`usage`, also check out the ``photometry_test_data`` archive::
+It is possible, especially if you are running locally, that there is a better place for ``temp_dir`` and ``dev_storage``. You can put these things anywhere you want, but you will need to change the config file (e.g., ``phrosty/phrosty_config_default.yaml``) and the relevant ``--mount`` lines when you launch docker (if you are using a docker container).
+
+In ``$RUNDIR/packages``, check out the ``phrosty`` archive. (Eventually, ``phrosty`` will be on Pypi. As of writing this, it is not.)  If you're going to run tests and/or the examples in :ref:`usage`, also check out the ``photometry_test_data`` archive::
 
 .. code-block:: console
 
@@ -107,13 +109,6 @@ First, make sure you are in ``$RUNDIR``, and run:
 (Note: if you're developing ``phrosty``, you might want that last line to be ``pip install -e .``.  If you want to run the ``phrosty`` tests, do ``pip install -e .[test]``.)
 
 NOTE: Eventually, ``phrosty`` will be on pip. As of writing this, it is not.  When that happens, you can replace the last three lines with just ``pip install roman-snpit-phrosty``.
-
-You need to set two environment variables to tell ``phrosty`` where to find the config files:
-
-.. code-block:: console
-
-   export SNPIT_DEFAULT_CONFIG=${PWD}/local_nodb.yaml
-   export SNPIT_CONFIG=${PWD}/packages/phrosty/phrosty_config_default.yaml
 
 Finally, also set the following environment variables:
 
