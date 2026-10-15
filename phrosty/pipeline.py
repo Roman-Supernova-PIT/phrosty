@@ -303,14 +303,17 @@ class Pipeline:
         self.band = band
         self.oid = oid
 
-        self.dia_out_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / 'phrosty' / 'dia_out_dir'
+        self.dia_out_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / \
+                                         'phrosty' / 'dia_out_dir'
         self.dia_out_dir.mkdir( exist_ok=True, parents=True )
-        self.intermediate_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / 'phrosty' / 'intermediate'
+        self.intermediate_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / \
+                                              'phrosty' / 'intermediate'
         self.intermediate_dir.mkdir( exist_ok=True, parents=True )
         self.temp_dir_parent = pathlib.Path( self.config.value( 'system.paths.temp_dir' ) )
         self.temp_dir = self.temp_dir_parent / str(uuid.uuid1())
         self.temp_dir.mkdir( exist_ok=True, parents=True )
-        self.ltcv_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / 'phrosty' / 'ltcv_dir'
+        self.ltcv_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / \
+                                      'phrosty' / 'ltcv_dir'
         self.ltcv_dir.mkdir( exist_ok=True, parents=True )
 
         if ( science_images is None) == ( science_csv is None ):
