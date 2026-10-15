@@ -1,22 +1,20 @@
 replaceable_preloads:
-  - /snpit_env/configs/nov2025_container_config.yaml
+  - ${SNPIT_DEFAULT_CONFIG}
 
 system:
   paths:
-    scratch_dir: /scratch/phrosty_temp
-    temp_dir: /scratch/phrosty_temp
-    dia_out_dir: /scratch/dia_out_dir/
-    ltcv_dir: /scratch/lc_out_dir/
-    snappl:
-      A25ePSF_path: /a25epsf
+    dev_storage: phrosty/tests/test_output
+    temp_dir: phrosty/tests/test_output/temp
+
+  ou24:
+    simdex_server: https://roman-desc-simdex.lbl.gov
+    tds_base: ../photometry_test_data/ou2024
+    config_file: ../photometry_test_data/ou2024/tds.yaml
+    images: ../photometry_test_data/ou2024/images/simple_model
+
 
 photometry:
-  snappl:
-      temp_dir: /scratch
-
   phrosty:
-    image_type: ou2024fits
-    force_sky_subtract: false
     keep_intermediate: true
     remove_temp_dir: false
     mem_trace: false
@@ -27,4 +25,4 @@ photometry:
 
     psf:
       type: gaussian
-      params: {}
+      params: {'sigmax': 0.43, 'sigmay': 0.43}
