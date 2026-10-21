@@ -29,9 +29,8 @@ license-files = ["LICENSE"]
 file = "README.rst"
 content-type = "text/x-rst"
 
-
-
-
+[project.scripts]
+phrosty = "phrosty.pipeline:main"
 
 [project.optional-dependencies]
 test = [
