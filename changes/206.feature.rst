@@ -8,3 +8,4 @@ This update includes:
 - Removed cupy-cuda12x as a required dependency and updated the installation docs to reflect this.
 - self.dbclient is None if dbsave = False. Now, phrosty no longer needs a secrets file if the database client is not involved.
 - AstropyDeprecationWarning fixes
+- Add command line command "phrosty" for easier compatibility with AWS.
