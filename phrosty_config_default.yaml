@@ -1,0 +1,20 @@
+preloads:
+  - ${SNPIT_DEFAULT_CONFIG}
+
+# system:
+#   paths:
+  # temp_dir: If you don't use SNPIT_DEFAULT_CONFIG, you need to add this.
+
+photometry:
+  phrosty:
+    keep_intermediate: true
+    remove_temp_dir: false
+    mem_trace: false
+    kerpolyorder: 2
+
+    sfft:
+      radius_cut_detmask: 2
+
+    psf:
+      type: gaussian
+      params: {'sigmax': 0.43, 'sigmay': 0.43}

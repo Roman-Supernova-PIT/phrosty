@@ -17,7 +17,6 @@ classifiers = [
   "Programming Language :: Python"
 ]
 dependencies = [
-  "cupy-cuda12x",
   "matplotlib",
   "nvtx",
   "roman-snpit-snappl>=0.28.0,<1.0.0",
@@ -30,9 +29,8 @@ license-files = ["LICENSE"]
 file = "README.rst"
 content-type = "text/x-rst"
 
-
-
-
+[project.scripts]
+phrosty = "phrosty.pipeline:main"
 
 [project.optional-dependencies]
 test = [
