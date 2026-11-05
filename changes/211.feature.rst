@@ -1,0 +1,6 @@
+Reduce size of command line command for AWS.
+- Change image collection default to manual_rdm
+- Change object collection default to manual
+- Change backend default to numpy
+- Move mem_trace, verbose, nprocs, and nwrite out of command line arguments and into config settings.
+- Update documentation accordingly.
