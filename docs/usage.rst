@@ -47,11 +47,8 @@ If you are :ref:`in the correct environment<phrosty-local>` and have checked out
   -ic ou2024 \
   -t packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv \
   -s packages/phrosty/phrosty/tests/20172782_instances_science_2.csv \
-  -p 1 -w 1 \
-  -v \
-  --backend numpy
 
-If you are using a GPU, omit the line with `--backend numpy \`. If you're using a Mac, you always need this line because CUDA is not supported on Macs.
+If you are using an NVIDIA GPU, add the line `--backend cupy \`. 
 
 Running on SMDC
 ===============
@@ -89,20 +86,14 @@ Make sure you are in `the correct environment<phrosty-smdc>`. From the ``$RUNDIR
 
   SNPIT_CONFIG=packages/phrosty/phrosty_config_default.yaml python packages/phrosty/phrosty/pipeline.py \
   --oid 11 \
-  -oc manual \
   -b J129 \
   -r 9.366435 \
   -d -43.958825 \
-  -ic manual_rdm \
   --base-path /mnt/roman-science-east-2/snpit/snana+romanisim+romancal/ \
   -t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \
-  -s packages/phrosty/phrosty/tests/11_instances_science_2.csv \
-  -p 1 -w 1 \
-  --backend numpy \
-  --memtrace \
-  -v
+  -s packages/phrosty/phrosty/tests/11_instances_science_2.csv
 
-Remember to omit ``--backend numpy \`` if you are on a GPU node. If you don't need to trace the CPU memory, you can also omit ``--memtrace \``.
+Remember you can add ``--backend cupy`` if you are on a GPU node.
 
 Using the Apptainer/Singularity container
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,19 +106,14 @@ Do all of the things in the above link, and from ``$RUNDIR``, run the following:
 
   SNPIT_CONFIG=packages/phrosty/phrosty_config_default.yaml python packages/phrosty/phrosty/pipeline.py \
   --oid 11 \
-  -oc manual \
   -b J129 \
   -r 9.366435 \
   -d -43.958825 \
-  -ic manual_rdm \
   --base-path /ricksims/ \
   -t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \
-  -s packages/phrosty/phrosty/tests/11_instances_science_2.csv \
-  -p 1 -w 1 \
-  --backend numpy \
-  -v
+  -s packages/phrosty/phrosty/tests/11_instances_science_2.csv
 
-Omit ``--backend numpy \`` if you are on a GPU node.
+Add ``--backend cupy`` if you are on a GPU node.
 
 .. _perlmutter-example:
 
@@ -280,9 +266,7 @@ Run this on your example lightcurve with:
         -d -44.80718106491529 \
         -ic ou2024 \
         -t /home/packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv \
-        -s /home/packages/phrosty/phrosty/tests/20172782_instances_science_2.csv \
-        -p 3 -w 3 \
-        -v
+        -s /home/packages/phrosty/phrosty/tests/20172782_instances_science_2.csv
 
 (If you run with ``.csv`` files that have larger number of images, you probably want to pass a larger number to `-p`; this is a number of parallel CPU processes that will run at once, and is limited by how many CPUs and how much memory you have available.  The code will only run one GPU process at once.  You can also try increasing `-w`, but this is more limited by filesystem performance than the number of CPUs and the amount of memory you have available.  We've set these both to 3 right now because there are only 3 files being processed (one template and two science images).  Empirically, on Perlmutter nodes, you can go up to something like `-p 15`; while there are (many) more CPUs than that, memory is the limiting factor.  Also, empirically, on Perlmutter, you can go up to something like `-w 5` before you reach the point of diminishing returns.  This is more variable, because whereas you have the node's CPUs to yourself, you're sharing the filesystem with the rest of the users of the system.)
 
@@ -336,9 +320,7 @@ When developing/debugging the pipeline, it's useful to run with a GPU-aware prof
         -d -44.80718106491529 \
         -ic ou2024 \
         -t phrosty/tests/20172782_instances_templates_1.csv \
-        -s phrosty/tests/20172782_instances_science_2.csv \
-        -p 3 -w 3 \
-        -v
+        -s phrosty/tests/20172782_instances_science_2.csv
 
 *Ideally*, this would create a file ``report1.nsys-rep`` (or ``report2.nsys-rep``, or higher numbers based on what files are already in the directory), but something about that is broken; I'm not sure what.  If that file is created, be happy.  If not, it will say something like "Importer error status: Importation failed," and will leave behind a file ``report<n>.qdstrm``.  You can couple that file to another system and manually convert it to a ``.nsys-rep`` file.  On a Linux system, if you've installed the ``nsight-compute`` and ``nsight-systems`` packages (see `Nvidia's Nsight Systems installation guide <https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)>`_), you can download the ``.qdstrm`` file to your system and run::
 
@@ -501,11 +483,7 @@ Let's break down a command you were instructed to use earlier. Recall::
         -ic manual_rdm \
         --base-path /mnt/roman-science-east-2/snpit/snana+romanisim+romancal/ \
         -t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \
-        -s packages/phrosty/phrosty/tests/11_instances_science_2.csv \
-        -p 1 -w 1 \
-        --backend numpy \ # Omit if on a GPU node
-        --memtrace \ # Can omit if memory tracing is not needed
-        -v
+        -s packages/phrosty/phrosty/tests/11_instances_science_2.csv
 
 Arg-by-arg...:
 
@@ -519,13 +497,35 @@ Arg-by-arg...:
 * ``--base-path`` is the top-level folder where your images are located. This must be provided if you are using ``-ic manual`` (which, if you're not in the SN PIT, you probably are).
 * ``-t`` is for "templates". This is your list of image templates. You can have multiple templates listed for multiple rounds of single-epoch subtractions.
 * ``-s`` is for "science". This is a list of images that contain your SN (science object).
-* ``-p`` is the number of computation processes. e.g., if you do ``-p 3``, you will have 3 parallel sky subtraction processes going on. This does not apply to the GPU-based portion of the code, which is serial.
-* ``-w`` is the number of file writing processes.
 * ``--backend`` changes if you run SFFT with a cupy (GPU) or numpy (CPU) backend. Acceptable arguments are ``cupy``, ``cp``, ``numpy``, and ``np``. Default is ``cupy``.
-* ``--memtrace`` toggles memory tracing with ``tracemalloc``. Only works for CPU parts.
-* ``-v`` toggles "verbose".
 
 To briefly elaborate on the "image collection" and "object collection"--this can be confusing. The image collection describes the images, and the object collection describes the objects of interest in the images. For example, if you used ``ou2024`` for both ``ic`` and ``oc``, you would be doing analysis on an SN Ia in the OpenUniverse 2024 FITS images. However, if you set ``-ic ou2024`` and ``-oc manual``, that would enable you to run the pipeline on any object you wanted in the OpenUniverse2024 images as long as you specified its RA and Dec.
+
+Config file settings
+--------------------
+
+``phrosty`` running settings:
+
+* ``photometry.phrosty.nprocs`` is the number of computation processes. e.g., if you do ``nprocs: 3``, you will have 3 parallel sky subtraction processes going on. This does not apply to the GPU-based portion of the code, which is always serial, even if you use the numpy backend.
+* ``photometry.phrosty.nwrite`` is the number of file writing processes.
+* ``photometry.phrosty.mem_trace`` toggles memory tracing with ``tracemalloc``. Only works for CPU parts.
+* ``photometry.phrosty.verbose`` toggles verbose stdout.
+* ``photometry.phrosty.keep_intermediate`` toggles keeping certain intermediate files instead of automatically deleting them at the end of the run.
+* ``photometry.phrosty.remove_temp_dir`` toggles removing or keeping the temporary directory at the end of the run.
+
+``SFFT`` settings:
+
+These will be elaborated on at a later date. Sorry.
+
+PSF settings:
+
+* ``photometry.phrosty.psf.type`` defines the type of PSF that you will be using. The default is "gaussian". Currently accepted: ``gaussian``, ``A25ePSF``, ``ou24PSF``, ``ou24PSF_photonshoot``, and ``STPSF``. 
+* ``photometry.phrosty.psf.params`` sets parameters depending on the type of PSF you are using. It is in Python dictionary format. The accepted parameters are:
+    * ``gaussian``: All parameters are optional. ``sigmax``, ``sigmay``, ``theta``
+    * ``A25ePSF``: There are none. Leave an empty dictionary, ``{}``.
+    * ``ou24PSF``: All parameters are optional. ``sed``, ``config_file``, ``stamp_size``. 
+    * ``ou24PSF_photonshoot``: All parameters are optional. ``sed``, ``config_file``, ``stamp_size``. 
+    * ``STPSF``: All parameters are optional. ``sed``, ``stamp_size``. 
 
 Input lists for science and template images
 -------------------------------------------

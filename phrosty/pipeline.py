@@ -219,8 +219,6 @@ class Pipeline:
                   dbclient=None,
                   nprocs=1,
                   nwrite=5,
-                  verbose=False,
-                  memtrace=False,
                   backend='cupy',
                   catchfailures=False ):
 
@@ -271,19 +269,6 @@ class Pipeline:
            dbclient: snappl.dbclient.SNPITDBClient, default None
              Client for saving to the SN PIT database.
 
-           nprocs: int, default 1
-             Number of cpus for the CPU multiprocessing segments of the pipeline.
-             (GPU segments will run a single process.)
-
-           nwrite: int, default 5
-             Number of asynchronous FITS writer processes.
-
-           verbose: bool, default True
-             Toggle verbose output.
-
-           memtrace: bool, default False
-             Toggle memory tracing.
-
            backend: str, default cupy
              Backend for SFFT subtraction (numpy or cupy).
              Acceptable inputs are: "numpy", "np", "cupy", or "cp".
@@ -294,10 +279,11 @@ class Pipeline:
              in a given set fails (useful for debugging and tests).
 
         """
+        self.config = Config.get()
+        verbose = self.config.value( 'photometry.phrosty.verbose' )
 
         SNLogger.setLevel( logging.DEBUG if verbose else logging.INFO )
 
-        self.config = Config.get()
         self.imgcol = imgcol
         self.diaobj = diaobj
         self.band = band
@@ -350,12 +336,12 @@ class Pipeline:
         self.ltcv_prov_tag = ltcv_prov_tag
         self.dbsave = dbsave
         self.dbclient = dbclient
-        self.nprocs = nprocs
-        self.nwrite = nwrite
 
+        self.nprocs = self.config.value( 'photometry.phrosty.nprocs' )
+        self.nwrite = self.config.value( 'photometry.phrosty.nwrite' )
         self.keep_intermediate = self.config.value( 'photometry.phrosty.keep_intermediate' )
         self.remove_temp_dir = self.config.value( 'photometry.phrosty.remove_temp_dir' )
-        self.mem_trace = memtrace
+        self.mem_trace = self.config.value( 'photometry.phrosty.mem_trace' )
 
         self.backend = backend
 
@@ -543,7 +529,7 @@ class Pipeline:
                                     PixA_object_DMASK=templ_detmask,
                                     PSF_target=sci_psf,
                                     PSF_object=templ_psf,
-                                    KerPolyOrder=Config.get().value('photometry.phrosty.kerpolyorder'),
+                                    KerPolyOrder=Config.get().value('photometry.phrosty.sfft.kerpolyorder'),
                                     BACKEND_4SUBTRACT=self.backend
                                   )
 
@@ -1482,19 +1468,11 @@ def main():
     parser.add_argument( '-c', '--config-file', help="Location of the .yaml config file" )
 
     # Running options
-    parser.add_argument( '-p', '--nprocs', type=int, default=1,
-                         help="Number of process for multiprocessing steps (e.g. skysub)" )
-    parser.add_argument( '-w', '--nwrite', type=int, default=5,
-                         help="Number of parallel FITS writing processes" )
-    parser.add_argument( '-v', '--verbose', action='store_true', default=False,
-                         help="Show debug log info" )
     parser.add_argument( '--through-step', default='make_lightcurve',
                          help="Stop after this step; one of (see above)" )
     parser.add_argument( '--dbsave', action='store_true',
                          help="Toggle saving to the database." )
-    parser.add_argument( '--memtrace', action='store_true', default=False,
-                         help="Toggle memory tracing with tracemalloc.")
-    parser.add_argument( '--backend', type=str, default='cupy',
+    parser.add_argument( '--backend', type=str, default='numpy',
                          help="Choose numpy or cupy backend. Options are: \
                                numpy, np, cupy, or cp.")
     parser.add_argument( '--catchfailures', action='store_true',
@@ -1503,7 +1481,7 @@ def main():
                                one image fails (useful for debugging)." )
 
     # Object collections
-    parser.add_argument( '-oc', '--object-collection', default='snpitdb',
+    parser.add_argument( '-oc', '--object-collection', default='manual',
                          help='Collection of the object.  Currently, "snpitdb", "ou2024", and "manual" supported.' )
     parser.add_argument( '-os', '--object-subset', default=None,
                          help="Collection subset.  Not used by all collections." )
@@ -1546,7 +1524,7 @@ def main():
                                Invalid if --image-collection is not snpitdb." )
 
     # Image collection
-    parser.add_argument( '-ic', '--image-collection', default='snpitdb',
+    parser.add_argument( '-ic', '--image-collection', default='manual_rdm',
                          help="Collection of the images we're using. For SN PIT database, use snpitdb. \
                                Currently supported: ou2024, manual_fits, snpitdb (default)." )
     parser.add_argument( '-is', '--image-subset', default=None,
@@ -1637,10 +1615,6 @@ def main():
                          ltcv_prov_tag=args.ltcv_provenance_tag,
                          dbsave=args.dbsave,
                          dbclient=dbclient,
-                         nprocs=args.nprocs,
-                         nwrite=args.nwrite,
-                         verbose=args.verbose,
-                         memtrace=args.memtrace,
                          backend=args.backend,
                          catchfailures=args.catchfailures )
 
