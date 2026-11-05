@@ -22,7 +22,7 @@ def test_sky_subtract( dia_out_dir ):
 
         flagdata = np.zeros( (512, 512), dtype=np.uint32 )
         flagdata[:3] = 0
-        np.random.Generator.shuffle(flagdata)
+        rng.shuffle(flagdata)
 
         hdr = fits.header.Header()
         fits.writeto( in_path, imdata, header=hdr )
