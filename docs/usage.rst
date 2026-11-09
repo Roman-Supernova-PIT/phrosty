@@ -48,7 +48,7 @@ If you are :ref:`in the correct environment<phrosty-local>` and have checked out
   -t packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv \
   -s packages/phrosty/phrosty/tests/20172782_instances_science_2.csv \
 
-If you are using an NVIDIA GPU, add the line `--backend cupy \`. 
+If you are using an NVIDIA GPU, add the line `--backend cupy \`. You can also just use ``phrosty`` as a command instead of ``python packages/phrosty/phrosty/pipeline.py``, just make sure you're running from the correct directory.
 
 Running on SMDC
 ===============
@@ -497,7 +497,7 @@ Arg-by-arg...:
 * ``--base-path`` is the top-level folder where your images are located. This must be provided if you are using ``-ic manual`` (which, if you're not in the SN PIT, you probably are).
 * ``-t`` is for "templates". This is your list of image templates. You can have multiple templates listed for multiple rounds of single-epoch subtractions.
 * ``-s`` is for "science". This is a list of images that contain your SN (science object).
-* ``--backend`` changes if you run SFFT with a cupy (GPU) or numpy (CPU) backend. Acceptable arguments are ``cupy``, ``cp``, ``numpy``, and ``np``. Default is ``cupy``.
+* ``--backend`` changes if you run SFFT with a cupy (GPU) or numpy (CPU) backend. Acceptable arguments are ``cupy``, ``cp``, ``numpy``, and ``np``. Default is ``numpy``.
 
 To briefly elaborate on the "image collection" and "object collection"--this can be confusing. The image collection describes the images, and the object collection describes the objects of interest in the images. For example, if you used ``ou2024`` for both ``ic`` and ``oc``, you would be doing analysis on an SN Ia in the OpenUniverse 2024 FITS images. However, if you set ``-ic ou2024`` and ``-oc manual``, that would enable you to run the pipeline on any object you wanted in the OpenUniverse2024 images as long as you specified its RA and Dec.
 
@@ -520,7 +520,7 @@ These will be elaborated on at a later date. Sorry.
 PSF settings:
 
 * ``photometry.phrosty.psf.type`` defines the type of PSF that you will be using. The default is "gaussian". Currently accepted: ``gaussian``, ``A25ePSF``, ``ou24PSF``, ``ou24PSF_photonshoot``, and ``STPSF``. 
-* ``photometry.phrosty.psf.params`` sets parameters depending on the type of PSF you are using. It is in Python dictionary format. The accepted parameters are:
+* ``photometry.phrosty.psf.params`` sets parameters depending on the type of PSF you are using. It is in Python dictionary format. See ``phrosty/phrosty_config_default.yaml`` for an example. The accepted parameters are:
     * ``gaussian``: All parameters are optional. ``sigmax``, ``sigmay``, ``theta``
     * ``A25ePSF``: There are none. Leave an empty dictionary, ``{}``.
     * ``ou24PSF``: All parameters are optional. ``sed``, ``config_file``, ``stamp_size``. 

@@ -1,0 +1,1 @@
+Minor update to docs and make phrosty_test_config.yaml match the new standards for what's a command line input and what's a config setting.
