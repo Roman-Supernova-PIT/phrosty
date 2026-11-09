@@ -520,7 +520,7 @@ These will be elaborated on at a later date. Sorry.
 PSF settings:
 
 * ``photometry.phrosty.psf.type`` defines the type of PSF that you will be using. The default is "gaussian". Currently accepted: ``gaussian``, ``A25ePSF``, ``ou24PSF``, ``ou24PSF_photonshoot``, and ``STPSF``. 
-* ``photometry.phrosty.psf.params`` sets parameters depending on the type of PSF you are using. It is in Python dictionary format. The accepted parameters are:
+* ``photometry.phrosty.psf.params`` sets parameters depending on the type of PSF you are using. It is in Python dictionary format. See ``phrosty/phrosty_config_default.yaml`` for an example. The accepted parameters are:
     * ``gaussian``: All parameters are optional. ``sigmax``, ``sigmay``, ``theta``
     * ``A25ePSF``: There are none. Leave an empty dictionary, ``{}``.
     * ``ou24PSF``: All parameters are optional. ``sed``, ``config_file``, ``stamp_size``. 
