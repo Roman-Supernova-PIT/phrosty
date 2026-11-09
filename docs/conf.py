@@ -31,7 +31,7 @@ sys.path.insert( 0, str( pathlib.Path( '..' ).resolve() ) )
 # So, instead, we do it manually.  You will need to add mock to
 # the docs list in [project.optional-dependencies] in pyproject.tom.
 import mock
-things_to_mock = [ 'roman_imsim', 'roman_imsim.utils' ]
+things_to_mock = [ 'roman_imsim', 'roman_imsim.utils', 'crds' ]
 for mod in things_to_mock:
     sys.modules[ mod ] = mock.MagicMock()
 
