@@ -15,13 +15,16 @@ system:
 
 photometry:
   phrosty:
+    verbose: true
     keep_intermediate: true
     remove_temp_dir: false
-    mem_trace: false
-    kerpolyorder: 2
+    mem_trace: true
+    nprocs: 1
+    nwrite: 1
 
     sfft:
       radius_cut_detmask: 2
+      kerpolyorder: 2
 
     psf:
       type: gaussian

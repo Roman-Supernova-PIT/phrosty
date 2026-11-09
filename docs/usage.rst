@@ -48,7 +48,7 @@ If you are :ref:`in the correct environment<phrosty-local>` and have checked out
   -t packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv \
   -s packages/phrosty/phrosty/tests/20172782_instances_science_2.csv \
 
-If you are using an NVIDIA GPU, add the line `--backend cupy \`. 
+If you are using an NVIDIA GPU, add the line `--backend cupy \`. You can also just use ``phrosty`` as a command instead of ``python packages/phrosty/phrosty/pipeline.py``, just make sure you're running from the correct directory.
 
 Running on SMDC
 ===============
