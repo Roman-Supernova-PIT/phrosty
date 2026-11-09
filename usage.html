@@ -5,12 +5,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Usage &#8212; phrosty 0.1.dev1+g198720752 documentation</title>
+    <title>Usage &#8212; phrosty 0.1.dev1+g8d8a8c5e0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
-    <script src="_static/documentation_options.js?v=4f8e8137"></script>
+    <script src="_static/documentation_options.js?v=9e0b1e78"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -97,142 +97,169 @@
           <div class="body" role="main">
             
   <section id="usage">
-<h1><a class="toc-backref" href="#id4" role="doc-backlink">Usage</a><a class="headerlink" href="#usage" title="Link to this heading">¶</a></h1>
+<span id="id1"></span><h1><a class="toc-backref" href="#id6" role="doc-backlink">Usage</a><a class="headerlink" href="#usage" title="Link to this heading">¶</a></h1>
 <nav class="contents" id="contents">
 <p class="topic-title">Contents</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="#usage" id="id4">Usage</a></p>
+<li><p><a class="reference internal" href="#usage" id="id6">Usage</a></p>
 <ul>
-<li><p><a class="reference internal" href="#example-usage" id="id5">Example Usage</a></p>
+<li><p><a class="reference internal" href="#running-locally" id="id7">Running locally</a></p></li>
+<li><p><a class="reference internal" href="#running-on-smdc" id="id8">Running on SMDC</a></p>
 <ul>
-<li><p><a class="reference internal" href="#manually-running-a-test-lightcurve" id="id6">Manually running a test lightcurve</a></p></li>
-<li><p><a class="reference internal" href="#running-on-perlmutter" id="id7">Running on Perlmutter</a></p>
+<li><p><a class="reference internal" href="#using-a-native-venv" id="id9">Using a native venv</a></p></li>
+<li><p><a class="reference internal" href="#using-the-apptainer-singularity-container" id="id10">Using the Apptainer/Singularity container</a></p>
 <ul>
-<li><p><a class="reference internal" href="#setting-up-the-environment" id="id8">Setting up the environment</a></p></li>
-<li><p><a class="reference internal" href="#pick-a-place-to-work" id="id9">Pick a place to work</a></p></li>
-<li><p><a class="reference internal" href="#get-phrosty" id="id10">Get phrosty</a></p></li>
-<li><p><a class="reference internal" href="#locate-existing-directories" id="id11">Locate existing directories</a></p></li>
-<li><p><a class="reference internal" href="#create-needed-directories" id="id12">Create needed directories</a></p></li>
-<li><p><a class="reference internal" href="#secure-lists-of-images-for-your-supernova" id="id13">Secure lists of images for your supernova</a></p></li>
-<li><p><a class="reference internal" href="#running-interactively" id="id14">Running interactively</a></p></li>
-<li><p><a class="reference internal" href="#running-with-the-nsight-profiler" id="id15">Running with the NSight Profiler</a></p></li>
-<li><p><a class="reference internal" href="#running-a-slurm-batch-job" id="id16">Running a SLURM batch job</a></p></li>
+<li><p><a class="reference internal" href="#running-on-nersc" id="id11">Running on NERSC</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#running-on-smdc" id="id17">Running on SMDC</a></p>
+<li><p><a class="reference internal" href="#pick-a-place-to-work" id="id12">Pick a place to work</a></p></li>
+<li><p><a class="reference internal" href="#setting-up-the-environment" id="id13">Setting up the environment</a></p></li>
+<li><p><a class="reference internal" href="#get-phrosty" id="id14">Get phrosty</a></p></li>
+<li><p><a class="reference internal" href="#locate-existing-directories" id="id15">Locate existing directories</a></p></li>
+<li><p><a class="reference internal" href="#secure-lists-of-images-for-your-supernova" id="id16">Secure lists of images for your supernova</a></p></li>
+<li><p><a class="reference internal" href="#running-interactively" id="id17">Running interactively</a></p></li>
+<li><p><a class="reference internal" href="#running-with-the-nsight-profiler" id="id18">Running with the NSight Profiler</a></p></li>
+<li><p><a class="reference internal" href="#running-a-slurm-batch-job" id="id19">Running a SLURM batch job</a></p>
 <ul>
-<li><p><a class="reference internal" href="#using-asdf" id="id18">Using ASDF</a></p></li>
+<li><p><a class="reference internal" href="#running-on-a-hpc-system-that-uses-apptainer-singularity" id="id20">Running on a HPC system that uses apptainer/singularity</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#running-on-a-hpc-system-that-uses-apptainer-singularity" id="id19">Running on a HPC system that uses apptainer/singularity</a></p>
-<ul>
-<li><p><a class="reference internal" href="#set-up-the-environment" id="id20">Set up the environment</a></p></li>
-<li><p><a class="reference internal" href="#copy-the-data" id="id21">Copy the data</a></p></li>
-<li><p><a class="reference internal" href="#check-out-the-code" id="id22">Check out the code</a></p></li>
-<li><p><a class="reference internal" href="#run-the-container" id="id23">Run the container</a></p></li>
+<li><p><a class="reference internal" href="#set-up-the-environment" id="id21">Set up the environment</a></p></li>
+<li><p><a class="reference internal" href="#copy-the-data" id="id22">Copy the data</a></p></li>
+<li><p><a class="reference internal" href="#check-out-the-code" id="id23">Check out the code</a></p></li>
+<li><p><a class="reference internal" href="#run-the-container" id="id24">Run the container</a></p></li>
 </ul>
 </li>
-</ul>
-</li>
-<li><p><a class="reference internal" href="#phrosty-functionality" id="id24">Phrosty Functionality</a></p>
-<ul>
-<li><p><a class="reference internal" href="#command-line-arguments-explained" id="id25">Command line arguments, explained</a></p></li>
-<li><p><a class="reference internal" href="#reading-the-output-file" id="id26">Reading the output file</a></p></li>
-</ul>
-</li>
+<li><p><a class="reference internal" href="#phrosty-functionality" id="id25">Phrosty Functionality</a></p></li>
+<li><p><a class="reference internal" href="#a-note-on-running-tests" id="id26">A note on running tests</a></p></li>
 </ul>
 </li>
 </ul>
 </nav>
-<p>Phrosty may be run from the command line by running <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">phrosty/pipeline.py</span></code> (assuming you are in the top level of a github checkout).  If you’re in <a class="reference internal" href="installation.html#phrosty-installation-prerequisites"><span class="std std-ref">the necessary environment to run phrosty</span></a>, then try running:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">phrosty</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="o">.</span>
-<span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">c</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">help</span>
+<p>You need to get everything installed as described in <a class="reference internal" href="installation.html#phrosty-installation"><span class="std std-ref">Installation</span></a>.  Make sure that you are in <code class="docutils literal notranslate"><span class="pre">$RUNDIR</span></code> (which is described in the installation instructions).</p>
+<p>Once you’re in the environment (whether it’s a virtual environment or a container), <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> may be run from the command line by running <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">packages/phrosty/phrosty/pipeline.py</span></code>.  For, example, try running:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python packages/phrosty/phrosty/pipeline.py --help</span>
 </pre></div>
 </div>
-<p>phrosty’s behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  You can find two examples of these files in:</p>
+<p><code class="docutils literal notranslate"><span class="pre">phrosty</span></code>’s behavior, and where it looks to find various images and other files it needs, are defined by a yaml config file.  When you installed your environment, you pointed to a default config.  If you want to use a config file other than the default, you can either specify it with the <code class="docutils literal notranslate"><span class="pre">-c</span></code> argument, or just by setting the <code class="docutils literal notranslate"><span class="pre">SNPIT_CONFIG</span></code> environment variable.</p>
+<p>You can find three examples of these files in (<strong>TODO: evaluate which of these still survive; they may get replaced by the default, e.g. the local one definitely should</strong>; maybe all will!):</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">examples/perlmutter/phrosty_config.yaml</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">phrosty/tests/phrosty_test_config.yaml</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">packages/phrosty/examples/perlmutter/phrosty_config_nersc.yaml</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">packages/phrosty/examples/smdc/phrosty_config_smdc.yaml</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">packages/phrosty/examples/local/phrosty_config_local.yaml</span></code></p></li>
 </ul>
-<section id="example-usage">
-<span id="id1"></span><h2><a class="toc-backref" href="#id5" role="doc-backlink">Example Usage</a><a class="headerlink" href="#example-usage" title="Link to this heading">¶</a></h2>
-<p>In addition to the examples below, see <span class="xref std std-ref">running-tests</span>.</p>
-<section id="manually-running-a-test-lightcurve">
-<span id="manual-test-lightcurve"></span><h3><a class="toc-backref" href="#id6" role="doc-backlink">Manually running a test lightcurve</a><a class="headerlink" href="#manually-running-a-test-lightcurve" title="Link to this heading">¶</a></h3>
-<p>In this example, you will use data packaged with the photometry test archive to build a two-point lightcurve.</p>
-<p>First, make sure your system meets the <a class="reference internal" href="installation.html#system-requirements"><span class="std std-ref">System Requirements</span></a> and that you’ve downloaded the roman-snpit docker image as described in the <a class="reference internal" href="installation.html#phrosty-installation-prerequisites"><span class="std std-ref">phrosty installation preqreuisties</span></a>.</p>
-<p>Next, make sure you’ve pulled down the <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> archive as described in <a class="reference internal" href="installation.html#install-from-sources"><span class="std std-ref">installing phrosty from sources</span></a>.  Make sure also to install the photomery test data, as described there.</p>
-<p>Finally, follow the instructions under <a class="reference internal" href="installation.html#running-snpit-container"><span class="std std-ref">Running the SNPIT container (not on NERSC Perlmutter)</span></a>.</p>
-<p>If all has gone well, you are now sitting inside a container that’s ready to run phrosty.  Verify that you’re in the container with <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-F</span> <span class="pre">/</span></code>.  Make sure that you see <code class="docutils literal notranslate"><span class="pre">dia_out_dir/</span></code>, <code class="docutils literal notranslate"><span class="pre">lc_out_dir/</span></code>, <code class="docutils literal notranslate"><span class="pre">photometry_test_data/</span></code>, and <code class="docutils literal notranslate"><span class="pre">phrosty_temp/</span></code> in the list of directories.  Next, run <code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code>, and make sure it shows you a GPU with 40MB.  Part of that output will look something like this:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>\<span class="o">|=========================================+========================+======================|</span>
-<span class="o">|</span>   <span class="mi">0</span>  <span class="n">NVIDIA</span> <span class="n">A100</span><span class="o">-</span><span class="n">SXM4</span><span class="o">-</span><span class="mi">40</span><span class="n">GB</span>          <span class="n">Off</span> <span class="o">|</span>   <span class="mi">00000000</span><span class="p">:</span><span class="mi">03</span><span class="p">:</span><span class="mf">00.0</span> <span class="n">Off</span> <span class="o">|</span>                    <span class="mi">0</span> <span class="o">|</span>
-<span class="o">|</span> <span class="n">N</span><span class="o">/</span><span class="n">A</span>   <span class="mi">30</span><span class="n">C</span>    <span class="n">P0</span>             <span class="mi">52</span><span class="n">W</span> <span class="o">/</span>  <span class="mi">400</span><span class="n">W</span> <span class="o">|</span>       <span class="mi">1</span><span class="n">MiB</span> <span class="o">/</span>  <span class="mi">40960</span><span class="n">MiB</span> <span class="o">|</span>      <span class="mi">0</span><span class="o">%</span>      <span class="n">Default</span> <span class="o">|</span>
-<span class="o">|</span>                                         <span class="o">|</span>                        <span class="o">|</span>             <span class="n">Disabled</span> <span class="o">|</span>
+<p><code class="docutils literal notranslate"><span class="pre">phrosty</span></code> also requires csv files so it knows what images to run, as well as some additional information about each image. It needs one for science images and one for template images. There are examples in:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">packages/phrosty/phrosty/tests/20172782_instances_science_2.csv</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">packages/phrosty/phrosty/tests/11_instances_science_2.csv</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">packages/phrosty/phrosty/tests/11_instances_templates_1.csv</span></code></p></li>
+</ul>
+<p><strong>NOTE: These examples use the ``photometry_test_data`` repo. If you haven’t git cloned that, you’ll want to do so `by following these instructions&lt;photometry-test-data&gt;`.</strong></p>
+<section id="running-locally">
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">Running locally</a><a class="headerlink" href="#running-locally" title="Link to this heading">¶</a></h2>
+<p>If you are <a class="reference internal" href="installation.html#phrosty-local"><span class="std std-ref">in the correct environment</span></a> and have checked out the <a class="reference internal" href="installation.html#photometry-test-data"><span class="std std-ref">photometry_test_data</span></a> repo, from <code class="docutils literal notranslate"><span class="pre">$RUNDIR</span></code>, do:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python packages/phrosty/phrosty/pipeline.py \</span>
+<span class="go">--oid 20172782 \</span>
+<span class="go">-oc ou2024 \</span>
+<span class="go">-b Y106 \</span>
+<span class="go">-r 7.551093401915147 \</span>
+<span class="go">-d -44.80718106491529 \</span>
+<span class="go">-ic ou2024 \</span>
+<span class="go">-t packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv \</span>
+<span class="go">-s packages/phrosty/phrosty/tests/20172782_instances_science_2.csv \</span>
 </pre></div>
 </div>
-<p>This shows a NVIDIA A100 GPU with 40GB of memory.  A different system might show:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>\<span class="o">|=========================================+========================+======================|</span>
-<span class="o">|</span>   <span class="mi">0</span>  <span class="n">NVIDIA</span> <span class="n">GeForce</span> <span class="n">RTX</span> <span class="mi">3080</span> <span class="n">Ti</span>     <span class="n">Off</span> <span class="o">|</span>   <span class="mi">00000000</span><span class="p">:</span><span class="mi">09</span><span class="p">:</span><span class="mf">00.0</span>  <span class="n">On</span> <span class="o">|</span>                  <span class="n">N</span><span class="o">/</span><span class="n">A</span> <span class="o">|</span>
-<span class="o">|</span>  <span class="mi">0</span><span class="o">%</span>   <span class="mi">60</span><span class="n">C</span>    <span class="n">P8</span>             <span class="mi">35</span><span class="n">W</span> <span class="o">/</span>  <span class="mi">350</span><span class="n">W</span> <span class="o">|</span>     <span class="mi">774</span><span class="n">MiB</span> <span class="o">/</span>  <span class="mi">12288</span><span class="n">MiB</span> <span class="o">|</span>      <span class="mi">1</span><span class="o">%</span>      <span class="n">Default</span> <span class="o">|</span>
-</pre></div>
-</div>
-<p>This system has a NVIDIA RTX 3080 Ti consumer graphics card.  Notice that it only has 12288MiB of memory; 12GB of memory is not enough to run the example.</p>
-<p>For Roman SNPIT development, if you need a more recent version of SFFT than what’s in the docker container, inside the container, run:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">sfft</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="o">.</span>
-</pre></div>
-</div>
-<p>For everybody, inside the container, run:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">phrosty</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="o">.</span>
-</pre></div>
-</div>
-<p>That will install the checked out version of phrosty in your currently running environment.  Note that if you exit the container and run a new container, you will have to <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span></code> phrosty again, as the changes you make to a container only persist as long as that same container is still running.</p>
-<p>Next, try running:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SNPIT_CONFIG</span><span class="o">=</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config</span><span class="o">.</span><span class="n">yaml</span> <span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">help</span> <span class="o">|</span> <span class="n">less</span>
-</pre></div>
-</div>
-<p>You should see all the options you can pass to phrosty.  There are a lot, because there are (verbose) options for everything that’s in the config file.  The options you need to think about most are at the top.  Press <code class="docutils literal notranslate"><span class="pre">q</span></code> to get out of <code class="docutils literal notranslate"><span class="pre">less</span></code>.</p>
-<p>Try running:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SNPIT_CONFIG</span><span class="o">=</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config</span><span class="o">.</span><span class="n">yaml</span> <span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> \
-      <span class="o">--</span><span class="n">oid</span> <span class="mi">20172782</span> \
-      <span class="o">-</span><span class="n">oc</span> <span class="n">ou2024</span> \
-      <span class="o">-</span><span class="n">b</span> <span class="n">Y106</span> \
-      <span class="o">-</span><span class="n">r</span> <span class="mf">7.551093401915147</span> \
-      <span class="o">-</span><span class="n">d</span> <span class="o">-</span><span class="mf">44.80718106491529</span> \
-      <span class="o">-</span><span class="n">ic</span> <span class="n">ou2024</span> \
-      <span class="o">-</span><span class="n">t</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_instances_templates_1</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">s</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_instances_science_2</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">p</span> <span class="mi">3</span> <span class="o">-</span><span class="n">w</span> <span class="mi">3</span> \
-      <span class="o">-</span><span class="n">v</span>
-</pre></div>
-</div>
-<p>If all is well, after it’s done running the output will end with something like:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">2025</span><span class="o">-</span><span class="mi">08</span><span class="o">-</span><span class="mi">13</span> <span class="mi">17</span><span class="p">:</span><span class="mi">35</span><span class="p">:</span><span class="mi">24</span> <span class="o">-</span> <span class="n">INFO</span><span class="p">]</span> <span class="o">-</span> <span class="n">Results</span> <span class="n">saved</span> <span class="n">to</span> <span class="o">/</span><span class="n">lc_out_dir</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="mi">20172782</span><span class="o">/</span><span class="mi">40753</span><span class="n">b1b</span><span class="o">-</span><span class="mi">9248</span><span class="o">-</span><span class="mf">4e58</span><span class="o">-</span><span class="n">a625</span><span class="o">-</span><span class="n">a9354dac18aa_Y106</span><span class="o">.</span><span class="n">pq</span>
-</pre></div>
-</div>
-<p>On your host system (as well as inside the container), you should see new files in wherever you put <code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code>.  (Inside the container, these are at <code class="docutils literal notranslate"><span class="pre">/lc_out_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">/dia_out_dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">/phrosty_temp</span></code>.)</p>
+<p>If you are using an NVIDIA GPU, add the line <a href="#id2"><span class="problematic" id="id3">`</span></a>–backend cupy `.</p>
 </section>
-<section id="running-on-perlmutter">
-<span id="perlmutter-example"></span><h3><a class="toc-backref" href="#id7" role="doc-backlink">Running on Perlmutter</a><a class="headerlink" href="#running-on-perlmutter" title="Link to this heading">¶</a></h3>
-<p>While the previous example should have worked on Perlmutter, this is a somewhat more realistic example.  It doesn’t use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren’t in the right unix groups. This example will not work on a login node.</p>
-<section id="setting-up-the-environment">
-<h4><a class="toc-backref" href="#id8" role="doc-backlink">Setting up the environment</a><a class="headerlink" href="#setting-up-the-environment" title="Link to this heading">¶</a></h4>
-<p>Get your environment set up as described under the <a class="reference internal" href="installation.html#phrosty-installation-prerequisites"><span class="std std-ref">phrosty installation prerequisites</span></a>.</p>
+<section id="running-on-smdc">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Running on SMDC</a><a class="headerlink" href="#running-on-smdc" title="Link to this heading">¶</a></h2>
+<p><strong>Make sure you are on a compute node. If you run on a login node, you crash it for everyone.</strong></p>
+<p>If you want a GPU node, do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">salloc</span> <span class="o">-</span><span class="n">p</span> <span class="n">gpu</span><span class="o">-</span><span class="nb">int</span> <span class="o">--</span><span class="n">time</span><span class="o">=</span><span class="mi">04</span><span class="p">:</span><span class="mi">00</span><span class="p">:</span><span class="mi">00</span>
+</pre></div>
+</div>
+<p>If you want to run on a CPU node, do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">salloc</span> <span class="o">-</span><span class="n">p</span> <span class="n">mem</span><span class="o">-</span><span class="n">lg</span> <span class="o">--</span><span class="n">time</span><span class="o">=</span><span class="mi">04</span><span class="p">:</span><span class="mi">00</span><span class="p">:</span><span class="mi">00</span>
+</pre></div>
+</div>
+<p>Right now, Rick’s <code class="docutils literal notranslate"><span class="pre">romanisim</span></code> images are on SMDC at:</p>
+<blockquote>
+<div><p>/home/rkessler/romanisim/output_images_galid_force0
+/home/rkessler/romanisim/output_images_galid_force1</p>
+</div></blockquote>
+<p>where <code class="docutils literal notranslate"><span class="pre">force0</span></code> indicates random magnitude light curves for two events far away from their hosts, and <code class="docutils literal notranslate"><span class="pre">force1</span></code> is the same light curves but near their host centers.</p>
+<p>Corresponding SNANA truth files are located at:</p>
+<blockquote>
+<div><p>/home/rkessler/romanisim/snana_sim_galid_force0
+/home/rkessler/romanisim/snana_sim_galid_force1</p>
+</div></blockquote>
+<p>The SNe Ia in the sims are object IDs <code class="docutils literal notranslate"><span class="pre">11</span></code> and <code class="docutils literal notranslate"><span class="pre">21</span></code>. We are going to test on <code class="docutils literal notranslate"><span class="pre">11</span></code>.</p>
+<section id="using-a-native-venv">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">Using a native venv</a><a class="headerlink" href="#using-a-native-venv" title="Link to this heading">¶</a></h3>
+<p>Make sure you are in <code class="xref py py-obj docutils literal notranslate"><span class="pre">the</span> <span class="pre">correct</span> <span class="pre">environment</span></code>. From the <code class="docutils literal notranslate"><span class="pre">$RUNDIR</span></code>, run:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">SNPIT_CONFIG=packages/phrosty/phrosty_config_default.yaml python packages/phrosty/phrosty/pipeline.py \</span>
+<span class="go">--oid 11 \</span>
+<span class="go">-b J129 \</span>
+<span class="go">-r 9.366435 \</span>
+<span class="go">-d -43.958825 \</span>
+<span class="go">--base-path /mnt/roman-science-east-2/snpit/snana+romanisim+romancal/ \</span>
+<span class="go">-t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \</span>
+<span class="go">-s packages/phrosty/phrosty/tests/11_instances_science_2.csv</span>
+</pre></div>
+</div>
+<p>Remember you can add <code class="docutils literal notranslate"><span class="pre">--backend</span> <span class="pre">cupy</span></code> if you are on a GPU node.</p>
+</section>
+<section id="using-the-apptainer-singularity-container">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">Using the Apptainer/Singularity container</a><a class="headerlink" href="#using-the-apptainer-singularity-container" title="Link to this heading">¶</a></h3>
+<p>If you are in the Singularity container discussed in <a class="reference external" href="https://roman-supernova-pit.github.io/snappl/environment.html#running-on-smdc">the snappl documentation about running on SMDC</a>, <code class="docutils literal notranslate"><span class="pre">/mnt/roman-science-east-2/snpit/snana+romanisim+romancal/</span></code> maps to <code class="docutils literal notranslate"><span class="pre">/ricksims</span></code>.</p>
+<p>Do all of the things in the above link, and from <code class="docutils literal notranslate"><span class="pre">$RUNDIR</span></code>, run the following:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">SNPIT_CONFIG=packages/phrosty/phrosty_config_default.yaml python packages/phrosty/phrosty/pipeline.py \</span>
+<span class="go">--oid 11 \</span>
+<span class="go">-b J129 \</span>
+<span class="go">-r 9.366435 \</span>
+<span class="go">-d -43.958825 \</span>
+<span class="go">--base-path /ricksims/ \</span>
+<span class="go">-t packages/phrosty/phrosty/tests/11_instances_templates_1.csv \</span>
+<span class="go">-s packages/phrosty/phrosty/tests/11_instances_science_2.csv</span>
+</pre></div>
+</div>
+<p>Add <code class="docutils literal notranslate"><span class="pre">--backend</span> <span class="pre">cupy</span></code> if you are on a GPU node.</p>
+<section id="running-on-nersc">
+<span id="perlmutter-example"></span><h4><a class="toc-backref" href="#id11" role="doc-backlink">Running on NERSC</a><a class="headerlink" href="#running-on-nersc" title="Link to this heading">¶</a></h4>
+<p>While the previous example should have worked on NERSC/Perlmutter, this is a somewhat more realistic example.  It doesn’t use the photometry test data, but rather points to the full set of OpenUniverse2024 data available on Perlmutter.  This example is primarily intended for members of the Roman SN PIT, as it will require having an account on the NERSC Perlmutter cluster, and will require reading files that may not be accessible to people who aren’t in the right unix groups. This example will not work on a login node.</p>
+</section>
 </section>
 <section id="pick-a-place-to-work">
-<h4><a class="toc-backref" href="#id9" role="doc-backlink">Pick a place to work</a><a class="headerlink" href="#pick-a-place-to-work" title="Link to this heading">¶</a></h4>
+<h3><a class="toc-backref" href="#id12" role="doc-backlink">Pick a place to work</a><a class="headerlink" href="#pick-a-place-to-work" title="Link to this heading">¶</a></h3>
 <p>Work in one of two places.  You make yourself a subdirectory underneath <code class="docutils literal notranslate"><span class="pre">/pscratch/sd/&lt;u&gt;/&lt;username&gt;</span></code>, where <code class="docutils literal notranslate"><span class="pre">&lt;username&gt;</span></code> is your NERSC username and <code class="xref py py-obj docutils literal notranslate"><span class="pre">&lt;u&gt;</span></code> is the first letter of your username.  (You can get to this directory with <code class="docutils literal notranslate"><span class="pre">cd</span> <span class="pre">$SCRATCH</span></code>; this is your top-level scratch directory, and NERSC sets the <code class="docutils literal notranslate"><span class="pre">SCRATCH</span></code> environment variable to point to it.)  Alternatively, if you are on the SN PIT, you can create yourself a subdirectory somewhere underneath <code class="docutils literal notranslate"><span class="pre">/global/cfs/cdirs/m4385/users</span></code>.  This is the shared SNPIT space on the NERSC community file system, so if you’re going to work there, be aware that you’re using up our shared file allocation.  At the moment, that’s not a worry.</p>
 <p>I’m going to call the place you’ve picked to work your “parent” directory.</p>
 </section>
+<section id="setting-up-the-environment">
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">Setting up the environment</a><a class="headerlink" href="#setting-up-the-environment" title="Link to this heading">¶</a></h3>
+<p>Get your environment set up as described under the <a class="reference internal" href="installation.html#phrosty-nersc-perlmutter"><span class="std std-ref">phrosty installation prerequisites</span></a>.</p>
+<p>If all has gone well, you are now sitting inside a container that’s ready to run phrosty.  Verify that you’re in the container with <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-F</span> <span class="pre">/</span></code>.  Make sure that you see <code class="docutils literal notranslate"><span class="pre">dia_out_dir/</span></code>, <code class="docutils literal notranslate"><span class="pre">lc_out_dir/</span></code>, <code class="docutils literal notranslate"><span class="pre">photometry_test_data/</span></code>, and <code class="docutils literal notranslate"><span class="pre">phrosty_temp/</span></code> in the list of directories.  Next, run <code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code>, and make sure it shows you a GPU with 40MB.  Part of that output will look something like this:</p>
+<blockquote>
+<div><p>|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-40GB          Off |   00000000:03:00.0 Off |                    0 |
+| N/A   30C    P0             52W /  400W |       1MiB /  40960MiB |      0%      Default |
+|                                         |                        |             Disabled |</p>
+</div></blockquote>
+<p>This shows a NVIDIA A100 GPU with 40GB of memory.  A different system might show:</p>
+<blockquote>
+<div><p>|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 3080 Ti     Off |   00000000:09:00.0  On |                  N/A |
+|  0%   60C    P8             35W /  350W |     774MiB /  12288MiB |      1%      Default |</p>
+</div></blockquote>
+<p>This system has a NVIDIA RTX 3080 Ti consumer graphics card.  Notice that it only has 12288MiB of memory; 12GB of memory is not enough to run the example.</p>
+</section>
 <section id="get-phrosty">
-<h4><a class="toc-backref" href="#id10" role="doc-backlink">Get phrosty</a><a class="headerlink" href="#get-phrosty" title="Link to this heading">¶</a></h4>
-<p>In your parent directory, <a class="reference internal" href="installation.html#install-from-sources"><span class="std std-ref">clone the phrosty repository</span></a>.  For this example, you do not need to install the photometry test data.</p>
-<p>If you are doing Roman SNPIT-related development and you need a more recent version of SFFT than what’s in the docker container, <a class="reference internal" href="installation.html#install-from-sources"><span class="std std-ref">also clone the Roman SNPIT SFFT repository</span></a>.</p>
+<h3><a class="toc-backref" href="#id14" role="doc-backlink">Get phrosty</a><a class="headerlink" href="#get-phrosty" title="Link to this heading">¶</a></h3>
+<p>In your parent directory, <span class="xref std std-ref">clone the phrosty repository</span>.  For this example, you do not need to install the photometry test data.</p>
+<p>If you are doing Roman SNPIT-related development and you need a more recent version of SFFT than what’s in the docker container, <span class="xref std std-ref">also clone the Roman SNPIT SFFT repository</span>.</p>
 </section>
 <section id="locate-existing-directories">
-<h4><a class="toc-backref" href="#id11" role="doc-backlink">Locate existing directories</a><a class="headerlink" href="#locate-existing-directories" title="Link to this heading">¶</a></h4>
+<h3><a class="toc-backref" href="#id15" role="doc-backlink">Locate existing directories</a><a class="headerlink" href="#locate-existing-directories" title="Link to this heading">¶</a></h3>
 <p>phrosty currently reads data from the OpenUniverse sims.  On NERSC, you can find the necessary information at the following directories.  These directories will be bind-mounted to the locations in parentheses (see below re: bind mounting).</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data</span></code> (<code class="docutils literal notranslate"><span class="pre">/ou2024</span></code>)</p></li>
@@ -241,21 +268,8 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library</span></code> (<code class="docutils literal notranslate"><span class="pre">/ou2024_sims_sed_library</span></code>)</p></li>
 </ul>
 </section>
-<section id="create-needed-directories">
-<h4><a class="toc-backref" href="#id12" role="doc-backlink">Create needed directories</a><a class="headerlink" href="#create-needed-directories" title="Link to this heading">¶</a></h4>
-<p>You need to make the following directories.  (They don’t have to have exactly these names.  However, for purposes of the example, create these directories with these names as subdirectories under your parent directory.)</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code></p></li>
-</ul>
-<p>In addition, create a directory <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code> somewhere underneath <code class="docutils literal notranslate"><span class="pre">$SCRATCH</span></code>, e.g.:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mkdir $SCRATCH/phrosty_temp
-</pre></div>
-</div>
-<p>This directory will be mounted to <code class="docutils literal notranslate"><span class="pre">/phrosty_temp</span></code> inside the container.  (The further examples below will assume that this is where you made it.)</p>
-</section>
 <section id="secure-lists-of-images-for-your-supernova">
-<h4><a class="toc-backref" href="#id13" role="doc-backlink">Secure lists of images for your supernova</a><a class="headerlink" href="#secure-lists-of-images-for-your-supernova" title="Link to this heading">¶</a></h4>
+<h3><a class="toc-backref" href="#id16" role="doc-backlink">Secure lists of images for your supernova</a><a class="headerlink" href="#secure-lists-of-images-for-your-supernova" title="Link to this heading">¶</a></h3>
 <p>Step one: Pick a supernova to run on.</p>
 <p>For this example, we’re going to run on the object with id 20172782.  In the <code class="docutils literal notranslate"><span class="pre">examples/perlmutter</span></code> directory under your <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> checkout), you can find three <code class="docutils literal notranslate"><span class="pre">.csv</span></code> files that have information about the template and/or science images we’re going to use:
 * <code class="docutils literal notranslate"><span class="pre">20172782_instances_templates_1.csv</span></code> — a single R-band template image
@@ -273,104 +287,90 @@
 <p>These files must start with header <code class="docutils literal notranslate"><span class="pre">path</span> <span class="pre">observation_id</span> <span class="pre">sca</span> <span class="pre">mjd</span> <span class="pre">band</span></code>. Columns are separated by spaces.</p>
 </section>
 <section id="running-interactively">
-<span id="perlmutter-interactive"></span><h4><a class="toc-backref" href="#id14" role="doc-backlink">Running interactively</a><a class="headerlink" href="#running-interactively" title="Link to this heading">¶</a></h4>
+<span id="perlmutter-interactive"></span><h3><a class="toc-backref" href="#id17" role="doc-backlink">Running interactively</a><a class="headerlink" href="#running-interactively" title="Link to this heading">¶</a></h3>
 <p>The easiest way to just run something is to do it on an interactive node on Perlmutter.  (See <a class="reference internal" href="#perlmutter-running-slurm"><span class="std std-ref">below</span></a> for running it with slurm.)</p>
 <p>First, get yourself a session on an interactive GPU node with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">salloc</span> <span class="o">-</span><span class="n">t</span> <span class="mi">04</span><span class="p">:</span><span class="mi">00</span><span class="p">:</span><span class="mi">00</span> <span class="o">-</span><span class="n">A</span> <span class="n">m4385</span> <span class="o">--</span><span class="n">constraint</span><span class="o">=</span><span class="n">gpu</span> <span class="o">-</span><span class="n">q</span> <span class="n">interactive</span>
-</pre></div>
-</div>
+<blockquote>
+<div><p>salloc -t 04:00:00 -A m4385 –constraint=gpu -q interactive</p>
+</div></blockquote>
 <p>after a minute or so, that should log you into one of the nodes with a session that will last 4 hours.  (This is overkill; if you know it won’t be that long, shorten the time after the <code class="docutils literal notranslate"><span class="pre">-t</span></code> flag.)  You can verify that you’re on a compute node by running <code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code>; you should see four different GPUs listed each with either 40MB or 80GB of memory, but no GPU processes running.</p>
 <p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cd</span></code> into your “parent” directory (if you’re not there already).</p>
-<p>If you are not a member of the Roman SN PIT (i.e., assuming you pulled your container from <a class="reference internal" href="installation.html#phrosty-installation-prerequisites"><span class="std std-ref">docker.io</span></a>), do:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>podman-hpc run --gpu \
-  --mount type=bind,source=$PWD,target=/home \
-  --mount type=bind,source=$PSCRATCH,target=/scratch \
-  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/ou2024 \
-  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/ou2024_snana \
-  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/ou2024_snana_lc_dir \
-  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library,target=/ou2024_sims_sed_library \
-  --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \
-  --env PYTHONPATH=/roman_imsim \
-  --env OPENBLAS_NUM_THREADS=1 \
-  --env MKL_NUM_THREADS=1 \
-  --env NUMEXPR_NUM_THREADS=1 \
-  --env OMP_NUM_THREADS=1 \
-  --env VECLIB_MAXIMUM_THREADS=1 \
-  --env TERM=xterm \
-  --env SNPIT_CONFIG=/home/phrosty/phrosty/tests/phrosty_test_config.yaml \
-  --annotation run.oci.keep_original_groups=1 \
-  -it \
-  docker.io/rknop/roman-snpit-env:cuda-dev-0.1.41 \
-  /bin/bash
+<p>If you are not a member of the Roman SN PIT (i.e., assuming you pulled your container from <a class="reference internal" href="installation.html#phrosty-nersc-perlmutter"><span class="std std-ref">docker.io</span></a>), do:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">podman-hpc run --gpu \</span>
+<span class="go">  --mount type=bind,source=$PWD,target=/home \</span>
+<span class="go">  --mount type=bind,source=$PSCRATCH,target=/scratch \</span>
+<span class="go">  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/shared/external/roman-desc-sims/Roman_data,target=/ou2024 \</span>
+<span class="go">  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE,target=/ou2024_snana \</span>
+<span class="go">  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/ROMAN+LSST_LARGE_SNIa-normal,target=/ou2024_snana_lc_dir \</span>
+<span class="go">  --mount type=bind,source=/dvs_ro/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC/sims_sed_library,target=/ou2024_sims_sed_library \</span>
+<span class="go">  --env LD_LIBRARY_PATH=/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs \</span>
+<span class="go">  --env PYTHONPATH=/roman_imsim \</span>
+<span class="go">  --env OPENBLAS_NUM_THREADS=1 \</span>
+<span class="go">  --env MKL_NUM_THREADS=1 \</span>
+<span class="go">  --env NUMEXPR_NUM_THREADS=1 \</span>
+<span class="go">  --env OMP_NUM_THREADS=1 \</span>
+<span class="go">  --env VECLIB_MAXIMUM_THREADS=1 \</span>
+<span class="go">  --env TERM=xterm \</span>
+<span class="go">  --env SNPIT_CONFIG=/home/phrosty/phrosty/tests/phrosty_test_config.yaml \</span>
+<span class="go">  --annotation run.oci.keep_original_groups=1 \</span>
+<span class="go">  -it \</span>
+<span class="go">  docker.io/rknop/roman-snpit-env:cuda-dev-0.1.41 \</span>
+<span class="go">  /bin/bash</span>
 </pre></div>
 </div>
-<p>If you are in the Roman SN PIT (i.e., assuming you pulled your container from <a class="reference internal" href="installation.html#phrosty-installation-prerequisites"><span class="std std-ref">registry.nersc.gov</span></a>), instead do:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">WHICHROMANENV</span><span class="o">=</span><span class="n">cuda</span><span class="o">-</span><span class="n">dev</span> <span class="n">bash</span> <span class="o">/</span><span class="k">global</span><span class="o">/</span><span class="n">cfs</span><span class="o">/</span><span class="n">cdirs</span><span class="o">/</span><span class="n">m4385</span><span class="o">/</span><span class="n">env</span><span class="o">/</span><span class="n">interactive</span><span class="o">-</span><span class="n">podman</span><span class="o">-</span><span class="n">nov2025</span><span class="o">.</span><span class="n">sh</span>
+<p>If you are in the Roman SN PIT (i.e., assuming you pulled your container from <a class="reference internal" href="installation.html#phrosty-nersc-perlmutter"><span class="std std-ref">registry.nersc.gov</span></a>), instead do:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">WHICHROMANENV=cuda-dev bash /global/cfs/cdirs/m4385/env/interactive-podman-rknop-dev.sh</span>
 </pre></div>
 </div>
-<p>If this fails, check <a href="#id2"><span class="problematic" id="id3">:role:`the snappl documentation&lt;https://roman-supernova-pit.github.io/snappl/environment.html#databases-currently-supported&gt;`</span></a> for current launchers.</p>
+<p>If this fails, check <a href="#id4"><span class="problematic" id="id5">:role:`the snappl documentation&lt;https://roman-supernova-pit.github.io/snappl/environment.html#databases-currently-supported&gt;`</span></a> for current launchers.</p>
 <p>This will create a container image, and put in a bash shell inside the container.  This will put you inside the container.  Your prompt will change to something like <code class="docutils literal notranslate"><span class="pre">root&#64;56356f1a4b9b:/usr/src#</span></code> (where the hex barf will be different every time).  At any time, run <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-F</span> <span class="pre">/</span></code>; if you see directories <code class="docutils literal notranslate"><span class="pre">phrosty</span></code>, <code class="docutils literal notranslate"><span class="pre">phrosty_temp</span></code>, <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code>, and the others that were mounted by <code class="docutils literal notranslate"><span class="pre">interactive_podman.sh</span></code>, then you know you’re working inside the container, rather than on the host machine.  Verify that the GPUs are visible inside the container with <code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code>.</p>
 <p>Go to the <code class="docutils literal notranslate"><span class="pre">/home</span></code> directory, which is where your parent directory should be mounted:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">/</span><span class="n">home</span>
-</pre></div>
-</div>
-<p>Next, if you are doing Roman SNPIT development, install SFFT:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">sfft</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="o">.</span>
-</pre></div>
-</div>
-<p>For everyone, install phrosty:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">phrosty</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="o">.</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">cd /home</span>
 </pre></div>
 </div>
 <p>The main Python executable for running the pipeline is <code class="docutils literal notranslate"><span class="pre">phrosty/phrosty/pipeline.py</span></code>.  Run:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SNPIT_CONFIG</span><span class="o">=</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config</span><span class="o">.</span><span class="n">yaml</span> <span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">help</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">SNPIT_CONFIG=packages/phrosty/examples/perlmutter/phrosty_config_nersc.yaml python packages/phrosty/phrosty/pipeline.py --help</span>
 </pre></div>
 </div>
 <p>to see how it works, and to see what the various parameters you can specify are.  The output will be long, becasue everything that’s in the config file is included as something you can override on the command line.  The arguments near the top are the ones you’re more likely to want to think about.  You might want to pipe the output of this <code class="docutils literal notranslate"><span class="pre">-help</span></code> into <code class="docutils literal notranslate"><span class="pre">less</span></code> so you can see what’s going on.</p>
 <p>Run this on your example lightcurve with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SNPIT_CONFIG</span><span class="o">=</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config</span><span class="o">.</span><span class="n">yaml</span> <span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> \
-      <span class="o">--</span><span class="n">oid</span> <span class="mi">20172782</span> \
-      <span class="o">-</span><span class="n">oc</span> <span class="n">ou2024</span> \
-      <span class="o">-</span><span class="n">b</span> <span class="n">Y106</span> \
-      <span class="o">-</span><span class="n">r</span> <span class="mf">7.551093401915147</span> \
-      <span class="o">-</span><span class="n">d</span> <span class="o">-</span><span class="mf">44.80718106491529</span> \
-      <span class="o">-</span><span class="n">ic</span> <span class="n">ou2024</span> \
-      <span class="o">-</span><span class="n">t</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_instances_templates_1</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">s</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_instances_science_2</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">p</span> <span class="mi">3</span> <span class="o">-</span><span class="n">w</span> <span class="mi">3</span> \
-      <span class="o">-</span><span class="n">v</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">SNPIT_CONFIG=/home/packages/phrosty/examples/perlmutter/phrosty_config_nersc.yaml python /home/packages/phrosty/phrosty/pipeline.py \</span>
+<span class="go">      --oid 20172782 \</span>
+<span class="go">      -oc ou2024 \</span>
+<span class="go">      -b Y106 \</span>
+<span class="go">      -r 7.551093401915147 \</span>
+<span class="go">      -d -44.80718106491529 \</span>
+<span class="go">      -ic ou2024 \</span>
+<span class="go">      -t /home/packages/phrosty/phrosty/tests/20172782_instances_templates_1.csv \</span>
+<span class="go">      -s /home/packages/phrosty/phrosty/tests/20172782_instances_science_2.csv</span>
 </pre></div>
 </div>
 <p>(If you run with <code class="docutils literal notranslate"><span class="pre">.csv</span></code> files that have larger number of images, you probably want to pass a larger number to <code class="xref py py-obj docutils literal notranslate"><span class="pre">-p</span></code>; this is a number of parallel CPU processes that will run at once, and is limited by how many CPUs and how much memory you have available.  The code will only run one GPU process at once.  You can also try increasing <code class="xref py py-obj docutils literal notranslate"><span class="pre">-w</span></code>, but this is more limited by filesystem performance than the number of CPUs and the amount of memory you have available.  We’ve set these both to 3 right now because there are only 3 files being processed (one template and two science images).  Empirically, on Perlmutter nodes, you can go up to something like <code class="xref py py-obj docutils literal notranslate"><span class="pre">-p</span> <span class="pre">15</span></code>; while there are (many) more CPUs than that, memory is the limiting factor.  Also, empirically, on Perlmutter, you can go up to something like <code class="xref py py-obj docutils literal notranslate"><span class="pre">-w</span> <span class="pre">5</span></code> before you reach the point of diminishing returns.  This is more variable, because whereas you have the node’s CPUs to yourself, you’re sharing the filesystem with the rest of the users of the system.)</p>
 <p>If all is well, you should see a final line that looks something like:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">2025</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">07</span> <span class="mi">18</span><span class="p">:</span><span class="mi">30</span><span class="p">:</span><span class="mi">05</span> <span class="o">-</span> <span class="n">phrosty</span> <span class="o">-</span> <span class="n">INFO</span><span class="p">]</span> <span class="n">Results</span> <span class="n">saved</span> <span class="n">to</span> <span class="o">/</span><span class="n">lc_out_dir</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="mi">20172782</span><span class="o">/</span><span class="mi">07</span><span class="n">c9acbe</span><span class="o">-</span><span class="mi">87</span><span class="n">c1</span><span class="o">-</span><span class="mi">4</span><span class="n">b3b</span><span class="o">-</span><span class="n">a52e</span><span class="o">-</span><span class="mi">1</span><span class="n">a1e8dfa968e_R062</span><span class="o">.</span><span class="n">pq</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">[2025-01-07 18:30:05 - phrosty - INFO] Results saved to /lc_out_dir/data/20172782/07c9acbe-87c1-4b3b-a52e-1a1e8dfa968e_R062.pq</span>
 </pre></div>
 </div>
 <p>Outside the container (i.e. on Perlmutter), you should be able to find the file, named <code class="docutils literal notranslate"><span class="pre">data/20172782/07c9acbe-87c1-4b3b-a52e-1a1e8dfa968e_R062.pq</span></code> underneath the <code class="docutils literal notranslate"><span class="pre">lc_out_dir</span></code> subdirectory of your parent directory.  Congratulations, this has the lightcurve!</p>
 <p>You will also find new files in the <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code> subdirectory, including several large <code class="docutils literal notranslate"><span class="pre">.fits</span></code> files.</p>
 </section>
 <section id="running-with-the-nsight-profiler">
-<h4><a class="toc-backref" href="#id15" role="doc-backlink">Running with the NSight Profiler</a><a class="headerlink" href="#running-with-the-nsight-profiler" title="Link to this heading">¶</a></h4>
-<p>When developing/debugging the pipeline, it’s useful to run with a profiler, so you can see where the code is spending most of its time.  The huge <code class="docutils literal notranslate"><span class="pre">roman-snpit-env:cuda-dev</span></code> Docker image includes the NVIDIA NSight Systems profiler, and the <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in <a class="reference internal" href="#perlmutter-interactive"><span class="std std-ref">Running interactively</span></a> above, only replacing the final <code class="docutils literal notranslate"><span class="pre">python</span></code> command with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nsys</span> <span class="n">profile</span> \
-  <span class="o">--</span><span class="n">trace</span><span class="o">-</span><span class="n">fork</span><span class="o">-</span><span class="n">before</span><span class="o">-</span><span class="n">exec</span><span class="o">=</span><span class="n">true</span> \
-  <span class="o">--</span><span class="n">python</span><span class="o">-</span><span class="n">backtrace</span><span class="o">=</span><span class="n">cuda</span> \
-  <span class="o">--</span><span class="n">python</span><span class="o">-</span><span class="n">sampling</span><span class="o">=</span><span class="n">true</span> \
-  <span class="o">--</span><span class="n">trace</span><span class="o">=</span><span class="n">cuda</span><span class="p">,</span><span class="n">nvtx</span><span class="p">,</span><span class="n">cublas</span><span class="p">,</span><span class="n">cusparse</span><span class="p">,</span><span class="n">cudnn</span><span class="p">,</span><span class="n">cudla</span><span class="p">,</span><span class="n">cusolver</span><span class="p">,</span><span class="n">opengl</span><span class="p">,</span><span class="n">openacc</span><span class="p">,</span><span class="n">openmp</span><span class="p">,</span><span class="n">osrt</span><span class="p">,</span><span class="n">mpi</span><span class="p">,</span><span class="n">nvvideo</span><span class="p">,</span><span class="n">vulkan</span><span class="p">,</span><span class="n">python</span><span class="o">-</span><span class="n">gil</span> \
-  <span class="o">-</span><span class="n">e</span> <span class="n">SNPIT_CONFIG</span><span class="o">=</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config</span><span class="o">.</span><span class="n">yaml</span> \
-  <span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> \
-      <span class="o">--</span><span class="n">oid</span> <span class="mi">20172782</span> \
-      <span class="o">-</span><span class="n">oc</span> <span class="n">ou2024</span> \
-      <span class="o">-</span><span class="n">b</span> <span class="n">Y106</span> \
-      <span class="o">-</span><span class="n">r</span> <span class="mf">7.551093401915147</span> \
-      <span class="o">-</span><span class="n">d</span> <span class="o">-</span><span class="mf">44.80718106491529</span> \
-      <span class="o">-</span><span class="n">ic</span> <span class="n">ou2024</span> \
-      <span class="o">-</span><span class="n">t</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_instances_templates_1</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">s</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_instances_science_2</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">p</span> <span class="mi">3</span> <span class="o">-</span><span class="n">w</span> <span class="mi">3</span> \
-      <span class="o">-</span><span class="n">v</span>
+<h3><a class="toc-backref" href="#id18" role="doc-backlink">Running with the NSight Profiler</a><a class="headerlink" href="#running-with-the-nsight-profiler" title="Link to this heading">¶</a></h3>
+<p>When developing/debugging the pipeline, it’s useful to run with a GPU-aware profiler, so you can see where the code is spending most of its time.  The huge <code class="docutils literal notranslate"><span class="pre">roman-snpit-env:cuda-dev</span></code> Docker image includes the NVIDIA NSight Systems profiler, and the <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> code includes hooks to flag parts of the code to the nsight profiler.  You can generate a profile for your code by doing everything described in <a class="reference internal" href="#perlmutter-interactive"><span class="std std-ref">Running interactively</span></a> above, only replacing the final <code class="docutils literal notranslate"><span class="pre">python</span></code> command with:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">nsys profile \</span>
+<span class="go">  --trace-fork-before-exec=true \</span>
+<span class="go">  --python-backtrace=cuda \</span>
+<span class="go">  --python-sampling=true \</span>
+<span class="go">  --trace=cuda,nvtx,cublas,cusparse,cudnn,cudla,cusolver,opengl,openacc,openmp,osrt,mpi,nvvideo,vulkan,python-gil \</span>
+<span class="go">  -e SNPIT_CONFIG=phrosty/tests/phrosty_test_config.yaml \</span>
+<span class="go">  python phrosty/pipeline.py \</span>
+<span class="go">      --oid 20172782 \</span>
+<span class="go">      -oc ou2024 \</span>
+<span class="go">      -b Y106 \</span>
+<span class="go">      -r 7.551093401915147 \</span>
+<span class="go">      -d -44.80718106491529 \</span>
+<span class="go">      -ic ou2024 \</span>
+<span class="go">      -t phrosty/tests/20172782_instances_templates_1.csv \</span>
+<span class="go">      -s phrosty/tests/20172782_instances_science_2.csv</span>
 </pre></div>
 </div>
 <p><em>Ideally</em>, this would create a file <code class="docutils literal notranslate"><span class="pre">report1.nsys-rep</span></code> (or <code class="docutils literal notranslate"><span class="pre">report2.nsys-rep</span></code>, or higher numbers based on what files are already in the directory), but something about that is broken; I’m not sure what.  If that file is created, be happy.  If not, it will say something like “Importer error status: Importation failed,” and will leave behind a file <code class="docutils literal notranslate"><span class="pre">report&lt;n&gt;.qdstrm</span></code>.  You can couple that file to another system and manually convert it to a <code class="docutils literal notranslate"><span class="pre">.nsys-rep</span></code> file.  On a Linux system, if you’ve installed the <code class="docutils literal notranslate"><span class="pre">nsight-compute</span></code> and <code class="docutils literal notranslate"><span class="pre">nsight-systems</span></code> packages (see <a class="reference external" href="https://docs.nvidia.com/nsight-systems/InstallationGuide/index.html)">Nvidia’s Nsight Systems installation guide</a>), you can download the <code class="docutils literal notranslate"><span class="pre">.qdstrm</span></code> file to your system and run:</p>
@@ -385,7 +385,7 @@
 <p>to look at the profile.</p>
 </section>
 <section id="running-a-slurm-batch-job">
-<span id="perlmutter-running-slurm"></span><h4><a class="toc-backref" href="#id16" role="doc-backlink">Running a SLURM batch job</a><a class="headerlink" href="#running-a-slurm-batch-job" title="Link to this heading">¶</a></h4>
+<span id="perlmutter-running-slurm"></span><h3><a class="toc-backref" href="#id19" role="doc-backlink">Running a SLURM batch job</a><a class="headerlink" href="#running-a-slurm-batch-job" title="Link to this heading">¶</a></h3>
 <p>For reference, see <a class="reference external" href="https://docs.nersc.gov/systems/perlmutter/running-jobs/">the NERSC documentation on running jobs on Perlmutter</a>.  You need to set up your environment and run all of the steps above <em>before</em> “Running interactively”.</p>
 <p><strong>Create a job script</strong>: to submit a job to a batch queue, you need to write a slrum script, which is just a shell script with some directives in the comments at the top.  An example script may be found in the file <code class="docutils literal notranslate"><span class="pre">examples/perlmutter/20172782_slurm_demo.sh</span></code> in your phrosty checkout.  If you look at this script, you will see that it contains mostly a combination of the <code class="docutils literal notranslate"><span class="pre">podman-hpc</span></code> and <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">phrosty/phrosty/pipeline.py</span></code> commands above under “running interactively”.  Instead of starting a shell with <code class="docutils literal notranslate"><span class="pre">/bin/bash</span></code>, the <code class="docutils literal notranslate"><span class="pre">podman-hpc</span></code> command just runs the job directly.  It also adds a <code class="docutils literal notranslate"><span class="pre">-w</span> <span class="pre">/home</span></code> flag so it will be working in the right location.</p>
 <p>At the top are the directives that control how the job is submitted.  Many of these you can leave as is.  (If you’re morbidly curious, see <a class="reference external" href="https://slurm.schedmd.com/sbatch.html">full documentation on the sbatch command</a>.  The ones you are most likely to want to change are</p>
@@ -398,9 +398,9 @@
 <p>If look look at the bottom of the script, you will see that the number of parallel worker jobs that phrosty uses is set to 9 (<code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">9</span></code> as a flag to <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">phrosty/phrosty/pipeline.py</span></code>).  The total number of processes that the python program runs at once is this, plus the number of FITS writer threads (given by <code class="docutils literal notranslate"><span class="pre">-w</span></code>), plus one for the master process that launches all of the others.   You will notice that this total is less than the 32 CPUs that we nominally have.  To be safe, assume that each of the <code class="docutils literal notranslate"><span class="pre">-p</span></code> processes will use ~6GB of memory.  By limiting ourselves to 9 processes, we should safely fit within the amount of CPU memory allocated to the job (allowing for some overhead for the driver process and the FITS writer processes). Based on performance, you might want to play with the number of FITS writing threads (the number after <code class="docutils literal notranslate"><span class="pre">-w</span></code>); assume that each FITS writer process will use ~1GB of memory.
 .. (TODO: investigate how much they really use; get memory usage down.)</p>
 <p><strong>Make sure expected directories exists</strong>: If you look at the batch script, you’ll see a number of <code class="docutils literal notranslate"><span class="pre">--mount</span></code> flags that bind-mount directories inside the container.  From the location where you submit your job, all of the <code class="docutils literal notranslate"><span class="pre">source=</span></code> part of those <code class="docutils literal notranslate"><span class="pre">--mount</span></code> directives must be available.  For the demo, you will need to create the following directories underneath where you plan to submit the script:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mkdir lc_out_dir
-mkdir dia_out_dir
-mkdir $SCRATCH/phrosty_temp
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mkdir -p lc_out_dir
+mkdir -p dia_out_dir
+mkdir -p $SCRATCH/phrosty_temp
 </pre></div>
 </div>
 <p><strong>Submitting your job</strong>: Once you’ve are satisfied with your job script, submit it with:</p>
@@ -433,123 +433,13 @@ mkdir $SCRATCH/phrosty_temp
 </div>
 <p>and, ideally, there should be no lines anywhere in the file with <code class="docutils literal notranslate"><span class="pre">ERROR</span></code> near the beginning of the log message.</p>
 <p>Note that <code class="docutils literal notranslate"><span class="pre">/lc_out_dir/...</span></code> is the absolute path _inside_ the container; it maps to <code class="docutils literal notranslate"><span class="pre">lc_out_dir/...</span></code> underneath your working directory where you ran <code class="docutils literal notranslate"><span class="pre">sbatch</span></code>.  You will find the lightcurve in that <code class="docutils literal notranslate"><span class="pre">.pq</span></code> file.  There will also be a number of files written to the <code class="docutils literal notranslate"><span class="pre">dia_out_dir</span></code> directory.</p>
-</section>
-</section>
-<section id="running-on-smdc">
-<h3><a class="toc-backref" href="#id17" role="doc-backlink">Running on SMDC</a><a class="headerlink" href="#running-on-smdc" title="Link to this heading">¶</a></h3>
-<p>If you are using this section, you are probably a member of the SN PIT.</p>
-<p>General instructions for accessing SMDC can be found <a class="reference external" href="https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/NASA-SMDC-%28AWS%29">in the wiki</a>.</p>
-<p>First, follow the directions under <a class="reference external" href="https://github.com/Roman-Supernova-PIT/Roman-Supernova-PIT/wiki/SMCE-Containers">“Working with PIT Images” here</a>.</p>
-<p>Make sure you are in your home directory. You can just do <code class="xref py py-obj docutils literal notranslate"><span class="pre">cd</span></code> and you’ll be in <code class="xref py py-obj docutils literal notranslate"><span class="pre">/home/[your</span> <span class="pre">username]</span></code>. Make another directory inside the home directory. We will call it <code class="xref py py-obj docutils literal notranslate"><span class="pre">snpit</span></code>, and the full path will be <code class="xref py py-obj docutils literal notranslate"><span class="pre">/home/[your</span> <span class="pre">username]/snpit</span></code>. <code class="xref py py-obj docutils literal notranslate"><span class="pre">cd</span></code> into your new directory. In this directory, git clone phrosty if you haven’t already:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">Roman</span><span class="o">-</span><span class="n">Supernova</span><span class="o">-</span><span class="n">PIT</span><span class="o">/</span><span class="n">phrosty</span><span class="o">.</span><span class="n">git</span>
-</pre></div>
-</div>
-<p>Also, git clone the photometry test data:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">Roman</span><span class="o">-</span><span class="n">Supernova</span><span class="o">-</span><span class="n">PIT</span><span class="o">/</span><span class="n">photometry_test_data</span><span class="o">.</span><span class="n">git</span>
-</pre></div>
-</div>
-<p>ALSO, git clone the SN PIT environment repo:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">Roman</span><span class="o">-</span><span class="n">Supernova</span><span class="o">-</span><span class="n">PIT</span><span class="o">/</span><span class="n">environment</span><span class="o">.</span><span class="n">git</span>
-<span class="n">git</span> <span class="n">checkout</span> <span class="n">phrostydev</span>
-</pre></div>
-</div>
-<p>Get yourself a GPU node. Do:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">salloc</span> <span class="o">-</span><span class="n">p</span> <span class="n">gpu</span><span class="o">-</span><span class="nb">int</span> <span class="o">--</span><span class="n">time</span><span class="o">=</span><span class="mi">02</span><span class="p">:</span><span class="mi">00</span><span class="p">:</span><span class="mi">00</span>
-</pre></div>
-</div>
-<p>Sometimes your correct set of groups won’t be correctly populated on a compute node due to a race condition between populating the container and correctly configuring the active directory lookup. You will see a message about this when you get your node that says that the groups weren’t loaded properly. Also, if you type <code class="xref py py-obj docutils literal notranslate"><span class="pre">groups</span></code> on the login node, you’ll see <code class="xref py py-obj docutils literal notranslate"><span class="pre">[your</span> <span class="pre">username]</span> <span class="pre">spack</span> <span class="pre">cluster_users</span> <span class="pre">snpit</span></code>. If you type <code class="xref py py-obj docutils literal notranslate"><span class="pre">groups</span></code> on the GPU node, you’ll see <code class="xref py py-obj docutils literal notranslate"><span class="pre">[your</span> <span class="pre">username]</span> <span class="pre">nogroup</span></code>. You will also hit a permissions issue running <code class="xref py py-obj docutils literal notranslate"><span class="pre">phrosty</span></code> when it tries to write files outside your home directory. To start a new terminal that will have the groups loaded correctly, do:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="n">localhost</span>
-</pre></div>
-</div>
-<p>Then, go into the Singularity container:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sh</span> <span class="n">environment</span><span class="o">/</span><span class="n">smdc</span><span class="o">-</span><span class="n">phrostydev</span><span class="o">-</span><span class="n">apptainer</span><span class="o">.</span><span class="n">sh</span>
-</pre></div>
-</div>
-<p>Create a virtual environment (run only once):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">virtualenv</span> <span class="n">snpit_venv</span>
-</pre></div>
-</div>
-<p>Activate your virtual environment:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="n">snpit_venv</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">activate</span>
-</pre></div>
-</div>
-<p>…and pip install phrosty:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">phrosty</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="o">.</span>
-</pre></div>
-</div>
-<p>This will take forever the first time because it’s completely re-installing a Python environment based on the phrosty requirements. Don’t worry about it.</p>
-<p>In the directory that contains your phrosty checkout, make a <a class="reference external" href="https://docs.python.org/3/library/secrets.html#module-secrets" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">secrets</span></code></a> directory. Make a blank file, give it a name. Then, in <code class="xref py py-obj docutils literal notranslate"><span class="pre">phrosty_test_config_smdc.yaml</span></code>, edit the <code class="xref py py-obj docutils literal notranslate"><span class="pre">system.db.passwordfile</span></code> field to point to the file you just made.</p>
-<p>Then, run phrosty:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SNPIT_CONFIG</span><span class="o">=</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config_smdc</span><span class="o">.</span><span class="n">yaml</span> <span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> \
-    <span class="o">--</span><span class="n">oid</span> <span class="mi">20172782</span> \
-    <span class="o">-</span><span class="n">oc</span> <span class="n">ou2024</span> \
-    <span class="o">-</span><span class="n">b</span> <span class="n">Y106</span> \
-    <span class="o">-</span><span class="n">r</span> <span class="mf">7.551093401915147</span> \
-    <span class="o">-</span><span class="n">d</span> <span class="o">-</span><span class="mf">44.80718106491529</span> \
-    <span class="o">-</span><span class="n">ic</span> <span class="n">ou2024</span> \
-    <span class="o">-</span><span class="n">t</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_instances_templates_1</span><span class="o">.</span><span class="n">csv</span> \
-    <span class="o">-</span><span class="n">s</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_instances_science_2</span><span class="o">.</span><span class="n">csv</span> \
-    <span class="o">-</span><span class="n">p</span> <span class="mi">3</span> <span class="o">-</span><span class="n">w</span> <span class="mi">3</span> \
-    <span class="o">-</span><span class="n">v</span>
-</pre></div>
-</div>
-<section id="using-asdf">
-<h4><a class="toc-backref" href="#id18" role="doc-backlink">Using ASDF</a><a class="headerlink" href="#using-asdf" title="Link to this heading">¶</a></h4>
-<p>This section is currently for the SN PIT, and it is underneath “Running on SMDC” because the sims I am describing are located there.</p>
-<p>Right now, Rick’s <code class="xref py py-obj docutils literal notranslate"><span class="pre">romanisim</span></code> images are on SMDC at:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">rkessler</span><span class="o">/</span><span class="n">romanisim</span><span class="o">/</span><span class="n">output_images_galid_force0</span>
-<span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">rkessler</span><span class="o">/</span><span class="n">romanisim</span><span class="o">/</span><span class="n">output_images_galid_force1</span>
-</pre></div>
-</div>
-<p>where <code class="xref py py-obj docutils literal notranslate"><span class="pre">force0</span></code> indicates random magnitude light curves for two events far away from their hosts, and <code class="xref py py-obj docutils literal notranslate"><span class="pre">force1</span></code> is the same light curves but near their host centers.</p>
-<p>Corresponding SNANA truth files are located at:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">rkessler</span><span class="o">/</span><span class="n">romanisim</span><span class="o">/</span><span class="n">snana_sim_galid_force0</span>
-<span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">rkessler</span><span class="o">/</span><span class="n">romanisim</span><span class="o">/</span><span class="n">snana_sim_galid_force1</span>
-</pre></div>
-</div>
-<p>If you are in the Singularity container discussed above, <code class="xref py py-obj docutils literal notranslate"><span class="pre">/home/rkessler/</span></code> maps to <code class="xref py py-obj docutils literal notranslate"><span class="pre">/rick</span></code>.</p>
-<p>The SNe Ia in the sims are object IDs <code class="xref py py-obj docutils literal notranslate"><span class="pre">11</span></code> and <code class="xref py py-obj docutils literal notranslate"><span class="pre">21</span></code>. We are going to test on <code class="xref py py-obj docutils literal notranslate"><span class="pre">11</span></code>. Do all of the things above, and from the <code class="xref py py-obj docutils literal notranslate"><span class="pre">phrosty</span></code> directory, run the following:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SNPIT_CONFIG</span><span class="o">=</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config_smdc</span><span class="o">.</span><span class="n">yaml</span> <span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> \
-      <span class="o">--</span><span class="n">oid</span> <span class="mi">11</span> \
-      <span class="o">-</span><span class="n">oc</span> <span class="n">manual</span> \
-      <span class="o">-</span><span class="n">b</span> <span class="n">J129</span> \
-      <span class="o">-</span><span class="n">r</span> <span class="mf">9.366435</span> \
-      <span class="o">-</span><span class="n">d</span> <span class="o">-</span><span class="mf">43.958825</span> \
-      <span class="o">-</span><span class="n">ic</span> <span class="n">manual_rdm</span> \
-      <span class="o">--</span><span class="n">base</span><span class="o">-</span><span class="n">path</span> <span class="o">/</span><span class="n">ricksims</span><span class="o">/</span> \
-      <span class="o">-</span><span class="n">t</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">11</span><span class="n">_instances_templates_1</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">s</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">11</span><span class="n">_instances_science_2</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">p</span> <span class="mi">1</span> <span class="o">-</span><span class="n">w</span> <span class="mi">1</span> \
-      <span class="o">-</span><span class="n">v</span>
-</pre></div>
-</div>
-<p>On NERSC (NOTE: This is just for Lauren right now. They edited Rob’s interactive podman to include a hook to <code class="xref py py-obj docutils literal notranslate"><span class="pre">photometry_test_data</span></code>, and also put some Ricksims in that folder. They are trying to push it to github, but the large files are giving them issues. The interactive podman file is in <code class="xref py py-obj docutils literal notranslate"><span class="pre">phrosty/phrosty/tests</span></code> right now.):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">WHICHROMANENV</span><span class="o">=</span><span class="n">cuda</span><span class="o">-</span><span class="n">dev</span> <span class="n">bash</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">interactive</span><span class="o">-</span><span class="n">podman</span><span class="o">-</span><span class="n">rknop</span><span class="o">-</span><span class="n">dev</span><span class="o">-</span><span class="n">mod</span><span class="o">.</span><span class="n">sh</span>
-</pre></div>
-</div>
-<p>Do all the installation stuff, and run phrosty:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SNPIT_CONFIG</span><span class="o">=</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config</span><span class="o">.</span><span class="n">yaml</span> <span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> \
-      <span class="o">--</span><span class="n">oid</span> <span class="mi">11</span> \
-      <span class="o">-</span><span class="n">oc</span> <span class="n">manual</span> \
-      <span class="o">-</span><span class="n">b</span> <span class="n">J129</span> \
-      <span class="o">-</span><span class="n">r</span> <span class="mf">9.366435</span> \
-      <span class="o">-</span><span class="n">d</span> <span class="o">-</span><span class="mf">43.958825</span> \
-      <span class="o">-</span><span class="n">ic</span> <span class="n">manual_rdm</span> \
-      <span class="o">--</span><span class="n">base</span><span class="o">-</span><span class="n">path</span> <span class="o">/</span><span class="n">photometry_test_data</span><span class="o">/</span><span class="n">ricksims</span><span class="o">/</span> \
-      <span class="o">-</span><span class="n">t</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">11</span><span class="n">_instances_templates_1</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">s</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">11</span><span class="n">_instances_science_2</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">p</span> <span class="mi">1</span> <span class="o">-</span><span class="n">w</span> <span class="mi">1</span> \
-      <span class="o">-</span><span class="n">v</span>
-</pre></div>
-</div>
-</section>
-</section>
 <section id="running-on-a-hpc-system-that-uses-apptainer-singularity">
-<h3><a class="toc-backref" href="#id19" role="doc-backlink">Running on a HPC system that uses apptainer/singularity</a><a class="headerlink" href="#running-on-a-hpc-system-that-uses-apptainer-singularity" title="Link to this heading">¶</a></h3>
+<h4><a class="toc-backref" href="#id20" role="doc-backlink">Running on a HPC system that uses apptainer/singularity</a><a class="headerlink" href="#running-on-a-hpc-system-that-uses-apptainer-singularity" title="Link to this heading">¶</a></h4>
 <p>Everything below assumes that the apptainer/singulariy executable is named <code class="docutils literal notranslate"><span class="pre">apptainer</span></code>.  That’s the newer name; the older name was singlarity.  If your system doesn’t have <code class="docutils literal notranslate"><span class="pre">apptainer</span></code>, try running <code class="docutils literal notranslate"><span class="pre">singularity</span></code> in its place.</p>
+</section>
+</section>
 <section id="set-up-the-environment">
-<h4><a class="toc-backref" href="#id20" role="doc-backlink">Set up the environment</a><a class="headerlink" href="#set-up-the-environment" title="Link to this heading">¶</a></h4>
+<h3><a class="toc-backref" href="#id21" role="doc-backlink">Set up the environment</a><a class="headerlink" href="#set-up-the-environment" title="Link to this heading">¶</a></h3>
 <p>You need to import the roman SNPIT docker environment into singularity.  First, cd to a directory that will be fast to read or write to (this may be a scratch partition or some such on your cluster) and run:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">apptainer</span> <span class="n">pull</span> <span class="n">docker</span><span class="p">:</span><span class="o">//</span><span class="n">rknop</span><span class="o">/</span><span class="n">roman</span><span class="o">-</span><span class="n">snpit</span><span class="o">-</span><span class="n">env</span><span class="p">:</span><span class="n">cuda</span><span class="o">-</span><span class="n">dev</span>
 </pre></div>
@@ -560,15 +450,15 @@ mkdir $SCRATCH/phrosty_temp
 </pre></div>
 </div>
 <p>Pick a directory to work in; I will henceforth call this your “parent” directory.  Make some necessary directories here:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="n">phrosty_temp</span>
-<span class="n">mkdir</span> <span class="n">dia_out_dir</span>
-<span class="n">mkdir</span> <span class="n">lc_out_dir</span>
-<span class="n">mkdir</span> <span class="n">ou2024_images</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">phrosty_temp</span>
+<span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">dia_out_dir</span>
+<span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">lc_out_dir</span>
+<span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">ou2024_images</span>
 </pre></div>
 </div>
 </section>
 <section id="copy-the-data">
-<h4><a class="toc-backref" href="#id21" role="doc-backlink">Copy the data</a><a class="headerlink" href="#copy-the-data" title="Link to this heading">¶</a></h4>
+<h3><a class="toc-backref" href="#id22" role="doc-backlink">Copy the data</a><a class="headerlink" href="#copy-the-data" title="Link to this heading">¶</a></h3>
 <p>This example assumes you’re just going to use the data available in <code class="docutils literal notranslate"><span class="pre">photometry_test_data</span></code>.  Pull it down with:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">Roman</span><span class="o">-</span><span class="n">Supernova</span><span class="o">-</span><span class="n">PIT</span><span class="o">/</span><span class="n">photometry_test_data</span>
 </pre></div>
@@ -579,14 +469,14 @@ mkdir $SCRATCH/phrosty_temp
 </div>
 </section>
 <section id="check-out-the-code">
-<h4><a class="toc-backref" href="#id22" role="doc-backlink">Check out the code</a><a class="headerlink" href="#check-out-the-code" title="Link to this heading">¶</a></h4>
+<h3><a class="toc-backref" href="#id23" role="doc-backlink">Check out the code</a><a class="headerlink" href="#check-out-the-code" title="Link to this heading">¶</a></h3>
 <p>In a directory which I will henceforth call your “parent” directory, get a copy of phrosty:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">Roman</span><span class="o">-</span><span class="n">Supernova</span><span class="o">-</span><span class="n">PIT</span><span class="o">/</span><span class="n">phrosty</span><span class="o">.</span><span class="n">git</span>
 </pre></div>
 </div>
 </section>
 <section id="run-the-container">
-<h4><a class="toc-backref" href="#id23" role="doc-backlink">Run the container</a><a class="headerlink" href="#run-the-container" title="Link to this heading">¶</a></h4>
+<h3><a class="toc-backref" href="#id24" role="doc-backlink">Run the container</a><a class="headerlink" href="#run-the-container" title="Link to this heading">¶</a></h3>
 <p>Do:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>apptainer shell --nv \
   --bind $PWD:/home \
@@ -608,47 +498,74 @@ mkdir $SCRATCH/phrosty_temp
 <p>If you ran the <code class="docutils literal notranslate"><span class="pre">apptainer</span> <span class="pre">pull</span></code> command above in a different place from where you are now, replaced <code class="docutils literal notranslate"><span class="pre">roman-snpit-env_cuda-dev.sif</span></code> above with the full path to that <code class="docutils literal notranslate"><span class="pre">.sif</span></code> file.</p>
 </section>
 </section>
-</section>
 <section id="phrosty-functionality">
-<h2><a class="toc-backref" href="#id24" role="doc-backlink">Phrosty Functionality</a><a class="headerlink" href="#phrosty-functionality" title="Link to this heading">¶</a></h2>
-<section id="command-line-arguments-explained">
-<h3><a class="toc-backref" href="#id25" role="doc-backlink">Command line arguments, explained</a><a class="headerlink" href="#command-line-arguments-explained" title="Link to this heading">¶</a></h3>
-<p>Let’s break down the command you were instructed to use earlier. Recall:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SNPIT_CONFIG</span><span class="o">=</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">phrosty_test_config</span><span class="o">.</span><span class="n">yaml</span> <span class="n">python</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> \
-      <span class="o">--</span><span class="n">oid</span> <span class="mi">20172782</span> \
-      <span class="o">-</span><span class="n">oc</span> <span class="n">ou2024</span> \
-      <span class="o">-</span><span class="n">b</span> <span class="n">Y106</span> \
-      <span class="o">-</span><span class="n">r</span> <span class="mf">7.551093401915147</span> \
-      <span class="o">-</span><span class="n">d</span> <span class="o">-</span><span class="mf">44.80718106491529</span> \
-      <span class="o">-</span><span class="n">ic</span> <span class="n">ou2024</span> \
-      <span class="o">-</span><span class="n">t</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_instances_templates_1</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">s</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">20172782</span><span class="n">_instances_science_2</span><span class="o">.</span><span class="n">csv</span> \
-      <span class="o">-</span><span class="n">p</span> <span class="mi">3</span> <span class="o">-</span><span class="n">w</span> <span class="mi">3</span> \
-      <span class="o">-</span><span class="n">v</span>
+<h2><a class="toc-backref" href="#id25" role="doc-backlink">Phrosty Functionality</a><a class="headerlink" href="#phrosty-functionality" title="Link to this heading">¶</a></h2>
+<p>Let’s break down a command you were instructed to use earlier. Recall:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SNPIT_CONFIG</span><span class="o">=</span><span class="n">packages</span><span class="o">/</span><span class="n">phrosty</span><span class="o">/</span><span class="n">examples</span><span class="o">/</span><span class="n">smdc</span><span class="o">/</span><span class="n">phrosty_config_smdc</span><span class="o">.</span><span class="n">yaml</span> <span class="n">python</span> <span class="n">packages</span><span class="o">/</span><span class="n">phrosty</span><span class="o">/</span><span class="n">phrosty</span><span class="o">/</span><span class="n">pipeline</span><span class="o">.</span><span class="n">py</span> \
+      <span class="o">--</span><span class="n">oid</span> <span class="mi">11</span> \
+      <span class="o">-</span><span class="n">oc</span> <span class="n">manual</span> \
+      <span class="o">-</span><span class="n">b</span> <span class="n">J129</span> \
+      <span class="o">-</span><span class="n">r</span> <span class="mf">9.366435</span> \
+      <span class="o">-</span><span class="n">d</span> <span class="o">-</span><span class="mf">43.958825</span> \
+      <span class="o">-</span><span class="n">ic</span> <span class="n">manual_rdm</span> \
+      <span class="o">--</span><span class="n">base</span><span class="o">-</span><span class="n">path</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">roman</span><span class="o">-</span><span class="n">science</span><span class="o">-</span><span class="n">east</span><span class="o">-</span><span class="mi">2</span><span class="o">/</span><span class="n">snpit</span><span class="o">/</span><span class="n">snana</span><span class="o">+</span><span class="n">romanisim</span><span class="o">+</span><span class="n">romancal</span><span class="o">/</span> \
+      <span class="o">-</span><span class="n">t</span> <span class="n">packages</span><span class="o">/</span><span class="n">phrosty</span><span class="o">/</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">11</span><span class="n">_instances_templates_1</span><span class="o">.</span><span class="n">csv</span> \
+      <span class="o">-</span><span class="n">s</span> <span class="n">packages</span><span class="o">/</span><span class="n">phrosty</span><span class="o">/</span><span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="mi">11</span><span class="n">_instances_science_2</span><span class="o">.</span><span class="n">csv</span>
 </pre></div>
 </div>
 <p>Arg-by-arg…:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">SNPIT_CONFIG</span></code> points to your config file.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">oid</span></code> stands for “object ID”.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">oc</span></code> stands for “object collection”. This is a <a class="reference external" href="https://github.com/Roman-Supernova-PIT/snappl">snappl thing</a>. Your options are <code class="docutils literal notranslate"><span class="pre">ou2024</span></code> (OpenUniverse 2024 images), <code class="docutils literal notranslate"><span class="pre">manual_fits</span></code> (your chosen input FITS image), or <code class="docutils literal notranslate"><span class="pre">snpitdb</span></code> (SN PIT only).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">b</span></code> stands for “band”. This will be any one of: R062, Z087, Y106, J129, H158, F184, or K213.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> is the RA of your object.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">d</span></code> is the Dec of your object.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">ic</span></code> stands for “image collection”. This is also a <a class="reference external" href="https://github.com/Roman-Supernova-PIT/snappl">snappl thing</a>. Your options are <code class="docutils literal notranslate"><span class="pre">ou2024</span></code> (OpenUniverse 2024 SN Ia catalog), <code class="docutils literal notranslate"><span class="pre">manual</span></code> (any object you want),  <code class="docutils literal notranslate"><span class="pre">snpitdb</span></code> (SN PIT only).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">t</span></code> is for “templates”. This is your list of image templates.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">s</span></code> is for “science”. This is a list of images that contain your SN (science object).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">p</span></code> is the number of computation processes. e.g., if you do <code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">3</span></code>, you will have 3 parallel sky subtraction processes going on. This does not apply to the GPU-based portion of the code, which is serial.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">w</span></code> is the number of file writing processes.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">v</span></code> toggles “verbose”.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--oid</span></code> stands for “object ID”.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-oc</span></code> stands for “object collection”. This is also a <a class="reference external" href="https://github.com/Roman-Supernova-PIT/snappl">snappl thing</a>. Your options are <code class="docutils literal notranslate"><span class="pre">ou2024</span></code> (OpenUniverse 2024 SN Ia catalog), <code class="docutils literal notranslate"><span class="pre">manual</span></code> (any object you want),  <code class="docutils literal notranslate"><span class="pre">snpitdb</span></code> (SN PIT only).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-b</span></code> stands for “band”. This will be any one of: R062, Z087, Y106, J129, H158, F184, or K213.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-r</span></code> is the RA of your object.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-d</span></code> is the Dec of your object.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-ic</span></code> stands for “image collection”. This is a <a class="reference external" href="https://github.com/Roman-Supernova-PIT/snappl">snappl thing</a>. Your options are <code class="docutils literal notranslate"><span class="pre">ou2024</span></code> (OpenUniverse 2024 images), <code class="docutils literal notranslate"><span class="pre">manual_fits</span></code> (your chosen input FITS image), <code class="docutils literal notranslate"><span class="pre">manual_rdm</span></code> (your chosen input ASDF image), or <code class="docutils literal notranslate"><span class="pre">snpitdb</span></code> (SN PIT only).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--base-path</span></code> is the top-level folder where your images are located. This must be provided if you are using <code class="docutils literal notranslate"><span class="pre">-ic</span> <span class="pre">manual</span></code> (which, if you’re not in the SN PIT, you probably are).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-t</span></code> is for “templates”. This is your list of image templates. You can have multiple templates listed for multiple rounds of single-epoch subtractions.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s</span></code> is for “science”. This is a list of images that contain your SN (science object).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--backend</span></code> changes if you run SFFT with a cupy (GPU) or numpy (CPU) backend. Acceptable arguments are <code class="docutils literal notranslate"><span class="pre">cupy</span></code>, <code class="docutils literal notranslate"><span class="pre">cp</span></code>, <code class="docutils literal notranslate"><span class="pre">numpy</span></code>, and <code class="docutils literal notranslate"><span class="pre">np</span></code>. Default is <code class="docutils literal notranslate"><span class="pre">cupy</span></code>.</p></li>
 </ul>
 <p>To briefly elaborate on the “image collection” and “object collection”–this can be confusing. The image collection describes the images, and the object collection describes the objects of interest in the images. For example, if you used <code class="docutils literal notranslate"><span class="pre">ou2024</span></code> for both <code class="docutils literal notranslate"><span class="pre">ic</span></code> and <code class="docutils literal notranslate"><span class="pre">oc</span></code>, you would be doing analysis on an SN Ia in the OpenUniverse 2024 FITS images. However, if you set <code class="docutils literal notranslate"><span class="pre">-ic</span> <span class="pre">ou2024</span></code> and <code class="docutils literal notranslate"><span class="pre">-oc</span> <span class="pre">manual</span></code>, that would enable you to run the pipeline on any object you wanted in the OpenUniverse2024 images as long as you specified its RA and Dec.</p>
-</section>
-<section id="reading-the-output-file">
-<h3><a class="toc-backref" href="#id26" role="doc-backlink">Reading the output file</a><a class="headerlink" href="#reading-the-output-file" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">phrosty</span></code> running settings:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">photometry.phrosty.nprocs</span></code> is the number of computation processes. e.g., if you do <code class="docutils literal notranslate"><span class="pre">nprocs:</span> <span class="pre">3</span></code>, you will have 3 parallel sky subtraction processes going on. This does not apply to the GPU-based portion of the code, which is always serial, even if you use the numpy backend.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">photometry.phrosty.nwrite</span></code> is the number of file writing processes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">photometry.phrosty.mem_trace</span></code> toggles memory tracing with <code class="docutils literal notranslate"><span class="pre">tracemalloc</span></code>. Only works for CPU parts.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">photometry.phrosty.verbose</span></code> toggles verbose stdout.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">photometry.phrosty.keep_intermediate</span></code> toggles keeping certain intermediate files instead of automatically deleting them at the end of the run.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">photometry.phrosty.remove_temp_dir</span></code> toggles removing or keeping the temporary directory at the end of the run.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">SFFT</span></code> settings:</p>
+<p>These will be elaborated on at a later date. Sorry.</p>
+<p>PSF settings:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">photometry.phrosty.psf.type</span></code> defines the type of PSF that you will be using. The default is “gaussian”. Currently accepted: <code class="docutils literal notranslate"><span class="pre">gaussian</span></code>, <code class="docutils literal notranslate"><span class="pre">A25ePSF</span></code>, <code class="docutils literal notranslate"><span class="pre">ou24PSF</span></code>, <code class="docutils literal notranslate"><span class="pre">ou24PSF_photonshoot</span></code>, and <code class="docutils literal notranslate"><span class="pre">STPSF</span></code>.</p></li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">photometry.phrosty.psf.params</span></code> sets parameters depending on the type of PSF you are using. It is in Python dictionary format. The accepted parameters are:</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">gaussian</span></code>: All parameters are optional. <code class="docutils literal notranslate"><span class="pre">sigmax</span></code>, <code class="docutils literal notranslate"><span class="pre">sigmay</span></code>, <code class="docutils literal notranslate"><span class="pre">theta</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">A25ePSF</span></code>: There are none. Leave an empty dictionary, <code class="docutils literal notranslate"><span class="pre">{}</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ou24PSF</span></code>: All parameters are optional. <code class="docutils literal notranslate"><span class="pre">sed</span></code>, <code class="docutils literal notranslate"><span class="pre">config_file</span></code>, <code class="docutils literal notranslate"><span class="pre">stamp_size</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ou24PSF_photonshoot</span></code>: All parameters are optional. <code class="docutils literal notranslate"><span class="pre">sed</span></code>, <code class="docutils literal notranslate"><span class="pre">config_file</span></code>, <code class="docutils literal notranslate"><span class="pre">stamp_size</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">STPSF</span></code>: All parameters are optional. <code class="docutils literal notranslate"><span class="pre">sed</span></code>, <code class="docutils literal notranslate"><span class="pre">stamp_size</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>This applies to the command line args <code class="docutils literal notranslate"><span class="pre">-t</span></code> and <code class="docutils literal notranslate"><span class="pre">-s</span></code>. If you look in <code class="docutils literal notranslate"><span class="pre">phrosty/phrosty/tests/11_instances_science_2.csv</span></code>, you will find a table with columns <code class="docutils literal notranslate"><span class="pre">path</span> <span class="pre">observation_id</span> <span class="pre">sca</span> <span class="pre">mjd</span> <span class="pre">band</span></code> where the delimiter is a space (it is the same for the corresponding template image list csv). The input lists of files must have this format.</p>
+<p>Note that the “path” column contains relative paths. If you are using <code class="docutils literal notranslate"><span class="pre">-ic</span> <span class="pre">manual</span></code>, the paths in this column are relative to <code class="docutils literal notranslate"><span class="pre">--base-path</span></code>. If the paths are wrong, <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> won’t work at all.</p>
+<p>It is less critical that <code class="docutils literal notranslate"><span class="pre">observation_id</span></code>, <code class="docutils literal notranslate"><span class="pre">sca</span></code>, <code class="docutils literal notranslate"><span class="pre">mjd</span></code>, and <code class="docutils literal notranslate"><span class="pre">band</span></code> are correct <em>unless</em> you are retrieving a variable PSF of some kind. <code class="docutils literal notranslate"><span class="pre">phrosty</span></code> will still run if these are wrong, but your results will likely be bad.</p>
+<ul class="simple">
+<li><p>If the PSF is position-dependent, then <code class="docutils literal notranslate"><span class="pre">sca</span></code> matters.</p></li>
+<li><p>If the PSF is filter/color-dependent, then <code class="docutils literal notranslate"><span class="pre">band</span></code> matters.</p></li>
+<li><p>If the PSF is time-dependent (which doesn’t exist right now, and we can only hope never happens), then in this hypothetical painful future, <code class="docutils literal notranslate"><span class="pre">observation_id</span></code> and <code class="docutils literal notranslate"><span class="pre">mjd</span></code> will matter. For now, if you mess these up, plotting light curves and bookkeeping will be painful.</p></li>
+</ul>
+<p>And yes, for now, you need to generate your own input files. Sorry.</p>
 <p>The output files, which will be named like <code class="docutils literal notranslate"><span class="pre">[observation_id]/[a</span> <span class="pre">bunch</span> <span class="pre">of</span> <span class="pre">random</span> <span class="pre">characters]_[band].pq</span></code>, are parquet files and can easily be read by doing:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">astropy.table</span><span class="w"> </span><span class="kn">import</span> <span class="n">Table</span>
-<span class="n">lc</span> <span class="o">=</span> <span class="n">Table</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;40753b1b-9248-4e58-a625-a9354dac18aa_R062.pq&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;parquet&#39;</span><span class="p">)</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Table</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">'40753b1b-9248-4e58-a625-a9354dac18aa_R062.pq'</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">'parquet'</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The column headers in the output <code class="docutils literal notranslate"><span class="pre">pq</span></code> files are:</p>
@@ -675,6 +592,12 @@ mkdir $SCRATCH/phrosty_temp
 <li><p><code class="docutils literal notranslate"><span class="pre">success</span></code></p></li>
 </ul>
 </section>
+<section id="a-note-on-running-tests">
+<h2><a class="toc-backref" href="#id26" role="doc-backlink">A note on running tests</a><a class="headerlink" href="#a-note-on-running-tests" title="Link to this heading">¶</a></h2>
+<p>In all environment set-ups, tests should be run from <code class="docutils literal notranslate"><span class="pre">$RUNDIR/packages/phrosty</span></code>, with the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">-</span><span class="n">vs</span> <span class="n">phrosty</span><span class="o">/</span><span class="n">tests</span>
+</pre></div>
+</div>
 </section>
 </section>
 
@@ -704,7 +627,7 @@ mkdir $SCRATCH/phrosty_temp
       &#169;2026, Roman Supernova PIT.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.1</a>
       &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
       
       |
