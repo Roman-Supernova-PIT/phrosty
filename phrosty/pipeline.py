@@ -1317,8 +1317,12 @@ class Pipeline:
             SNLogger.info( "Starting to make stamps..." )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
 
-                def log_stamp_err( x ):
+                def log_stamp_err( sci_image, templ_image, x ):
                     SNLogger.error( f"do_stamps failure: {x} " )
+                    if self.catchfailures:
+                        self.failures['make_stamps'].append( { 'science': sci_image.fail_info_indiv,
+                                                               'template': templ_image.fail_info_indiv } )
+
 
                 # snappl image object, savedir, savename, datatype, PipelineImage object
                 sci_orig_stamp_args = ( (si.image, self.dia_out_dir, f'stamp_{str(si.image.name)}', 'data', si)
@@ -1356,35 +1360,35 @@ class Pipeline:
                     # science image), and variance image for decorrelated difference image
                     with managed_pool( self.nwrite, wait_label='write_stamps_wait' ) as sci_stamp_pool:
                         for sci_image in self.science_images:
-                            if sci_image.failure_location is not None:
-                                SNLogger.info(f"Skipping DIA stamps for {sci_image.image.name} \
-                                                because it failed at {sci_image.failure_location}.")
-                            else:
-                                for templ_image in self.template_images:
-                                    pair = (sci_image, templ_image)
-                                    sci_stamp_pool.apply_async( self.do_stamps, pair, {},
-                                                                callback = partial(self.save_stamp_paths,
-                                                                                sci_image, templ_image),
-                                                                error_callback=log_stamp_err )
-                        sci_stamp_pool.close()
-                        sci_stamp_pool.join()
+                            for templ_image in self.template_images:
+                                if templ_image.image.name not in sci_image.decorr_diff_path:
+                                    SNLogger.info( f'Skipping DIA stamps for {sci_image.image.name} - '
+                                                   f'{templ_image.image.name} due to no difference image.' )
+                                else:
+                                    sci_stamp_pool.apply_async( self.do_stamps, (sci_image, templ_image), {},
+                                                                callback=partial( self.save_stamp_paths,
+                                                                                  sci_image, templ_image ),
+                                                                error_callback=partial( log_stamp_err,
+                                                                                        sci_image, templ_image ) )
 
                 else:
                     # Make and save stamp of just the template image
                     for tsargs in templstamp_args:
-                        try:
-                            self.extract_args_for_stampmaker(*tsargs)
-                        except Exception as e:
-                            SNLogger.warning( f"Stampifying the original template images failed because: {e}" )
-                            self.failures['make_stamps'].append(tsargs[4].fail_info_indiv)
+                        if tsargs[4].failure_location is None:
+                            try:
+                                self.extract_args_for_stampmaker(*tsargs)
+                            except Exception as e:
+                                SNLogger.warning( f"Stampifying the original template images failed because: {e}" )
+                                self.failures['make_stamps'].append(tsargs[4].fail_info_indiv)
 
                     # Make and save stamp of just the science image
                     for sosargs in sci_orig_stamp_args:
-                        try:
-                            self.extract_args_for_stampmaker(*sosargs)
-                        except Exception as e:
-                            SNLogger.warning( f"Stampifying the original science images failed because: {e}" )
-                            self.failures['make_stamps'].append(sosargs[4].fail_info_indiv)
+                        if sosargs[4].failure_location is None:
+                            try:
+                                self.extract_args_for_stampmaker(*sosargs)
+                            except Exception as e:
+                                SNLogger.warning( f"Stampifying the original science images failed because: {e}" )
+                                self.failures['make_stamps'].append(sosargs[4].fail_info_indiv)
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:

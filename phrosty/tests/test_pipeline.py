@@ -323,7 +323,8 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
 
 @pytest.mark.parametrize( 'nprocs,nwrite', [(1,1), (3,3)] )
 def test_nan_handling( config, object_for_tests, ou2024_image_collection,
-                       one_ou2024_template_image, two_ou2024_science_images ):
+                       one_ou2024_template_image, two_ou2024_science_images,
+                       nprocs, nwrite ):
 
     # Make sure that inputting a science or template image full of NaNs causes
     # the pipeline to fail.
