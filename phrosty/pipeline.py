@@ -1,8 +1,8 @@
 __all__ = [ 'PipelineImage', 'Pipeline' ]
 
 # Imports STANDARD
-import sys
 import argparse
+import contextlib
 from functools import partial
 import logging
 from multiprocessing import Pool
@@ -11,6 +11,7 @@ import nvtx
 import pathlib
 import re
 import shutil
+import sys
 import tracemalloc
 import uuid
 
@@ -24,6 +25,7 @@ import fitsio
 # Imports INTERNAL
 import phrosty
 from phrosty.imagesubtraction import interpolate_over_bad_pixels, sky_subtract, stampmaker
+from phrosty.utils import map_band, managed_pool
 from sfft.SpaceSFFTFlow import SpaceSFFT_Flow
 from snappl.dbclient import SNPITDBClient
 from snappl.diaobject import DiaObject
@@ -35,7 +37,6 @@ from snappl.psf import PSF
 from snappl.config import Config
 from snappl.logger import SNLogger
 # from snappl.utils import asUUID
-
 
 class PipelineImage:
     """Holds a snappl.image.Image, with some other stuff the pipeline needs."""
@@ -285,7 +286,7 @@ class Pipeline:
 
         self.imgcol = imgcol
         self.diaobj = diaobj
-        self.band = band
+        self.band = map_band(band)
         self.oid = oid
 
         self.dia_out_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / \
@@ -350,28 +351,6 @@ class Pipeline:
         # Debug LNA20260225
         # self.aperture = None
 
-    def map_band(band_input):
-        """
-        Maps the possible band inputs in two different
-        formats for flexibility.
-        """
-        band_dict = {
-                        "F062": "F062",
-                        "F087": "F087",
-                        "F106": "F106",
-                        "F129": "F129",
-                        "F158": "F158",
-                        "F184": "F184",
-                        "F213": "F213",
-                        "R062": "F062",
-                        "Z087": "F087",
-                        "Y106": "F106",
-                        "J129": "F129",
-                        "H158": "F158",
-                        "K213": "F213",
-                    }
-        return band_dict[band_input]
-
     def _read_csv( self, csvfile ):
         """Reads input csv files with columns:
         'path observation_id sca mjd band'.
@@ -416,11 +395,14 @@ class Pipeline:
                         imlist.append( self.imgcol.get_image( path=path,
                                                               observation_id=observation_id,
                                                               sca=sca,
-                                                              band=mapped_band
+                                                              band=self.band
+                                                              # NOTE: Passing the original band
+                                                              # instead of the mapped band because
+                                                              # of OU24 compatibility.
                                                             ) )
                     except Exception as e:
                         SNLogger.warning( f"Could not find the image using observation_id, sca, and/or band, \
-                                           so just using the path. Failure: {e}" )
+                                           so just using the path. Reason: {e}" )
                         imlist.append( self.imgcol.get_image( path=path ))
         return imlist
 
@@ -444,7 +426,7 @@ class Pipeline:
             img.failure_location = 'skysub'
 
         if self.nprocs > 1:
-            with Pool( self.nprocs ) as pool:
+            with managed_pool( self.nprocs, wait_label='skysub_wait' ) as pool:
                 for img in all_imgs:
                     pool.apply_async( img.run_sky_subtract, (), {},
                                       callback=img.save_sky_subtract_info,
@@ -486,7 +468,7 @@ class Pipeline:
             img.failure_location = 'get_psf'
 
         if self.nprocs > 1:
-            with Pool( self.nprocs ) as pool:
+            with managed_pool( self.nprocs, wait_label='get_psfs_wait' ) as pool:
                 for img in do_these_imgs:
                     # callback_partial = partial( img.save_psf_path, do_these_imgs )
                     pool.apply_async( img.get_psf, (self.diaobj.ra, self.diaobj.dec), {},
@@ -496,7 +478,7 @@ class Pipeline:
                 pool.join()
 
                 for img in do_these_imgs:
-                    if img.failure_location is not None:
+                    if img.failure_location == 'get_psf':
                         self.failures[img.failure_location].append(img.fail_info_indiv)
 
         else:
@@ -505,6 +487,7 @@ class Pipeline:
                     img.keep_psf_data( img.get_psf(self.diaobj.ra, self.diaobj.dec) )
                 except Exception as e:
                     SNLogger.warning( f'PSF retrieval failed for {img.fail_info_indiv}: {e}' )
+                    img.failure_location = 'get_psf'
                     if self.catchfailures:
                         self.failures['get_psf'].append(img.fail_info_indiv)
                     else:
@@ -955,7 +938,7 @@ class Pipeline:
                                                               {templ_image.image.sca}: {x}" )
 
         if self.nprocs > 1:
-            with Pool( self.nprocs ) as pool:
+            with managed_pool( self.nprocs, wait_label='make_phot_info_dict_wait' ) as pool:
 
                 for sci_image in self.science_images:
                     for templ_image in self.template_images:
@@ -972,10 +955,9 @@ class Pipeline:
 
         else:
             for i, sci_image in enumerate( self.science_images ):
-                if sci_image.failure_location is None:
-                    SNLogger.debug( f"Doing science image {i} of {len(self.science_images)}" )
-                    for templ_image in self.template_images:
-                        self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
+                SNLogger.debug( f"Doing science image {i} of {len(self.science_images)}" )
+                for templ_image in self.template_images:
+                    self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
 
         if self.dbsave:
             SNLogger.debug('About to get image provenance.')
@@ -1129,8 +1111,7 @@ class Pipeline:
             SNLogger.info( f'After get_psfs, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB' )
 
         # Create a process pool to write fits files
-        with Pool( self.nwrite ) as fits_writer_pool:
-
+        with managed_pool( self.nwrite, wait_label='fits_write_wait' ) as fits_writer_pool:
             def log_fits_write_error( savepath, x ):
                 SNLogger.error( f'Exception writing FITS file {savepath}: {x}.' )
                 # raise?
@@ -1151,16 +1132,6 @@ class Pipeline:
                                  'science': sci_image.fail_info_indiv,
                                  'template': templ_image.fail_info_indiv
                                 }
-
-                    continuation_conditions = [
-                                                sci_image.fail_info_indiv in self.failures['skysub'],
-                                                sci_image.fail_info_indiv in self.failures['get_psf'],
-                                                templ_image.fail_info_indiv in self.failures['skysub'],
-                                                templ_image.fail_info_indiv in self.failures['get_psf']
-                                              ]
-
-                    if any(continuation_conditions):
-                        i_failed_gpu = True
 
                     if 'align_and_preconvolve' in steps and not i_failed_gpu:
                         # After this step, sfftifier will be a SpaceSFFT_Flow object.
@@ -1342,12 +1313,6 @@ class Pipeline:
                 SNLogger.info( f"DONE with all science images for template {templ_image.image.name}" )
                 templ_image.free()
 
-            SNLogger.info( "Waiting for FITS writer processes to finish" )
-            with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
-                fits_writer_pool.close()
-                fits_writer_pool.join()
-            SNLogger.info( "...FITS writer processes done." )
-
         if 'make_stamps' in steps:
             SNLogger.info( "Starting to make stamps..." )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
@@ -1364,7 +1329,7 @@ class Pipeline:
 
                 if self.nwrite > 1:
                     # Save stamps for original template images.
-                    with Pool( self.nwrite ) as templ_stamp_pool:
+                    with managed_pool( self.nwrite, wait_label='write_stamps_wait' ) as templ_stamp_pool:
                         for templ_args in templstamp_args:
                             if templ_args[4].failure_location is not None:
                                 SNLogger.info(f"Skipping original template image stamp for {templ_args[4].image.name} \
@@ -1376,7 +1341,7 @@ class Pipeline:
                         templ_stamp_pool.join()
 
                     # Save stamps for original science images.
-                    with Pool( self.nwrite ) as sci_orig_stamp_pool:
+                    with managed_pool( self.nwrite, wait_label='write_stamps_wait' ) as sci_orig_stamp_pool:
                         for sci_args in sci_orig_stamp_args:
                             if sci_args[4].failure_location is not None:
                                 SNLogger.info(f"Skipping original science image stamp for {sci_args[4].image.name} \
@@ -1389,7 +1354,7 @@ class Pipeline:
 
                     # Save stamps for decorrelated difference image, zero point image (decorrelated sky-subtracted
                     # science image), and variance image for decorrelated difference image
-                    with Pool( self.nwrite ) as sci_stamp_pool:
+                    with managed_pool( self.nwrite, wait_label='write_stamps_wait' ) as sci_stamp_pool:
                         for sci_image in self.science_images:
                             if sci_image.failure_location is not None:
                                 SNLogger.info(f"Skipping DIA stamps for {sci_image.image.name} \
@@ -1397,11 +1362,10 @@ class Pipeline:
                             else:
                                 for templ_image in self.template_images:
                                     pair = (sci_image, templ_image)
-                                    stamperr_partial = partial(log_stamp_err, sci_image, templ_image)
                                     sci_stamp_pool.apply_async( self.do_stamps, pair, {},
                                                                 callback = partial(self.save_stamp_paths,
                                                                                 sci_image, templ_image),
-                                                                error_callback=stamperr_partial )
+                                                                error_callback=log_stamp_err )
                         sci_stamp_pool.close()
                         sci_stamp_pool.join()
 
@@ -1412,7 +1376,7 @@ class Pipeline:
                             self.extract_args_for_stampmaker(*tsargs)
                         except Exception as e:
                             SNLogger.warning( f"Stampifying the original template images failed because: {e}" )
-                            self.failures['make_stamps'].append(tsargs[4].fail_info)
+                            self.failures['make_stamps'].append(tsargs[4].fail_info_indiv)
 
                     # Make and save stamp of just the science image
                     for sosargs in sci_orig_stamp_args:
@@ -1420,7 +1384,7 @@ class Pipeline:
                             self.extract_args_for_stampmaker(*sosargs)
                         except Exception as e:
                             SNLogger.warning( f"Stampifying the original science images failed because: {e}" )
-                            self.failures['make_stamps'].append(sosargs[4].fail_info)
+                            self.failures['make_stamps'].append(sosargs[4].fail_info_indiv)
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
@@ -1432,8 +1396,8 @@ class Pipeline:
                                     if self.catchfailures:
                                         SNLogger.warning( f"Stampifying the post-SFFT images failed because: {e}" )
                                         self.failures['make_stamps'].append({
-                                                                            'science': sci_image.fail_info,
-                                                                            'template': templ_image.fail_info
+                                                                            'science': sci_image.fail_info_indiv,
+                                                                            'template': templ_image.fail_info_indiv
                                                                             })
             SNLogger.info('...finished making stamps.')
 

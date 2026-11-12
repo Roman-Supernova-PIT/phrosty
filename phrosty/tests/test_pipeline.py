@@ -9,15 +9,15 @@ import astropy.units as u
 
 
 from phrosty.pipeline import Pipeline
+from phrosty.utils import map_band
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 from snappl.lightcurve import Lightcurve
 from snappl.image import FITSImageStdHeaders
 
 
-# TODO : separate tests for PipelineImage, for all the functions in#
-#   PipelineImage and Pipeline.  Right now we just have this regression
-#   test.
+# TODO : separate tests for PipelineImage, for all the functions in
+#   PipelineImage and Pipeline. 
 
 # This one writes a diagnostic plot file to test_plots/test_pipeline_run_simple_gauss1.pdf
 def test_pipeline_run_simple_gauss1( config ):
@@ -76,7 +76,7 @@ def test_pipeline_run_simple_gauss1( config ):
         for row in lc_obj.lightcurve:
             mjd = row['mjd']
             # We know what the fluxes are supposed to be; see
-            #   /photometry_test_data/simple_gaussian_test/sig1.0/README.md
+            #   photometry_test_data/simple_gaussian_test/sig1.0/README.md
 
             # LA: snappl enforces astropy units in the columns. I have tried to preserve
             # where it makes sense to have units vs. dimensionless quantities below when
@@ -216,9 +216,10 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     #   directories for tests and for running... so don't do that... but the
     #   way we're set up right now, you probably are.
 
-
+@pytest.mark.parametrize( 'nprocs,nwrite', [(1,1), (3,3)] )
 def test_no_failures( config, object_for_tests, ou2024_image_collection,
-                      one_ou2024_template_image, two_ou2024_science_images ):
+                      one_ou2024_template_image, two_ou2024_science_images,
+                      nprocs, nwrite ):
 
     # This test makes sure the pipeline does not flag any failures for images that are
     # supposed to work fine.
@@ -230,31 +231,28 @@ def test_no_failures( config, object_for_tests, ou2024_image_collection,
         orig_nwrite = config.value( 'photometry.phrosty.nwrite' )
         config._static = False
 
-        nprocss = [1, 3]
-        nwrites = [1, 3]
+        config.set_value( 'photometry.phrosty.nprocs', nprocs )
+        config.set_value( 'photometry.phrosty.nwrite', nwrite )
+        pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                        science_images=two_ou2024_science_images[0],
+                        template_images=one_ou2024_template_image,
+                        catchfailures=True,
+                        backend='numpy' )
 
-        for i in nprocss:
-            config.set_value( 'photometry.phrosty.nprocs', i )
-            for j in nwrites:
-                config.set_value( 'photometry.phrosty.nwrite', j )
-                pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                                science_images=two_ou2024_science_images[0],
-                                template_images=one_ou2024_template_image,
-                                catchfailures=True,
-                                backend='numpy' )
+        pip()
 
-                pip()
+        for key in pip.failures:
+            assert len(pip.failures[key]) == 0
 
-                for key in pip.failures:
-                    assert len(pip.failures[key]) == 0
     finally:
         config.set_value( 'photometry.phrosty.nprocs', orig_nprocs )
         config.set_value( 'photometry.phrosty.nwrite', orig_nwrite )
         config._static = True
 
-
+@pytest.mark.parametrize( 'nprocs,nwrite', [(1,1), (3,3)] )
 def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collection,
-                                 one_ou2024_template_image, two_ou2024_science_images ):
+                                 one_ou2024_template_image, two_ou2024_science_images,
+                                 nprocs, nwrite ):
     # This is more of a test of the failure-flagging feature than the PSF retrieval.
     # We do not test the gaussian PSF because it is not dependent on any metadata
     # about the images.
@@ -294,33 +292,27 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
 
     test_image.save(overwrite=True)
 
-    nprocss = [1, 3]
-    nwrites = [1, 3]
     try:
-        for i in nprocss:
-            config.set_value( 'photometry.phrosty.nprocs', i )
-            for j in nwrites:
-                config.set_value( 'photometry.phrosty.nwrite', j )
-                for psftype in possible_psfs:
-                    print('nprocs', i)
-                    print('nwrites', j)
-                    print('psftype', psftype)
-                    config.set_value( 'photometry.phrosty.psf.type', psftype )
-                    pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                                    science_images=[test_image, two_ou2024_science_images[1]],
-                                    template_images=[one_ou2024_template_image],
-                                    catchfailures=True, backend='numpy' )
+        config.set_value( 'photometry.phrosty.nprocs', nprocs )
+        config.set_value( 'photometry.phrosty.nwrite', nwrite )
+        for psftype in possible_psfs:
+            print('psftype', psftype)
+            config.set_value( 'photometry.phrosty.psf.type', psftype )
+            pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                            science_images=[test_image, two_ou2024_science_images[1]],
+                            template_images=[one_ou2024_template_image],
+                            catchfailures=True, backend='numpy' )
 
-                    pip()
+            pip()
 
-                    assert len(pip.failures['skysub']) == 0
-                    assert len(pip.failures['get_psf']) == 1
-                    assert len(pip.failures['align_and_preconvolve']) == 0
-                    assert len(pip.failures['find_decorrelation']) == 0
-                    assert len(pip.failures['subtract']) == 0
-                    assert len(pip.failures['variance']) == 0
-                    assert len(pip.failures['apply_decorrelation']) == 0
-                    assert len(pip.failures['make_stamps']) == 0
+            assert len(pip.failures['skysub']) == 0
+            assert len(pip.failures['get_psf']) == 1
+            assert len(pip.failures['align_and_preconvolve']) == 0
+            assert len(pip.failures['find_decorrelation']) == 0
+            assert len(pip.failures['subtract']) == 0
+            assert len(pip.failures['variance']) == 0
+            assert len(pip.failures['apply_decorrelation']) == 0
+            assert len(pip.failures['make_stamps']) == 0
 
     finally:
         # Put the config back...
@@ -329,7 +321,7 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
         config.set_value( 'photometry.phrosty.nwrite', orig_nwrite )
         config._static = True
 
-
+@pytest.mark.parametrize( 'nprocs,nwrite', [(1,1), (3,3)] )
 def test_nan_handling( config, object_for_tests, ou2024_image_collection,
                        one_ou2024_template_image, two_ou2024_science_images ):
 
@@ -341,16 +333,13 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
     orig_nprocs = config.value( 'photometry.phrosty.nprocs' )
     orig_nwrite = config.value( 'photometry.phrosty.nwrite' )
 
-    nprocss = [3]
-    nwrites = [3]
-
     # Make an image full of NaN:
     scratchdir = pathlib.Path( config.value( 'system.paths.temp_dir' ) )
     test_image_path = scratchdir / 'test_nan'
     nan_image = FITSImageStdHeaders( full_filepath=test_image_path,
                                      data=np.full(two_ou2024_science_images[0].image_shape, np.nan),
                                      noise=np.full(two_ou2024_science_images[0].image_shape, np.nan),
-                                     flags=np.zeros(two_ou2024_science_images[0].image_shape),
+                                     flags=np.zeros(two_ou2024_science_images[0].image_shape, dtype=np.int32),
                                      std_imagenames=True
                                    )
 
@@ -364,99 +353,95 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
                     overwrite=True
                   )
     try:
-        for i in nprocss:
-            config.set_value( 'photometry.phrosty.nprocs', i )
-            for j in nwrites:
-                config.set_value( 'photometry.phrosty.nwrite', j )
-                # First, do the science image.
-                pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                                science_images=[nan_image, two_ou2024_science_images[1]],
-                                template_images=[one_ou2024_template_image],
-                                catchfailures=True, backend='numpy' )
+        config.set_value( 'photometry.phrosty.nprocs', nprocs )
+        config.set_value( 'photometry.phrosty.nwrite', nwrite )
+        # First, do the science image.
+        pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                        science_images=[nan_image, two_ou2024_science_images[1]],
+                        template_images=[one_ou2024_template_image],
+                        catchfailures=True, backend='numpy' )
 
 
-                ltcv = pip()
+        ltcv = pip()
 
-                assert len(pip.failures['skysub']) == 1
-                assert len(pip.failures['get_psf']) == 0
-                assert len(pip.failures['align_and_preconvolve']) == 0
-                assert len(pip.failures['find_decorrelation']) == 0
-                assert len(pip.failures['subtract']) == 0
-                assert len(pip.failures['variance']) == 0
-                assert len(pip.failures['apply_decorrelation']) == 0
-                assert len(pip.failures['make_stamps']) == 0
+        assert len(pip.failures['skysub']) == 1
+        assert len(pip.failures['get_psf']) == 0
+        assert len(pip.failures['align_and_preconvolve']) == 0
+        assert len(pip.failures['find_decorrelation']) == 0
+        assert len(pip.failures['subtract']) == 0
+        assert len(pip.failures['variance']) == 0
+        assert len(pip.failures['apply_decorrelation']) == 0
+        assert len(pip.failures['make_stamps']) == 0
 
-                # # Now do the template image.
-                # pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                #                 science_images=two_ou2024_science_images[1],
-                #                 template_images=nan_image,
-                #                 catchfailures=True,
-                #                 backend='numpy' )
+        lc_obj = Lightcurve( filepath=ltcv, no_base_path=True )
+        lc = lc_obj.lightcurve
+        nanrow = lc[lc['science_name'] == nan_image.name]
+        goodrow = lc[lc['science_name'] == two_ou2024_science_images[1].name]
+        assert len(lc) == 2
+        assert np.isnan(nanrow['flux'][0].value)
+        assert not np.isnan(goodrow['flux'][0].value)
 
-                # ltcv = pip()
+        # Now do the template image.
+        pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                        science_images=two_ou2024_science_images[1],
+                        template_images=nan_image,
+                        catchfailures=True,
+                        backend='numpy' )
 
-                # assert len(pip.failures['skysub']) == 1
-                # assert len(pip.failures['get_psf']) == 0
-                # assert len(pip.failures['align_and_preconvolve']) == 0
-                # assert len(pip.failures['find_decorrelation']) == 0
-                # assert len(pip.failures['subtract']) == 0
-                # assert len(pip.failures['variance']) == 0
-                # assert len(pip.failures['apply_decorrelation']) == 0
-                # assert len(pip.failures['make_stamps']) == 0
+        ltcv = pip()
 
+        assert len(pip.failures['skysub']) == 1
+        assert len(pip.failures['get_psf']) == 0
+        assert len(pip.failures['align_and_preconvolve']) == 0
+        assert len(pip.failures['find_decorrelation']) == 0
+        assert len(pip.failures['subtract']) == 0
+        assert len(pip.failures['variance']) == 0
+        assert len(pip.failures['apply_decorrelation']) == 0
+        assert len(pip.failures['make_stamps']) == 0
+
+        lc_obj = Lightcurve( filepath=ltcv, no_base_path=True )
+        lc = lc_obj.lightcurve
+        assert len(lc) == 1
+        assert np.isnan(lc[0]['flux'].value)
+        assert not lc[0]['success']
     finally:
         # Put the config back...
         config.set_value( 'photometry.phrosty.nprocs', orig_nprocs )
         config.set_value( 'photometry.phrosty.nwrite', orig_nwrite )
         config._static = True
 
+def test_map_band():
+    # Just check the band mapping function, solo.
+
+    assert map_band('F062') == 'F062'
+    assert map_band('R062') == 'F062'
+    assert map_band('F087') == 'F087'
+    assert map_band('Z087') == 'F087'
+    assert map_band('F106') == 'F106'
+    assert map_band('Y106') == 'F106'
+    assert map_band('F129') == 'F129'
+    assert map_band('J129') == 'F129'
+    assert map_band('F158') == 'F158'
+    assert map_band('H158') == 'F158'
+    # F184 doesn't have a double because it's
+    # always "F" in either convention.
+    assert map_band('F184') == 'F184'
+    assert map_band('F213') == 'F213'
+    assert map_band('K213') == 'F213'
+
+    with pytest.raises(ValueError, match='Unknown band'):
+        map_band('horsey')
+
 def test_band_mapping( config, object_for_tests, ou2024_image_collection,
-                       one_ou2024_template_image, two_ou2024_science_images ):
+                       template_csv, two_science_csv ):
 
     # This test makes sure the band mapping is working properly, and that
     # a fit is not thrown whether you input "F106" or "Y106".
 
-    scratchdir = pathlib.Path( config.value( 'system.paths.temp_dir' ) )
-    test_image_path = scratchdir / 'test_fake_band'
-    test_image = FITSImageStdHeaders( full_filepath=test_image_path,
-                                      data=two_ou2024_science_images[0].data,
-                                      noise=two_ou2024_science_images[0].noise,
-                                      flags=np.zeros(two_ou2024_science_images[0].image_shape, dtype=np.int32),
-                                      std_imagenames=True
-                                    )
+    for band in ['Y106', 'F106']:
+        print(band)
+        pip = Pipeline( object_for_tests, ou2024_image_collection, band,
+                        science_csv=two_science_csv, template_csv=template_csv,
+                        catchfailures=True)
 
-    test_image._header = two_ou2024_science_images[0].get_fits_header().copy()
-    test_image._mjd = two_ou2024_science_images[0].mjd
-    test_image._observation_id = two_ou2024_science_images[0].observation_id
-    test_image._sca = two_ou2024_science_images[0].sca
-
-    possible_bands = ['Y106', 'F106']
-    nprocss = [1, 3]
-    nwrites = [1, 3]
-
-    try:
-        # We are, once again, going to mess with the config.
-        orig_nprocs = config.value( 'photometry.phrosty.nprocs' )
-        orig_nwrite = config.value( 'photometry.phrosty.nwrite' )
-        config._static = False
-
-        for i in nprocss:
-            config.set_value( 'photometry.phrosty.nprocs', i )
-            for j in nwrites:
-                config.set_value( 'photometry.phrosty.nwrite', j )
-                for band in possible_bands:
-                    test_image.band = band 
-                    pip = Pipeline( object_for_tests, ou2024_image_collection, band,
-                                    science_images=test_image,
-                                    template_images=one_ou2024_template_image,
-                                    catchfailures=True,
-                                    backend='numpy' )
-
-                    pip()
-
-                    for key in pip.failures:
-                        assert len(pip.failures[key]) == 0
-    finally:
-        config.set_value( 'photometry.phrosty.nprocs', orig_nprocs )
-        config.set_value( 'photometry.phrosty.nwrite', orig_nwrite )
-        config._static = True
+        assert pip.band == 'F106'
