@@ -7,11 +7,9 @@ system:
     temp_dir: phrosty/tests/test_output/temp
 
   ou24:
-    simdex_server: https://roman-desc-simdex.lbl.gov
-    tds_base: ../photometry_test_data/ou2024
-    config_file: ../photometry_test_data/ou2024/tds.yaml
-    images: ../photometry_test_data/ou2024/images/simple_model
-
+    config_file: ${PWD}/../photometry_test_data/ou2024/tds.yaml
+    tds_base: ${PWD}/../photometry_test_data/ou2024
+    images: ${PWD}/../photometry_test_data/ou2024/images/simple_model
 
 photometry:
   phrosty:
@@ -23,7 +21,6 @@ photometry:
     nwrite: 1
 
     sfft:
-      radius_cut_detmask: 2
       kerpolyorder: 2
 
     psf:

@@ -1,16 +1,15 @@
 __all__ = [ 'PipelineImage', 'Pipeline' ]
 
 # Imports STANDARD
-import sys
 import argparse
 from functools import partial
 import logging
-from multiprocessing import Pool
 import numpy as np
 import nvtx
 import pathlib
 import re
 import shutil
+import sys
 import tracemalloc
 import uuid
 
@@ -24,6 +23,7 @@ import fitsio
 # Imports INTERNAL
 import phrosty
 from phrosty.imagesubtraction import interpolate_over_bad_pixels, sky_subtract, stampmaker
+from phrosty.utils import band_aliases, map_band, managed_pool
 from sfft.SpaceSFFTFlow import SpaceSFFT_Flow
 from snappl.dbclient import SNPITDBClient
 from snappl.diaobject import DiaObject
@@ -103,9 +103,8 @@ class PipelineImage:
         self.psf_data = None
 
         # In case we fail...
-        self.fail_info = f'{image.band} {image.observation_id} {image.sca}'
+        self.fail_info_indiv = f'{image.band} {image.observation_id} {image.sca}'
         self.failure_location = None
-        self.failure_pair = None
 
     def run_sky_subtract( self, mp=True ):
         """Run sky subtraction using photutils.
@@ -217,8 +216,6 @@ class Pipeline:
                   ltcv_prov_tag=None,
                   dbsave=False,
                   dbclient=None,
-                  nprocs=1,
-                  nwrite=5,
                   backend='cupy',
                   catchfailures=False ):
 
@@ -286,7 +283,7 @@ class Pipeline:
 
         self.imgcol = imgcol
         self.diaobj = diaobj
-        self.band = band
+        self.band = map_band(band)
         self.oid = oid
 
         self.dia_out_dir = pathlib.Path( self.config.value( 'system.paths.dev_storage' ) ) / \
@@ -351,6 +348,62 @@ class Pipeline:
         # Debug LNA20260225
         # self.aperture = None
 
+    def _get_image( self, path, observation_id, sca, band ):
+        """Wrapper for snappl.imagecollection.get_image.
+        Gets an image from the collection, trying both band naming
+        conventions.
+
+        Some collections accept only one band convention (OU2024 wants
+        'Y106', not 'F106'), so each alias is tried in turn. This
+        yells at us if the band, observation_id, or sca don't match
+        what is read from the path. If none of these are
+        accepted, the image is loaded by path.
+
+        Written by Claude Opus 5.5, modified by LNA.
+
+        Parameters
+        ----------
+          path : str
+            Path of the image, as given in the input CSV.
+
+          observation_id : str
+            Observation ID, as given in the input CSV.
+
+          sca : str
+            SCA, as given in the input CSV.
+
+          band : str
+            Band, as given in the input CSV (either convention).
+
+        Returns
+        -------
+          snappl.image.Image
+
+        """
+        aliases = band_aliases( band )   # the CSV's spelling comes first
+        img = None
+        errors = []
+        i = 0
+        # Stop as soon as one spelling works, or when all have been tried
+        while ( img is None ) and ( i < len( aliases ) ):
+            try:
+                img = self.imgcol.get_image( path=path, observation_id=observation_id,
+                                             sca=sca, band=aliases[i] )
+            except Exception as e:
+                errors.append( f"{aliases[i]}: {e}" )
+            i += 1
+
+        if img is None:
+            try:
+                SNLogger.warning( 'Could not find the image using observation_id, sca, '
+                                'and/or band, so just using the path.' )
+                img = self.imgcol.get_image( path=path )
+            except Exception:
+                SNLogger.warning(  '...also could not find the image with the path. Sorry. '
+                                  f'The busted path is: {path}' )
+
+        return img
+
     def _read_csv( self, csvfile ):
         """Reads input csv files with columns:
         'path observation_id sca mjd band'.
@@ -378,28 +431,22 @@ class Pipeline:
                 raise ValueError( f"First line of list file {csvfile} didn't match what was expected." )
             for line in ifp:
                 path, observation_id, sca, _mjd, band = line.split()
-                if band == self.band:
-                    try:
-                        # This should yell at us if the observation_id
-                        # or sca doesn't match what is read from the path
+                mapped_band = map_band(band)
+                if mapped_band == self.band:
+                    # Below: future code from Rob for not needing paths
+                    # when we use the database
+                    # imageid = None
+                    # actual_path = None
+                    # try:
+                    #     imageid = asUUID( path )
+                    # except <whatever the right exception is>:
+                    #     actual_path = path
+                    imlist.append( self._get_image( path=path,
+                                                    observation_id=observation_id,
+                                                    sca=sca,
+                                                    band=band
+                                                    ) )
 
-                        # Below: future code from Rob for not needing paths
-                        # when we use the database
-                        # imageid = None
-                        # actual_path = None
-                        # try:
-                        #     imageid = asUUID( path )
-                        # except <whatever the right exception is>:
-                        #     actual_path = path
-                        imlist.append( self.imgcol.get_image( path=path,
-                                                              observation_id=observation_id,
-                                                              sca=sca,
-                                                              band=band
-                                                            ) )
-                    except Exception as e:
-                        SNLogger.warning( f"Could not find the image using observation_id, sca, and/or band, \
-                                           so just using the path. Failure: {e}" )
-                        imlist.append( self.imgcol.get_image( path=path ))
         return imlist
 
 
@@ -418,23 +465,32 @@ class Pipeline:
         all_imgs.extend( self.template_images )
 
         def log_error( img, x ):
-            SNLogger.error( f"Sky subtraction failure on {img.image.path}: {x}" )
-            if self.catchfailures:
-                self.failures['skysub'].append(f'{self.image.band} \
-                                                 {self.image.observation_id} \
-                                                 {self.image.sca}')
+            SNLogger.error( f'Sky subtraction failure on {img.image.path}: {x}.' )
+            img.failure_location = 'skysub'
 
         if self.nprocs > 1:
-            with Pool( self.nprocs ) as pool:
+            with managed_pool( self.nprocs, wait_label='skysub_wait' ) as pool:
                 for img in all_imgs:
                     pool.apply_async( img.run_sky_subtract, (), {},
                                       callback=img.save_sky_subtract_info,
                                       error_callback=partial(log_error, img) )
-                pool.close()
-                pool.join()
+
+            if self.catchfailures:
+                for img in all_imgs:
+                    if img.failure_location == 'skysub':
+                        SNLogger.debug(f'Recording skysub failure for {img.fail_info_indiv}')
+                        self.failures['skysub'].append(img.fail_info_indiv)
         else:
             for img in all_imgs:
-                img.save_sky_subtract_info( img.run_sky_subtract( mp=False ) )
+                try:
+                    img.save_sky_subtract_info( img.run_sky_subtract( mp=False ) )
+                except Exception as e:
+                    SNLogger.error( f'Sky subtraction failure on {img.image.path}: {e}.' )
+                    img.failure_location = 'skysub'
+                    if self.catchfailures:
+                        self.failures['skysub'].append(img.fail_info_indiv)
+                    else:
+                        raise
 
     def get_psfs( self ):
         """Retrieve PSFs for all snappl.image.Image objects in
@@ -446,34 +502,35 @@ class Pipeline:
 
         all_imgs = self.science_images.copy()     # shallow copy
         all_imgs.extend( self.template_images )
+        do_these_imgs = [ img for img in all_imgs if img.failure_location is None]
 
         def log_error( img, x ):
             SNLogger.error( f"get_psf failure on {img.image.path}: {x}" )
             img.failure_location = 'get_psf'
 
         if self.nprocs > 1:
-            with Pool( self.nprocs ) as pool:
-                for img in all_imgs:
-                    # callback_partial = partial( img.save_psf_path, all_imgs )
+            with managed_pool( self.nprocs, wait_label='get_psfs_wait' ) as pool:
+                for img in do_these_imgs:
+                    # callback_partial = partial( img.save_psf_path, do_these_imgs )
                     pool.apply_async( img.get_psf, (self.diaobj.ra, self.diaobj.dec), {},
                                       callback=img.keep_psf_data,
                                       error_callback=partial(log_error, img) )
-                pool.close()
-                pool.join()
-
-                for img in all_imgs:
-                    if img.failure_location is not None:
-                        self.failures[img.failure_location].append(img.fail_info)
+            if self.catchfailures:
+                for img in do_these_imgs:
+                    if img.failure_location == 'get_psf':
+                        self.failures[img.failure_location].append(img.fail_info_indiv)
 
         else:
-            for img in all_imgs:
+            for img in do_these_imgs:
                 try:
                     img.keep_psf_data( img.get_psf(self.diaobj.ra, self.diaobj.dec) )
-                except OSError:
-                    # OSError because if get_psf can't open a file, it does this
-                    # (for example, if the file does not exist)
+                except Exception as e:
+                    SNLogger.warning( f'PSF retrieval failed for {img.fail_info_indiv}: {e}' )
+                    img.failure_location = 'get_psf'
                     if self.catchfailures:
-                        self.failures['get_psf'].append(img.fail_info)
+                        self.failures['get_psf'].append(img.fail_info_indiv)
+                    else:
+                        raise
 
     def align_and_pre_convolve(self, templ_image, sci_image ):
         """Align and pre convolve a single template/science pair.
@@ -515,6 +572,13 @@ class Pipeline:
 
         sci_detmask = sci_image.detmask_img.data
         templ_detmask = templ_image.detmask_img.data
+
+        # Check if we are going to get a "singular matrix" issue.
+        for label, mask, img in [ ( 'science', sci_detmask, sci_image ),
+                                  ( 'template', templ_detmask, templ_image ) ]:
+            if np.count_nonzero( mask ) == 0:
+                raise ValueError( f'Detection mask for {label} image {img.image.name} is empty. '
+                                  f'SFFT cannot fit a matching kernel.' )
 
         sfftifier = SpaceSFFT_Flow(
                                     hdr_target=hdr_sci,
@@ -643,7 +707,7 @@ class Pipeline:
         # Required results keys
         results_dict['observation_id'] = str(sci_image.image.observation_id)
         results_dict['sca'] = sci_image.image.sca
-        results_dict['sky_rms'] = sci_image.skyrms
+        results_dict['sky_rms'] = sci_image.skyrms if sci_image.skyrms is not None else np.nan
         pix_x, pix_y = sci_image.image.get_wcs().world_to_pixel( self.diaobj.ra,
                                                                  self.diaobj.dec )
         results_dict['pix_x'] = pix_x
@@ -724,6 +788,53 @@ class Pipeline:
             SNLogger.info( f"After adding to results dict for \
                             {one_pair['observation_id']} {one_pair['sca']}, memory usage = \
                             {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
+
+    def extract_args_for_stampmaker( self, *args ):
+        snapplimg, diaoutdir, savename, datatype, pipelineimg = args
+        partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
+        return partialstamp(snapplimg, diaoutdir, savename, datatype)
+
+    def record_pair_stamp_failure( self, sci_image, templ_image, x ):
+        """Record a failure making stamps for a science/template pair.
+
+        Used directly in serial mode, and as a Pool error_callback in
+        parallel mode (callbacks run in the main process, so modifying
+        self.failures here is safe).
+
+        Written by Claude Opus 5.5.
+
+        Parameters
+        ----------
+        sci_image, templ_image : PipelineImage
+            The pair whose difference-image stamps failed.
+
+        x : Exception
+            The exception raised by do_stamps.
+        """
+
+        SNLogger.error( f"do_stamps failure for pair {sci_image.image.name} - "
+                        f"{templ_image.image.name}: {x}" )
+        if self.catchfailures:
+            self.failures['make_stamps'].append( { 'science': sci_image.fail_info_indiv,
+                                                'template': templ_image.fail_info_indiv } )
+
+    def record_solo_stamp_failure( self, pipeimg, x ):
+        """Record a failure making a stamp of a single original image.
+
+        Parameters
+        ----------
+          pipeimg : PipelineImage
+            The science or template image whose stamp failed.
+
+          x : Exception
+            The exception raised by stampmaker.
+
+        Written by Claude Opus 5.5.
+
+        """
+        SNLogger.error( f"Solo image stamp failure for {pipeimg.image.name}: {x}" )
+        if self.catchfailures:
+            self.failures['make_stamps'].append( pipeimg.fail_info_indiv )
 
     def save_stamp_paths( self, sci_image, templ_image, paths ):
         """Helper function for recording the stamp paths returned in
@@ -915,7 +1026,7 @@ class Pipeline:
                                                               {templ_image.image.sca}: {x}" )
 
         if self.nprocs > 1:
-            with Pool( self.nprocs ) as pool:
+            with managed_pool( self.nprocs, wait_label='make_phot_info_dict_wait' ) as pool:
 
                 for sci_image in self.science_images:
                     for templ_image in self.template_images:
@@ -926,16 +1037,13 @@ class Pipeline:
                         SNLogger.debug( f"pool.apply async done for \
                                             {sci_image.image.observation_id} \
                                             {sci_image.image.sca}" )
-                pool.close()
-                pool.join()
                 SNLogger.debug('Make phot info dict pool closed and joined.')
 
         else:
             for i, sci_image in enumerate( self.science_images ):
-                if sci_image.failure_location is None:
-                    SNLogger.debug( f"Doing science image {i} of {len(self.science_images)}" )
-                    for templ_image in self.template_images:
-                        self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
+                SNLogger.debug( f"Doing science image {i} of {len(self.science_images)}" )
+                for templ_image in self.template_images:
+                    self.add_to_results_dict( self.make_phot_info_dict( sci_image, templ_image ) )
 
         if self.dbsave:
             SNLogger.debug('About to get image provenance.')
@@ -1081,40 +1189,37 @@ class Pipeline:
             # After this step, all images (both science and template) will
             #   have the .psf_data field set with the image-resolution PSF stamp data
             #   (from a PSF.get_stamp() call.)
-            SNLogger.info( "Getting PSFs" )
-            with nvtx.annotate( "getpsfs", color=0xff8888 ):
+            SNLogger.info( 'Getting PSFs...' )
+            with nvtx.annotate( 'getpsfs', color=0xff8888 ):
                 self.get_psfs()
 
         if self.mem_trace:
-            SNLogger.info( f"After get_psfs, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB" )
+            SNLogger.info( f'After get_psfs, memory usage = {tracemalloc.get_traced_memory()[1]/(1024**2):.2f} MB' )
 
         # Create a process pool to write fits files
-        with Pool( self.nwrite ) as fits_writer_pool:
-
+        with managed_pool( self.nwrite, wait_label='fits_write_wait' ) as fits_writer_pool:
             def log_fits_write_error( savepath, x ):
-                SNLogger.error( f"Exception writing FITS file {savepath}: {x}" )
+                SNLogger.error( f'Exception writing FITS file {savepath}: {x}.' )
                 # raise?
 
             # Do the hardcore processing
             for templ_image in self.template_images:
+                if templ_image.failure_location is not None:
+                    SNLogger.info(f'Skipping template {templ_image.image.name} '
+                                  f'because it failed at {templ_image.failure_location}.')
+                    continue
                 for sci_image in self.science_images:
-                    SNLogger.info( f"Processing {sci_image.image.name} minus {templ_image.image.name}" )
+                    if sci_image.failure_location is not None:
+                        SNLogger.info(f'Skipping {sci_image.image.name} '
+                                      f'because it failed at {sci_image.failure_location}.')
+                        continue
+                    SNLogger.info( f'Processing {sci_image.image.name} minus {templ_image.image.name}.' )
                     sfftifier = None
                     i_failed_gpu = False # We haven't failed yet. YET.
                     fail_info = {
-                                 'science': sci_image.fail_info,
-                                 'template': templ_image.fail_info
+                                 'science': sci_image.fail_info_indiv,
+                                 'template': templ_image.fail_info_indiv
                                 }
-
-                    continuation_conditions = [
-                                                sci_image.fail_info in self.failures['skysub'],
-                                                sci_image.fail_info in self.failures['get_psf'],
-                                                templ_image.fail_info in self.failures['skysub'],
-                                                templ_image.fail_info in self.failures['get_psf']
-                                              ]
-
-                    if any(continuation_conditions):
-                        i_failed_gpu = True
 
                     if 'align_and_preconvolve' in steps and not i_failed_gpu:
                         # After this step, sfftifier will be a SpaceSFFT_Flow object.
@@ -1296,76 +1401,78 @@ class Pipeline:
                 SNLogger.info( f"DONE with all science images for template {templ_image.image.name}" )
                 templ_image.free()
 
-            SNLogger.info( "Waiting for FITS writer processes to finish" )
-            with nvtx.annotate( "fits_write_wait", color=0xff8888 ):
-                fits_writer_pool.close()
-                fits_writer_pool.join()
-            SNLogger.info( "...FITS writer processes done." )
-
         if 'make_stamps' in steps:
             SNLogger.info( "Starting to make stamps..." )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
 
-                def log_stamp_err( sci_image, templ_image, x ):
-                    SNLogger.error( f"do_stamps failure for {sci_image.image.observation_id} \
-                                                            {sci_image.image.sca} - \
-                                                            {templ_image.image.observation_id} \
-                                                            {templ_image.image.sca}: {x} " )
-
-                partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
-
-                # original sci path, savedir, savename
-                sci_orig_stamp_args = ( (si.image, self.dia_out_dir, f'stamp_{str(si.image.name)}', 'data')
+                # snappl image object, savedir, savename, datatype, PipelineImage object
+                sci_orig_stamp_args = ( (si.image, self.dia_out_dir, f'stamp_{str(si.image.name)}', 'data', si)
                                          for si in self.science_images)
-                # original template path, savedir, savename
-                templstamp_args = ( (ti.image, self.dia_out_dir, f'stamp_{str(ti.image.name)}', 'data')
+                # snappl image object, savedir, savename, datatype, PipelineImage object
+                templstamp_args = ( (ti.image, self.dia_out_dir, f'stamp_{str(ti.image.name)}', 'data', ti)
                                     for ti in self.template_images )
+
                 if self.nwrite > 1:
                     # Save stamps for original template images.
-                    with Pool( self.nwrite ) as templ_stamp_pool:
-                        templ_stamp_pool.starmap_async( partialstamp, templstamp_args,
-                                                        error_callback=log_stamp_err )
-                        templ_stamp_pool.close()
-                        templ_stamp_pool.join()
-
+                    with managed_pool( self.nwrite, wait_label='write_stamps_wait' ) as templ_stamp_pool:
+                        for templ_args in templstamp_args:
+                            if templ_args[4].failure_location is not None:
+                                SNLogger.info(f"Skipping original template image stamp for {templ_args[4].image.name} \
+                                                because it failed at {templ_args[4].failure_location}.")
+                            else:
+                                partial_solofail = partial( self.record_solo_stamp_failure, templ_args[4] )
+                                templ_stamp_pool.apply_async( self.extract_args_for_stampmaker, templ_args,
+                                                              error_callback=partial_solofail )
 
                     # Save stamps for original science images.
-                    with Pool( self.nwrite ) as sci_orig_stamp_pool:
-                        sci_orig_stamp_pool.starmap_async( partialstamp, sci_orig_stamp_args,
-                                                            error_callback=log_stamp_err )
-                        sci_orig_stamp_pool.close()
-                        sci_orig_stamp_pool.join()
+                    with managed_pool( self.nwrite, wait_label='write_stamps_wait' ) as sci_orig_stamp_pool:
+                        for sci_args in sci_orig_stamp_args:
+                            if sci_args[4].failure_location is not None:
+                                SNLogger.info(f"Skipping original science image stamp for {sci_args[4].image.name} \
+                                                because it failed at {sci_args[4].failure_location}.")
+                            else:
+                                partial_solofail = partial( self.record_solo_stamp_failure, sci_args[4] )
+                                sci_orig_stamp_pool.apply_async( self.extract_args_for_stampmaker, sci_args,
+                                                                 error_callback=partial_solofail )
 
                     # Save stamps for decorrelated difference image, zero point image (decorrelated sky-subtracted
-                    # science image), and variance image for decorrelated difference image
-                    with Pool( self.nwrite ) as sci_stamp_pool:
+                    # science image), and variance image for decorrelated difference image.
+                    with managed_pool( self.nwrite, wait_label='write_stamps_wait' ) as sci_stamp_pool:
                         for sci_image in self.science_images:
                             for templ_image in self.template_images:
-                                pair = (sci_image, templ_image)
-                                stamperr_partial = partial(log_stamp_err, sci_image, templ_image)
-                                sci_stamp_pool.apply_async( self.do_stamps, pair, {},
-                                                            callback = partial(self.save_stamp_paths,
-                                                                               sci_image, templ_image),
-                                                            error_callback=stamperr_partial )
-                        sci_stamp_pool.close()
-                        sci_stamp_pool.join()
+                                if templ_image.image.name not in sci_image.decorr_diff_path:
+                                    SNLogger.info( f'Skipping DIA stamps for {sci_image.image.name} - '
+                                                   f'{templ_image.image.name} due to no difference image.' )
+                                else:
+                                    partial_pairfail = partial( self.record_pair_stamp_failure,
+                                                                sci_image, templ_image )
+                                    sci_stamp_pool.apply_async( self.do_stamps, (sci_image, templ_image), {},
+                                                                callback=partial( self.save_stamp_paths,
+                                                                                  sci_image, templ_image ),
+                                                                error_callback=partial_pairfail )
 
                 else:
                     # Make and save stamp of just the template image
                     for tsargs in templstamp_args:
-                        try:
-                            partialstamp(*tsargs)
-                        except Exception as e:
-                            SNLogger.warning( f"Stampifying the original template images failed because: {e}" )
-                            self.failures['make_stamps'].append(tsargs[0].fail_info)
+                        if tsargs[4].failure_location is None:
+                            try:
+                                self.extract_args_for_stampmaker(*tsargs)
+                            except Exception as e:
+                                SNLogger.warning( f"Stampifying the original template images failed because: {e}" )
+                                self.record_solo_stamp_failure( tsargs[4], e )
+                                if not self.catchfailures:
+                                    raise
 
                     # Make and save stamp of just the science image
                     for sosargs in sci_orig_stamp_args:
-                        try:
-                            partialstamp(*sosargs)
-                        except Exception as e:
-                            SNLogger.warning( f"Stampifying the original science images failed because: {e}" )
-                            self.failures['make_stamps'].append(sosargs[0].fail_info)
+                        if sosargs[4].failure_location is None:
+                            try:
+                                self.extract_args_for_stampmaker(*sosargs)
+                            except Exception as e:
+                                SNLogger.warning( f"Stampifying the original science images failed because: {e}" )
+                                self.record_solo_stamp_failure( sosargs[4], e )
+                                if not self.catchfailures:
+                                    raise
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
@@ -1376,10 +1483,10 @@ class Pipeline:
                                 except Exception as e:
                                     if self.catchfailures:
                                         SNLogger.warning( f"Stampifying the post-SFFT images failed because: {e}" )
-                                        self.failures['make_stamps'].append({
-                                                                            'science': sci_image.fail_info,
-                                                                            'template': templ_image.fail_info
-                                                                            })
+                                        self.record_pair_stamp_failure( sci_image, templ_image, e )
+                                        if not self.catchfailures:
+                                            raise
+
             SNLogger.info('...finished making stamps.')
 
         if self.mem_trace:
@@ -1582,6 +1689,8 @@ def main():
             SNLogger.warning( f"Given Dec {args.dec} is far from DiaObject nominal Dec {diaobj.dec}" )
         diaobj.dec = args.dec
 
+    mapped_band = map_band(args.band)
+
     # Get the image collection
     imgcol = ImageCollection.get_collection( collection=args.image_collection,
                                              subset=args.image_subset,
@@ -1608,7 +1717,7 @@ def main():
     #                                            )
 
     # Create and launch the pipeline
-    pipeline = Pipeline( diaobj, imgcol, args.band,
+    pipeline = Pipeline( diaobj, imgcol, mapped_band,
                          science_csv=args.science_images,
                          template_csv=args.template_images,
                          oid=args.oid,

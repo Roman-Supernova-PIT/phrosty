@@ -1,3 +1,36 @@
+import pytest
+from phrosty.utils import band_aliases, map_band
+
+
+def test_map_band():
+    # Just check the band mapping function, solo.
+
+    assert map_band('F062') == 'F062'
+    assert map_band('R062') == 'F062'
+    assert map_band('F087') == 'F087'
+    assert map_band('Z087') == 'F087'
+    assert map_band('F106') == 'F106'
+    assert map_band('Y106') == 'F106'
+    assert map_band('F129') == 'F129'
+    assert map_band('J129') == 'F129'
+    assert map_band('F158') == 'F158'
+    assert map_band('H158') == 'F158'
+    # F184 doesn't have a double because it's
+    # always "F" in either convention.
+    assert map_band('F184') == 'F184'
+    assert map_band('F213') == 'F213'
+    assert map_band('K213') == 'F213'
+
+    with pytest.raises(ValueError, match='Unknown band'):
+        map_band('horsey')
+
+
+def test_band_aliases():
+    expected_out = ['F106', 'Y106']
+    for band in expected_out:
+        assert sorted(band_aliases(band)) == sorted(expected_out)
+
+# OLD STUFF BELOW:
 # # IMPORTS Standard:
 # import numpy as np
 # import os

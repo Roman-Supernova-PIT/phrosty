@@ -110,7 +110,7 @@ def sky_subtract( img, temp_dir=None,
     temp_dir = pathlib.Path( temp_dir if temp_dir is not None else Config.get().value( "photometry.snappl.temp_dir" ) )
     barf = "".join( random.choices( "0123456789abcdef", k=10 ) )
     tmpfitspath = temp_dir / f"{barf}_fits_from_asdf.fits"
-    tmpimpath = temp_dir / f"{barf}_sub.fits"
+    tmpimpath = temp_dir / f"{barf}_img.fits"
     tmpsubpath = temp_dir / f"{barf}_sub.fits"
     tmpdetmaskpath = temp_dir / f"{barf}_detmask.fits"
     origimg = img
@@ -174,16 +174,19 @@ def sky_subtract( img, temp_dir=None,
     mask = np.abs(sky_subtracted_data) > nonlinear_threshold
     # Grow individual pixels by mask_radius
     mask_footprint = circular_footprint(radius=mask_radius)
-    mask = convolve2d(mask, mask_footprint, fillvalue=0, mode="same")
+    mask = convolve2d(mask, mask_footprint, fillvalue=0, mode="same") > 0
 
-    segment_img = detect_sources(sky_subtracted_data, threshold, n_pixels=10, mask=mask)
+    # Detect without the mask so that diffraction spikes from saturated
+    # stars don't get separated from the core.
+    segment_img = detect_sources(sky_subtracted_data, threshold, n_pixels=10)
     if segment_img is not None:
-        detection_footprint = circular_footprint(radius=10)
+        detection_footprint = circular_footprint(radius=footprint_radius)
 
         # convert boolean into float 1, and 0 because data must be float (not bool or int).
-        detmask_data = np.asarray(segment_img.make_source_mask(footprint=detection_footprint), dtype="float")
+        sourcemask_data = np.asarray(segment_img.make_source_mask(footprint=detection_footprint))
+        detmask_data = np.asarray(sourcemask_data & ~mask, dtype='float')
 
-    elif segment_img is None:
+    else:
         detmask_data = np.zeros(np.shape(subim.data))
 
     detmaskim = snappl.image.FITSImage(
