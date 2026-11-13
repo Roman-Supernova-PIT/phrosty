@@ -2,10 +2,8 @@ __all__ = [ 'PipelineImage', 'Pipeline' ]
 
 # Imports STANDARD
 import argparse
-import contextlib
 from functools import partial
 import logging
-from multiprocessing import Pool
 import numpy as np
 import nvtx
 import pathlib
@@ -37,6 +35,7 @@ from snappl.psf import PSF
 from snappl.config import Config
 from snappl.logger import SNLogger
 # from snappl.utils import asUUID
+
 
 class PipelineImage:
     """Holds a snappl.image.Image, with some other stuff the pipeline needs."""
@@ -1119,11 +1118,13 @@ class Pipeline:
             # Do the hardcore processing
             for templ_image in self.template_images:
                 if templ_image.failure_location is not None:
-                    SNLogger.info(f'Skipping template {templ_image.image.name} because it failed at {templ_image.failure_location}.')
+                    SNLogger.info(f'Skipping template {templ_image.image.name}'
+                                  f'because it failed at {templ_image.failure_location}.')
                     continue
                 for sci_image in self.science_images:
                     if sci_image.failure_location is not None:
-                        SNLogger.info(f'Skipping {sci_image.image.name} because it failed at {sci_image.failure_location}.')
+                        SNLogger.info(f'Skipping {sci_image.image.name}'
+                                      f'because it failed at {sci_image.failure_location}.')
                         continue
                     SNLogger.info( f'Processing {sci_image.image.name} minus {templ_image.image.name}.' )
                     sfftifier = None

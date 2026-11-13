@@ -1,5 +1,4 @@
 import numpy as np
-import os
 import pathlib
 import pytest
 from matplotlib import pyplot
@@ -17,7 +16,7 @@ from snappl.image import FITSImageStdHeaders
 
 
 # TODO : separate tests for PipelineImage, for all the functions in
-#   PipelineImage and Pipeline. 
+#   PipelineImage and Pipeline.
 
 # This one writes a diagnostic plot file to test_plots/test_pipeline_run_simple_gauss1.pdf
 def test_pipeline_run_simple_gauss1( config ):
@@ -216,7 +215,8 @@ def test_pipeline_run( object_for_tests, ou2024_image_collection,
     #   directories for tests and for running... so don't do that... but the
     #   way we're set up right now, you probably are.
 
-@pytest.mark.parametrize( 'nprocs,nwrite', [(1,1), (3,3)] )
+
+@pytest.mark.parametrize( 'nprocs,nwrite', [(1, 1), (3, 3)] )
 def test_no_failures( config, object_for_tests, ou2024_image_collection,
                       one_ou2024_template_image, two_ou2024_science_images,
                       nprocs, nwrite ):
@@ -249,14 +249,15 @@ def test_no_failures( config, object_for_tests, ou2024_image_collection,
         config.set_value( 'photometry.phrosty.nwrite', orig_nwrite )
         config._static = True
 
-@pytest.mark.parametrize( 'nprocs,nwrite', [(1,1), (3,3)] )
+
+@pytest.mark.parametrize( 'nprocs,nwrite', [(1, 1), (3, 3)] )
 def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collection,
                                  one_ou2024_template_image, two_ou2024_science_images,
                                  nprocs, nwrite ):
     # This is more of a test of the failure-flagging feature than the PSF retrieval.
     # We do not test the gaussian PSF because it is not dependent on any metadata
     # about the images.
-    # 
+    #
     # Testing for the following PSF types is broken because:
     # ou24PSF: There is a line in the tds.yaml file that specifies the path:
     # input:
@@ -321,7 +322,8 @@ def test_psf_retrieval_failures( config, object_for_tests, ou2024_image_collecti
         config.set_value( 'photometry.phrosty.nwrite', orig_nwrite )
         config._static = True
 
-@pytest.mark.parametrize( 'nprocs,nwrite', [(1,1), (3,3)] )
+
+@pytest.mark.parametrize( 'nprocs,nwrite', [(1, 1), (3, 3)] )
 def test_nan_handling( config, object_for_tests, ou2024_image_collection,
                        one_ou2024_template_image, two_ou2024_science_images,
                        nprocs, nwrite ):
@@ -411,6 +413,7 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
         config.set_value( 'photometry.phrosty.nwrite', orig_nwrite )
         config._static = True
 
+
 def test_map_band():
     # Just check the band mapping function, solo.
 
@@ -432,6 +435,7 @@ def test_map_band():
 
     with pytest.raises(ValueError, match='Unknown band'):
         map_band('horsey')
+
 
 def test_band_mapping( config, object_for_tests, ou2024_image_collection,
                        template_csv, two_science_csv ):

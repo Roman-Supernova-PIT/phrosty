@@ -8,30 +8,49 @@ import nvtx
 
 from snappl.logger import SNLogger
 
+_band_dict = {
+                "F062": "F062",
+                "F087": "F087",
+                "F106": "F106",
+                "F129": "F129",
+                "F158": "F158",
+                "F184": "F184",
+                "F213": "F213",
+                "R062": "F062",
+                "Z087": "F087",
+                "Y106": "F106",
+                "J129": "F129",
+                "H158": "F158",
+                "K213": "F213",
+            }
+
+
 def map_band(band_input):
-    """
-    Maps the possible band inputs in two different
+    """Maps the possible band inputs in two different
     formats for flexibility.
     """
-    band_dict = {
-                    "F062": "F062",
-                    "F087": "F087",
-                    "F106": "F106",
-                    "F129": "F129",
-                    "F158": "F158",
-                    "F184": "F184",
-                    "F213": "F213",
-                    "R062": "F062",
-                    "Z087": "F087",
-                    "Y106": "F106",
-                    "J129": "F129",
-                    "H158": "F158",
-                    "K213": "F213",
-                }
+
     try:
-        return band_dict[band_input]
+        return _band_dict[band_input]
     except KeyError:
-        raise ValueError(f'Unknown band {band_input}; must be one of {list(band_dict)}.')
+        raise ValueError(f'Unknown band {band_input}; must be one of {list(_band_dict)}.')
+
+
+def band_aliases( band_input ):
+    """Return every accepted spelling of a band, with band_input first.
+
+    e.g. band_aliases('F106') -> ['F106', 'Y106']
+         band_aliases('Y106') -> ['Y106', 'F106']
+
+    Written by Claude Opus 5.5.
+
+    """
+    canonical = map_band( band_input )
+    aliases = [ b for b, f in _band_dict.items() if f == canonical ]
+    # Try the spelling the user actually wrote first
+    aliases.sort( key=lambda b: b != band_input )
+    return aliases
+
 
 @contextlib.contextmanager
 def managed_pool( nprocs, wait_label=None, wait_color=0xff8888 ):
