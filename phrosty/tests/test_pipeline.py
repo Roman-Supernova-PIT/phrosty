@@ -153,65 +153,78 @@ def test_pipeline_run_simple_gauss1( config ):
         config.set_value( 'photometry.phrosty.psf.type', orig_psf )
         config._static = True
 
+@pytest.mark.parametrize( 'nprocs,nwrite', [(1, 1), (3, 3)] )
+def test_pipeline_run( config, object_for_tests, ou2024_image_collection,
+                       one_ou2024_template_image, two_ou2024_science_images,
+                       nprocs, nwrite ):
 
-def test_pipeline_run( object_for_tests, ou2024_image_collection,
-                       one_ou2024_template_image, two_ou2024_science_images ):
+    config._static = False
+    orig_nprocs = config.value( 'photometry.phrosty.nprocs' )
+    orig_nwrite = config.value( 'photometry.phrosty.nwrite' )
 
-    pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
-                    science_images=two_ou2024_science_images,
-                    template_images=one_ou2024_template_image,
-                    backend='numpy' )
-    ltcv = pip()
-    ifp = Table.read(ltcv, format='parquet')
-    hdrline = tuple(ifp.columns)
-    assert hdrline == ( 'mjd', 'flux', 'flux_err', 'zpt', 'NEA', 'sky_rms', 'observation_id', 'sca',
-                        'pix_x', 'pix_y', 'science_name', 'template_name', 'science_id', 'template_id',
-                        'template_observation_id', 'template_sca', 'aperture_sum', 'mag', 'mag_err', 'success' )
-    assert len(ifp) == 2
+    try:
+        config.set_value( 'photometry.phrosty.nprocs', nprocs )
+        config.set_value( 'photometry.phrosty.nwrite', nwrite )
+        pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
+                        science_images=two_ou2024_science_images,
+                        template_images=one_ou2024_template_image,
+                        backend='numpy' )
+        ltcv = pip()
+        ifp = Table.read(ltcv, format='parquet')
+        hdrline = tuple(ifp.columns)
+        assert hdrline == ( 'mjd', 'flux', 'flux_err', 'zpt', 'NEA', 'sky_rms', 'observation_id', 'sca',
+                            'pix_x', 'pix_y', 'science_name', 'template_name', 'science_id', 'template_id',
+                            'template_observation_id', 'template_sca', 'aperture_sum', 'mag', 'mag_err', 'success' )
+        assert len(ifp) == 2
 
-    pairs = []
-    for row in ifp:
-        pairs.append( { kw: val for kw, val in zip( hdrline, tuple(row) ) } )
+        pairs = []
+        for row in ifp:
+            pairs.append( { kw: val for kw, val in zip( hdrline, tuple(row) ) } )
 
-    for pair, img in zip( pairs, two_ou2024_science_images ):
-        assert float(pair['mjd']) == pytest.approx( img.mjd, abs=1e-3 )
-        assert int(pair['observation_id']) == int(img.observation_id)
-        assert int(pair['sca']) == int(img.sca)
-        assert int(pair['template_observation_id']) == int(one_ou2024_template_image.observation_id)
-        assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
-        # NOTE: THE ZEROPOINT CHECK IS COMMENTED OUT UNTIL THE SNAPPL ZEROPOINT STUFF
-        # IS MORE COMPLETE. We can't really check zeropoint at this time because it
-        # doesn't make sense to check it if we aren't sure how we are handling
-        # zeropoints yet.
-        # assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
+        for pair, img in zip( pairs, two_ou2024_science_images ):
+            assert float(pair['mjd']) == pytest.approx( img.mjd, abs=1e-3 )
+            assert int(pair['observation_id']) == int(img.observation_id)
+            assert int(pair['sca']) == int(img.sca)
+            assert int(pair['template_observation_id']) == int(one_ou2024_template_image.observation_id)
+            assert int(pair['template_sca']) == int(one_ou2024_template_image.sca)
+            # NOTE: THE ZEROPOINT CHECK IS COMMENTED OUT UNTIL THE SNAPPL ZEROPOINT STUFF
+            # IS MORE COMPLETE. We can't really check zeropoint at this time because it
+            # doesn't make sense to check it if we aren't sure how we are handling
+            # zeropoints yet.
+            # assert float(pair['zpt']) == pytest.approx( 32.6617, abs=0.0001 )
 
-    # Tests aren't exactly reproducible from one run to the next,
-    #   because the OU24 classes have random numbers in them, and we aren't
-    #   controlling the seed.  So, we can only test for approximately
-    #   consistent results.  Going to do 0.3 times the uncertainty,
-    #   because a difference by that much is not all that meaningful
-    #   change, and empirically they vary by that much.  (Which is
-    #   alarming, but what can you do.)
+        # Tests aren't exactly reproducible from one run to the next,
+        #   because the OU24 classes have random numbers in them, and we aren't
+        #   controlling the seed.  So, we can only test for approximately
+        #   consistent results.  Going to do 0.3 times the uncertainty,
+        #   because a difference by that much is not all that meaningful
+        #   change, and empirically they vary by that much.  (Which is
+        #   alarming, but what can you do.)
 
-    dflux = float( pairs[0]['flux_err'] )
-    assert dflux == pytest.approx( 343., rel=0.3 )
-    dmag = float( pairs[0]['mag_err'] )
-    assert dmag == pytest.approx( 0.5, abs=0.1 )
-    assert float( pairs[0]['aperture_sum'] ) == pytest.approx( 880., abs=0.3*dflux )
-    assert float( pairs[0]['flux'] ) == pytest.approx( 708., abs=0.3*dflux )
-    assert float( pairs[0]['mag'] ) == pytest.approx( -7.1, abs=max( 0.3*dmag, 0.01 ) )
+        dflux = float( pairs[0]['flux_err'] )
+        assert dflux == pytest.approx( 343., rel=0.3 )
+        dmag = float( pairs[0]['mag_err'] )
+        assert dmag == pytest.approx( 0.5, abs=0.1 )
+        assert float( pairs[0]['aperture_sum'] ) == pytest.approx( 880., abs=0.3*dflux )
+        assert float( pairs[0]['flux'] ) == pytest.approx( 708., abs=0.3*dflux )
+        assert float( pairs[0]['mag'] ) == pytest.approx( -7.1, abs=max( 0.3*dmag, 0.01 ) )
 
-    dflux = float( pairs[1]['flux_err'] )
-    assert dflux == pytest.approx( 335., rel=0.3 )
-    dmag = float( pairs[1]['mag_err'] )
-    assert dmag == pytest.approx( 0.11, abs=0.1 )
-    assert float( pairs[1]['aperture_sum'] ) == pytest.approx( 4010., abs=0.3*dflux )
-    assert float( pairs[1]['flux'] ) == pytest.approx( 3028., abs=0.3*dflux )
-    assert float( pairs[1]['mag'] ) == pytest.approx( -8.7, abs=max( 0.3*dmag, 0.01 ) )
+        dflux = float( pairs[1]['flux_err'] )
+        assert dflux == pytest.approx( 335., rel=0.3 )
+        dmag = float( pairs[1]['mag_err'] )
+        assert dmag == pytest.approx( 0.11, abs=0.1 )
+        assert float( pairs[1]['aperture_sum'] ) == pytest.approx( 4010., abs=0.3*dflux )
+        assert float( pairs[1]['flux'] ) == pytest.approx( 3028., abs=0.3*dflux )
+        assert float( pairs[1]['mag'] ) == pytest.approx( -8.7, abs=max( 0.3*dmag, 0.01 ) )
 
-    # TODO : cleanup output directories!  This is scary if you're using the same
-    #   directories for tests and for running... so don't do that... but the
-    #   way we're set up right now, you probably are.
+        # TODO : cleanup output directories!  This is scary if you're using the same
+        #   directories for tests and for running... so don't do that... but the
+        #   way we're set up right now, you probably are.
+
+    finally:
+        config.set_value( 'photometry.phrosty.nprocs', orig_nprocs )
+        config.set_value( 'photometry.phrosty.nwrite', orig_nwrite )
+        config._static = True
 
 
 @pytest.mark.parametrize( 'nprocs,nwrite', [(1, 1), (3, 3)] )
@@ -223,12 +236,12 @@ def test_no_failures( config, object_for_tests, ou2024_image_collection,
     # supposed to work fine.
     # TODO: Expand beyond OU2024 images.
 
-    try:
-        # We are, once again, going to mess with the config.
-        orig_nprocs = config.value( 'photometry.phrosty.nprocs' )
-        orig_nwrite = config.value( 'photometry.phrosty.nwrite' )
-        config._static = False
 
+    # We are, once again, going to mess with the config.
+    orig_nprocs = config.value( 'photometry.phrosty.nprocs' )
+    orig_nwrite = config.value( 'photometry.phrosty.nwrite' )
+    config._static = False
+    try:
         config.set_value( 'photometry.phrosty.nprocs', nprocs )
         config.set_value( 'photometry.phrosty.nwrite', nwrite )
         pip = Pipeline( object_for_tests, ou2024_image_collection, 'Y106',
@@ -440,6 +453,8 @@ def test_band_mapping( config, object_for_tests, ou2024_image_collection,
 
     # This test makes sure the band mapping is working properly, and that
     # a fit is not thrown whether you input "F106" or "Y106".
+    # NOTE: This only tests F106/Y106 because that's what is in
+    # photometry_test_data.
 
     for band in ['Y106', 'F106']:
         print(band)

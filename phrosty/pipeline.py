@@ -1420,7 +1420,7 @@ class Pipeline:
                                 SNLogger.info(f"Skipping original template image stamp for {templ_args[4].image.name} \
                                                 because it failed at {templ_args[4].failure_location}.")
                             else:
-                                partial_solofail = partial( self.record_image_stamp_failure, templ_args[4] )
+                                partial_solofail = partial( self.record_solo_stamp_failure, templ_args[4] )
                                 templ_stamp_pool.apply_async( self.extract_args_for_stampmaker, templ_args,
                                                               error_callback=partial_solofail )
 
@@ -1431,7 +1431,7 @@ class Pipeline:
                                 SNLogger.info(f"Skipping original science image stamp for {sci_args[4].image.name} \
                                                 because it failed at {sci_args[4].failure_location}.")
                             else:
-                                partial_solofail = partial( self.record_image_stamp_failure, sci_args[4] )
+                                partial_solofail = partial( self.record_solo_stamp_failure, sci_args[4] )
                                 sci_orig_stamp_pool.apply_async( self.extract_args_for_stampmaker, sci_args,
                                                                  error_callback=partial_solofail )
 
