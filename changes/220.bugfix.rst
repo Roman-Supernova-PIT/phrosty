@@ -1,5 +1,6 @@
-- Ensure all tests run
-- Update tests to reflect changes in what's a command line arg vs a config value
-- Address inconsistencies between single and multiprocessing 
-- Fix buggy error handling ("catchfailures" arg)
-- Map filter names such that "F129" == "J129", for example, and add corresponding tests
+- Fix test_pipeline.py
+    - Because of the new sky subtraction code, the pipeline now breaks if you pass an image full of np.nan (yay), so the test had to be updated to reflect this
+    - Move args that I previously moved into config out of Pipeline() kwargs
+- Address inconsistencies between single-processing and multiprocessing, in particular, fix buggy error handling system ("catchfailures" arg)
+- Map filter names such that "F129 == J129" (for example). These new functions are in utils.py. Added corresponding tests in test_pipeline.py and test_utils.py.
+- Bug in imagesubtraction.sky_subtract: the nonlinear detection mask was being included in the segment_img.make_source_mask() call, which is a problem because nonlinear threshold is set by default to 1000, and detection threshold is set to nsigma=20. So, when I ran the simple Gaussian tests, the entire image got excluded, which appeared as a "singular matrix error" in the SFFT subtraction step. I moved the nonlinear detection mask to be combined with the source mask after the source mask is made. I suppose this issue could also be circumvented by leaving the code as it was and tuning the values for nonlinear_threshold and/or nsigma in the config, but I predict this portion of the code will change drastically soon, anyway (see: https://github.com/Roman-Supernova-PIT/sidecar/blob/u/wmwv/agent-debugging/sidecar/subtraction.py#L177, and also Lei is working on fine-tuning SFFT.)
