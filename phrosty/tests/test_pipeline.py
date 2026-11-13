@@ -424,6 +424,7 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
         config.set_value( 'photometry.phrosty.nwrite', orig_nwrite )
         config._static = True
 
+
 def test_band_mapping( config, object_for_tests, ou2024_image_collection,
                        template_csv, two_science_csv ):
 
