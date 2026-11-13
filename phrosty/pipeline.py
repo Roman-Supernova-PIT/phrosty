@@ -354,7 +354,7 @@ class Pipeline:
         conventions.
 
         Some collections accept only one band convention (OU2024 wants
-        'Y106', not 'F106'), so each alias is tried in turn. This 
+        'Y106', not 'F106'), so each alias is tried in turn. This
         yells at us if the band, observation_id, or sca don't match
         what is read from the path. If none of these are
         accepted, the image is loaded by path.
@@ -398,7 +398,7 @@ class Pipeline:
                 SNLogger.warning( 'Could not find the image using observation_id, sca, '
                                 'and/or band, so just using the path.' )
                 img = self.imgcol.get_image( path=path )
-            except Exception as e:
+            except Exception:
                 SNLogger.warning(  '...also could not find the image with the path. Sorry. '
                                   f'The busted path is: {path}' )
 
@@ -795,28 +795,28 @@ class Pipeline:
         return partialstamp(snapplimg, diaoutdir, savename, datatype)
 
     def record_pair_stamp_failure( self, sci_image, templ_image, x ):
-            """Record a failure making stamps for a science/template pair.
+        """Record a failure making stamps for a science/template pair.
 
-            Used directly in serial mode, and as a Pool error_callback in
-            parallel mode (callbacks run in the main process, so modifying
-            self.failures here is safe).
+        Used directly in serial mode, and as a Pool error_callback in
+        parallel mode (callbacks run in the main process, so modifying
+        self.failures here is safe).
 
-            Written by Claude Opus 5.5.
+        Written by Claude Opus 5.5.
 
-            Parameters
-            ----------
-            sci_image, templ_image : PipelineImage
-                The pair whose difference-image stamps failed.
+        Parameters
+        ----------
+        sci_image, templ_image : PipelineImage
+            The pair whose difference-image stamps failed.
 
-            x : Exception
-                The exception raised by do_stamps.
-            """
+        x : Exception
+            The exception raised by do_stamps.
+        """
 
-            SNLogger.error( f"do_stamps failure for pair {sci_image.image.name} - "
-                            f"{templ_image.image.name}: {x}" )
-            if self.catchfailures:
-                self.failures['make_stamps'].append( { 'science': sci_image.fail_info_indiv,
-                                                    'template': templ_image.fail_info_indiv } )
+        SNLogger.error( f"do_stamps failure for pair {sci_image.image.name} - "
+                        f"{templ_image.image.name}: {x}" )
+        if self.catchfailures:
+            self.failures['make_stamps'].append( { 'science': sci_image.fail_info_indiv,
+                                                'template': templ_image.fail_info_indiv } )
 
     def record_solo_stamp_failure( self, pipeimg, x ):
         """Record a failure making a stamp of a single original image.
@@ -1486,7 +1486,7 @@ class Pipeline:
                                         self.record_pair_stamp_failure( sci_image, templ_image, e )
                                         if not self.catchfailures:
                                             raise
-        
+
             SNLogger.info('...finished making stamps.')
 
         if self.mem_trace:
