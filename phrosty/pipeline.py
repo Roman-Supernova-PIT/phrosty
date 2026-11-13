@@ -23,7 +23,7 @@ import fitsio
 # Imports INTERNAL
 import phrosty
 from phrosty.imagesubtraction import interpolate_over_bad_pixels, sky_subtract, stampmaker
-from phrosty.utils import map_band, managed_pool
+from phrosty.utils import band_aliases, map_band, managed_pool
 from sfft.SpaceSFFTFlow import SpaceSFFT_Flow
 from snappl.dbclient import SNPITDBClient
 from snappl.diaobject import DiaObject
@@ -216,8 +216,6 @@ class Pipeline:
                   ltcv_prov_tag=None,
                   dbsave=False,
                   dbclient=None,
-                  nprocs=1,
-                  nwrite=5,
                   backend='cupy',
                   catchfailures=False ):
 
@@ -379,26 +377,24 @@ class Pipeline:
                 path, observation_id, sca, _mjd, band = line.split()
                 mapped_band = map_band(band)
                 if mapped_band == self.band:
-                    try:
-                        # This should yell at us if the observation_id
-                        # or sca doesn't match what is read from the path
+                    for alias in band_aliases(band):
+                        try:
+                            # This should yell at us if the observation_id
+                            # or sca doesn't match what is read from the path
 
-                        # Below: future code from Rob for not needing paths
-                        # when we use the database
-                        # imageid = None
-                        # actual_path = None
-                        # try:
-                        #     imageid = asUUID( path )
-                        # except <whatever the right exception is>:
-                        #     actual_path = path
-                        imlist.append( self.imgcol.get_image( path=path,
-                                                              observation_id=observation_id,
-                                                              sca=sca,
-                                                              band=self.band
-                                                              # NOTE: Passing the original band
-                                                              # instead of the mapped band because
-                                                              # of OU24 compatibility.
-                                                            ) )
+                            # Below: future code from Rob for not needing paths
+                            # when we use the database
+                            # imageid = None
+                            # actual_path = None
+                            # try:
+                            #     imageid = asUUID( path )
+                            # except <whatever the right exception is>:
+                            #     actual_path = path
+                            imlist.append( self.imgcol.get_image( path=path,
+                                                                observation_id=observation_id,
+                                                                sca=sca,
+                                                                band=alias
+                                                                ) )
                     except Exception as e:
                         SNLogger.warning( f"Could not find the image using observation_id, sca, and/or band, \
                                            so just using the path. Reason: {e}" )
@@ -430,8 +426,6 @@ class Pipeline:
                     pool.apply_async( img.run_sky_subtract, (), {},
                                       callback=img.save_sky_subtract_info,
                                       error_callback=partial(log_error, img) )
-                pool.close()
-                pool.join()
 
             if self.catchfailures:
                 for img in all_imgs:
@@ -473,9 +467,7 @@ class Pipeline:
                     pool.apply_async( img.get_psf, (self.diaobj.ra, self.diaobj.dec), {},
                                       callback=img.keep_psf_data,
                                       error_callback=partial(log_error, img) )
-                pool.close()
-                pool.join()
-
+            if self.catchfailures:
                 for img in do_these_imgs:
                     if img.failure_location == 'get_psf':
                         self.failures[img.failure_location].append(img.fail_info_indiv)
@@ -747,6 +739,48 @@ class Pipeline:
         partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
         return partialstamp(snapplimg, diaoutdir, savename, datatype)
 
+def record_pair_stamp_failure( self, sci_image, templ_image, x ):
+        """Record a failure making stamps for a science/template pair.
+
+        Used directly in serial mode, and as a Pool error_callback in
+        parallel mode (callbacks run in the main process, so modifying
+        self.failures here is safe).
+
+        Written by Claude Opus 5.5.
+
+        Parameters
+        ----------
+          sci_image, templ_image : PipelineImage
+            The pair whose difference-image stamps failed.
+
+          x : Exception
+            The exception raised by do_stamps.
+        """
+
+        SNLogger.error( f"do_stamps failure for pair {sci_image.image.name} - "
+                        f"{templ_image.image.name}: {x}" )
+        if self.catchfailures:
+            self.failures['make_stamps'].append( { 'science': sci_image.fail_info_indiv,
+                                                   'template': templ_image.fail_info_indiv } )
+
+    def record_solo_stamp_failure( self, pipeimg, x ):
+        """Record a failure making a stamp of a single original image.
+
+        Parameters
+        ----------
+          pipeimg : PipelineImage
+            The science or template image whose stamp failed.
+
+          x : Exception
+            The exception raised by stampmaker.
+
+        Written by Claude Opus 5.5.
+
+        """
+        SNLogger.error( f"Solo image stamp failure for {pipeimg.image.name}: {x}" )
+        if self.catchfailures:
+            self.failures['make_stamps'].append( pipeimg.fail_info_indiv )
+
     def save_stamp_paths( self, sci_image, templ_image, paths ):
         """Helper function for recording the stamp paths returned in
         self.do_stamps.
@@ -948,8 +982,6 @@ class Pipeline:
                         SNLogger.debug( f"pool.apply async done for \
                                             {sci_image.image.observation_id} \
                                             {sci_image.image.sca}" )
-                pool.close()
-                pool.join()
                 SNLogger.debug('Make phot info dict pool closed and joined.')
 
         else:
@@ -1118,12 +1150,12 @@ class Pipeline:
             # Do the hardcore processing
             for templ_image in self.template_images:
                 if templ_image.failure_location is not None:
-                    SNLogger.info(f'Skipping template {templ_image.image.name}'
+                    SNLogger.info(f'Skipping template {templ_image.image.name} '
                                   f'because it failed at {templ_image.failure_location}.')
                     continue
                 for sci_image in self.science_images:
                     if sci_image.failure_location is not None:
-                        SNLogger.info(f'Skipping {sci_image.image.name}'
+                        SNLogger.info(f'Skipping {sci_image.image.name} '
                                       f'because it failed at {sci_image.failure_location}.')
                         continue
                     SNLogger.info( f'Processing {sci_image.image.name} minus {templ_image.image.name}.' )
@@ -1318,13 +1350,6 @@ class Pipeline:
             SNLogger.info( "Starting to make stamps..." )
             with nvtx.annotate( "make stamps", color=0xff8888 ):
 
-                def log_stamp_err( sci_image, templ_image, x ):
-                    SNLogger.error( f"do_stamps failure: {x} " )
-                    if self.catchfailures:
-                        self.failures['make_stamps'].append( { 'science': sci_image.fail_info_indiv,
-                                                               'template': templ_image.fail_info_indiv } )
-
-
                 # snappl image object, savedir, savename, datatype, PipelineImage object
                 sci_orig_stamp_args = ( (si.image, self.dia_out_dir, f'stamp_{str(si.image.name)}', 'data', si)
                                          for si in self.science_images)
@@ -1340,10 +1365,9 @@ class Pipeline:
                                 SNLogger.info(f"Skipping original template image stamp for {templ_args[4].image.name} \
                                                 because it failed at {templ_args[4].failure_location}.")
                             else:
+                                partial_solofail = partial( self.record_image_stamp_failure, templ_args[4] )
                                 templ_stamp_pool.apply_async( self.extract_args_for_stampmaker, templ_args,
-                                                              error_callback=log_stamp_err )
-                        templ_stamp_pool.close()
-                        templ_stamp_pool.join()
+                                                              error_callback=partial_solofail )
 
                     # Save stamps for original science images.
                     with managed_pool( self.nwrite, wait_label='write_stamps_wait' ) as sci_orig_stamp_pool:
@@ -1352,13 +1376,12 @@ class Pipeline:
                                 SNLogger.info(f"Skipping original science image stamp for {sci_args[4].image.name} \
                                                 because it failed at {sci_args[4].failure_location}.")
                             else:
+                                partial_solofail = partial( self.record_image_stamp_failure, sci_args[4] )
                                 sci_orig_stamp_pool.apply_async( self.extract_args_for_stampmaker, sci_args,
-                                                                 error_callback=log_stamp_err )
-                        sci_orig_stamp_pool.close()
-                        sci_orig_stamp_pool.join()
+                                                                 error_callback=partial_solofail )
 
                     # Save stamps for decorrelated difference image, zero point image (decorrelated sky-subtracted
-                    # science image), and variance image for decorrelated difference image
+                    # science image), and variance image for decorrelated difference image.
                     with managed_pool( self.nwrite, wait_label='write_stamps_wait' ) as sci_stamp_pool:
                         for sci_image in self.science_images:
                             for templ_image in self.template_images:
@@ -1366,11 +1389,12 @@ class Pipeline:
                                     SNLogger.info( f'Skipping DIA stamps for {sci_image.image.name} - '
                                                    f'{templ_image.image.name} due to no difference image.' )
                                 else:
+                                    partial_pairfail = partial( self.record_pair_stamp_failure,
+                                                                sci_image, templ_image )
                                     sci_stamp_pool.apply_async( self.do_stamps, (sci_image, templ_image), {},
                                                                 callback=partial( self.save_stamp_paths,
                                                                                   sci_image, templ_image ),
-                                                                error_callback=partial( log_stamp_err,
-                                                                                        sci_image, templ_image ) )
+                                                                error_callback=partial_pairfail )
 
                 else:
                     # Make and save stamp of just the template image
@@ -1380,7 +1404,9 @@ class Pipeline:
                                 self.extract_args_for_stampmaker(*tsargs)
                             except Exception as e:
                                 SNLogger.warning( f"Stampifying the original template images failed because: {e}" )
-                                self.failures['make_stamps'].append(tsargs[4].fail_info_indiv)
+                                self.record_solo_stamp_failure( tsargs[4], e )
+                                if not self.catchfailures:
+                                    raise
 
                     # Make and save stamp of just the science image
                     for sosargs in sci_orig_stamp_args:
@@ -1389,7 +1415,9 @@ class Pipeline:
                                 self.extract_args_for_stampmaker(*sosargs)
                             except Exception as e:
                                 SNLogger.warning( f"Stampifying the original science images failed because: {e}" )
-                                self.failures['make_stamps'].append(sosargs[4].fail_info_indiv)
+                                self.record_solo_stamp_failure( sosargs[4], e )
+                                if not self.catchfailures:
+                                    raise
 
                     for sci_image in self.science_images:
                         for templ_image in self.template_images:
@@ -1400,10 +1428,10 @@ class Pipeline:
                                 except Exception as e:
                                     if self.catchfailures:
                                         SNLogger.warning( f"Stampifying the post-SFFT images failed because: {e}" )
-                                        self.failures['make_stamps'].append({
-                                                                            'science': sci_image.fail_info_indiv,
-                                                                            'template': templ_image.fail_info_indiv
-                                                                            })
+                                        self.record_pair_stamp_failure( sci_image, templ_image, e )
+                                        if not self.catchfailures:
+                                            raise
+        
             SNLogger.info('...finished making stamps.')
 
         if self.mem_trace:

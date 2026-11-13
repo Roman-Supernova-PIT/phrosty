@@ -1,4 +1,4 @@
-__all__ = [ 'map_band', 'managed_pool' ]
+__all__ = [ 'band_aliases', 'map_band', 'managed_pool' ]
 
 import contextlib
 import gc

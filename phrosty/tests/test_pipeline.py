@@ -151,7 +151,7 @@ def test_pipeline_run_simple_gauss1( config ):
 
     finally:
         # Fix the naughty damage we did to config
-        config.set_value( 'photomery.phrosty.psf.type', orig_psf )
+        config.set_value( 'photometry.phrosty.psf.type', orig_psf )
         config.set_value( 'photometry.phrosty.sfft.radius_cut_detmask', orig_sfft )
         config._static = True
 
