@@ -348,6 +348,62 @@ class Pipeline:
         # Debug LNA20260225
         # self.aperture = None
 
+    def _get_image( self, path, observation_id, sca, band ):
+        """Wrapper for snappl.imagecollection.get_image.
+        Gets an image from the collection, trying both band naming
+        conventions.
+
+        Some collections accept only one band convention (OU2024 wants
+        'Y106', not 'F106'), so each alias is tried in turn. This 
+        yells at us if the band, observation_id, or sca don't match
+        what is read from the path. If none of these are
+        accepted, the image is loaded by path.
+
+        Written by Claude Opus 5.5, modified by LNA.
+
+        Parameters
+        ----------
+          path : str
+            Path of the image, as given in the input CSV.
+
+          observation_id : str
+            Observation ID, as given in the input CSV.
+
+          sca : str
+            SCA, as given in the input CSV.
+
+          band : str
+            Band, as given in the input CSV (either convention).
+
+        Returns
+        -------
+          snappl.image.Image
+
+        """
+        aliases = band_aliases( band )   # the CSV's spelling comes first
+        img = None
+        errors = []
+        i = 0
+        # Stop as soon as one spelling works, or when all have been tried
+        while ( img is None ) and ( i < len( aliases ) ):
+            try:
+                img = self.imgcol.get_image( path=path, observation_id=observation_id,
+                                             sca=sca, band=aliases[i] )
+            except Exception as e:
+                errors.append( f"{aliases[i]}: {e}" )
+            i += 1
+
+        if img is None:
+            try:
+                SNLogger.warning( 'Could not find the image using observation_id, sca, '
+                                'and/or band, so just using the path.' )
+                img = self.imgcol.get_image( path=path )
+            except Exception as e:
+                SNLogger.warning(  '...also could not find the image with the path. Sorry. '
+                                  f'The busted path is: {path}' )
+
+        return img
+
     def _read_csv( self, csvfile ):
         """Reads input csv files with columns:
         'path observation_id sca mjd band'.
@@ -377,28 +433,20 @@ class Pipeline:
                 path, observation_id, sca, _mjd, band = line.split()
                 mapped_band = map_band(band)
                 if mapped_band == self.band:
-                    for alias in band_aliases(band):
-                        try:
-                            # This should yell at us if the observation_id
-                            # or sca doesn't match what is read from the path
+                    # Below: future code from Rob for not needing paths
+                    # when we use the database
+                    # imageid = None
+                    # actual_path = None
+                    # try:
+                    #     imageid = asUUID( path )
+                    # except <whatever the right exception is>:
+                    #     actual_path = path
+                    imlist.append( self._get_image( path=path,
+                                                    observation_id=observation_id,
+                                                    sca=sca,
+                                                    band=band
+                                                    ) )
 
-                            # Below: future code from Rob for not needing paths
-                            # when we use the database
-                            # imageid = None
-                            # actual_path = None
-                            # try:
-                            #     imageid = asUUID( path )
-                            # except <whatever the right exception is>:
-                            #     actual_path = path
-                            imlist.append( self.imgcol.get_image( path=path,
-                                                                observation_id=observation_id,
-                                                                sca=sca,
-                                                                band=alias
-                                                                ) )
-                    except Exception as e:
-                        SNLogger.warning( f"Could not find the image using observation_id, sca, and/or band, \
-                                           so just using the path. Reason: {e}" )
-                        imlist.append( self.imgcol.get_image( path=path ))
         return imlist
 
 
