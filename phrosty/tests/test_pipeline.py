@@ -153,6 +153,7 @@ def test_pipeline_run_simple_gauss1( config ):
         config.set_value( 'photometry.phrosty.psf.type', orig_psf )
         config._static = True
 
+
 @pytest.mark.parametrize( 'nprocs,nwrite', [(1, 1), (3, 3)] )
 def test_pipeline_run( config, object_for_tests, ou2024_image_collection,
                        one_ou2024_template_image, two_ou2024_science_images,
