@@ -43,13 +43,12 @@ def test_pipeline_run_simple_gauss1( config ):
     #   find yourself doing that in anything other than a test like this where you're
     #   VERY careful to restore things after you are done, then you're doing it wrong.
     orig_psf = config.value( 'photometry.phrosty.psf.type' )
-    orig_sfft = config.value( 'photometry.phrosty.sfft.radius_cut_detmask' )
+
     try:
         config._static = False
         config.set_value( 'photometry.phrosty.psf.type', 'gaussian' )
         # config.set_value( 'photometry.phrosty.psf.params', { 'sigmax': 1., 'sigmay': 1., 'theta': 0. } )
         config.set_value( 'photometry.phrosty.psf.params', { 'sigmax': 2., 'sigmay': 2., 'theta': 0. } )
-        config.set_value( 'photometry.phrosty.sfft.radius_cut_detmask', 1. )
 
         pip = Pipeline( obj,
                         imgcol,
@@ -152,7 +151,6 @@ def test_pipeline_run_simple_gauss1( config ):
     finally:
         # Fix the naughty damage we did to config
         config.set_value( 'photometry.phrosty.psf.type', orig_psf )
-        config.set_value( 'photometry.phrosty.sfft.radius_cut_detmask', orig_sfft )
         config._static = True
 
 

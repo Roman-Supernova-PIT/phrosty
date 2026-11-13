@@ -573,6 +573,13 @@ class Pipeline:
         sci_detmask = sci_image.detmask_img.data
         templ_detmask = templ_image.detmask_img.data
 
+        # Check if we are going to get a "singular matrix" issue.
+        for label, mask, img in [ ( 'science', sci_detmask, sci_image ),
+                                  ( 'template', templ_detmask, templ_image ) ]:
+            if np.count_nonzero( mask ) == 0:
+                raise ValueError( f'Detection mask for {label} image {img.image.name} is empty. '
+                                  f'SFFT cannot fit a matching kernel.' )
+
         sfftifier = SpaceSFFT_Flow(
                                     hdr_target=hdr_sci,
                                     hdr_object=hdr_templ,
@@ -787,29 +794,29 @@ class Pipeline:
         partialstamp = partial(stampmaker, self.diaobj.ra, self.diaobj.dec, np.array([100, 100]))
         return partialstamp(snapplimg, diaoutdir, savename, datatype)
 
-def record_pair_stamp_failure( self, sci_image, templ_image, x ):
-        """Record a failure making stamps for a science/template pair.
+    def record_pair_stamp_failure( self, sci_image, templ_image, x ):
+            """Record a failure making stamps for a science/template pair.
 
-        Used directly in serial mode, and as a Pool error_callback in
-        parallel mode (callbacks run in the main process, so modifying
-        self.failures here is safe).
+            Used directly in serial mode, and as a Pool error_callback in
+            parallel mode (callbacks run in the main process, so modifying
+            self.failures here is safe).
 
-        Written by Claude Opus 5.5.
+            Written by Claude Opus 5.5.
 
-        Parameters
-        ----------
-          sci_image, templ_image : PipelineImage
-            The pair whose difference-image stamps failed.
+            Parameters
+            ----------
+            sci_image, templ_image : PipelineImage
+                The pair whose difference-image stamps failed.
 
-          x : Exception
-            The exception raised by do_stamps.
-        """
+            x : Exception
+                The exception raised by do_stamps.
+            """
 
-        SNLogger.error( f"do_stamps failure for pair {sci_image.image.name} - "
-                        f"{templ_image.image.name}: {x}" )
-        if self.catchfailures:
-            self.failures['make_stamps'].append( { 'science': sci_image.fail_info_indiv,
-                                                   'template': templ_image.fail_info_indiv } )
+            SNLogger.error( f"do_stamps failure for pair {sci_image.image.name} - "
+                            f"{templ_image.image.name}: {x}" )
+            if self.catchfailures:
+                self.failures['make_stamps'].append( { 'science': sci_image.fail_info_indiv,
+                                                    'template': templ_image.fail_info_indiv } )
 
     def record_solo_stamp_failure( self, pipeimg, x ):
         """Record a failure making a stamp of a single original image.

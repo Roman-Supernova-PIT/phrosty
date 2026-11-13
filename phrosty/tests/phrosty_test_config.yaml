@@ -21,7 +21,6 @@ photometry:
     nwrite: 1
 
     sfft:
-      radius_cut_detmask: 2
       kerpolyorder: 2
 
     psf:
