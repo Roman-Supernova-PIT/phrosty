@@ -176,10 +176,6 @@ def sky_subtract( img, temp_dir=None,
     mask_footprint = circular_footprint(radius=mask_radius)
     mask = convolve2d(mask, mask_footprint, fillvalue=0, mode="same") > 0
 
-    if nonlinear_threshold <= np.median(threshold):
-        SNLogger.warning( f'nonlinear_threshold ({nonlinear_threshold}) is at or below the detection threshold '
-                          f'({np.median(threshold):.4g}). All detected sources will be discarded as saturated.' )
-
     # Detect without the mask so that diffraction spikes from saturated
     # stars don't get separated from the core.
     segment_img = detect_sources(sky_subtracted_data, threshold, n_pixels=10)
