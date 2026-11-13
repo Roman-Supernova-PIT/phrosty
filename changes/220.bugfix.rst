@@ -1,0 +1,5 @@
+- Ensure all tests run
+- Update tests to reflect changes in what's a command line arg vs a config value
+- Address inconsistencies between single and multiprocessing 
+- Fix buggy error handling ("catchfailures" arg)
+- Map filter names such that "F129" == "J129", for example, and add corresponding tests
