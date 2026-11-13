@@ -1,5 +1,5 @@
 import pytest
-from phrosty.utils import map_band
+from phrosty.utils import band_aliases, map_band
 
 def test_map_band():
     # Just check the band mapping function, solo.
@@ -22,6 +22,11 @@ def test_map_band():
 
     with pytest.raises(ValueError, match='Unknown band'):
         map_band('horsey')
+
+def test_band_aliases():
+    expected_out = ['F106', 'Y106']
+    for band in expected_out:
+        assert sorted(band_aliases(band)) == sorted(expected_out)
 
 # OLD STUFF BELOW:
 # # IMPORTS Standard:
