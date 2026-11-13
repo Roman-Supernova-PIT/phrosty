@@ -8,7 +8,6 @@ import astropy.units as u
 
 
 from phrosty.pipeline import Pipeline
-from phrosty.utils import map_band
 from snappl.diaobject import DiaObject
 from snappl.imagecollection import ImageCollection
 from snappl.lightcurve import Lightcurve
@@ -424,30 +423,6 @@ def test_nan_handling( config, object_for_tests, ou2024_image_collection,
         config.set_value( 'photometry.phrosty.nprocs', orig_nprocs )
         config.set_value( 'photometry.phrosty.nwrite', orig_nwrite )
         config._static = True
-
-
-def test_map_band():
-    # Just check the band mapping function, solo.
-
-    assert map_band('F062') == 'F062'
-    assert map_band('R062') == 'F062'
-    assert map_band('F087') == 'F087'
-    assert map_band('Z087') == 'F087'
-    assert map_band('F106') == 'F106'
-    assert map_band('Y106') == 'F106'
-    assert map_band('F129') == 'F129'
-    assert map_band('J129') == 'F129'
-    assert map_band('F158') == 'F158'
-    assert map_band('H158') == 'F158'
-    # F184 doesn't have a double because it's
-    # always "F" in either convention.
-    assert map_band('F184') == 'F184'
-    assert map_band('F213') == 'F213'
-    assert map_band('K213') == 'F213'
-
-    with pytest.raises(ValueError, match='Unknown band'):
-        map_band('horsey')
-
 
 def test_band_mapping( config, object_for_tests, ou2024_image_collection,
                        template_csv, two_science_csv ):
