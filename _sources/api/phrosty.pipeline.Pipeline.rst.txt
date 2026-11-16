@@ -15,10 +15,13 @@ Pipeline
       ~Pipeline.align_and_pre_convolve
       ~Pipeline.clear_contents
       ~Pipeline.do_stamps
+      ~Pipeline.extract_args_for_stampmaker
       ~Pipeline.get_psfs
       ~Pipeline.make_lightcurve
       ~Pipeline.make_phot_info_dict
       ~Pipeline.phot_at_coords
+      ~Pipeline.record_pair_stamp_failure
+      ~Pipeline.record_solo_stamp_failure
       ~Pipeline.save_stamp_paths
       ~Pipeline.sky_sub_all_images
       ~Pipeline.write_fits_file
@@ -30,10 +33,13 @@ Pipeline
    .. automethod:: align_and_pre_convolve
    .. automethod:: clear_contents
    .. automethod:: do_stamps
+   .. automethod:: extract_args_for_stampmaker
    .. automethod:: get_psfs
    .. automethod:: make_lightcurve
    .. automethod:: make_phot_info_dict
    .. automethod:: phot_at_coords
+   .. automethod:: record_pair_stamp_failure
+   .. automethod:: record_solo_stamp_failure
    .. automethod:: save_stamp_paths
    .. automethod:: sky_sub_all_images
    .. automethod:: write_fits_file

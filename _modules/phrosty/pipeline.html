@@ -4,12 +4,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phrosty.pipeline &#8212; phrosty 0.1.dev1+ge26c00f01 documentation</title>
+    <title>phrosty.pipeline &#8212; phrosty 0.1.dev1+g9e5d3052a documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=5a6b8c39" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=f3bc516d" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
-    <script src="../../_static/documentation_options.js?v=cbd73d9a"></script>
+    <script src="../../_static/documentation_options.js?v=5768331d"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -89,16 +89,15 @@
 <span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span> <span class="s1">'PipelineImage'</span><span class="p">,</span> <span class="s1">'Pipeline'</span> <span class="p">]</span>
 
 <span class="c1"># Imports STANDARD</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pool</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">nvtx</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pathlib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">tracemalloc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
 
@@ -112,6 +111,7 @@
 <span class="c1"># Imports INTERNAL</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">phrosty</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phrosty.imagesubtraction</span><span class="w"> </span><span class="kn">import</span> <span class="n">interpolate_over_bad_pixels</span><span class="p">,</span> <span class="n">sky_subtract</span><span class="p">,</span> <span class="n">stampmaker</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phrosty.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">band_aliases</span><span class="p">,</span> <span class="n">map_band</span><span class="p">,</span> <span class="n">managed_pool</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sfft.SpaceSFFTFlow</span><span class="w"> </span><span class="kn">import</span> <span class="n">SpaceSFFT_Flow</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">snappl.dbclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">SNPITDBClient</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">snappl.diaobject</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiaObject</span>
@@ -193,9 +193,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">psf_data</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># In case we fail...</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fail_info</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">band</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">observation_id</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span><span class="si">}</span><span class="s1">'</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fail_info_indiv</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">band</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">observation_id</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span><span class="si">}</span><span class="s1">'</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">failure_location</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">failure_pair</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="PipelineImage.run_sky_subtract">
 <a class="viewcode-back" href="../../api/phrosty.pipeline.PipelineImage.html#phrosty.pipeline.PipelineImage.run_sky_subtract">[docs]</a>
@@ -325,8 +324,6 @@
                   <span class="n">ltcv_prov_tag</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">dbsave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                   <span class="n">dbclient</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                  <span class="n">nprocs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                  <span class="n">nwrite</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
                   <span class="n">backend</span><span class="o">=</span><span class="s1">'cupy'</span><span class="p">,</span>
                   <span class="n">catchfailures</span><span class="o">=</span><span class="kc">False</span> <span class="p">):</span>
 
@@ -394,7 +391,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">imgcol</span> <span class="o">=</span> <span class="n">imgcol</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span> <span class="o">=</span> <span class="n">diaobj</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">band</span> <span class="o">=</span> <span class="n">band</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">band</span> <span class="o">=</span> <span class="n">map_band</span><span class="p">(</span><span class="n">band</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">oid</span> <span class="o">=</span> <span class="n">oid</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">dia_out_dir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">value</span><span class="p">(</span> <span class="s1">'system.paths.dev_storage'</span> <span class="p">)</span> <span class="p">)</span> <span class="o">/</span> \
@@ -459,6 +456,62 @@
         <span class="c1"># Debug LNA20260225</span>
         <span class="c1"># self.aperture = None</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_image</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">observation_id</span><span class="p">,</span> <span class="n">sca</span><span class="p">,</span> <span class="n">band</span> <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Wrapper for snappl.imagecollection.get_image.</span>
+<span class="sd">        Gets an image from the collection, trying both band naming</span>
+<span class="sd">        conventions.</span>
+
+<span class="sd">        Some collections accept only one band convention (OU2024 wants</span>
+<span class="sd">        'Y106', not 'F106'), so each alias is tried in turn. This</span>
+<span class="sd">        yells at us if the band, observation_id, or sca don't match</span>
+<span class="sd">        what is read from the path. If none of these are</span>
+<span class="sd">        accepted, the image is loaded by path.</span>
+
+<span class="sd">        Written by Claude Opus 5.5, modified by LNA.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">          path : str</span>
+<span class="sd">            Path of the image, as given in the input CSV.</span>
+
+<span class="sd">          observation_id : str</span>
+<span class="sd">            Observation ID, as given in the input CSV.</span>
+
+<span class="sd">          sca : str</span>
+<span class="sd">            SCA, as given in the input CSV.</span>
+
+<span class="sd">          band : str</span>
+<span class="sd">            Band, as given in the input CSV (either convention).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">          snappl.image.Image</span>
+
+<span class="sd">        """</span>
+        <span class="n">aliases</span> <span class="o">=</span> <span class="n">band_aliases</span><span class="p">(</span> <span class="n">band</span> <span class="p">)</span>   <span class="c1"># the CSV's spelling comes first</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Stop as soon as one spelling works, or when all have been tried</span>
+        <span class="k">while</span> <span class="p">(</span> <span class="n">img</span> <span class="ow">is</span> <span class="kc">None</span> <span class="p">)</span> <span class="ow">and</span> <span class="p">(</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span> <span class="n">aliases</span> <span class="p">)</span> <span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">imgcol</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">observation_id</span><span class="o">=</span><span class="n">observation_id</span><span class="p">,</span>
+                                             <span class="n">sca</span><span class="o">=</span><span class="n">sca</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="n">aliases</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">aliases</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">img</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">SNLogger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span> <span class="s1">'Could not find the image using observation_id, sca, '</span>
+                                <span class="s1">'and/or band, so just using the path.'</span> <span class="p">)</span>
+                <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">imgcol</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span> <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">SNLogger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>  <span class="s1">'...also could not find the image with the path. Sorry. '</span>
+                                  <span class="sa">f</span><span class="s1">'The busted path is: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">'</span> <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">img</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_read_csv</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">csvfile</span> <span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Reads input csv files with columns:</span>
 <span class="sd">        'path observation_id sca mjd band'.</span>
@@ -486,28 +539,22 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"First line of list file </span><span class="si">{</span><span class="n">csvfile</span><span class="si">}</span><span class="s2"> didn't match what was expected."</span> <span class="p">)</span>
             <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">ifp</span><span class="p">:</span>
                 <span class="n">path</span><span class="p">,</span> <span class="n">observation_id</span><span class="p">,</span> <span class="n">sca</span><span class="p">,</span> <span class="n">_mjd</span><span class="p">,</span> <span class="n">band</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-                <span class="k">if</span> <span class="n">band</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="p">:</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="c1"># This should yell at us if the observation_id</span>
-                        <span class="c1"># or sca doesn't match what is read from the path</span>
+                <span class="n">mapped_band</span> <span class="o">=</span> <span class="n">map_band</span><span class="p">(</span><span class="n">band</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">mapped_band</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">band</span><span class="p">:</span>
+                    <span class="c1"># Below: future code from Rob for not needing paths</span>
+                    <span class="c1"># when we use the database</span>
+                    <span class="c1"># imageid = None</span>
+                    <span class="c1"># actual_path = None</span>
+                    <span class="c1"># try:</span>
+                    <span class="c1">#     imageid = asUUID( path )</span>
+                    <span class="c1"># except &lt;whatever the right exception is&gt;:</span>
+                    <span class="c1">#     actual_path = path</span>
+                    <span class="n">imlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_image</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+                                                    <span class="n">observation_id</span><span class="o">=</span><span class="n">observation_id</span><span class="p">,</span>
+                                                    <span class="n">sca</span><span class="o">=</span><span class="n">sca</span><span class="p">,</span>
+                                                    <span class="n">band</span><span class="o">=</span><span class="n">band</span>
+                                                    <span class="p">)</span> <span class="p">)</span>
 
-                        <span class="c1"># Below: future code from Rob for not needing paths</span>
-                        <span class="c1"># when we use the database</span>
-                        <span class="c1"># imageid = None</span>
-                        <span class="c1"># actual_path = None</span>
-                        <span class="c1"># try:</span>
-                        <span class="c1">#     imageid = asUUID( path )</span>
-                        <span class="c1"># except &lt;whatever the right exception is&gt;:</span>
-                        <span class="c1">#     actual_path = path</span>
-                        <span class="n">imlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">imgcol</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
-                                                              <span class="n">observation_id</span><span class="o">=</span><span class="n">observation_id</span><span class="p">,</span>
-                                                              <span class="n">sca</span><span class="o">=</span><span class="n">sca</span><span class="p">,</span>
-                                                              <span class="n">band</span><span class="o">=</span><span class="n">band</span>
-                                                            <span class="p">)</span> <span class="p">)</span>
-                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                        <span class="n">SNLogger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Could not find the image using observation_id, sca, and/or band, </span><span class="se">\</span>
-<span class="s2">                                           so just using the path. Failure: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
-                        <span class="n">imlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">imgcol</span><span class="o">.</span><span class="n">get_image</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span> <span class="p">))</span>
         <span class="k">return</span> <span class="n">imlist</span>
 
 
@@ -528,23 +575,32 @@
         <span class="n">all_imgs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span> <span class="p">)</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">log_error</span><span class="p">(</span> <span class="n">img</span><span class="p">,</span> <span class="n">x</span> <span class="p">):</span>
-            <span class="n">SNLogger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Sky subtraction failure on </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'skysub'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">band</span><span class="si">}</span><span class="s1"> </span><span class="se">\</span>
-<span class="s1">                                                 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">observation_id</span><span class="si">}</span><span class="s1"> </span><span class="se">\</span>
-<span class="s1">                                                 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+            <span class="n">SNLogger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span> <span class="sa">f</span><span class="s1">'Sky subtraction failure on </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s1">.'</span> <span class="p">)</span>
+            <span class="n">img</span><span class="o">.</span><span class="n">failure_location</span> <span class="o">=</span> <span class="s1">'skysub'</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nprocs</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nprocs</span> <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">managed_pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nprocs</span><span class="p">,</span> <span class="n">wait_label</span><span class="o">=</span><span class="s1">'skysub_wait'</span> <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">all_imgs</span><span class="p">:</span>
                     <span class="n">pool</span><span class="o">.</span><span class="n">apply_async</span><span class="p">(</span> <span class="n">img</span><span class="o">.</span><span class="n">run_sky_subtract</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span>
                                       <span class="n">callback</span><span class="o">=</span><span class="n">img</span><span class="o">.</span><span class="n">save_sky_subtract_info</span><span class="p">,</span>
                                       <span class="n">error_callback</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">log_error</span><span class="p">,</span> <span class="n">img</span><span class="p">)</span> <span class="p">)</span>
-                <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">all_imgs</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">failure_location</span> <span class="o">==</span> <span class="s1">'skysub'</span><span class="p">:</span>
+                        <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Recording skysub failure for </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">fail_info_indiv</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'skysub'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">fail_info_indiv</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">all_imgs</span><span class="p">:</span>
-                <span class="n">img</span><span class="o">.</span><span class="n">save_sky_subtract_info</span><span class="p">(</span> <span class="n">img</span><span class="o">.</span><span class="n">run_sky_subtract</span><span class="p">(</span> <span class="n">mp</span><span class="o">=</span><span class="kc">False</span> <span class="p">)</span> <span class="p">)</span></div>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">img</span><span class="o">.</span><span class="n">save_sky_subtract_info</span><span class="p">(</span> <span class="n">img</span><span class="o">.</span><span class="n">run_sky_subtract</span><span class="p">(</span> <span class="n">mp</span><span class="o">=</span><span class="kc">False</span> <span class="p">)</span> <span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">SNLogger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span> <span class="sa">f</span><span class="s1">'Sky subtraction failure on </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">.'</span> <span class="p">)</span>
+                    <span class="n">img</span><span class="o">.</span><span class="n">failure_location</span> <span class="o">=</span> <span class="s1">'skysub'</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'skysub'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">fail_info_indiv</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span></div>
 
 
 <div class="viewcode-block" id="Pipeline.get_psfs">
@@ -559,34 +615,35 @@
 
         <span class="n">all_imgs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">science_images</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>     <span class="c1"># shallow copy</span>
         <span class="n">all_imgs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span> <span class="p">)</span>
+        <span class="n">do_these_imgs</span> <span class="o">=</span> <span class="p">[</span> <span class="n">img</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">all_imgs</span> <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">failure_location</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">]</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">log_error</span><span class="p">(</span> <span class="n">img</span><span class="p">,</span> <span class="n">x</span> <span class="p">):</span>
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"get_psf failure on </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
             <span class="n">img</span><span class="o">.</span><span class="n">failure_location</span> <span class="o">=</span> <span class="s1">'get_psf'</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nprocs</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nprocs</span> <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">all_imgs</span><span class="p">:</span>
-                    <span class="c1"># callback_partial = partial( img.save_psf_path, all_imgs )</span>
+            <span class="k">with</span> <span class="n">managed_pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nprocs</span><span class="p">,</span> <span class="n">wait_label</span><span class="o">=</span><span class="s1">'get_psfs_wait'</span> <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">do_these_imgs</span><span class="p">:</span>
+                    <span class="c1"># callback_partial = partial( img.save_psf_path, do_these_imgs )</span>
                     <span class="n">pool</span><span class="o">.</span><span class="n">apply_async</span><span class="p">(</span> <span class="n">img</span><span class="o">.</span><span class="n">get_psf</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">ra</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">dec</span><span class="p">),</span> <span class="p">{},</span>
                                       <span class="n">callback</span><span class="o">=</span><span class="n">img</span><span class="o">.</span><span class="n">keep_psf_data</span><span class="p">,</span>
                                       <span class="n">error_callback</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">log_error</span><span class="p">,</span> <span class="n">img</span><span class="p">)</span> <span class="p">)</span>
-                <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
-
-                <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">all_imgs</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">failure_location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="n">img</span><span class="o">.</span><span class="n">failure_location</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">fail_info</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">do_these_imgs</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">failure_location</span> <span class="o">==</span> <span class="s1">'get_psf'</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="n">img</span><span class="o">.</span><span class="n">failure_location</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">fail_info_indiv</span><span class="p">)</span>
 
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">all_imgs</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">do_these_imgs</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">img</span><span class="o">.</span><span class="n">keep_psf_data</span><span class="p">(</span> <span class="n">img</span><span class="o">.</span><span class="n">get_psf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">ra</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">dec</span><span class="p">)</span> <span class="p">)</span>
-                <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-                    <span class="c1"># OSError because if get_psf can't open a file, it does this</span>
-                    <span class="c1"># (for example, if the file does not exist)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">SNLogger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span> <span class="sa">f</span><span class="s1">'PSF retrieval failed for </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">fail_info_indiv</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">'</span> <span class="p">)</span>
+                    <span class="n">img</span><span class="o">.</span><span class="n">failure_location</span> <span class="o">=</span> <span class="s1">'get_psf'</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'get_psf'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">fail_info</span><span class="p">)</span></div>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'get_psf'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">fail_info_indiv</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span></div>
 
 
 <div class="viewcode-block" id="Pipeline.align_and_pre_convolve">
@@ -631,6 +688,13 @@
 
         <span class="n">sci_detmask</span> <span class="o">=</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">detmask_img</span><span class="o">.</span><span class="n">data</span>
         <span class="n">templ_detmask</span> <span class="o">=</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">detmask_img</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="c1"># Check if we are going to get a "singular matrix" issue.</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">img</span> <span class="ow">in</span> <span class="p">[</span> <span class="p">(</span> <span class="s1">'science'</span><span class="p">,</span> <span class="n">sci_detmask</span><span class="p">,</span> <span class="n">sci_image</span> <span class="p">),</span>
+                                  <span class="p">(</span> <span class="s1">'template'</span><span class="p">,</span> <span class="n">templ_detmask</span><span class="p">,</span> <span class="n">templ_image</span> <span class="p">)</span> <span class="p">]:</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span> <span class="n">mask</span> <span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span> <span class="sa">f</span><span class="s1">'Detection mask for </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s1"> image </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> is empty. '</span>
+                                  <span class="sa">f</span><span class="s1">'SFFT cannot fit a matching kernel.'</span> <span class="p">)</span>
 
         <span class="n">sfftifier</span> <span class="o">=</span> <span class="n">SpaceSFFT_Flow</span><span class="p">(</span>
                                     <span class="n">hdr_target</span><span class="o">=</span><span class="n">hdr_sci</span><span class="p">,</span>
@@ -765,7 +829,7 @@
         <span class="c1"># Required results keys</span>
         <span class="n">results_dict</span><span class="p">[</span><span class="s1">'observation_id'</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">observation_id</span><span class="p">)</span>
         <span class="n">results_dict</span><span class="p">[</span><span class="s1">'sca'</span><span class="p">]</span> <span class="o">=</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span>
-        <span class="n">results_dict</span><span class="p">[</span><span class="s1">'sky_rms'</span><span class="p">]</span> <span class="o">=</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">skyrms</span>
+        <span class="n">results_dict</span><span class="p">[</span><span class="s1">'sky_rms'</span><span class="p">]</span> <span class="o">=</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">skyrms</span> <span class="k">if</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">skyrms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
         <span class="n">pix_x</span><span class="p">,</span> <span class="n">pix_y</span> <span class="o">=</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">get_wcs</span><span class="p">()</span><span class="o">.</span><span class="n">world_to_pixel</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">ra</span><span class="p">,</span>
                                                                  <span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">dec</span> <span class="p">)</span>
         <span class="n">results_dict</span><span class="p">[</span><span class="s1">'pix_x'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pix_x</span>
@@ -849,6 +913,62 @@
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"After adding to results dict for </span><span class="se">\</span>
 <span class="s2">                            </span><span class="si">{</span><span class="n">one_pair</span><span class="p">[</span><span class="s1">'observation_id'</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">one_pair</span><span class="p">[</span><span class="s1">'sca'</span><span class="p">]</span><span class="si">}</span><span class="s2">, memory usage = </span><span class="se">\</span>
 <span class="s2">                            </span><span class="si">{</span><span class="n">tracemalloc</span><span class="o">.</span><span class="n">get_traced_memory</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB"</span> <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Pipeline.extract_args_for_stampmaker">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.extract_args_for_stampmaker">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">extract_args_for_stampmaker</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span> <span class="p">):</span>
+        <span class="n">snapplimg</span><span class="p">,</span> <span class="n">diaoutdir</span><span class="p">,</span> <span class="n">savename</span><span class="p">,</span> <span class="n">datatype</span><span class="p">,</span> <span class="n">pipelineimg</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="n">partialstamp</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">stampmaker</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">ra</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">dec</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">partialstamp</span><span class="p">(</span><span class="n">snapplimg</span><span class="p">,</span> <span class="n">diaoutdir</span><span class="p">,</span> <span class="n">savename</span><span class="p">,</span> <span class="n">datatype</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Pipeline.record_pair_stamp_failure">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.record_pair_stamp_failure">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_pair_stamp_failure</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span><span class="p">,</span> <span class="n">x</span> <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Record a failure making stamps for a science/template pair.</span>
+
+<span class="sd">        Used directly in serial mode, and as a Pool error_callback in</span>
+<span class="sd">        parallel mode (callbacks run in the main process, so modifying</span>
+<span class="sd">        self.failures here is safe).</span>
+
+<span class="sd">        Written by Claude Opus 5.5.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sci_image, templ_image : PipelineImage</span>
+<span class="sd">            The pair whose difference-image stamps failed.</span>
+
+<span class="sd">        x : Exception</span>
+<span class="sd">            The exception raised by do_stamps.</span>
+<span class="sd">        """</span>
+
+        <span class="n">SNLogger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"do_stamps failure for pair </span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> - "</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'make_stamps'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">{</span> <span class="s1">'science'</span><span class="p">:</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">fail_info_indiv</span><span class="p">,</span>
+                                                <span class="s1">'template'</span><span class="p">:</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">fail_info_indiv</span> <span class="p">}</span> <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Pipeline.record_solo_stamp_failure">
+<a class="viewcode-back" href="../../api/phrosty.pipeline.Pipeline.html#phrosty.pipeline.Pipeline.record_solo_stamp_failure">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_solo_stamp_failure</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">pipeimg</span><span class="p">,</span> <span class="n">x</span> <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Record a failure making a stamp of a single original image.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">          pipeimg : PipelineImage</span>
+<span class="sd">            The science or template image whose stamp failed.</span>
+
+<span class="sd">          x : Exception</span>
+<span class="sd">            The exception raised by stampmaker.</span>
+
+<span class="sd">        Written by Claude Opus 5.5.</span>
+
+<span class="sd">        """</span>
+        <span class="n">SNLogger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Solo image stamp failure for </span><span class="si">{</span><span class="n">pipeimg</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'make_stamps'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">pipeimg</span><span class="o">.</span><span class="n">fail_info_indiv</span> <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Pipeline.save_stamp_paths">
@@ -1049,7 +1169,7 @@
 <span class="s2">                                                              </span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nprocs</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nprocs</span> <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">managed_pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nprocs</span><span class="p">,</span> <span class="n">wait_label</span><span class="o">=</span><span class="s1">'make_phot_info_dict_wait'</span> <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
 
                 <span class="k">for</span> <span class="n">sci_image</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">science_images</span><span class="p">:</span>
                     <span class="k">for</span> <span class="n">templ_image</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span><span class="p">:</span>
@@ -1060,16 +1180,13 @@
                         <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"pool.apply async done for </span><span class="se">\</span>
 <span class="s2">                                            </span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">observation_id</span><span class="si">}</span><span class="s2"> </span><span class="se">\</span>
 <span class="s2">                                            </span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
-                <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
                 <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">'Make phot info dict pool closed and joined.'</span><span class="p">)</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sci_image</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">science_images</span> <span class="p">):</span>
-                <span class="k">if</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">failure_location</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Doing science image </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">science_images</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
-                    <span class="k">for</span> <span class="n">templ_image</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">add_to_results_dict</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_phot_info_dict</span><span class="p">(</span> <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span> <span class="p">)</span> <span class="p">)</span>
+                <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Doing science image </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">science_images</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
+                <span class="k">for</span> <span class="n">templ_image</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">add_to_results_dict</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_phot_info_dict</span><span class="p">(</span> <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span> <span class="p">)</span> <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbsave</span><span class="p">:</span>
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">'About to get image provenance.'</span><span class="p">)</span>
@@ -1224,40 +1341,37 @@
             <span class="c1"># After this step, all images (both science and template) will</span>
             <span class="c1">#   have the .psf_data field set with the image-resolution PSF stamp data</span>
             <span class="c1">#   (from a PSF.get_stamp() call.)</span>
-            <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">"Getting PSFs"</span> <span class="p">)</span>
-            <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">"getpsfs"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0xff8888</span> <span class="p">):</span>
+            <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s1">'Getting PSFs...'</span> <span class="p">)</span>
+            <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s1">'getpsfs'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0xff8888</span> <span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">get_psfs</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_trace</span><span class="p">:</span>
-            <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"After get_psfs, memory usage = </span><span class="si">{</span><span class="n">tracemalloc</span><span class="o">.</span><span class="n">get_traced_memory</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB"</span> <span class="p">)</span>
+            <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="sa">f</span><span class="s1">'After get_psfs, memory usage = </span><span class="si">{</span><span class="n">tracemalloc</span><span class="o">.</span><span class="n">get_traced_memory</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> MB'</span> <span class="p">)</span>
 
         <span class="c1"># Create a process pool to write fits files</span>
-        <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwrite</span> <span class="p">)</span> <span class="k">as</span> <span class="n">fits_writer_pool</span><span class="p">:</span>
-
+        <span class="k">with</span> <span class="n">managed_pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwrite</span><span class="p">,</span> <span class="n">wait_label</span><span class="o">=</span><span class="s1">'fits_write_wait'</span> <span class="p">)</span> <span class="k">as</span> <span class="n">fits_writer_pool</span><span class="p">:</span>
             <span class="k">def</span><span class="w"> </span><span class="nf">log_fits_write_error</span><span class="p">(</span> <span class="n">savepath</span><span class="p">,</span> <span class="n">x</span> <span class="p">):</span>
-                <span class="n">SNLogger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Exception writing FITS file </span><span class="si">{</span><span class="n">savepath</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
+                <span class="n">SNLogger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span> <span class="sa">f</span><span class="s1">'Exception writing FITS file </span><span class="si">{</span><span class="n">savepath</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s1">.'</span> <span class="p">)</span>
                 <span class="c1"># raise?</span>
 
             <span class="c1"># Do the hardcore processing</span>
             <span class="k">for</span> <span class="n">templ_image</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">failure_location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Skipping template </span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> '</span>
+                                  <span class="sa">f</span><span class="s1">'because it failed at </span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">failure_location</span><span class="si">}</span><span class="s1">.'</span><span class="p">)</span>
+                    <span class="k">continue</span>
                 <span class="k">for</span> <span class="n">sci_image</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">science_images</span><span class="p">:</span>
-                    <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Processing </span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> minus </span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">failure_location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Skipping </span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> '</span>
+                                      <span class="sa">f</span><span class="s1">'because it failed at </span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">failure_location</span><span class="si">}</span><span class="s1">.'</span><span class="p">)</span>
+                        <span class="k">continue</span>
+                    <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="sa">f</span><span class="s1">'Processing </span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> minus </span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">.'</span> <span class="p">)</span>
                     <span class="n">sfftifier</span> <span class="o">=</span> <span class="kc">None</span>
                     <span class="n">i_failed_gpu</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1"># We haven't failed yet. YET.</span>
                     <span class="n">fail_info</span> <span class="o">=</span> <span class="p">{</span>
-                                 <span class="s1">'science'</span><span class="p">:</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">fail_info</span><span class="p">,</span>
-                                 <span class="s1">'template'</span><span class="p">:</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">fail_info</span>
+                                 <span class="s1">'science'</span><span class="p">:</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">fail_info_indiv</span><span class="p">,</span>
+                                 <span class="s1">'template'</span><span class="p">:</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">fail_info_indiv</span>
                                 <span class="p">}</span>
-
-                    <span class="n">continuation_conditions</span> <span class="o">=</span> <span class="p">[</span>
-                                                <span class="n">sci_image</span><span class="o">.</span><span class="n">fail_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'skysub'</span><span class="p">],</span>
-                                                <span class="n">sci_image</span><span class="o">.</span><span class="n">fail_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'get_psf'</span><span class="p">],</span>
-                                                <span class="n">templ_image</span><span class="o">.</span><span class="n">fail_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'skysub'</span><span class="p">],</span>
-                                                <span class="n">templ_image</span><span class="o">.</span><span class="n">fail_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'get_psf'</span><span class="p">]</span>
-                                              <span class="p">]</span>
-
-                    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">continuation_conditions</span><span class="p">):</span>
-                        <span class="n">i_failed_gpu</span> <span class="o">=</span> <span class="kc">True</span>
 
                     <span class="k">if</span> <span class="s1">'align_and_preconvolve'</span> <span class="ow">in</span> <span class="n">steps</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">i_failed_gpu</span><span class="p">:</span>
                         <span class="c1"># After this step, sfftifier will be a SpaceSFFT_Flow object.</span>
@@ -1439,76 +1553,78 @@
                 <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"DONE with all science images for template </span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
                 <span class="n">templ_image</span><span class="o">.</span><span class="n">free</span><span class="p">()</span>
 
-            <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">"Waiting for FITS writer processes to finish"</span> <span class="p">)</span>
-            <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">"fits_write_wait"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0xff8888</span> <span class="p">):</span>
-                <span class="n">fits_writer_pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                <span class="n">fits_writer_pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
-            <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">"...FITS writer processes done."</span> <span class="p">)</span>
-
         <span class="k">if</span> <span class="s1">'make_stamps'</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="s2">"Starting to make stamps..."</span> <span class="p">)</span>
             <span class="k">with</span> <span class="n">nvtx</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="s2">"make stamps"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mh">0xff8888</span> <span class="p">):</span>
 
-                <span class="k">def</span><span class="w"> </span><span class="nf">log_stamp_err</span><span class="p">(</span> <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span><span class="p">,</span> <span class="n">x</span> <span class="p">):</span>
-                    <span class="n">SNLogger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"do_stamps failure for </span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">observation_id</span><span class="si">}</span><span class="s2"> </span><span class="se">\</span>
-<span class="s2">                                                            </span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span><span class="si">}</span><span class="s2"> - </span><span class="se">\</span>
-<span class="s2">                                                            </span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">observation_id</span><span class="si">}</span><span class="s2"> </span><span class="se">\</span>
-<span class="s2">                                                            </span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">sca</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2"> "</span> <span class="p">)</span>
-
-                <span class="n">partialstamp</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">stampmaker</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">ra</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diaobj</span><span class="o">.</span><span class="n">dec</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">]))</span>
-
-                <span class="c1"># original sci path, savedir, savename</span>
-                <span class="n">sci_orig_stamp_args</span> <span class="o">=</span> <span class="p">(</span> <span class="p">(</span><span class="n">si</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dia_out_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s1">'stamp_</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">si</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'data'</span><span class="p">)</span>
+                <span class="c1"># snappl image object, savedir, savename, datatype, PipelineImage object</span>
+                <span class="n">sci_orig_stamp_args</span> <span class="o">=</span> <span class="p">(</span> <span class="p">(</span><span class="n">si</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dia_out_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s1">'stamp_</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">si</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'data'</span><span class="p">,</span> <span class="n">si</span><span class="p">)</span>
                                          <span class="k">for</span> <span class="n">si</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">science_images</span><span class="p">)</span>
-                <span class="c1"># original template path, savedir, savename</span>
-                <span class="n">templstamp_args</span> <span class="o">=</span> <span class="p">(</span> <span class="p">(</span><span class="n">ti</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dia_out_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s1">'stamp_</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">ti</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'data'</span><span class="p">)</span>
+                <span class="c1"># snappl image object, savedir, savename, datatype, PipelineImage object</span>
+                <span class="n">templstamp_args</span> <span class="o">=</span> <span class="p">(</span> <span class="p">(</span><span class="n">ti</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dia_out_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s1">'stamp_</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">ti</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'data'</span><span class="p">,</span> <span class="n">ti</span><span class="p">)</span>
                                     <span class="k">for</span> <span class="n">ti</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span> <span class="p">)</span>
+
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwrite</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
                     <span class="c1"># Save stamps for original template images.</span>
-                    <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwrite</span> <span class="p">)</span> <span class="k">as</span> <span class="n">templ_stamp_pool</span><span class="p">:</span>
-                        <span class="n">templ_stamp_pool</span><span class="o">.</span><span class="n">starmap_async</span><span class="p">(</span> <span class="n">partialstamp</span><span class="p">,</span> <span class="n">templstamp_args</span><span class="p">,</span>
-                                                        <span class="n">error_callback</span><span class="o">=</span><span class="n">log_stamp_err</span> <span class="p">)</span>
-                        <span class="n">templ_stamp_pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                        <span class="n">templ_stamp_pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
-
+                    <span class="k">with</span> <span class="n">managed_pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwrite</span><span class="p">,</span> <span class="n">wait_label</span><span class="o">=</span><span class="s1">'write_stamps_wait'</span> <span class="p">)</span> <span class="k">as</span> <span class="n">templ_stamp_pool</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">templ_args</span> <span class="ow">in</span> <span class="n">templstamp_args</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="n">templ_args</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">failure_location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping original template image stamp for </span><span class="si">{</span><span class="n">templ_args</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="se">\</span>
+<span class="s2">                                                because it failed at </span><span class="si">{</span><span class="n">templ_args</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">failure_location</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">partial_solofail</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_solo_stamp_failure</span><span class="p">,</span> <span class="n">templ_args</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="p">)</span>
+                                <span class="n">templ_stamp_pool</span><span class="o">.</span><span class="n">apply_async</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_args_for_stampmaker</span><span class="p">,</span> <span class="n">templ_args</span><span class="p">,</span>
+                                                              <span class="n">error_callback</span><span class="o">=</span><span class="n">partial_solofail</span> <span class="p">)</span>
 
                     <span class="c1"># Save stamps for original science images.</span>
-                    <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwrite</span> <span class="p">)</span> <span class="k">as</span> <span class="n">sci_orig_stamp_pool</span><span class="p">:</span>
-                        <span class="n">sci_orig_stamp_pool</span><span class="o">.</span><span class="n">starmap_async</span><span class="p">(</span> <span class="n">partialstamp</span><span class="p">,</span> <span class="n">sci_orig_stamp_args</span><span class="p">,</span>
-                                                            <span class="n">error_callback</span><span class="o">=</span><span class="n">log_stamp_err</span> <span class="p">)</span>
-                        <span class="n">sci_orig_stamp_pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                        <span class="n">sci_orig_stamp_pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+                    <span class="k">with</span> <span class="n">managed_pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwrite</span><span class="p">,</span> <span class="n">wait_label</span><span class="o">=</span><span class="s1">'write_stamps_wait'</span> <span class="p">)</span> <span class="k">as</span> <span class="n">sci_orig_stamp_pool</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">sci_args</span> <span class="ow">in</span> <span class="n">sci_orig_stamp_args</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="n">sci_args</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">failure_location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping original science image stamp for </span><span class="si">{</span><span class="n">sci_args</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="se">\</span>
+<span class="s2">                                                because it failed at </span><span class="si">{</span><span class="n">sci_args</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">failure_location</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">partial_solofail</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_solo_stamp_failure</span><span class="p">,</span> <span class="n">sci_args</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="p">)</span>
+                                <span class="n">sci_orig_stamp_pool</span><span class="o">.</span><span class="n">apply_async</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_args_for_stampmaker</span><span class="p">,</span> <span class="n">sci_args</span><span class="p">,</span>
+                                                                 <span class="n">error_callback</span><span class="o">=</span><span class="n">partial_solofail</span> <span class="p">)</span>
 
                     <span class="c1"># Save stamps for decorrelated difference image, zero point image (decorrelated sky-subtracted</span>
-                    <span class="c1"># science image), and variance image for decorrelated difference image</span>
-                    <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwrite</span> <span class="p">)</span> <span class="k">as</span> <span class="n">sci_stamp_pool</span><span class="p">:</span>
+                    <span class="c1"># science image), and variance image for decorrelated difference image.</span>
+                    <span class="k">with</span> <span class="n">managed_pool</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nwrite</span><span class="p">,</span> <span class="n">wait_label</span><span class="o">=</span><span class="s1">'write_stamps_wait'</span> <span class="p">)</span> <span class="k">as</span> <span class="n">sci_stamp_pool</span><span class="p">:</span>
                         <span class="k">for</span> <span class="n">sci_image</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">science_images</span><span class="p">:</span>
                             <span class="k">for</span> <span class="n">templ_image</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span><span class="p">:</span>
-                                <span class="n">pair</span> <span class="o">=</span> <span class="p">(</span><span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span><span class="p">)</span>
-                                <span class="n">stamperr_partial</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">log_stamp_err</span><span class="p">,</span> <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span><span class="p">)</span>
-                                <span class="n">sci_stamp_pool</span><span class="o">.</span><span class="n">apply_async</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_stamps</span><span class="p">,</span> <span class="n">pair</span><span class="p">,</span> <span class="p">{},</span>
-                                                            <span class="n">callback</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_stamp_paths</span><span class="p">,</span>
-                                                                               <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span><span class="p">),</span>
-                                                            <span class="n">error_callback</span><span class="o">=</span><span class="n">stamperr_partial</span> <span class="p">)</span>
-                        <span class="n">sci_stamp_pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                        <span class="n">sci_stamp_pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+                                <span class="k">if</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">decorr_diff_path</span><span class="p">:</span>
+                                    <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span> <span class="sa">f</span><span class="s1">'Skipping DIA stamps for </span><span class="si">{</span><span class="n">sci_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> - '</span>
+                                                   <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">templ_image</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> due to no difference image.'</span> <span class="p">)</span>
+                                <span class="k">else</span><span class="p">:</span>
+                                    <span class="n">partial_pairfail</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_pair_stamp_failure</span><span class="p">,</span>
+                                                                <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span> <span class="p">)</span>
+                                    <span class="n">sci_stamp_pool</span><span class="o">.</span><span class="n">apply_async</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_stamps</span><span class="p">,</span> <span class="p">(</span><span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span><span class="p">),</span> <span class="p">{},</span>
+                                                                <span class="n">callback</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_stamp_paths</span><span class="p">,</span>
+                                                                                  <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span> <span class="p">),</span>
+                                                                <span class="n">error_callback</span><span class="o">=</span><span class="n">partial_pairfail</span> <span class="p">)</span>
 
                 <span class="k">else</span><span class="p">:</span>
                     <span class="c1"># Make and save stamp of just the template image</span>
                     <span class="k">for</span> <span class="n">tsargs</span> <span class="ow">in</span> <span class="n">templstamp_args</span><span class="p">:</span>
-                        <span class="k">try</span><span class="p">:</span>
-                            <span class="n">partialstamp</span><span class="p">(</span><span class="o">*</span><span class="n">tsargs</span><span class="p">)</span>
-                        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                            <span class="n">SNLogger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Stampifying the original template images failed because: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'make_stamps'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tsargs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fail_info</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">tsargs</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">failure_location</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="k">try</span><span class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">extract_args_for_stampmaker</span><span class="p">(</span><span class="o">*</span><span class="n">tsargs</span><span class="p">)</span>
+                            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                                <span class="n">SNLogger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Stampifying the original template images failed because: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">record_solo_stamp_failure</span><span class="p">(</span> <span class="n">tsargs</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">e</span> <span class="p">)</span>
+                                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
+                                    <span class="k">raise</span>
 
                     <span class="c1"># Make and save stamp of just the science image</span>
                     <span class="k">for</span> <span class="n">sosargs</span> <span class="ow">in</span> <span class="n">sci_orig_stamp_args</span><span class="p">:</span>
-                        <span class="k">try</span><span class="p">:</span>
-                            <span class="n">partialstamp</span><span class="p">(</span><span class="o">*</span><span class="n">sosargs</span><span class="p">)</span>
-                        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                            <span class="n">SNLogger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Stampifying the original science images failed because: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'make_stamps'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sosargs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fail_info</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">sosargs</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">failure_location</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="k">try</span><span class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">extract_args_for_stampmaker</span><span class="p">(</span><span class="o">*</span><span class="n">sosargs</span><span class="p">)</span>
+                            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                                <span class="n">SNLogger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Stampifying the original science images failed because: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">record_solo_stamp_failure</span><span class="p">(</span> <span class="n">sosargs</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">e</span> <span class="p">)</span>
+                                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
+                                    <span class="k">raise</span>
 
                     <span class="k">for</span> <span class="n">sci_image</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">science_images</span><span class="p">:</span>
                         <span class="k">for</span> <span class="n">templ_image</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_images</span><span class="p">:</span>
@@ -1519,10 +1635,10 @@
                                 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
                                         <span class="n">SNLogger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Stampifying the post-SFFT images failed because: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
-                                        <span class="bp">self</span><span class="o">.</span><span class="n">failures</span><span class="p">[</span><span class="s1">'make_stamps'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                                                                            <span class="s1">'science'</span><span class="p">:</span> <span class="n">sci_image</span><span class="o">.</span><span class="n">fail_info</span><span class="p">,</span>
-                                                                            <span class="s1">'template'</span><span class="p">:</span> <span class="n">templ_image</span><span class="o">.</span><span class="n">fail_info</span>
-                                                                            <span class="p">})</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">record_pair_stamp_failure</span><span class="p">(</span> <span class="n">sci_image</span><span class="p">,</span> <span class="n">templ_image</span><span class="p">,</span> <span class="n">e</span> <span class="p">)</span>
+                                        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">catchfailures</span><span class="p">:</span>
+                                            <span class="k">raise</span>
+
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">'...finished making stamps.'</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_trace</span><span class="p">:</span>
@@ -1727,6 +1843,8 @@
             <span class="n">SNLogger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span> <span class="sa">f</span><span class="s2">"Given Dec </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">dec</span><span class="si">}</span><span class="s2"> is far from DiaObject nominal Dec </span><span class="si">{</span><span class="n">diaobj</span><span class="o">.</span><span class="n">dec</span><span class="si">}</span><span class="s2">"</span> <span class="p">)</span>
         <span class="n">diaobj</span><span class="o">.</span><span class="n">dec</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">dec</span>
 
+    <span class="n">mapped_band</span> <span class="o">=</span> <span class="n">map_band</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">band</span><span class="p">)</span>
+
     <span class="c1"># Get the image collection</span>
     <span class="n">imgcol</span> <span class="o">=</span> <span class="n">ImageCollection</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span> <span class="n">collection</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">image_collection</span><span class="p">,</span>
                                              <span class="n">subset</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">image_subset</span><span class="p">,</span>
@@ -1753,7 +1871,7 @@
     <span class="c1">#                                            )</span>
 
     <span class="c1"># Create and launch the pipeline</span>
-    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span> <span class="n">diaobj</span><span class="p">,</span> <span class="n">imgcol</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">band</span><span class="p">,</span>
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span> <span class="n">diaobj</span><span class="p">,</span> <span class="n">imgcol</span><span class="p">,</span> <span class="n">mapped_band</span><span class="p">,</span>
                          <span class="n">science_csv</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">science_images</span><span class="p">,</span>
                          <span class="n">template_csv</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">template_images</span><span class="p">,</span>
                          <span class="n">oid</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">oid</span><span class="p">,</span>
