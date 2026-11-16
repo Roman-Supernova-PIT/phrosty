@@ -13,6 +13,8 @@ def test_map_band():
     assert map_band('Y106') == 'F106'
     assert map_band('F129') == 'F129'
     assert map_band('J129') == 'F129'
+    assert map_band('F146') == 'F146'
+    assert map_band('W146') == 'F146'
     assert map_band('F158') == 'F158'
     assert map_band('H158') == 'F158'
     # F184 doesn't have a double because it's
