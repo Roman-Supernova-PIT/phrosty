@@ -488,7 +488,7 @@ Let's break down a command you were instructed to use earlier. Recall::
 Arg-by-arg...:
 
 * ``SNPIT_CONFIG`` points to your config file.
-* ``--oid`` stands for "object ID".
+* ``--oid`` stands for "object ID". It is read as a string; its meaning depends on the object collection (e.g. an integer catalog ID for ``ou2024``, or any name, such as a UUID, for ``manual``).
 * ``-oc`` stands for "object collection". This is also a `snappl thing <https://github.com/Roman-Supernova-PIT/snappl>`__. Your options are ``ou2024`` (OpenUniverse 2024 SN Ia catalog), ``manual`` (any object you want),  ``snpitdb`` (SN PIT only).
 * ``-b`` stands for "band". This will be any one of: R062, Z087, Y106, J129, H158, F184, or K213.
 * ``-r`` is the RA of your object.

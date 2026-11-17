@@ -1594,7 +1594,7 @@ def main():
                          help="Collection subset.  Not used by all collections." )
 
     # SN and observation information
-    parser.add_argument( '--oid', type=int, required=True,
+    parser.add_argument( '--oid', type=str, required=True,
                          help="Object ID.  Meaning is collection-dependent." )
     parser.add_argument( '-r', '--ra', type=float, default=None,
                          help="Object RA.  By default, uses the one found for the object." )
