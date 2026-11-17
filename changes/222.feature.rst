@@ -1,0 +1,1 @@
+Allows non-integer object names. Updates the --oid description in the usage docs.
