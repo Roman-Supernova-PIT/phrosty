@@ -1,12 +1,10 @@
-replaceable_preloads:
-  - ${SNPIT_DEFAULT_CONFIG}
-
 system:
   paths:
     dev_storage: phrosty/tests/test_output
     temp_dir: phrosty/tests/test_output/temp
 
   ou24:
+    simdex_server: https://roman-desc-simdex.lbl.gov
     config_file: ${PWD}/../photometry_test_data/ou2024/tds.yaml
     tds_base: ${PWD}/../photometry_test_data/ou2024
     images: ${PWD}/../photometry_test_data/ou2024/images/simple_model
@@ -26,3 +24,10 @@ photometry:
     psf:
       type: gaussian
       params: {'sigmax': 0.43, 'sigmay': 0.43}
+
+  paths:
+    spectra1d: /dev/null
+    lightcurves: /dev/null
+    segmaps: /dev/null
+    images: /dev/null
+
