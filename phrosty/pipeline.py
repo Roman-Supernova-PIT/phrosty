@@ -1072,7 +1072,7 @@ class Pipeline:
             lc_obj.provenance_object = ltcvprov
 
         else:
-            lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata, no_base_path=True)
+            lc_obj = Lightcurve(data=self.results_dict, meta=self.metadata, base_dir=self.ltcv_dir)
 
         if self.dbsave:
             SNLogger.debug( "Saving results to database..." )
